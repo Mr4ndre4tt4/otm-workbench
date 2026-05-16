@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 def test_create_job(client, admin_header):
     response = client.post(
         "/api/v1/platform/jobs",
@@ -7,10 +10,6 @@ def test_create_job(client, admin_header):
 
     assert response.status_code == 200
     assert response.json()["status"] == "PENDING"
-
-
-from pathlib import Path
-
 
 def test_artifact_hash_metadata_and_evidence_are_client_safe(client, admin_header):
     artifact_dir = Path("var/test-artifacts")
