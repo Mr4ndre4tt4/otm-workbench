@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.models import Environment, FeatureFlag, Profile, Project, User, Workspace
+from otm_workbench.platform.navigation import navigation_items, registered_modules
 from otm_workbench.platform.services import authenticate, create_session
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
@@ -54,6 +56,20 @@ class EnvironmentCreate(BaseModel):
 class IdNameResponse(BaseModel):
     id: str
     name: str
+
+
+class ModuleResponse(BaseModel):
+    id: str
+    display_name: str
+    route_base: str
+    status: str
+
+
+class NavigationItem(BaseModel):
+    id: str
+    label: str
+    path: str
+    status: str
 
 
 @router.post("/session/login", response_model=TokenResponse)
@@ -150,3 +166,30 @@ def create_environment(
     db.commit()
     db.refresh(environment)
     return IdNameResponse(id=environment.id, name=environment.name)
+
+
+@router.get("/modules", response_model=PageResponse[ModuleResponse])
+def list_modules(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[ModuleResponse]:
+    modules = registered_modules(db)
+    items = [
+        ModuleResponse(
+            id=item.id,
+            display_name=item.display_name,
+            route_base=item.route_base,
+            status=item.status,
+        )
+        for item in modules
+    ]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/navigation", response_model=PageResponse[NavigationItem])
+def navigation(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[NavigationItem]:
+    items = [NavigationItem(**item) for item in navigation_items(db, user)]
+    return PageResponse(items=items, total=len(items))
