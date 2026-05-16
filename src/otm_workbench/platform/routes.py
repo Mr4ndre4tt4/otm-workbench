@@ -4,9 +4,22 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
-from otm_workbench.models import Environment, FeatureFlag, Profile, Project, User, Workspace
+from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    Environment,
+    Evidence,
+    FeatureFlag,
+    Job,
+    Manifest,
+    Profile,
+    Project,
+    User,
+    Workspace,
+)
+from otm_workbench.platform.audit import write_audit
 from otm_workbench.platform.navigation import navigation_items, registered_modules
-from otm_workbench.platform.services import authenticate, create_session
+from otm_workbench.platform.services import authenticate, create_session, file_sha256
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
 
@@ -72,6 +85,35 @@ class NavigationItem(BaseModel):
     status: str
 
 
+class JobCreate(BaseModel):
+    job_type: str
+    source_module: str
+    input_json: str = "{}"
+
+
+class ArtifactCreate(BaseModel):
+    source_module: str
+    artifact_type: str
+    file_path: str
+    file_name: str
+    content_type: str
+    sensitivity_level: str = "internal"
+
+
+class ManifestCreate(BaseModel):
+    source_module: str
+    manifest_json: str
+    status: str = "CREATED"
+
+
+class EvidenceCreate(BaseModel):
+    source_module: str
+    evidence_type: str
+    summary_json: str
+    artifact_id: str | None = None
+    manifest_id: str | None = None
+
+
 @router.post("/session/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = authenticate(db, payload.email, payload.password)
@@ -101,6 +143,7 @@ def upsert_feature_flag(
         flag.scope = payload.scope
     db.commit()
     db.refresh(flag)
+    write_audit(db, user, "feature_flag.upsert", "feature_flag", flag.id)
     return {"id": flag.id, "name": flag.name, "enabled": flag.enabled, "scope": flag.scope}
 
 
@@ -192,4 +235,100 @@ def navigation(
     user: User = Depends(require_user),
 ) -> PageResponse[NavigationItem]:
     items = [NavigationItem(**item) for item in navigation_items(db, user)]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.post("/jobs")
+def create_job(
+    payload: JobCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = Job(
+        job_type=payload.job_type,
+        source_module=payload.source_module,
+        input_json=payload.input_json,
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return {"id": job.id, "status": job.status}
+
+
+@router.post("/artifacts")
+def create_artifact(
+    payload: ArtifactCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    digest, size = file_sha256(payload.file_path)
+    artifact = Artifact(
+        source_module=payload.source_module,
+        artifact_type=payload.artifact_type,
+        file_path=payload.file_path,
+        file_name=payload.file_name,
+        content_type=payload.content_type,
+        sha256=digest,
+        size_bytes=size,
+        sensitivity_level=payload.sensitivity_level,
+    )
+    db.add(artifact)
+    db.commit()
+    db.refresh(artifact)
+    return {"id": artifact.id, "sha256": artifact.sha256, "size_bytes": artifact.size_bytes}
+
+
+@router.post("/manifests")
+def create_manifest(
+    payload: ManifestCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    manifest = Manifest(
+        source_module=payload.source_module,
+        manifest_json=payload.manifest_json,
+        status=payload.status,
+    )
+    db.add(manifest)
+    db.commit()
+    db.refresh(manifest)
+    return {"id": manifest.id, "status": manifest.status}
+
+
+@router.post("/evidence")
+def create_evidence(
+    payload: EvidenceCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    evidence = Evidence(
+        source_module=payload.source_module,
+        evidence_type=payload.evidence_type,
+        summary_json=payload.summary_json,
+        artifact_id=payload.artifact_id,
+        manifest_id=payload.manifest_id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.commit()
+    db.refresh(evidence)
+    return {"id": evidence.id, "client_safe": evidence.client_safe, "status": evidence.status}
+
+
+@router.get("/audit-logs")
+def list_audit_logs(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).all()
+    items = [
+        {
+            "id": item.id,
+            "action": item.action,
+            "target_type": item.target_type,
+            "target_id": item.target_id,
+        }
+        for item in logs
+    ]
     return PageResponse(items=items, total=len(items))

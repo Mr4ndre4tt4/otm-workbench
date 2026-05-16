@@ -1,3 +1,6 @@
+from hashlib import sha256
+from pathlib import Path
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,3 +32,8 @@ def create_session(db: Session, user: User) -> SessionToken:
     db.commit()
     db.refresh(session)
     return session
+
+
+def file_sha256(path: str) -> tuple[str, int]:
+    data = Path(path).read_bytes()
+    return sha256(data).hexdigest(), len(data)
