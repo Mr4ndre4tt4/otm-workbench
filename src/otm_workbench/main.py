@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from sqlalchemy import text
 
 from otm_workbench.config import get_settings
+from otm_workbench.database import session_scope
+import otm_workbench.models  # noqa: F401
 
 
 def create_app() -> FastAPI:
@@ -9,10 +12,16 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     def health() -> dict[str, str]:
+        database_status = "ok"
+        try:
+            with session_scope() as session:
+                session.execute(text("select 1"))
+        except Exception:
+            database_status = "error"
         return {
-            "status": "ok",
+            "status": "ok" if database_status == "ok" else "degraded",
             "service": settings.service_name,
-            "database": "not_configured",
+            "database": database_status,
         }
 
     return app

@@ -5,5 +5,5 @@ def test_health_returns_application_status(client):
     assert response.json() == {
         "status": "ok",
         "service": "otm-workbench",
-        "database": "not_configured",
+        "database": "ok",
     }
