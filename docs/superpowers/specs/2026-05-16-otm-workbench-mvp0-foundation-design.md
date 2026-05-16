@@ -1,0 +1,268 @@
+# OTM Workbench MVP 0 Foundation Design
+
+## Status
+
+Draft consolidated from foundation documentation. Ready for user review.
+
+## Summary
+
+MVP 0 establishes the technical foundation for `otm-workbench`: a local-first modular monolith with FastAPI, SQLite, SQLAlchemy, Alembic, platform contracts, security guardrails, module registration, operational metadata, jobs, artifacts, manifests, evidence, audit, and health checks.
+
+This MVP does not build the final user interface or the complete functional modules. It creates the platform layer that later MVPs will use for Application Shell, Data Factory, Evidence Hub, Rates Studio, Load Plan, cloud collaboration, and controlled dev tools.
+
+## Source Documents
+
+- `docs/otm-workbench/foundation/arquitetura_tecnica_otm_workbench.md`
+- `docs/otm-workbench/foundation/modelo_dados_contratos_api_otm_workbench.md`
+- `docs/otm-workbench/foundation/seguranca_permissoes_governanca_otm_workbench.md`
+- `docs/otm-workbench/foundation/guia_desenvolvimento_modular_otm_workbench.md`
+- `docs/otm-workbench/foundation/modelo_artifacts_evidencias_manifestos_otm_workbench.md`
+- `docs/otm-workbench/foundation/estrategia_qa_testes_observabilidade_otm_workbench.md`
+- `docs/otm-workbench/foundation/plano_mvp_roadmap_execucao_otm_workbench.md`
+
+## Goals
+
+- Bootstrap a FastAPI backend with a clean modular monolith structure.
+- Configure SQLite as the primary local database.
+- Add SQLAlchemy models and Alembic migrations for platform foundation entities.
+- Provide standard configuration, health, error, pagination, and status contracts.
+- Implement local auth bootstrap, login, logout, and session handling.
+- Implement RBAC with role and capability checks.
+- Create workspaces, projects, profiles, and environments as first-class platform context.
+- Create a module registry with backend-owned navigation.
+- Add feature flags scoped for future modules and dev-only functionality.
+- Add domain events, jobs, artifacts, manifests, evidence, and audit metadata.
+- Provide minimum tests for contracts, permissions, persistence, and critical lifecycles.
+
+## Non-Goals
+
+- Build full Data Factory behavior.
+- Build full Rates Studio behavior.
+- Build full Load Plan or cutover behavior.
+- Build cloud sync.
+- Build the final React UI.
+- Build a full admin console.
+- Implement Oracle Lab, OTM Explorer, geocoding, or other dev-only tools.
+- Store sensitive raw payloads inside evidence records.
+
+## Recommended Approach
+
+Use a backend-first MVP 0 with a minimal API-testable surface.
+
+The implementation should prioritize stable platform contracts before UI. Swagger/OpenAPI, pytest, and HTTP API tests are enough for MVP 0 validation. A React shell belongs to MVP 1 after navigation, capabilities, active project/profile/environment context, and module registry contracts exist.
+
+This approach is preferred over starting with frontend scaffolding because the product architecture explicitly makes the backend the source of truth for navigation, permissions, module visibility, status, and next actions.
+
+## Architecture
+
+The application is a local-first modular monolith.
+
+Core platform services live in a single backend application, while functional domains enter through governed modules. Each module must have explicit contracts and must not couple directly to another module's internals.
+
+The MVP 0 backend should expose platform APIs under `/api/v1/platform/*` and foundation endpoints such as health checks under stable paths.
+
+Expected backend areas:
+
+- `config`
+- `database`
+- `migrations`
+- `auth`
+- `session`
+- `rbac`
+- `capabilities`
+- `workspaces`
+- `projects`
+- `profiles`
+- `environments`
+- `module_registry`
+- `feature_flags`
+- `domain_events`
+- `jobs`
+- `artifacts`
+- `manifests`
+- `evidence`
+- `audit`
+- `health`
+
+## Data Model
+
+MVP 0 should include persistence for these platform entities:
+
+- `Workspace`
+- `Project`
+- `Profile`
+- `Environment`
+- `User`
+- `Role`
+- `Capability`
+- `UserProjectRole`
+- `Module`
+- `FeatureFlag`
+- `DomainEvent`
+- `Job`
+- `Artifact`
+- `Manifest`
+- `Evidence`
+- `AuditLog`
+
+Functional entities such as `Batch`, `ValidationIssue`, `LoadPackage`, `RateBatch`, `LoadPlan`, `CutoverReadiness`, and `ChangeRequest` may be represented as contracts or reserved schema direction, but they should not become full functional workflows in MVP 0 unless needed for platform tests.
+
+## API Contracts
+
+All APIs must use:
+
+- `/api/v1` versioning.
+- A standard error model.
+- A standard paginated response model.
+- Consistent status fields.
+- Authentication and capability dependencies on sensitive routes.
+
+Minimum platform API groups:
+
+- Session and current user.
+- Workspaces and projects.
+- Profiles and environments.
+- Modules and backend-owned navigation.
+- Feature flags.
+- Jobs.
+- Artifacts.
+- Manifests.
+- Evidence.
+- Audit log.
+- Health checks.
+
+The navigation contract must be generated by the backend from module registration, feature flags, active context, role, and capabilities. The frontend must be able to render navigation from that contract without hardcoded module visibility rules.
+
+## Security And Governance
+
+MVP 0 must implement local-first security guardrails:
+
+- Bootstrap first local user.
+- Secure password hashing with salt.
+- Local login/logout.
+- Session expiration.
+- Login rate limiting or a documented MVP-safe equivalent.
+- Route dependencies such as `require_user`, `require_admin`, and `require_capability`.
+- RBAC enforced on the backend, not only in future UI.
+- Capability checks for sensitive platform actions.
+- Audit records for login/logout, role/capability changes, project/profile/environment changes, feature flag changes, artifact downloads, and other state-changing sensitive operations.
+
+Sensitive values such as passwords, tokens, API keys, auth headers, connection strings, and raw client payloads must not be returned through normal API responses.
+
+## Artifacts, Manifests, And Evidence
+
+MVP 0 should establish the storage contract even before full functional exports exist.
+
+Artifacts are files or generated outputs stored on filesystem/storage with metadata in SQLite. Artifact metadata must include hash, size, source module, artifact type, sensitivity level, and creator.
+
+Manifests describe generated packages and files: what was generated, by which module, for which project/profile/environment, in what order, with what hashes, validation result, and status.
+
+Evidence is client-safe by default. Evidence must summarize an action, result, status, source, artifact reference, manifest reference, hash, user, and timestamp. It must not embed full spreadsheets, CSVs, XMLs, raw OTM payloads, tokens, passwords, or unnecessary confidential data.
+
+## Module Registry
+
+MVP 0 should include a registry capable of describing modules before their full implementation.
+
+The registry must support:
+
+- Module id.
+- Display name.
+- Route base or API prefix.
+- Status.
+- Required capabilities.
+- Feature flag dependency.
+- Navigation metadata.
+- Dev-only or admin-only visibility.
+
+The first functional module may be represented as a registered Data Factory or Master Data placeholder only to prove module registration and navigation contracts. It must not pretend that Data Factory workflow is implemented.
+
+## Testing Strategy
+
+MVP 0 needs tests that protect the platform contracts:
+
+- Database migration and model smoke tests.
+- Auth bootstrap and login tests.
+- Permission tests for unauthenticated, authenticated without capability, and authenticated with capability.
+- Module registry and navigation contract tests.
+- Feature flag visibility tests.
+- Standard error response tests.
+- Job lifecycle metadata tests.
+- Artifact hash and metadata tests.
+- Manifest creation tests.
+- Evidence client-safe tests.
+- Audit log creation tests for critical state changes.
+- Health check tests.
+
+The minimum local command for completion should run the full backend test suite through pytest.
+
+## Acceptance Criteria
+
+- The backend app starts locally.
+- SQLite configuration works as the default local persistence layer.
+- Alembic migrations create the MVP 0 schema.
+- A bootstrap user can be created.
+- Login and logout work.
+- Session-protected routes reject anonymous access.
+- Capability-protected routes return 403 when the user lacks the required capability.
+- Workspaces, projects, profiles, and environments can be created and listed.
+- `/api/v1/platform/modules` returns registered modules.
+- `/api/v1/platform/navigation` returns navigation filtered by capabilities and feature flags.
+- Feature flags can hide disabled or dev-only modules.
+- Jobs can be created, listed, and moved through their foundation lifecycle.
+- Artifacts can be registered with file metadata, hash, size, and sensitivity level.
+- Manifests can be created and linked to artifacts.
+- Evidence can be created and queried without exposing sensitive raw payloads.
+- Audit logs are created for critical state-changing actions.
+- Health check endpoint returns database and application status.
+- Standard error and pagination contracts are covered by tests.
+- Pytest passes for the MVP 0 suite.
+
+## Implementation Phases
+
+### Phase 1: Backend Baseline
+
+Create repository structure, dependency management, FastAPI app factory, configuration, health endpoint, error model, and test baseline.
+
+### Phase 2: Database Core
+
+Add SQLAlchemy, SQLite configuration, session management, Alembic, base models, timestamp conventions, and initial migrations.
+
+### Phase 3: Auth, Session, RBAC
+
+Add user bootstrap, password hashing, login/logout, local sessions, roles, capabilities, and route dependencies.
+
+### Phase 4: Operational Context
+
+Add workspace, project, profile, and environment models and APIs.
+
+### Phase 5: Module Registry And Navigation
+
+Add module registration, feature flags, capability-aware module visibility, and backend-owned navigation contract.
+
+### Phase 6: Operational Metadata
+
+Add domain events, jobs, artifacts, manifests, evidence, and audit log models and APIs.
+
+### Phase 7: Foundation Verification
+
+Add contract tests, permission tests, sensitive-data tests, health checks, and documentation updates.
+
+## Risks
+
+- The MVP can grow too large if functional module workflows are pulled into the foundation. Keep Data Factory, Rates, and Load Plan as later MVPs.
+- Security can become decorative if capability checks are only represented in UI. Enforce them in route dependencies from the start.
+- Evidence can leak sensitive data if treated as a generic JSON dump. Keep evidence summaries client-safe and link to artifacts/manifests instead.
+- Navigation can become hardcoded if frontend work starts before backend contracts. Keep navigation backend-owned.
+- Artifact storage can become inconsistent if filesystem paths, hashes, and metadata are not introduced together.
+
+## Open Decisions
+
+- Final dependency manager: Poetry, uv, pip-tools, or plain pip.
+- Session implementation detail: signed cookie, server-side session table, or short-lived local token.
+- Initial admin bootstrap method: CLI command, environment variables, or first-run API.
+- Exact local artifact root path for generated files.
+- Whether MVP 0 should include a minimal frontend smoke screen or remain backend/API-only.
+
+## User Review Notes
+
+The recommended default is backend/API-only for MVP 0, with React/Vite starting in MVP 1. If a visible shell is desired earlier, it should remain a smoke test that consumes health and navigation contracts, not a full UI implementation.
