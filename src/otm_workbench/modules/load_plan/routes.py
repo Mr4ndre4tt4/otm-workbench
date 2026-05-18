@@ -11,6 +11,7 @@ from otm_workbench.models import (
     CsvutilBuild,
     LoadPlanCutoverReadiness,
     LoadPlanPackage,
+    LoadPlanReadinessExport,
     LoadPlanReviewItem,
     LoadPlanSequenceSnapshot,
     LoadPlanZipAnalysis,
@@ -27,6 +28,10 @@ from otm_workbench.modules.load_plan.readiness import (
     generate_cutover_readiness,
     latest_cutover_readiness,
     serialize_cutover_readiness,
+)
+from otm_workbench.modules.load_plan.readiness_export import (
+    generate_readiness_export,
+    serialize_readiness_export,
 )
 from otm_workbench.modules.load_plan.review_queue import (
     decide_review_item,
@@ -217,6 +222,55 @@ def get_latest_cutover_readiness(
     if readiness is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
     return serialize_cutover_readiness(readiness)
+
+
+@router.get("/cutover-readiness/exports")
+def list_readiness_exports(
+    package_id: str | None = None,
+    readiness_id: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanReadinessExport)
+    if package_id:
+        query = query.filter(LoadPlanReadinessExport.package_id == package_id)
+    if readiness_id:
+        query = query.filter(LoadPlanReadinessExport.readiness_id == readiness_id)
+    if status:
+        query = query.filter(LoadPlanReadinessExport.status == status)
+    exports = query.order_by(LoadPlanReadinessExport.exported_at.desc()).all()
+    return PageResponse(items=[serialize_readiness_export(export) for export in exports], total=len(exports))
+
+
+@router.get("/cutover-readiness/exports/{export_id}")
+def get_readiness_export(
+    export_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    export = db.query(LoadPlanReadinessExport).filter(LoadPlanReadinessExport.id == export_id).first()
+    if export is None:
+        raise HTTPException(status_code=404, detail="Load Plan readiness export not found.")
+    return serialize_readiness_export(export)
+
+
+@router.post("/cutover-readiness/{readiness_id}/export")
+def export_cutover_readiness(
+    readiness_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    readiness = db.query(LoadPlanCutoverReadiness).filter(LoadPlanCutoverReadiness.id == readiness_id).first()
+    if readiness is None:
+        raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
+    export = generate_readiness_export(
+        db,
+        readiness=readiness,
+        artifact_root=Path(get_settings().artifact_root),
+        exported_by=user.email,
+    )
+    return serialize_readiness_export(export)
 
 
 @router.get("/cutover-readiness/{readiness_id}")
