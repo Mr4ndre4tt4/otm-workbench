@@ -201,3 +201,144 @@ class AuditLog(Base, TimestampMixin):
     target_type: Mapped[str] = mapped_column(String)
     target_id: Mapped[str | None] = mapped_column(String, nullable=True)
     metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class ReferenceObjectType(Base, TimestampMixin):
+    __tablename__ = "reference_object_types"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ReferenceObject(Base, TimestampMixin):
+    __tablename__ = "reference_objects"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    object_type: Mapped[str] = mapped_column(String, index=True)
+    gid: Mapped[str] = mapped_column(String, index=True)
+    xid: Mapped[str] = mapped_column(String, default="")
+    domain_name: Mapped[str] = mapped_column(String, index=True)
+    display_name: Mapped[str] = mapped_column(String, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+    source: Mapped[str] = mapped_column(String, default="manual")
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    sync_batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class ReferenceFieldPolicy(Base, TimestampMixin):
+    __tablename__ = "reference_field_policies"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    module_id: Mapped[str] = mapped_column(String, index=True)
+    field_name: Mapped[str] = mapped_column(String, index=True)
+    object_type: Mapped[str] = mapped_column(String, index=True)
+    policy: Mapped[str] = mapped_column(String)
+    severity_when_missing: Mapped[str] = mapped_column(String)
+    allow_manual_value: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ReferenceImportBatch(Base, TimestampMixin):
+    __tablename__ = "reference_import_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    source_type: Mapped[str] = mapped_column(String)
+    source_description: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[str] = mapped_column(String, default="PENDING")
+    records_received: Mapped[int] = mapped_column(Integer, default=0)
+    records_inserted: Mapped[int] = mapped_column(Integer, default=0)
+    records_updated: Mapped[int] = mapped_column(Integer, default=0)
+    records_rejected: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class ReferenceSnapshot(Base, TimestampMixin):
+    __tablename__ = "reference_snapshots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    snapshot_name: Mapped[str] = mapped_column(String)
+    object_types_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_import_batch_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class ReferenceSnapshotItem(Base):
+    __tablename__ = "reference_snapshot_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    snapshot_id: Mapped[str] = mapped_column(ForeignKey("reference_snapshots.id"), index=True)
+    reference_object_id: Mapped[str] = mapped_column(String, index=True)
+    object_type: Mapped[str] = mapped_column(String)
+    gid: Mapped[str] = mapped_column(String)
+    domain_name: Mapped[str] = mapped_column(String)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class OtmTableDefinition(Base, TimestampMixin):
+    __tablename__ = "otm_table_definitions"
+
+    table_name: Mapped[str] = mapped_column(String, primary_key=True)
+    schema_name: Mapped[str] = mapped_column(String, default="glogowner")
+    description: Mapped[str] = mapped_column(Text, default="")
+    primary_key_json: Mapped[str] = mapped_column(Text, default="[]")
+    source_path: Mapped[str] = mapped_column(String, default="")
+
+
+class OtmTableColumn(Base):
+    __tablename__ = "otm_table_columns"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    column_name: Mapped[str] = mapped_column(String, index=True)
+    data_type: Mapped[str] = mapped_column(String)
+    is_nullable: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_constraint: Mapped[bool] = mapped_column(Boolean, default=False)
+    constraint_values: Mapped[str] = mapped_column(Text, default="")
+    default_value: Mapped[str] = mapped_column(String, default="")
+
+
+class OtmTableForeignKey(Base):
+    __tablename__ = "otm_table_foreign_keys"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    foreign_key_name: Mapped[str] = mapped_column(String)
+    column_name: Mapped[str] = mapped_column(String)
+    parent_table_name: Mapped[str] = mapped_column(String, index=True)
+    parent_column_name: Mapped[str] = mapped_column(String)
+
+
+class OtmLoadSequence(Base, TimestampMixin):
+    __tablename__ = "otm_load_sequences"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    module_id: Mapped[str] = mapped_column(String, default="rates")
+    sequence_name: Mapped[str] = mapped_column(String)
+    table_name: Mapped[str] = mapped_column(String)
+    position: Mapped[int] = mapped_column(Integer)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
+class OtmCsvContract(Base, TimestampMixin):
+    __tablename__ = "otm_csv_contracts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    module_id: Mapped[str] = mapped_column(String, default="rates")
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    date_format: Mapped[str] = mapped_column(String, default="YYYY-MM-DD HH24:MI:SS")
+    special_rules_json: Mapped[str] = mapped_column(Text, default="{}")
