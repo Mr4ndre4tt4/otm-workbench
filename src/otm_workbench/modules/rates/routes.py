@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
+from otm_workbench.catalog.services import reference_options_payload
 from otm_workbench.models import (
     Artifact,
     AuditLog,
@@ -510,6 +511,29 @@ def validate_rates_load_sequence(
         "missing_tables": result.missing_tables,
         "issues": [item.__dict__ for item in result.issues],
     }
+
+
+@router.get("/reference/options")
+def list_rates_reference_options(
+    object_type: str,
+    domain_name: str = "OTM1",
+    project_id: str | None = None,
+    environment_id: str | None = None,
+    profile_id: str | None = None,
+    can_view_all_domains: bool = False,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return reference_options_payload(
+        db,
+        module_id="rates",
+        object_type=object_type,
+        domain_name=domain_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        profile_id=profile_id,
+        can_view_all_domains=can_view_all_domains,
+    )
 
 
 @router.get("/reference/rate-offerings")

@@ -178,6 +178,7 @@ def reference_options_payload(
     *,
     object_type: str,
     domain_name: str,
+    module_id: str | None = None,
     project_id: str | None = None,
     environment_id: str | None = None,
     profile_id: str | None = None,
@@ -192,6 +193,7 @@ def reference_options_payload(
     )
     options = list_reference_options(db, context, object_type)
     return {
+        "module_id": module_id,
         "object_type": object_type.upper(),
         "project_id": project_id,
         "environment_id": environment_id,
