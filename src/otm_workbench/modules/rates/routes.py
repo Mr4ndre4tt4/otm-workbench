@@ -22,6 +22,7 @@ from otm_workbench.modules.rates.batches import (
     create_rate_batch,
     get_batch_table_rows,
 )
+from otm_workbench.modules.rates.approval import approve_rate_batch, get_rate_batch_readiness
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
@@ -75,6 +76,10 @@ class RateBatchTablePayload(BaseModel):
 
 class AddRateBatchTablesRequest(BaseModel):
     tables: list[RateBatchTablePayload]
+
+
+class ApproveRateBatchRequest(BaseModel):
+    approval_note: str = ""
 
 
 def serialize_rate_batch(batch: RateBatch) -> dict[str, object]:
@@ -215,6 +220,39 @@ def get_rates_batch(
     payload = serialize_rate_batch(batch)
     payload["tables"] = [serialize_rate_batch_table(table) for table in tables]
     return payload
+
+
+@router.get("/batches/{batch_id}/readiness")
+def get_rates_batch_readiness(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    return get_rate_batch_readiness(db, batch).to_dict()
+
+
+@router.post("/batches/{batch_id}/approve")
+def approve_rates_batch(
+    batch_id: str,
+    payload: ApproveRateBatchRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    try:
+        return approve_rate_batch(
+            db,
+            batch=batch,
+            approved_by=user.email,
+            approval_note=payload.approval_note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/batches/{batch_id}/tables")

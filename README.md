@@ -37,7 +37,11 @@ The Rates CSV Export Artifacts slice turns validated batches into internal ZIP
 artifacts with a client-safe manifest/evidence trail; it does not perform OTM
 upload, CSVUTIL packaging, or XML export.
 
+The Rates Batch Approval slice adds backend readiness and approval gates for
+validated or exported batches, with client-safe approval evidence, audit, and
+domain event records.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py
 python -m alembic upgrade head
 ```
