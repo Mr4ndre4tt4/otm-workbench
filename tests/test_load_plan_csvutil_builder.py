@@ -141,3 +141,75 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
     assert audit.target_id == payload["id"]
     assert event.aggregate_id == payload["id"]
     assert event.status == "PENDING"
+
+
+def test_csvutil_build_list_and_detail(client, admin_header):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    created = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    ).json()
+
+    listed = client.get("/api/v1/modules/load-plan/csvutil/builds", headers=admin_header)
+    detail = client.get(f"/api/v1/modules/load-plan/csvutil/builds/{created['id']}", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert detail.status_code == 200
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["id"] == created["id"]
+    assert detail.json()["summary"]["package_type"] == "rates_csv_zip"
+
+
+def test_csvutil_build_rejects_package_without_artifact_or_manifest(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    package_row = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    package_row.artifact_id = None
+    package_row.manifest_id = None
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "artifact" in response.json()["message"].lower()
+
+
+def test_csvutil_build_rejects_empty_load_sequence(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    package_row = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    package_row.load_sequence_json = "[]"
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "load sequence" in response.json()["message"].lower()
+
+
+def test_csvutil_rebuild_creates_separate_build_history(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    first = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    second = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["id"] != second.json()["id"]
+    assert db_session.query(CsvutilBuild).count() == 2
+    assert db_session.query(Evidence).filter(Evidence.evidence_type == "csvutil_build").count() == 2

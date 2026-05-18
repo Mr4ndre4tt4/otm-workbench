@@ -87,3 +87,25 @@ def build_csvutil_artifacts(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_csvutil_build(build)
+
+
+@router.get("/csvutil/builds")
+def list_csvutil_builds(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    builds = db.query(CsvutilBuild).order_by(CsvutilBuild.created_at.desc()).all()
+    items = [serialize_csvutil_build(build) for build in builds]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/csvutil/builds/{build_id}")
+def get_csvutil_build(
+    build_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    build = db.query(CsvutilBuild).filter(CsvutilBuild.id == build_id).first()
+    if build is None:
+        raise HTTPException(status_code=404, detail="CSVUTIL build not found.")
+    return serialize_csvutil_build(build)
