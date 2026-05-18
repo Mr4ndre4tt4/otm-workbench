@@ -41,7 +41,11 @@ The Rates Batch Approval slice adds backend readiness and approval gates for
 validated or exported batches, with client-safe approval evidence, audit, and
 domain event records.
 
+The Load Plan Package Intake slice registers approved Rates CSV exports as
+backend-only Load Plan packages, preserving links to artifacts, manifests, and
+client-safe evidence without generating CSVUTIL or cutover readiness outputs.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py
 python -m alembic upgrade head
 ```
