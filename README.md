@@ -59,7 +59,14 @@ The Load Plan Setup Review Queue slice creates client-safe `PENDING_REVIEW`
 items from ZIP Analysis findings, preserving audit/event metadata, without
 making review decisions, approving packages, or producing cutover readiness.
 
+The Load Plan Review Decisions slice records append-only decisions for review
+queue items through `POST /api/v1/modules/load-plan/review-queue/{item_id}/decide`.
+Allowed statuses are `CONFIRMED`, `REJECTED`, `NEEDS_MANUAL_ACTION`, and
+`EXCLUDED_FROM_CUTOVER`; list/detail review queue responses expose latest
+decision metadata without copying decision notes into client-safe evidence,
+audit logs, or domain events.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py
 python -m alembic upgrade head
 ```

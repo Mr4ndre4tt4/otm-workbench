@@ -2,12 +2,26 @@ import json
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import AuditLog, DomainEvent, LoadPlanReviewItem, LoadPlanZipAnalysis
+from otm_workbench.models import (
+    AuditLog,
+    DomainEvent,
+    Evidence,
+    LoadPlanReviewDecision,
+    LoadPlanReviewItem,
+    LoadPlanZipAnalysis,
+    utcnow,
+)
 from otm_workbench.modules.load_plan.packages import parse_json_list, parse_json_object
 
 
 SOURCE_TYPE = "zip_analysis_finding"
 PENDING_STATUS = "PENDING_REVIEW"
+ALLOWED_DECISION_STATUSES = {
+    "CONFIRMED",
+    "REJECTED",
+    "NEEDS_MANUAL_ACTION",
+    "EXCLUDED_FROM_CUTOVER",
+}
 
 CATEGORY_BY_CODE = {
     "ZIP_MANIFEST_MISSING": "PACKAGE",
@@ -67,6 +81,141 @@ def serialize_review_item(item: LoadPlanReviewItem) -> dict[str, object]:
         "created_by": item.created_by,
         "created_at": item.created_at.isoformat() if item.created_at else None,
     }
+
+
+def latest_review_decision(db: Session, item_id: str) -> LoadPlanReviewDecision | None:
+    return (
+        db.query(LoadPlanReviewDecision)
+        .filter(LoadPlanReviewDecision.review_item_id == item_id)
+        .order_by(LoadPlanReviewDecision.decided_at.desc(), LoadPlanReviewDecision.created_at.desc())
+        .first()
+    )
+
+
+def serialize_review_item_with_latest_decision(db: Session, item: LoadPlanReviewItem) -> dict[str, object]:
+    payload = serialize_review_item(item)
+    decision = latest_review_decision(db, item.id)
+    payload.update(
+        {
+            "latest_decision_id": decision.id if decision is not None else None,
+            "latest_decision_status": decision.decision_status if decision is not None else None,
+            "latest_decided_at": decision.decided_at.isoformat() if decision is not None and decision.decided_at else None,
+        }
+    )
+    return payload
+
+
+def serialize_review_decision(db: Session, decision: LoadPlanReviewDecision) -> dict[str, object]:
+    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == decision.review_item_id).one()
+    return {
+        "id": decision.id,
+        "project_id": decision.project_id,
+        "environment_id": decision.environment_id,
+        "profile_id": decision.profile_id,
+        "package_id": decision.package_id,
+        "review_item_id": decision.review_item_id,
+        "decision_status": decision.decision_status,
+        "decision_note": decision.decision_note,
+        "evidence_id": decision.evidence_id,
+        "decided_by": decision.decided_by,
+        "decided_at": decision.decided_at.isoformat() if decision.decided_at else None,
+        "review_item": serialize_review_item_with_latest_decision(db, item),
+    }
+
+
+def decide_review_item(
+    db: Session,
+    *,
+    item: LoadPlanReviewItem,
+    decision_status: str,
+    decision_note: str,
+    decided_by: str,
+) -> LoadPlanReviewDecision:
+    normalized_status = decision_status.strip()
+    if normalized_status not in ALLOWED_DECISION_STATUSES:
+        allowed = ", ".join(sorted(ALLOWED_DECISION_STATUSES))
+        raise ValueError(f"Decision status must be one of: {allowed}.")
+
+    decided_at = utcnow()
+    evidence = Evidence(
+        project_id=item.project_id,
+        source_module="load_plan",
+        evidence_type="load_plan_review_decision",
+        status="CREATED",
+        summary_json=json.dumps(
+            {
+                "source_entity_type": item.source_type,
+                "source_entity_id": item.id,
+                "review_item_id": item.id,
+                "package_id": item.package_id,
+                "decision_status": normalized_status,
+                "decision_note_present": bool(decision_note.strip()),
+                "decided_by": decided_by,
+                "decided_at": decided_at.isoformat(),
+            },
+            sort_keys=True,
+        ),
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+
+    decision = LoadPlanReviewDecision(
+        project_id=item.project_id,
+        environment_id=item.environment_id,
+        profile_id=item.profile_id,
+        package_id=item.package_id,
+        review_item_id=item.id,
+        decision_status=normalized_status,
+        decision_note=decision_note,
+        evidence_id=evidence.id,
+        decided_by=decided_by,
+        decided_at=decided_at,
+    )
+    item.status = normalized_status
+    item.updated_at = decided_at
+    db.add(decision)
+    db.add(
+        AuditLog(
+            actor_user_id=decided_by,
+            action="load_plan.review_queue.decide",
+            target_type="load_plan_review_item",
+            target_id=item.id,
+            metadata_json=json.dumps(
+                {
+                    "package_id": item.package_id,
+                    "decision_status": normalized_status,
+                    "evidence_id": evidence.id,
+                    "decision_note_present": bool(decision_note.strip()),
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="load_plan.review_queue.decided",
+            source_module="load_plan",
+            project_id=item.project_id,
+            aggregate_type="load_plan_review_item",
+            aggregate_id=item.id,
+            payload_json=json.dumps(
+                {
+                    "package_id": item.package_id,
+                    "decision_status": normalized_status,
+                    "evidence_id": evidence.id,
+                    "decision_note_present": bool(decision_note.strip()),
+                },
+                sort_keys=True,
+            ),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    db.refresh(decision)
+    db.refresh(item)
+    return decision
 
 
 def review_item_identity(finding: dict[str, object]) -> tuple[str, str | None, str | None]:
