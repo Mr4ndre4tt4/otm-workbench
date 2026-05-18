@@ -7,7 +7,16 @@ import zipfile
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchTable
+from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    Evidence,
+    Manifest,
+    RateBatch,
+    RateBatchIssue,
+    RateBatchTable,
+    utcnow,
+)
 from otm_workbench.modules.rates.batches import get_batch_table_rows
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 
@@ -140,12 +149,75 @@ def generate_rates_csv_export(
             archive.writestr(csv_name, csv_text)
 
     zip_hash, zip_size = file_sha256(zip_path)
+    artifact = Artifact(
+        source_module="rates",
+        artifact_type="rates_csv_zip",
+        file_path=str(zip_path),
+        file_name=zip_path.name,
+        content_type="application/zip",
+        sha256=zip_hash,
+        size_bytes=zip_size,
+        sensitivity_level="internal",
+    )
+    db.add(artifact)
+    db.flush()
+
+    manifest = Manifest(
+        source_module="rates",
+        status="CREATED",
+        manifest_json=manifest_text,
+    )
+    db.add(manifest)
+    db.flush()
+
+    summary_payload = {
+        "source_entity_type": "rate_batch",
+        "source_entity_id": batch.id,
+        "scenario_code": batch.scenario_code,
+        "domain_name": batch.domain_name,
+        "table_count": len(batch_tables),
+        "row_count": sum(table.row_count for table in batch_tables),
+        "validation_summary": validation_summary,
+        "artifact_type": "rates_csv_zip",
+    }
+    evidence = Evidence(
+        source_module="rates",
+        evidence_type="rates_csv_export",
+        summary_json=json.dumps(summary_payload, sort_keys=True),
+        artifact_id=artifact.id,
+        manifest_id=manifest.id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+
+    audit = AuditLog(
+        actor_user_id=generated_by,
+        action="rates.batch.export_csv",
+        target_type="rate_batch",
+        target_id=batch.id,
+        metadata_json=json.dumps(
+            {
+                "artifact_id": artifact.id,
+                "manifest_id": manifest.id,
+                "evidence_id": evidence.id,
+                "table_count": len(batch_tables),
+            },
+            sort_keys=True,
+        ),
+    )
+    db.add(audit)
+
+    batch.status = "EXPORTED"
+    batch.exported_at = utcnow()
+    db.commit()
     return RatesCsvExportResult(
         batch_id=batch.id,
         status="EXPORTED",
-        artifact_id="",
-        manifest_id="",
-        evidence_id="",
+        artifact_id=artifact.id,
+        manifest_id=manifest.id,
+        evidence_id=evidence.id,
         file_name=zip_path.name,
         file_path=str(zip_path),
         sha256=zip_hash,

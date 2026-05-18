@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 import zipfile
 
+from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest, RateBatch
+
 
 def create_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     return client.post(
@@ -91,3 +93,35 @@ def test_export_creates_zip_with_manifest_and_csv(client, admin_header):
     assert manifest["manifest_type"] == "rates_csv_export"
     assert manifest["batch"]["id"] == batch["id"]
     assert "OTM1.ACC_COST_001" not in json.dumps(manifest)
+
+
+def test_export_registers_artifact_manifest_evidence_and_audit(client, admin_header, db_session):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/export-csv",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    artifact = db_session.query(Artifact).filter(Artifact.id == payload["artifact_id"]).one()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "rates.batch.export_csv").one()
+    refreshed_batch = db_session.query(RateBatch).filter(RateBatch.id == batch["id"]).one()
+
+    assert artifact.artifact_type == "rates_csv_zip"
+    assert artifact.content_type == "application/zip"
+    assert artifact.sha256 == payload["sha256"]
+    assert manifest.source_module == "rates"
+    assert "OTM1.ACC_COST_001" not in manifest.manifest_json
+    assert evidence.client_safe is True
+    assert evidence.artifact_id == artifact.id
+    assert evidence.manifest_id == manifest.id
+    assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert audit.target_id == batch["id"]
+    assert refreshed_batch.status == "EXPORTED"
+    assert refreshed_batch.exported_at is not None
