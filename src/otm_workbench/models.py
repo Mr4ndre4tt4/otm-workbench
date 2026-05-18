@@ -342,3 +342,65 @@ class OtmCsvContract(Base, TimestampMixin):
     table_name: Mapped[str] = mapped_column(String, index=True)
     date_format: Mapped[str] = mapped_column(String, default="YYYY-MM-DD HH24:MI:SS")
     special_rules_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class RateBatch(Base, TimestampMixin):
+    __tablename__ = "rate_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    scenario_code: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    source_type: Mapped[str] = mapped_column(String, default="api")
+    domain_name: Mapped[str] = mapped_column(String, index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    exported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class RateBatchTable(Base, TimestampMixin):
+    __tablename__ = "rate_batch_tables"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("rate_batches.id"), index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    sequence_index: Mapped[int] = mapped_column(Integer)
+    requirement_level: Mapped[str] = mapped_column(String, default="OPTIONAL")
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String, default="PENDING", index=True)
+
+
+class RateBatchRow(Base, TimestampMixin):
+    __tablename__ = "rate_batch_rows"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("rate_batches.id"), index=True)
+    batch_table_id: Mapped[str] = mapped_column(ForeignKey("rate_batch_tables.id"), index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    row_index: Mapped[int] = mapped_column(Integer)
+    row_payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    normalized_payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    row_hash: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="PENDING", index=True)
+
+
+class RateBatchIssue(Base):
+    __tablename__ = "rate_batch_issues"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("rate_batches.id"), index=True)
+    batch_table_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    batch_row_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    severity: Mapped[str] = mapped_column(String, index=True)
+    issue_code: Mapped[str] = mapped_column(String, index=True)
+    table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    column_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    message: Mapped[str] = mapped_column(Text)
+    details_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
