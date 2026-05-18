@@ -12,6 +12,7 @@ from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchTable, Refe
 from otm_workbench.modules.rates.batches import (
     add_rate_batch_tables,
     create_rate_batch,
+    get_batch_table_rows,
 )
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.modules.rates.dictionary import (
@@ -238,6 +239,37 @@ def list_rates_batch_issues(
     )
     items = [serialize_rate_batch_issue(issue) for issue in issues]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/batches/{batch_id}/csv-preview")
+def preview_rates_batch_csv(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch_tables = (
+        db.query(RateBatchTable)
+        .filter(RateBatchTable.batch_id == batch.id)
+        .order_by(RateBatchTable.sequence_index)
+        .all()
+    )
+    previews = []
+    for batch_table in batch_tables:
+        rows = get_batch_table_rows(db, batch_table)
+        columns = sorted({column for row in rows for column in row})
+        content = build_otm_csv_preview(
+            Path(get_settings().otm_data_dictionary_root),
+            batch_table.table_name,
+            columns,
+            rows,
+        )
+        previews.append({"table_name": batch_table.table_name, "content": content})
+    batch.status = "EXPORT_PREVIEWED"
+    db.commit()
+    return {"batch_id": batch.id, "previews": previews}
 
 
 @router.get("/dictionary/tables")

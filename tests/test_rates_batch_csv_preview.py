@@ -46,3 +46,39 @@ def test_rate_geo_cost_seq_increments_and_charge_amount_base_is_blank():
     assert rows[1]["RATE_GEO_COST_SEQ"] == 2
     assert rows[0]["CHARGE_AMOUNT_BASE"] is None
     assert rows[1]["CHARGE_AMOUNT_BASE"] is None
+
+
+def test_batch_csv_preview_endpoint_returns_table_previews(client, admin_header):
+    batch = client.post(
+        "/api/v1/modules/rates/batches",
+        json={"scenario_code": "ACCESSORIAL_ONLY", "name": "Synthetic accessorial", "domain_name": "OTM1"},
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/tables",
+        json={
+            "tables": [
+                {
+                    "table_name": "ACCESSORIAL_COST",
+                    "rows": [
+                        {
+                            "ACCESSORIAL_COST_GID": "OTM1.ACC_COST_001",
+                            "COST_CODE_GID": "OTM1.ACC_FUEL",
+                        }
+                    ],
+                }
+            ]
+        },
+        headers=admin_header,
+    )
+
+    response = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch["id"]
+    assert payload["previews"][0]["table_name"] == "ACCESSORIAL_COST"
+    assert payload["previews"][0]["content"].splitlines()[0] == "ACCESSORIAL_COST"

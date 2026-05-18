@@ -96,3 +96,13 @@ def add_rate_batch_tables(
     for item in created_tables:
         db.refresh(item)
     return created_tables
+
+
+def get_batch_table_rows(db: Session, batch_table: RateBatchTable) -> list[dict[str, object]]:
+    rows = (
+        db.query(RateBatchRow)
+        .filter(RateBatchRow.batch_table_id == batch_table.id)
+        .order_by(RateBatchRow.row_index)
+        .all()
+    )
+    return [json.loads(row.normalized_payload_json or "{}") for row in rows]
