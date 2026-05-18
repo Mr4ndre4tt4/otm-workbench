@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+import zipfile
 
-from otm_workbench.models import Artifact, AuditLog, Evidence
+from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence
 
 
 def test_evidence_hub_list_requires_authentication(client):
@@ -247,3 +248,94 @@ def test_evidence_hub_artifact_download_rejects_hash_mismatch_without_path(
 
     assert response.status_code == 409
     assert str(artifact_path) not in str(response.json())
+
+
+def test_evidence_hub_archive_package_rejects_no_matching_evidence(client, admin_header):
+    response = client.post(
+        "/api/v1/evidence-hub/archive-packages",
+        json={"source_module": "missing_module"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+
+
+def test_evidence_hub_archive_package_creates_metadata_zip_and_records(
+    client,
+    admin_header,
+    db_session,
+):
+    evidence_id, artifact_id, manifest_id = create_platform_evidence(client, admin_header)
+
+    response = client.post(
+        "/api/v1/evidence-hub/archive-packages",
+        json={
+            "source_module": "rates",
+            "evidence_type": "rates_csv_export",
+            "status": "CREATED",
+            "sensitivity_level": "client_safe",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["artifact_id"]
+    assert payload["manifest_id"]
+    assert payload["evidence_id"]
+    assert len(payload["sha256"]) == 64
+    assert payload["summary"]["evidence_count"] == 1
+    assert payload["summary"]["artifact_ref_count"] == 1
+    assert payload["summary"]["manifest_ref_count"] == 1
+
+    archive_artifact = db_session.query(Artifact).filter_by(id=payload["artifact_id"]).one()
+    archive_evidence = db_session.query(Evidence).filter_by(id=payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter_by(action="evidence_hub.archive_package.create").one()
+    event = db_session.query(DomainEvent).filter_by(event_type="evidence_hub.archive_package.created").one()
+
+    assert archive_artifact.artifact_type == "evidence_hub_archive_zip"
+    assert archive_evidence.evidence_type == "evidence_hub_archive"
+    assert archive_evidence.client_safe is True
+    assert audit.target_id == archive_artifact.id
+    assert event.aggregate_id == archive_artifact.id
+
+    with zipfile.ZipFile(archive_artifact.file_path) as archive:
+        assert sorted(archive.namelist()) == [
+            "archive_manifest.json",
+            "artifact_index.json",
+            "evidence_index.json",
+            "manifest_index.json",
+        ]
+        archive_manifest = json.loads(archive.read("archive_manifest.json"))
+        evidence_index = json.loads(archive.read("evidence_index.json"))
+        artifact_index = json.loads(archive.read("artifact_index.json"))
+        manifest_index = json.loads(archive.read("manifest_index.json"))
+
+    assert archive_manifest["schema_version"] == "evidence-hub-archive-manifest/v1"
+    assert archive_manifest["manifest_type"] == "evidence_hub_archive"
+    assert archive_manifest["evidence_count"] == 1
+    assert evidence_index[0]["id"] == evidence_id
+    assert artifact_index[0]["id"] == artifact_id
+    assert manifest_index[0]["id"] == manifest_id
+    combined = json.dumps(
+        {
+            "archive_manifest": archive_manifest,
+            "evidence_index": evidence_index,
+            "artifact_index": artifact_index,
+            "manifest_index": manifest_index,
+            "archive_evidence": archive_evidence.summary_json,
+            "audit": audit.metadata_json,
+            "event": event.payload_json,
+        },
+        sort_keys=True,
+    )
+    assert "file_path" not in combined
+    assert "manifest_json" not in combined
+    assert "OTM1.ACC_COST_001" not in combined
+
+    download = client.get(
+        f"/api/v1/evidence-hub/artifacts/{payload['artifact_id']}/download",
+        headers=admin_header,
+    )
+    assert download.status_code == 200
+    assert download.content.startswith(b"PK")
