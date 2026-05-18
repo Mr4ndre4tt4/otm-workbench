@@ -8,7 +8,15 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchTable, ReferenceObject, User
+from otm_workbench.models import (
+    Artifact,
+    Evidence,
+    RateBatch,
+    RateBatchIssue,
+    RateBatchTable,
+    ReferenceObject,
+    User,
+)
 from otm_workbench.modules.rates.batches import (
     add_rate_batch_tables,
     create_rate_batch,
@@ -19,6 +27,11 @@ from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
     load_table_definition,
     validate_load_sequence,
+)
+from otm_workbench.modules.rates.exports import (
+    generate_rates_csv_export,
+    list_batch_export_artifacts,
+    list_batch_export_evidence,
 )
 from otm_workbench.modules.rates.scenarios import list_rate_scenarios
 from otm_workbench.modules.rates.validation import validate_rate_batch
@@ -105,6 +118,31 @@ def serialize_rate_batch_issue(issue: RateBatchIssue) -> dict[str, object]:
         "column_name": issue.column_name,
         "message": issue.message,
         "details_json": issue.details_json,
+    }
+
+
+def serialize_artifact(artifact: Artifact) -> dict[str, object]:
+    return {
+        "id": artifact.id,
+        "artifact_type": artifact.artifact_type,
+        "file_name": artifact.file_name,
+        "content_type": artifact.content_type,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "sensitivity_level": artifact.sensitivity_level,
+    }
+
+
+def serialize_evidence(evidence: Evidence) -> dict[str, object]:
+    return {
+        "id": evidence.id,
+        "evidence_type": evidence.evidence_type,
+        "status": evidence.status,
+        "summary_json": evidence.summary_json,
+        "artifact_id": evidence.artifact_id,
+        "manifest_id": evidence.manifest_id,
+        "client_safe": evidence.client_safe,
+        "sensitivity_level": evidence.sensitivity_level,
     }
 
 
@@ -270,6 +308,56 @@ def preview_rates_batch_csv(
     batch.status = "EXPORT_PREVIEWED"
     db.commit()
     return {"batch_id": batch.id, "previews": previews}
+
+
+@router.post("/batches/{batch_id}/export-csv")
+def export_rates_batch_csv(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    try:
+        result = generate_rates_csv_export(
+            db,
+            batch=batch,
+            dictionary_root=Path(get_settings().otm_data_dictionary_root),
+            artifact_root=Path(get_settings().artifact_root),
+            generated_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result.__dict__
+
+
+@router.get("/batches/{batch_id}/artifacts")
+def list_rates_batch_artifacts(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    artifacts = list_batch_export_artifacts(db, batch.id)
+    items = [serialize_artifact(artifact) for artifact in artifacts]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}/evidence")
+def list_rates_batch_evidence(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    evidence_items = list_batch_export_evidence(db, batch.id)
+    items = [serialize_evidence(evidence) for evidence in evidence_items]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/dictionary/tables")
