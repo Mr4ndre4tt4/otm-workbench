@@ -213,7 +213,95 @@ Rates deve consumir Catalog Core para:
 
 ---
 
-## 4. Dados Mestres / Template Factory
+## 4. Fundacao Project / Profile / Admin
+
+**Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_project_profile_admin_foundation_backendfirst.md`
+
+### Decisao
+
+O conteudo faz sentido e deve entrar como hardening transversal de plataforma,
+nao como modulo funcional isolado e nao como tela de administracao.
+
+O melhor momento e **apos o Catalog Core MVP0 minimo e a primeira migracao de
+Rates para consumir Catalog Core**, antes de iniciar Dados Mestres e Cutover.
+Essa ordem evita que Master Data, Cutover, Jobs, Evidence e Catalog criem regras
+proprias para contexto ativo, dominio, capability e visibilidade.
+
+### Estado atual no backend
+
+Ja existe uma fundacao minima:
+
+```text
+- User/Auth local;
+- Project, Profile e Environment basicos;
+- Role e Capability basicos;
+- FeatureFlag;
+- Module Registry;
+- Navigation Contract;
+- AuditLog basico;
+- Jobs com project_id/profile_id/environment_id/domain_name.
+```
+
+Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
+
+```text
+- Active Context persistido e consultavel;
+- allowed_domains derivado de profile/role/capability;
+- capability checks granulares por acao;
+- Domain Access Policy reaproveitada por Catalog, Rates, Master Data e Cutover;
+- Project Setup Status;
+- feature flags com escopo GLOBAL/PROJECT/PROFILE/USER/MODULE;
+- APIs admin endurecidas;
+- audit log para mudancas administrativas;
+- bloqueio backend para modulo admin/dev-only por role/capability/flag.
+```
+
+### Ajustes recomendados no documento antes de virar spec executavel
+
+```text
+- Trocar exemplos com nomes reais por exemplos sinteticos como OTM1, PUBLIC e DEMO.
+- Tratar client_name como opcional/sanitizado no MVP0.
+- Manter conexao OTM real, SSO/OAuth avancado e secret manager externo fora do MVP0.
+- Nao exigir active context retroativamente em endpoints ja existentes no mesmo PR;
+  fazer a adocao por modulo em fatias pequenas.
+- Capability deve autorizar acao, mas domain access deve autorizar escopo de dados.
+- Feature flag deve habilitar superficie, nunca substituir permissionamento.
+```
+
+### Primeiro recorte MVP0 recomendado
+
+```text
+1. Active Context model/API usando Project, Profile e Environment existentes.
+2. Domain Access Policy simples: PUBLIC + profile.default_domain_name.
+3. Excecao controlada para DBA/MASTER com allowed_domains = ["*"].
+4. Endpoint GET /api/v1/platform/active-context.
+5. Endpoint POST /api/v1/platform/active-context.
+6. Capability helper reutilizavel para checagens backend.
+7. Project Setup Status basico.
+8. Testes de contrato para USER/ADMIN/DBA/MASTER.
+9. Integrar Catalog reference options ao active context em fatia posterior.
+10. Integrar Rates batch/create/export/approve ao active context em fatia posterior.
+```
+
+### Fora do primeiro recorte
+
+```text
+- UI completa de admin;
+- SSO corporativo;
+- OAuth avancado;
+- cloud sync;
+- multi-tenant cloud avancado;
+- workflow visual de approval;
+- editor visual de Project Flow;
+- integracao OTM real obrigatoria;
+- secret manager externo;
+- governanca avancada de change request;
+- auditoria forense completa.
+```
+
+---
+
+## 5. Dados Mestres / Template Factory
 
 **Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_dados_mestres_template_factory.md`
 
@@ -268,7 +356,7 @@ Artifacts + Evidence
 
 ---
 
-## 5. Cutover Checklist & CSVUTIL Builder
+## 6. Cutover Checklist & CSVUTIL Builder
 
 **Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_cutover_checklist_csvutil_backendfirst.md`
 
@@ -318,22 +406,23 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 
 ---
 
-## 6. Ordem recomendada depois de Rates
+## 7. Ordem recomendada depois de Rates
 
 ```text
 1. Fechar hardening de Rates/Load Plan/Evidence Hub.
 2. Endurecer Jobs / Processing Engine MVP0.
 3. Implementar OTM Catalog Core MVP0 minimo.
 4. Migrar Rates para consumir Catalog Core onde reduzir duplicacao.
-5. Implementar Dados Mestres / Template Factory MVP0.
-6. Integrar load packages de Dados Mestres no Load Plan existente.
-7. Implementar Cutover Checklist & CSVUTIL Builder.
-8. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data e Cutover.
+5. Endurecer Project / Profile / Admin Foundation para active context, capabilities e domain access.
+6. Implementar Dados Mestres / Template Factory MVP0.
+7. Integrar load packages de Dados Mestres no Load Plan existente.
+8. Implementar Cutover Checklist & CSVUTIL Builder.
+9. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data e Cutover.
 ```
 
 ---
 
-## 7. Guardrails permanentes
+## 8. Guardrails permanentes
 
 ```text
 - Backend-first, API-first, DB-first e UI-agnostic.
