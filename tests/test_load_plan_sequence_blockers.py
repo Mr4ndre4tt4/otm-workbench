@@ -350,3 +350,32 @@ def test_sequence_snapshot_detail_rejects_missing_snapshot(client, admin_header)
     )
 
     assert response.status_code == 404
+
+
+def test_sequence_snapshot_missing_dictionary_table_creates_blocker(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    model = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    model.load_sequence_json = json.dumps(
+        [
+            {
+                "position": 1,
+                "table_name": "SYNTHETIC_UNKNOWN_TABLE",
+                "row_count": 1,
+                "requirement_level": "OPTIONAL",
+            }
+        ],
+        sort_keys=True,
+    )
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["sequence"][0]["dictionary_table_found"] is False
+    assert "DICTIONARY_TABLE_MISSING" in [item["code"] for item in payload["blockers"]]
+    assert "review_package_dependencies" in payload["summary"]["next_actions"]
