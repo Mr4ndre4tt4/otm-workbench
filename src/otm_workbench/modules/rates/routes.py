@@ -20,6 +20,7 @@ from otm_workbench.modules.rates.dictionary import (
     load_table_definition,
     validate_load_sequence,
 )
+from otm_workbench.modules.rates.exports import ensure_exportable_batch
 from otm_workbench.modules.rates.scenarios import list_rate_scenarios
 from otm_workbench.modules.rates.validation import validate_rate_batch
 
@@ -270,6 +271,22 @@ def preview_rates_batch_csv(
     batch.status = "EXPORT_PREVIEWED"
     db.commit()
     return {"batch_id": batch.id, "previews": previews}
+
+
+@router.post("/batches/{batch_id}/export-csv")
+def export_rates_batch_csv(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    try:
+        ensure_exportable_batch(db, batch)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"batch_id": batch.id, "status": batch.status}
 
 
 @router.get("/dictionary/tables")
