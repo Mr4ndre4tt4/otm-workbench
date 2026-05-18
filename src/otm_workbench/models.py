@@ -404,3 +404,25 @@ class RateBatchIssue(Base):
     message: Mapped[str] = mapped_column(Text)
     details_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LoadPlanPackage(Base, TimestampMixin):
+    __tablename__ = "load_plan_packages"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    source_module: Mapped[str] = mapped_column(String, index=True)
+    source_entity_type: Mapped[str] = mapped_column(String, index=True)
+    source_entity_id: Mapped[str] = mapped_column(String, index=True)
+    package_type: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="REGISTERED", index=True)
+    artifact_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    manifest_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    approval_evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    load_sequence_json: Mapped[str] = mapped_column(Text, default="[]")
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    registered_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
