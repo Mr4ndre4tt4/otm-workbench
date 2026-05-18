@@ -13,6 +13,7 @@ from otm_workbench.models import (
 )
 from otm_workbench.modules.rates.approval import get_existing_approval_evidence
 from otm_workbench.modules.rates.exports import list_batch_export_evidence
+from otm_workbench.modules.rates.scenarios import get_rate_scenario
 
 
 def parse_json_object(value: str | None) -> dict[str, object]:
@@ -106,6 +107,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         raise ValueError("Rate batch must have approval evidence before Load Plan package intake.")
 
     load_sequence = load_sequence_for_batch(db, batch.id)
+    scenario = get_rate_scenario(batch.scenario_code)
     table_count = len(load_sequence)
     row_count = sum(int(item["row_count"]) for item in load_sequence)
     if table_count == 0 or row_count == 0:
@@ -115,6 +117,8 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         "source_module": "rates",
         "source_batch_id": batch.id,
         "scenario_code": batch.scenario_code,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "domain_name": batch.domain_name,
         "source_status": batch.status,
         "package_type": "rates_csv_zip",
@@ -149,6 +153,8 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         "upstream_source_module": "rates",
         "upstream_entity_type": "rate_batch",
         "upstream_entity_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "package_type": "rates_csv_zip",
         "artifact_id": export_evidence.artifact_id,
         "manifest_id": export_evidence.manifest_id,
