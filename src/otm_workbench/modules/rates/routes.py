@@ -15,6 +15,7 @@ from otm_workbench.modules.rates.dictionary import (
     load_table_definition,
     validate_load_sequence,
 )
+from otm_workbench.modules.rates.scenarios import list_rate_scenarios
 
 router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
 
@@ -35,6 +36,23 @@ class CsvPreviewRequest(BaseModel):
     table_name: str
     columns: list[str]
     rows: list[dict[str, object]]
+
+
+@router.get("/templates")
+def list_rates_templates(user: User = Depends(require_user)):
+    items = [
+        {
+            "code": scenario.code,
+            "name": scenario.name,
+            "description": scenario.description,
+            "tables": scenario.tables,
+            "required_tables": scenario.required_tables,
+            "optional_tables": scenario.optional_tables,
+            "pre_existing_tables": scenario.pre_existing_tables,
+        }
+        for scenario in list_rate_scenarios()
+    ]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/dictionary/tables")
