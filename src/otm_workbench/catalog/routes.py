@@ -21,6 +21,7 @@ from otm_workbench.catalog.services import (
     validate_column,
     validate_table,
 )
+from otm_workbench.reference.services import ReferenceContext, validate_reference_value
 
 router = APIRouter(prefix="/api/v1/catalog", tags=["catalog"])
 
@@ -33,6 +34,17 @@ class ValidateTableRequest(BaseModel):
 class ValidateColumnRequest(BaseModel):
     table_name: str
     column_name: str
+
+
+class ValidateReferenceRequest(BaseModel):
+    module_id: str
+    field_name: str
+    value: str
+    domain_name: str = "OTM1"
+    project_id: str | None = None
+    environment_id: str | None = None
+    profile_id: str | None = None
+    can_view_all_domains: bool = False
 
 
 def dictionary_root() -> Path:
@@ -131,3 +143,26 @@ def validate_catalog_column(
     user: User = Depends(require_user),
 ):
     return validate_column(dictionary_root(), payload.table_name, payload.column_name)
+
+
+@router.post("/validate/reference")
+def validate_catalog_reference(
+    payload: ValidateReferenceRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    context = ReferenceContext(
+        project_id=payload.project_id,
+        environment_id=payload.environment_id,
+        profile_id=payload.profile_id,
+        domain_name=payload.domain_name,
+        can_view_all_domains=payload.can_view_all_domains,
+    )
+    result = validate_reference_value(
+        db,
+        context,
+        payload.module_id,
+        payload.field_name,
+        payload.value,
+    )
+    return result.__dict__
