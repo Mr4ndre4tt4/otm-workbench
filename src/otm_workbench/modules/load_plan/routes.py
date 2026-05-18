@@ -122,6 +122,46 @@ def create_sequence_snapshot(
     return serialize_sequence_snapshot(snapshot)
 
 
+@router.get("/sequence/snapshots")
+def list_sequence_snapshots(
+    package_id: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanSequenceSnapshot)
+    if package_id:
+        query = query.filter(LoadPlanSequenceSnapshot.package_id == package_id)
+    if status:
+        query = query.filter(LoadPlanSequenceSnapshot.status == status)
+    snapshots = query.order_by(LoadPlanSequenceSnapshot.generated_at.desc()).all()
+    return PageResponse(items=[serialize_sequence_snapshot(snapshot) for snapshot in snapshots], total=len(snapshots))
+
+
+@router.get("/sequence/snapshots/{snapshot_id}")
+def get_sequence_snapshot(
+    snapshot_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    snapshot = db.query(LoadPlanSequenceSnapshot).filter(LoadPlanSequenceSnapshot.id == snapshot_id).first()
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found.")
+    return serialize_sequence_snapshot(snapshot)
+
+
+@router.get("/sequence")
+def get_latest_sequence_snapshot(
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    snapshot = latest_sequence_snapshot(db, package_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found. Generate a snapshot first.")
+    return serialize_sequence_snapshot(snapshot)
+
+
 @router.post("/csvutil/build")
 def build_csvutil_artifacts(
     payload: CsvutilBuildRequest,

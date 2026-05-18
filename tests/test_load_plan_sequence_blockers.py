@@ -295,3 +295,58 @@ def test_sequence_snapshot_excluded_review_item_creates_warning_blocker(client, 
         for item in blockers
     )
     assert "review_exclusions" in snapshot.json()["summary"]["next_actions"]
+
+
+def test_sequence_snapshot_list_detail_and_latest_endpoints(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    created = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+    snapshot = created.json()
+
+    listed = client.get("/api/v1/modules/load-plan/sequence/snapshots", headers=admin_header)
+    filtered = client.get(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        params={"package_id": package["id"], "status": "BLOCKED"},
+        headers=admin_header,
+    )
+    detail = client.get(
+        f"/api/v1/modules/load-plan/sequence/snapshots/{snapshot['id']}",
+        headers=admin_header,
+    )
+    latest = client.get(
+        "/api/v1/modules/load-plan/sequence",
+        params={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert filtered.status_code == 200
+    assert detail.status_code == 200
+    assert latest.status_code == 200
+    assert listed.json()["total"] == 1
+    assert filtered.json()["items"][0]["id"] == snapshot["id"]
+    assert detail.json()["id"] == snapshot["id"]
+    assert latest.json()["id"] == snapshot["id"]
+
+
+def test_sequence_latest_endpoint_rejects_missing_snapshot(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/load-plan/sequence",
+        params={"package_id": "missing_package"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_sequence_snapshot_detail_rejects_missing_snapshot(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/load-plan/sequence/snapshots/missing_snapshot",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
