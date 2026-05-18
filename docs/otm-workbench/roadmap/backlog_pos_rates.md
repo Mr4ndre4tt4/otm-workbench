@@ -25,7 +25,89 @@ O trabalho de OTM Catalog Core, Master Data e Cutover Checklist deve ser retomad
 
 ---
 
-## 2. Proximo modulo estrutural: OTM Catalog Core
+## 2. Fundacao previa: Jobs / Processing Engine
+
+**Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_jobs_processing_engine_backendfirst.md`
+
+### Decisao
+
+Jobs / Processing Engine faz sentido e deve ser tratado como infraestrutura transversal de plataforma, nao como modulo funcional.
+
+Ele deve entrar **antes do Catalog Core completo** ou como primeira fatia imediatamente anterior, porque o Catalog Core precisara executar processos rastreaveis como:
+
+```text
+- importar Data Dictionary;
+- importar referencias reutilizaveis;
+- reconstruir dependency graph;
+- gerar snapshot de catalogo;
+- validar macro-objetos;
+- registrar artifacts/evidencias de import.
+```
+
+### Estado atual no backend
+
+Ja existe uma fundacao minima:
+
+```text
+- modelo Job;
+- POST /api/v1/platform/jobs;
+- status PENDING;
+- input_json/result_json basicos.
+```
+
+Mas ainda faltam pecas importantes antes de usar isso como motor operacional:
+
+```text
+- list/detail de jobs;
+- lifecycle PENDING/RUNNING/SUCCEEDED/FAILED/CANCELLED;
+- eventos de job;
+- cancelamento logico de job PENDING;
+- handler registry;
+- handler demo;
+- erro padronizado;
+- audit log de criacao/conclusao/falha/cancelamento;
+- vinculo explicito com artifact/evidence.
+```
+
+### Primeiro recorte MVP0 recomendado
+
+```text
+1. Endurecer o modelo/API existente de Job sem Celery/Redis.
+2. Criar list/detail/cancel.
+3. Criar service de lifecycle com transicoes validas.
+4. Criar handler registry simples.
+5. Criar handler demo local.
+6. Persistir eventos de job.
+7. Registrar audit log client-safe.
+8. Criar testes de contrato.
+```
+
+### Fora do primeiro recorte
+
+```text
+- worker distribuido;
+- retry automatico;
+- fila com Redis/Rabbit/Kafka;
+- execucao remota/cloud;
+- scheduling recorrente;
+- jobs reais de Rates/Master Data/Cutover;
+- UI de monitoramento.
+```
+
+### Ordem em relacao ao Catalog Core
+
+Recomendacao:
+
+```text
+1. Fechar hardenings finais de Rates.
+2. Endurecer Jobs / Processing Engine MVP0.
+3. Implementar OTM Catalog Core MVP0 minimo.
+4. Usar Jobs para imports/snapshots do Catalog Core.
+```
+
+---
+
+## 3. Proximo modulo estrutural: OTM Catalog Core
 
 **Fonte:** `C:/Users/Enzo Trabalho/Downloads/otm_catalog_core_backendfirst.md`
 
@@ -66,10 +148,11 @@ Se Master Data e Cutover forem implementados antes desse core, ha alto risco de 
 
 ```text
 1. Fechar mais 1 ou 2 hardenings pequenos de Rates.
-2. Criar OTM Catalog Core MVP0 minimo.
-3. Migrar Rates aos poucos para consumir Catalog Core.
-4. Iniciar Master Data Template Factory usando Catalog Core desde o inicio.
-5. Iniciar Cutover Checklist/CSVUTIL usando Catalog Core desde o inicio.
+2. Endurecer Jobs / Processing Engine MVP0.
+3. Criar OTM Catalog Core MVP0 minimo.
+4. Migrar Rates aos poucos para consumir Catalog Core.
+5. Iniciar Master Data Template Factory usando Catalog Core desde o inicio.
+6. Iniciar Cutover Checklist/CSVUTIL usando Catalog Core desde o inicio.
 ```
 
 ### Primeiro recorte MVP0 recomendado
@@ -130,7 +213,7 @@ Rates deve consumir Catalog Core para:
 
 ---
 
-## 3. Dados Mestres / Template Factory
+## 4. Dados Mestres / Template Factory
 
 **Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_dados_mestres_template_factory.md`
 
@@ -185,7 +268,7 @@ Artifacts + Evidence
 
 ---
 
-## 4. Cutover Checklist & CSVUTIL Builder
+## 5. Cutover Checklist & CSVUTIL Builder
 
 **Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_cutover_checklist_csvutil_backendfirst.md`
 
@@ -235,21 +318,22 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 
 ---
 
-## 5. Ordem recomendada depois de Rates
+## 6. Ordem recomendada depois de Rates
 
 ```text
 1. Fechar hardening de Rates/Load Plan/Evidence Hub.
-2. Implementar OTM Catalog Core MVP0 minimo.
-3. Migrar Rates para consumir Catalog Core onde reduzir duplicacao.
-4. Implementar Dados Mestres / Template Factory MVP0.
-5. Integrar load packages de Dados Mestres no Load Plan existente.
-6. Implementar Cutover Checklist & CSVUTIL Builder.
-7. Expandir Evidence Hub para visoes consolidadas entre Rates, Catalog, Master Data e Cutover.
+2. Endurecer Jobs / Processing Engine MVP0.
+3. Implementar OTM Catalog Core MVP0 minimo.
+4. Migrar Rates para consumir Catalog Core onde reduzir duplicacao.
+5. Implementar Dados Mestres / Template Factory MVP0.
+6. Integrar load packages de Dados Mestres no Load Plan existente.
+7. Implementar Cutover Checklist & CSVUTIL Builder.
+8. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data e Cutover.
 ```
 
 ---
 
-## 6. Guardrails permanentes
+## 7. Guardrails permanentes
 
 ```text
 - Backend-first, API-first, DB-first e UI-agnostic.

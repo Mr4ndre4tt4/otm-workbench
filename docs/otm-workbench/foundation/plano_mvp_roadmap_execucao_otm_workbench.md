@@ -355,7 +355,8 @@ Reintroduzir ferramentas técnicas apenas com governança.
 
 ```text
 - ROADMAP-RATES-NEXT-01: manter Rates como ciclo ativo ate fechamento do fluxo operacional.
-- ROADMAP-CATALOG-01: OTM Catalog Core registrado como proximo modulo estrutural depois dos hardenings finais de Rates.
+- ROADMAP-JOBS-01: Jobs / Processing Engine registrado como fundacao previa ao Catalog Core completo.
+- ROADMAP-CATALOG-01: OTM Catalog Core registrado como proximo modulo estrutural depois de Jobs MVP0.
 - ROADMAP-MD-01: Dados Mestres / Template Factory registrado para retomada depois do Catalog Core.
 - ROADMAP-CUTOVER-01: Cutover Checklist & CSVUTIL Builder registrado para retomada depois do Catalog Core e de Master Data.
 ```
