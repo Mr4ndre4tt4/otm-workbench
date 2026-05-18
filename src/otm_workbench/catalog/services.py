@@ -4,6 +4,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from otm_workbench.catalog.canonical import MASTERDATA_TABLES, RATES_TABLES
 from otm_workbench.models import OtmMacroObject, OtmMacroObjectDependency, OtmMacroObjectTable
 from otm_workbench.modules.rates.dictionary import TableDefinition, load_table_definition
 from otm_workbench.reference.services import ReferenceContext, allowed_domains, list_reference_options
@@ -22,31 +23,6 @@ TRANSACTIONAL_TABLES = {
     "ORDER_RELEASE",
     "INVOICE",
     "VOUCHER",
-}
-
-RATES_TABLES = {
-    "RATE_OFFERING",
-    "RATE_UNIT_BREAK_PROFILE",
-    "RATE_UNIT_BREAK",
-    "X_LANE",
-    "RATE_GEO",
-    "ACCESSORIAL_CODE",
-    "ACCESSORIAL_COST",
-    "ACCESSORIAL_COST_UNIT_BREAK",
-    "RATE_OFFERING_ACCESSORIAL",
-    "RATE_GEO_ACCESSORIAL",
-    "RATE_GEO_STOPS",
-    "RATE_GEO_COST_GROUP",
-    "RATE_GEO_COST",
-}
-
-MASTERDATA_TABLES = {
-    "ITEM",
-    "PACKAGED_ITEM",
-    "SHIP_UNIT_SPEC",
-    "TI_HI",
-    "REGION",
-    "REGION_DETAIL",
 }
 
 

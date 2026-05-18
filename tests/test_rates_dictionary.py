@@ -1,13 +1,20 @@
 from pathlib import Path
 
+from otm_workbench.catalog.canonical import RATES_LOAD_SEQUENCE as CATALOG_RATES_LOAD_SEQUENCE
 from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
     load_table_definition,
     validate_load_sequence,
 )
+from otm_workbench.modules.rates.batches import table_sequence_index
 
 
 DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+
+
+def test_rates_sequence_uses_catalog_core_canonical_sequence():
+    assert RATES_LOAD_SEQUENCE == CATALOG_RATES_LOAD_SEQUENCE
+    assert table_sequence_index("RATE_OFFERING") < table_sequence_index("RATE_GEO_COST")
 
 
 def test_load_rate_geo_cost_definition_from_data_dictionary():

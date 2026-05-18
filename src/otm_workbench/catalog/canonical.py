@@ -1,0 +1,29 @@
+"""Canonical OTM catalog constants shared across backend modules."""
+
+RATES_LOAD_SEQUENCE = [
+    "RATE_OFFERING",
+    "RATE_UNIT_BREAK_PROFILE",
+    "RATE_UNIT_BREAK",
+    "X_LANE",
+    "RATE_GEO",
+    "ACCESSORIAL_CODE",
+    "ACCESSORIAL_COST",
+    "ACCESSORIAL_COST_UNIT_BREAK",
+    "RATE_OFFERING_ACCESSORIAL",
+    "RATE_GEO_ACCESSORIAL",
+    "RATE_GEO_STOPS",
+    "RATE_GEO_COST_GROUP",
+    "RATE_GEO_COST",
+]
+
+RATES_TABLES = set(RATES_LOAD_SEQUENCE)
+
+MASTERDATA_TABLES = {
+    "ITEM",
+    "PACKAGED_ITEM",
+    "SHIP_UNIT_SPEC",
+    "TI_HI",
+    "REGION",
+    "REGION_DETAIL",
+}
+
