@@ -43,8 +43,6 @@ class RatesCsvExportBundle:
 
 
 def ensure_exportable_batch(db: Session, batch: RateBatch) -> None:
-    if batch.status not in {"VALIDATED", "EXPORT_PREVIEWED"}:
-        raise ValueError("Rate batch must be validated before CSV export.")
     error_count = (
         db.query(RateBatchIssue)
         .filter(RateBatchIssue.batch_id == batch.id, RateBatchIssue.severity == "ERROR")
@@ -52,6 +50,8 @@ def ensure_exportable_batch(db: Session, batch: RateBatch) -> None:
     )
     if error_count:
         raise ValueError("Rate batch has ERROR issues and cannot be exported.")
+    if batch.status not in {"VALIDATED", "EXPORT_PREVIEWED"}:
+        raise ValueError("Rate batch must be validated before CSV export.")
     table_count = db.query(RateBatchTable).filter(RateBatchTable.batch_id == batch.id).count()
     if table_count == 0:
         raise ValueError("Rate batch has no tables to export.")

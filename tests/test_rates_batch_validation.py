@@ -51,6 +51,51 @@ def test_validation_rejects_unknown_column(client, admin_header):
     assert any(issue["issue_code"] == "UNKNOWN_COLUMN" for issue in payload["issues"])
 
 
+def test_validation_applies_reference_policy_to_row_values(client, admin_header):
+    batch = create_batch(client, admin_header, scenario_code="COMPLETE_TARIFF")
+    client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/tables",
+        json={
+            "tables": [
+                {
+                    "table_name": "RATE_OFFERING",
+                    "rows": [
+                        {
+                            "RATE_OFFERING_GID": "OTM1.RO_SYNTHETIC",
+                            "RATE_OFFERING_XID": "RO_SYNTHETIC",
+                            "RATE_OFFERING_TYPE_GID": "PUBLIC.CONTRACT",
+                            "CURRENCY_GID": "OTM2.BRL",
+                            "TRANSPORT_MODE_GID": "PUBLIC.TL",
+                            "RATE_VERSION_GID": "OTM1.RV_001",
+                            "EXCHANGE_RATE_GID": "PUBLIC.DEFAULT",
+                            "COMMODITY_USAGE": "F",
+                            "FAK_RATE_AS": "N",
+                            "IS_DIGITAL_FREIGHT": "N",
+                            "IS_MARKET_RATE": "N",
+                        }
+                    ],
+                }
+            ]
+        },
+        headers=admin_header,
+    )
+
+    response = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is False
+    assert any(
+        issue["issue_code"] == "REFERENCE_POLICY_VIOLATION"
+        and issue["column_name"] == "CURRENCY_GID"
+        and "OTM2.BRL" in issue["details_json"]
+        for issue in payload["issues"]
+    )
+
+
 def test_batch_issues_endpoint_returns_persisted_issues(client, admin_header):
     batch = create_batch(client, admin_header)
     client.post(f"/api/v1/modules/rates/batches/{batch['id']}/validate", headers=admin_header)

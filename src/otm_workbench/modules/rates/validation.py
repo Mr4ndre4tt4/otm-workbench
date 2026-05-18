@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchRow, RateBatchTable, utcnow
 from otm_workbench.modules.rates.dictionary import load_table_definition, validate_load_sequence
 from otm_workbench.modules.rates.scenarios import get_rate_scenario
+from otm_workbench.reference.services import ReferenceContext, validate_reference_value
 
 
 def add_issue(
@@ -108,6 +109,37 @@ def validate_rate_batch(
                             f"{table.table_name}.{column_name} does not exist in the "
                             "OTM Data Dictionary."
                         ),
+                    )
+                    continue
+                field_name = column_name.lower()
+                reference_result = validate_reference_value(
+                    db,
+                    ReferenceContext(
+                        project_id=batch.project_id,
+                        environment_id=batch.environment_id,
+                        profile_id=batch.profile_id,
+                        domain_name=batch.domain_name,
+                        can_view_all_domains=False,
+                    ),
+                    "rates",
+                    field_name,
+                    str(payload[column]),
+                )
+                if not reference_result.valid:
+                    add_issue(
+                        db,
+                        batch=batch,
+                        table=table,
+                        row=row,
+                        severity=reference_result.severity,
+                        issue_code="REFERENCE_POLICY_VIOLATION",
+                        column_name=column_name,
+                        message=reference_result.message,
+                        details={
+                            "policy": reference_result.policy,
+                            "object_type": reference_result.object_type,
+                            "gid": reference_result.gid,
+                        },
                     )
 
     sequence_result = validate_load_sequence(dictionary_root, table_names)
