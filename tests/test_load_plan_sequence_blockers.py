@@ -120,3 +120,46 @@ def test_load_plan_sequence_snapshots_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
     assert "load_plan_sequence_snapshots" in tables
+
+
+def test_sequence_snapshot_rejects_missing_package(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": "missing_package"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_sequence_snapshot_creates_snapshot_evidence_audit_and_event(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["package_id"] == package["id"]
+    assert payload["status"] == "BLOCKED"
+    assert payload["generated_by"] == "admin@example.com"
+    assert payload["sequence"][0]["table_name"] == "ACCESSORIAL_COST"
+    assert payload["sequence"][0]["dictionary_table_found"] is True
+    assert "ACCESSORIAL_CODE" in payload["sequence"][0]["parent_tables"]
+    assert "ACCESSORIAL_CODE" in payload["sequence"][0]["missing_parent_tables_in_package"]
+    assert "ZIP_ANALYSIS_MISSING" in [item["code"] for item in payload["blockers"]]
+    assert "PACKAGE_PARENT_TABLE_MISSING" in [item["code"] for item in payload["blockers"]]
+    snapshot = db_session.query(LoadPlanSequenceSnapshot).filter(LoadPlanSequenceSnapshot.id == payload["id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == snapshot.evidence_id).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.sequence.snapshot.generate").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.sequence.snapshot.generated").one()
+    assert evidence.evidence_type == "load_plan_sequence_snapshot"
+    assert evidence.client_safe is True
+    assert audit.target_id == snapshot.id
+    assert event.aggregate_id == snapshot.id
+    assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert "OTM1.ACC_COST_001" not in audit.metadata_json
+    assert "OTM1.ACC_COST_001" not in event.payload_json
