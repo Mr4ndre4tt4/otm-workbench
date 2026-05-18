@@ -52,6 +52,10 @@ def test_rates_dictionary_table_api_returns_pk_and_date_columns(client, admin_he
     assert response.json()["table_name"] == "RATE_GEO_COST"
     assert response.json()["primary_key"] == ["RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST_SEQ"]
     assert "ATTRIBUTE_DATE1" in response.json()["date_columns"]
+    assert response.json()["data_category"] == "RATES_SETUP"
+    assert response.json()["allow_csvutil"] is True
+    assert response.json()["allow_cutover"] is True
+    assert response.json()["is_transactional"] is False
 
 
 def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_header):
