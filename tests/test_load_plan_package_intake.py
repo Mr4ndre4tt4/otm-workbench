@@ -171,3 +171,51 @@ def test_load_plan_module_is_registered(client, admin_header):
     assert modules.status_code == 200
     module_ids = [item["id"] for item in modules.json()["items"]]
     assert "load_plan" in module_ids
+
+
+def test_register_rates_package_creates_client_safe_evidence_audit_and_event(client, admin_header, db_session):
+    batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_rates").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").one()
+
+    assert evidence.source_module == "load_plan"
+    assert evidence.evidence_type == "load_plan_package_intake"
+    assert evidence.client_safe is True
+    assert evidence.artifact_id == export["artifact_id"]
+    assert evidence.manifest_id == export["manifest_id"]
+    assert approval["evidence_id"] in evidence.summary_json
+    assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert audit.target_id == payload["id"]
+    assert event.aggregate_id == payload["id"]
+    assert event.status == "PENDING"
+
+
+def test_register_rates_package_is_idempotent(client, admin_header, db_session):
+    batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
+
+    first = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    )
+    second = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["id"] == second.json()["id"]
+    assert first.json()["evidence_id"] == second.json()["evidence_id"]
+    assert db_session.query(LoadPlanPackage).count() == 1
+    assert db_session.query(Evidence).filter(Evidence.evidence_type == "load_plan_package_intake").count() == 1
+    assert db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_rates").count() == 1
+    assert db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").count() == 1
