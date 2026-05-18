@@ -7,7 +7,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from otm_workbench.config import get_settings
 from otm_workbench.database import session_scope
+from otm_workbench.modules.rates.routes import router as rates_router
 from otm_workbench.platform.routes import router as platform_router
+from otm_workbench.reference.routes import router as reference_router
 import otm_workbench.models  # noqa: F401
 
 
@@ -15,6 +17,8 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="OTM Workbench", version="0.1.0")
     app.include_router(platform_router)
+    app.include_router(reference_router)
+    app.include_router(rates_router)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
