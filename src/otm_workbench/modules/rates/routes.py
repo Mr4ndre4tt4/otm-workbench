@@ -9,6 +9,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import ReferenceObject, User
+from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
     load_table_definition,
@@ -28,6 +29,12 @@ class RateOfferingDuplicateCheckRequest(BaseModel):
     rate_service_gid: str
     equipment_group_profile_gid: str
     currency_gid: str
+
+
+class CsvPreviewRequest(BaseModel):
+    table_name: str
+    columns: list[str]
+    rows: list[dict[str, object]]
 
 
 @router.get("/dictionary/tables")
@@ -126,3 +133,17 @@ def check_rate_offering_duplicate(
         ),
         "candidates": candidates,
     }
+
+
+@router.post("/csv/preview")
+def preview_rates_csv(
+    payload: CsvPreviewRequest,
+    user: User = Depends(require_user),
+):
+    content = build_otm_csv_preview(
+        Path(get_settings().otm_data_dictionary_root),
+        payload.table_name,
+        payload.columns,
+        payload.rows,
+    )
+    return {"content": content}
