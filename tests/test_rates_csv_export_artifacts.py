@@ -92,6 +92,11 @@ def test_export_creates_zip_with_manifest_and_csv(client, admin_header):
     assert csv_text.splitlines()[1].startswith("ACCESSORIAL_COST_GID")
     assert manifest["manifest_type"] == "rates_csv_export"
     assert manifest["batch"]["id"] == batch["id"]
+    assert manifest["batch"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        manifest["batch"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert "OTM1.ACC_COST_001" not in json.dumps(manifest)
 
 
@@ -117,6 +122,14 @@ def test_export_registers_artifact_manifest_evidence_and_audit(client, admin_hea
     assert artifact.content_type == "application/zip"
     assert artifact.sha256 == payload["sha256"]
     assert manifest.source_module == "rates"
+    manifest_json = json.loads(manifest.manifest_json)
+    evidence_summary = json.loads(evidence.summary_json)
+    assert manifest_json["batch"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert "OTM1.ACC_COST_001" not in manifest.manifest_json
     assert evidence.client_safe is True
     assert evidence.artifact_id == artifact.id
@@ -173,6 +186,7 @@ def test_latest_export_endpoint_returns_manifest_artifact_and_download_url(clien
     assert payload["evidence"]["id"] == export["evidence_id"]
     assert payload["manifest"]["manifest_type"] == "rates_csv_export"
     assert payload["manifest"]["batch"]["id"] == batch["id"]
+    assert payload["manifest"]["batch"]["catalog_macro_object_code"] == "RATE_RECORD"
     assert payload["download_url"].endswith(f"/artifacts/{export['artifact_id']}/download")
     assert "OTM1.ACC_COST_001" not in str(payload)
     assert export["file_path"] not in str(payload)

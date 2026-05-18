@@ -19,6 +19,7 @@ from otm_workbench.models import (
 )
 from otm_workbench.modules.rates.batches import get_batch_table_rows
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
+from otm_workbench.modules.rates.scenarios import get_rate_scenario
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,7 @@ def generate_rates_csv_export(
     generated_by: str,
 ) -> RatesCsvExportResult:
     ensure_exportable_batch(db, batch)
+    scenario = get_rate_scenario(batch.scenario_code)
     batch_tables = (
         db.query(RateBatchTable)
         .filter(RateBatchTable.batch_id == batch.id)
@@ -140,6 +142,8 @@ def generate_rates_csv_export(
         "batch": {
             "id": batch.id,
             "scenario_code": batch.scenario_code,
+            "catalog_macro_object_code": scenario.catalog_macro_object_code,
+            "catalog_load_plan_path": scenario.catalog_load_plan_path,
             "status": "EXPORTED",
             "domain_name": batch.domain_name,
         },
@@ -181,6 +185,8 @@ def generate_rates_csv_export(
         "source_entity_type": "rate_batch",
         "source_entity_id": batch.id,
         "scenario_code": batch.scenario_code,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "domain_name": batch.domain_name,
         "table_count": len(batch_tables),
         "row_count": sum(table.row_count for table in batch_tables),
