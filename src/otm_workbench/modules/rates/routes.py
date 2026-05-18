@@ -20,7 +20,7 @@ from otm_workbench.modules.rates.dictionary import (
     load_table_definition,
     validate_load_sequence,
 )
-from otm_workbench.modules.rates.exports import ensure_exportable_batch
+from otm_workbench.modules.rates.exports import generate_rates_csv_export
 from otm_workbench.modules.rates.scenarios import list_rate_scenarios
 from otm_workbench.modules.rates.validation import validate_rate_batch
 
@@ -283,10 +283,16 @@ def export_rates_batch_csv(
     if batch is None:
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     try:
-        ensure_exportable_batch(db, batch)
+        result = generate_rates_csv_export(
+            db,
+            batch=batch,
+            dictionary_root=Path(get_settings().otm_data_dictionary_root),
+            artifact_root=Path(get_settings().artifact_root),
+            generated_by=user.email,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"batch_id": batch.id, "status": batch.status}
+    return result.__dict__
 
 
 @router.get("/dictionary/tables")
