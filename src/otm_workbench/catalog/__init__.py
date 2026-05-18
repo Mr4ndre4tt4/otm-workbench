@@ -1,0 +1,1 @@
+"""OTM Catalog Core package."""
