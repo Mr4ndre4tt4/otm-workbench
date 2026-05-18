@@ -33,6 +33,10 @@ scenarios. It stores submitted OTM table rows, validates table and column names
 against the local Data Dictionary, records batch issues, and generates technical
 CSV previews using OTM table header rules.
 
+The Rates CSV Export Artifacts slice turns validated batches into internal ZIP
+artifacts with a client-safe manifest/evidence trail; it does not perform OTM
+upload, CSVUTIL packaging, or XML export.
+
 ```powershell
 python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py
 python -m alembic upgrade head
