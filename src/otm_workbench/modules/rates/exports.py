@@ -224,3 +224,28 @@ def generate_rates_csv_export(
         size_bytes=zip_size,
         tables=[table.table_name for table in batch_tables],
     )
+
+
+def list_batch_export_evidence(db: Session, batch_id: str) -> list[Evidence]:
+    needle = f'"source_entity_id": "{batch_id}"'
+    return (
+        db.query(Evidence)
+        .filter(Evidence.source_module == "rates")
+        .filter(Evidence.evidence_type == "rates_csv_export")
+        .filter(Evidence.summary_json.contains(needle))
+        .order_by(Evidence.created_at.desc())
+        .all()
+    )
+
+
+def list_batch_export_artifacts(db: Session, batch_id: str) -> list[Artifact]:
+    evidence_items = list_batch_export_evidence(db, batch_id)
+    artifact_ids = [item.artifact_id for item in evidence_items if item.artifact_id]
+    if not artifact_ids:
+        return []
+    return (
+        db.query(Artifact)
+        .filter(Artifact.id.in_(artifact_ids))
+        .order_by(Artifact.created_at.desc())
+        .all()
+    )

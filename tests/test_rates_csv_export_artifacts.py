@@ -125,3 +125,28 @@ def test_export_registers_artifact_manifest_evidence_and_audit(client, admin_hea
     assert audit.target_id == batch["id"]
     assert refreshed_batch.status == "EXPORTED"
     assert refreshed_batch.exported_at is not None
+
+
+def test_batch_artifacts_and_evidence_endpoints_return_export_records(client, admin_header):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+    export = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/export-csv",
+        headers=admin_header,
+    ).json()
+
+    artifacts = client.get(
+        f"/api/v1/modules/rates/batches/{batch['id']}/artifacts",
+        headers=admin_header,
+    )
+    evidence = client.get(
+        f"/api/v1/modules/rates/batches/{batch['id']}/evidence",
+        headers=admin_header,
+    )
+
+    assert artifacts.status_code == 200
+    assert evidence.status_code == 200
+    assert artifacts.json()["items"][0]["id"] == export["artifact_id"]
+    assert evidence.json()["items"][0]["id"] == export["evidence_id"]
+    assert "OTM1.ACC_COST_001" not in str(evidence.json())
