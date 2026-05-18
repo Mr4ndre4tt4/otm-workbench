@@ -216,3 +216,46 @@ def test_reference_validate_api_uses_policy(client, admin_header):
     assert response.status_code == 200
     assert response.json()["valid"] is False
     assert response.json()["severity"] == "ERROR"
+
+
+def test_rate_offering_duplicate_check_returns_warning(client, admin_header):
+    client.post(
+        "/api/v1/reference/import-batches",
+        json={
+            "source_type": "json",
+            "source_description": "rate offering seed",
+            "records": [
+                {
+                    "object_type": "RATE_OFFERING",
+                    "gid": "OTM1.RO_STD",
+                    "xid": "RO_STD",
+                    "domain_name": "OTM1",
+                    "display_name": "Synthetic Standard Offering",
+                    "metadata_json": {
+                        "servprov_gid": "OTM1.SERVPROV_A",
+                        "transport_mode_gid": "PUBLIC.TL",
+                        "rate_service_gid": "OTM1.RS_STD",
+                        "equipment_group_profile_gid": "PUBLIC.EQP_DRY",
+                        "currency_gid": "PUBLIC.USD",
+                    },
+                }
+            ],
+        },
+        headers=admin_header,
+    )
+
+    response = client.post(
+        "/api/v1/modules/rates/reference/rate-offerings/duplicate-check",
+        json={
+            "servprov_gid": "OTM1.SERVPROV_A",
+            "transport_mode_gid": "PUBLIC.TL",
+            "rate_service_gid": "OTM1.RS_STD",
+            "equipment_group_profile_gid": "PUBLIC.EQP_DRY",
+            "currency_gid": "PUBLIC.USD",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["severity"] == "WARNING"
+    assert response.json()["candidates"][0]["gid"] == "OTM1.RO_STD"

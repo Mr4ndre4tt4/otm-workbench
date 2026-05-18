@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
@@ -19,6 +20,14 @@ router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
 
 class LoadSequenceRequest(BaseModel):
     tables: list[str] = RATES_LOAD_SEQUENCE
+
+
+class RateOfferingDuplicateCheckRequest(BaseModel):
+    servprov_gid: str
+    transport_mode_gid: str
+    rate_service_gid: str
+    equipment_group_profile_gid: str
+    currency_gid: str
 
 
 @router.get("/dictionary/tables")
@@ -88,3 +97,32 @@ def list_rate_offerings(
         for item in objects
     ]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/reference/rate-offerings/duplicate-check")
+def check_rate_offering_duplicate(
+    payload: RateOfferingDuplicateCheckRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    candidates = []
+    for item in db.query(ReferenceObject).filter(ReferenceObject.object_type == "RATE_OFFERING").all():
+        metadata = json.loads(item.metadata_json or "{}")
+        if all(metadata.get(key) == value for key, value in payload.model_dump().items()):
+            candidates.append(
+                {
+                    "gid": item.gid,
+                    "xid": item.xid,
+                    "domain_name": item.domain_name,
+                    "display_name": item.display_name,
+                }
+            )
+    return {
+        "severity": "WARNING" if candidates else "INFO",
+        "message": (
+            "Potential duplicate Rate Offering found."
+            if candidates
+            else "No duplicate candidate found."
+        ),
+        "candidates": candidates,
+    }
