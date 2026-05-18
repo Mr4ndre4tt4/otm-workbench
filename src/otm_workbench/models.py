@@ -444,3 +444,22 @@ class CsvutilBuild(Base, TimestampMixin):
     summary_json: Mapped[str] = mapped_column(Text, default="{}")
     created_by: Mapped[str | None] = mapped_column(String, nullable=True)
     built_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LoadPlanZipAnalysis(Base, TimestampMixin):
+    __tablename__ = "load_plan_zip_analyses"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    package_id: Mapped[str] = mapped_column(ForeignKey("load_plan_packages.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="ANALYZED", index=True)
+    source_artifact_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    source_manifest_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    manifest_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    findings_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    analyzed_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
