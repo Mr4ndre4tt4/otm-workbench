@@ -64,3 +64,38 @@ def test_csvutil_builds_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
     assert "csvutil_builds" in tables
+
+
+def test_csvutil_build_rejects_missing_package(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": "missing_package"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_csvutil_build_succeeds_for_registered_package(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    build = db_session.query(CsvutilBuild).filter(CsvutilBuild.id == payload["id"]).one()
+    assert payload["package_id"] == package["id"]
+    assert payload["status"] == "BUILT"
+    assert payload["ctl_artifact_id"]
+    assert payload["cl_artifact_id"]
+    assert payload["manifest_id"]
+    assert payload["evidence_id"]
+    assert payload["summary"]["table_count"] == 1
+    assert payload["summary"]["row_count"] == 1
+    assert payload["summary"]["package_type"] == "rates_csv_zip"
+    assert build.created_by == "admin@example.com"
+    assert build.built_at is not None
