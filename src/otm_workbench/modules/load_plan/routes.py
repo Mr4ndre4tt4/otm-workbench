@@ -9,6 +9,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
     CsvutilBuild,
+    LoadPlanCutoverReadiness,
     LoadPlanPackage,
     LoadPlanReviewItem,
     LoadPlanSequenceSnapshot,
@@ -21,6 +22,11 @@ from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
     register_rates_package,
     serialize_load_plan_package,
+)
+from otm_workbench.modules.load_plan.readiness import (
+    generate_cutover_readiness,
+    latest_cutover_readiness,
+    serialize_cutover_readiness,
 )
 from otm_workbench.modules.load_plan.review_queue import (
     decide_review_item,
@@ -53,6 +59,10 @@ class ReviewDecisionRequest(BaseModel):
 
 class SequenceSnapshotRequest(BaseModel):
     package_id: str
+
+
+class CutoverReadinessGenerateRequest(BaseModel):
+    package_id: str | None = None
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -160,6 +170,65 @@ def get_latest_sequence_snapshot(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found. Generate a snapshot first.")
     return serialize_sequence_snapshot(snapshot)
+
+
+@router.post("/cutover-readiness/generate")
+def generate_load_plan_cutover_readiness(
+    payload: CutoverReadinessGenerateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    if payload.package_id:
+        package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
+        if package is None:
+            raise HTTPException(status_code=404, detail="Load Plan package not found.")
+        packages = [package]
+    else:
+        packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at).all()
+    try:
+        return generate_cutover_readiness(db, packages=packages, generated_by=user.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/cutover-readiness")
+def list_cutover_readiness(
+    package_id: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanCutoverReadiness)
+    if package_id:
+        query = query.filter(LoadPlanCutoverReadiness.package_id == package_id)
+    if status:
+        query = query.filter(LoadPlanCutoverReadiness.status == status)
+    items = query.order_by(LoadPlanCutoverReadiness.generated_at.desc()).all()
+    return PageResponse(items=[serialize_cutover_readiness(item) for item in items], total=len(items))
+
+
+@router.get("/cutover-readiness/latest")
+def get_latest_cutover_readiness(
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    readiness = latest_cutover_readiness(db, package_id)
+    if readiness is None:
+        raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
+    return serialize_cutover_readiness(readiness)
+
+
+@router.get("/cutover-readiness/{readiness_id}")
+def get_cutover_readiness(
+    readiness_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    readiness = db.query(LoadPlanCutoverReadiness).filter(LoadPlanCutoverReadiness.id == readiness_id).first()
+    if readiness is None:
+        raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
+    return serialize_cutover_readiness(readiness)
 
 
 @router.post("/csvutil/build")
