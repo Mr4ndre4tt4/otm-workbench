@@ -236,7 +236,7 @@ def test_cutover_readiness_needs_review_from_warning_only_sequence_snapshot(clie
 def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(client, admin_header, db_session):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
     rewrite_export_with_unknown_column(db_session, export)
-    snapshot = create_sequence_snapshot(client, admin_header, package)
+    create_sequence_snapshot(client, admin_header, package)
 
     response = client.post(
         "/api/v1/modules/load-plan/cutover-readiness/generate",
