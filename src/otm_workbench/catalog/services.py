@@ -414,9 +414,19 @@ def serialize_macro_object(db: Session, macro: OtmMacroObject, include_children:
         "evidence_required_default": macro.evidence_required_default,
     }
     if include_children:
-        payload["tables"] = [serialize_macro_object_table(row) for row in macro_object_tables(db, macro)]
+        tables = macro_object_tables(db, macro)
+        dependencies = macro_object_dependencies(db, macro)
+        validated_table_count = sum(1 for row in tables if row.validated_by_datadict)
+        payload["tables"] = [serialize_macro_object_table(row) for row in tables]
         payload["dependencies"] = [
-            serialize_macro_object_dependency(row, depends_on)
-            for row, depends_on in macro_object_dependencies(db, macro)
+            serialize_macro_object_dependency(row, depends_on) for row, depends_on in dependencies
         ]
+        payload["summary"] = {
+            "table_count": len(tables),
+            "dependency_count": len(dependencies),
+            "validated_table_count": validated_table_count,
+            "all_tables_validated": validated_table_count == len(tables),
+            "csvutil_table_count": sum(1 for row in tables if row.allow_csvutil),
+            "cutover_table_count": sum(1 for row in tables if row.allow_cutover),
+        }
     return payload
