@@ -261,3 +261,67 @@ def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(clien
     assert "OTM1.ACC_COST_001" not in audit.metadata_json
     assert "OTM1.ACC_COST_001" not in event.payload_json
     assert "Synthetic" not in evidence.summary_json
+
+
+def test_cutover_readiness_list_detail_latest_and_filters(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    create_sequence_snapshot(client, admin_header, package)
+    created = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    ).json()["items"][0]
+
+    listed = client.get("/api/v1/modules/load-plan/cutover-readiness", headers=admin_header)
+    filtered = client.get(
+        "/api/v1/modules/load-plan/cutover-readiness",
+        params={"package_id": package["id"], "status": "BLOCKED"},
+        headers=admin_header,
+    )
+    detail = client.get(f"/api/v1/modules/load-plan/cutover-readiness/{created['id']}", headers=admin_header)
+    latest = client.get(
+        "/api/v1/modules/load-plan/cutover-readiness/latest",
+        params={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert filtered.status_code == 200
+    assert detail.status_code == 200
+    assert latest.status_code == 200
+    assert listed.json()["total"] == 1
+    assert filtered.json()["items"][0]["id"] == created["id"]
+    assert detail.json()["id"] == created["id"]
+    assert latest.json()["id"] == created["id"]
+
+
+def test_cutover_readiness_aggregate_generation(client, admin_header, db_session):
+    first_batch, first_export, first_approval, first_package = prepare_registered_load_plan_package(client, admin_header)
+    second_batch = create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY")
+    add_accessorial_table(client, admin_header, second_batch["id"], xid="ACC_COST_002")
+    preview = client.post(f"/api/v1/modules/rates/batches/{second_batch['id']}/csv-preview", headers=admin_header)
+    assert preview.status_code == 200
+    second_export = client.post(f"/api/v1/modules/rates/batches/{second_batch['id']}/export-csv", headers=admin_header)
+    assert second_export.status_code == 200
+    second_approval = client.post(
+        f"/api/v1/modules/rates/batches/{second_batch['id']}/approve",
+        json={"approval_note": "Reviewed for second synthetic readiness package"},
+        headers=admin_header,
+    )
+    assert second_approval.status_code == 200
+    second_package = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{second_batch['id']}",
+        headers=admin_header,
+    )
+    assert second_package.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["summary"]["package_count"] == 2
+    assert len(response.json()["items"]) == 2
+    assert db_session.query(LoadPlanCutoverReadiness).count() == 2
