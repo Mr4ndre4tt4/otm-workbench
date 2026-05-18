@@ -1,9 +1,19 @@
 import json
+from pathlib import Path
+import zipfile
 
 from sqlalchemy import inspect
 
 from otm_workbench.database import engine
-from otm_workbench.models import AuditLog, DomainEvent, Evidence, LoadPlanZipAnalysis, Manifest
+from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    DomainEvent,
+    Evidence,
+    LoadPlanPackage,
+    LoadPlanZipAnalysis,
+    Manifest,
+)
 
 
 def test_load_plan_zip_analyses_table_exists_after_metadata_reset():
@@ -131,3 +141,114 @@ def test_zip_analysis_list_and_detail(client, admin_header):
     assert listed.json()["total"] == 1
     assert listed.json()["items"][0]["id"] == created["id"]
     assert detail.json()["summary"]["package_type"] == "rates_csv_zip"
+
+
+def test_zip_analysis_requires_alter_session_for_date_columns(client, admin_header):
+    batch, export, approval, package = prepare_registered_load_plan_package(
+        client,
+        admin_header,
+        extra_fields={"EFFECTIVE_DATE": "2026-05-18 00:00:00"},
+    )
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    codes = [item["code"] for item in response.json()["findings"]]
+    assert "CSV_DATE_ALTER_SESSION_MISSING" not in codes
+
+
+def test_zip_analysis_flags_unknown_columns(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    artifact = db_session.query(Artifact).filter(Artifact.id == export["artifact_id"]).one()
+    artifact_path = Path(artifact.file_path)
+    rewritten_path = artifact_path.with_suffix(".rewritten.zip")
+    with zipfile.ZipFile(artifact_path) as original:
+        entries = {
+            name: original.read(name)
+            for name in original.namelist()
+            if name != "csv/001_ACCESSORIAL_COST.csv"
+        }
+    entries["csv/001_ACCESSORIAL_COST.csv"] = (
+        "ACCESSORIAL_COST\n"
+        "ACCESSORIAL_COST_GID,ACCESSORIAL_COST_XID,SYNTHETIC_UNKNOWN_COLUMN\n"
+        "OTM1.ACC_COST_001,ACC_COST_001,DEMO\n"
+    ).encode("utf-8")
+    with zipfile.ZipFile(rewritten_path, "w", compression=zipfile.ZIP_DEFLATED) as rewritten:
+        for name, content in entries.items():
+            rewritten.writestr(name, content)
+    artifact.file_path = str(rewritten_path)
+    artifact.file_name = rewritten_path.name
+    artifact.size_bytes = rewritten_path.stat().st_size
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    findings = response.json()["findings"]
+    assert any(item["code"] == "CSV_UNKNOWN_COLUMN" for item in findings)
+    assert "DEMO" not in json.dumps(response.json())
+
+
+def test_zip_analysis_rejects_missing_package(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": "missing_package"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_zip_analysis_rejects_missing_source_artifact(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    package_row = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    package_row.artifact_id = "missing_artifact"
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "artifact" in response.json()["message"].lower()
+
+
+def test_zip_analysis_rejects_non_zip_artifact(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    text_path = Path("var/artifacts/test-fixtures/not_a_zip.txt")
+    text_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path.write_text("synthetic text artifact", encoding="utf-8")
+    artifact = Artifact(
+        source_module="rates",
+        artifact_type="rates_csv_zip",
+        file_path=str(text_path),
+        file_name=text_path.name,
+        content_type="text/plain",
+        sha256="synthetic",
+        size_bytes=text_path.stat().st_size,
+        sensitivity_level="internal",
+    )
+    db_session.add(artifact)
+    db_session.flush()
+    package_row = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    package_row.artifact_id = artifact.id
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "readable zip" in response.json()["message"].lower()
