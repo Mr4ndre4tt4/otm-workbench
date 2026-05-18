@@ -99,3 +99,45 @@ def test_csvutil_build_succeeds_for_registered_package(client, admin_header, db_
     assert payload["summary"]["package_type"] == "rates_csv_zip"
     assert build.created_by == "admin@example.com"
     assert build.built_at is not None
+
+
+def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    ctl = db_session.query(Artifact).filter(Artifact.id == payload["ctl_artifact_id"]).one()
+    cl = db_session.query(Artifact).filter(Artifact.id == payload["cl_artifact_id"]).one()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.csvutil.build").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.csvutil.built").one()
+
+    ctl_text = Path(ctl.file_path).read_text(encoding="utf-8")
+    cl_text = Path(cl.file_path).read_text(encoding="utf-8")
+    manifest_json = json.loads(manifest.manifest_json)
+
+    assert ctl.artifact_type == "csvutil_ctl"
+    assert cl.artifact_type == "csvutil_cl"
+    assert ctl.content_type == "text/plain"
+    assert cl.content_type == "text/plain"
+    assert "001,ACCESSORIAL_COST,csv/001_ACCESSORIAL_COST.csv" in ctl_text
+    assert "LOAD ACCESSORIAL_COST FROM csv/001_ACCESSORIAL_COST.csv" in cl_text
+    assert "OTM1.ACC_COST_001" not in ctl_text
+    assert "OTM1.ACC_COST_001" not in cl_text
+    assert manifest_json["manifest_type"] == "csvutil_build"
+    assert manifest_json["package"]["id"] == package["id"]
+    assert {item["artifact_type"] for item in manifest_json["files"]} == {"csvutil_ctl", "csvutil_cl"}
+    assert evidence.client_safe is True
+    assert evidence.evidence_type == "csvutil_build"
+    assert evidence.artifact_id == ctl.id
+    assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert audit.target_id == payload["id"]
+    assert event.aggregate_id == payload["id"]
+    assert event.status == "PENDING"
