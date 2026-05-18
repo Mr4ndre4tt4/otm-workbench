@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from otm_workbench.models import Evidence
+from otm_workbench.models import Artifact, AuditLog, Evidence
 
 
 def test_evidence_hub_list_requires_authentication(client):
@@ -139,3 +139,111 @@ def test_evidence_hub_list_defaults_to_client_safe_only(client, admin_header, db
     assert [item["id"] for item in default_response.json()["items"]] == [safe_id]
     assert unsafe_response.status_code == 200
     assert unsafe_response.json()["items"][0]["id"] == unsafe.id
+
+
+def test_evidence_hub_artifact_download_requires_authentication(client, admin_header):
+    _evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
+
+    response = client.get(f"/api/v1/evidence-hub/artifacts/{artifact_id}/download")
+
+    assert response.status_code == 401
+
+
+def test_evidence_hub_artifact_download_rejects_missing_artifact(client, admin_header):
+    response = client.get(
+        "/api/v1/evidence-hub/artifacts/missing_artifact/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_evidence_hub_artifact_download_rejects_artifact_without_client_safe_evidence(
+    client,
+    admin_header,
+    db_session,
+):
+    artifact_path = Path("var/test-artifacts/evidence-hub/no-safe-evidence.txt")
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text("synthetic internal artifact", encoding="utf-8")
+    artifact = Artifact(
+        source_module="rates",
+        artifact_type="rates_csv_zip",
+        file_path=str(artifact_path),
+        file_name="no-safe-evidence.zip",
+        content_type="application/zip",
+        sha256="0" * 64,
+        size_bytes=artifact_path.stat().st_size,
+        sensitivity_level="internal",
+    )
+    db_session.add(artifact)
+    db_session.commit()
+
+    response = client.get(
+        f"/api/v1/evidence-hub/artifacts/{artifact.id}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+    assert str(artifact_path) not in str(response.json())
+
+
+def test_evidence_hub_artifact_download_returns_file_and_audit(client, admin_header, db_session):
+    evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
+
+    response = client.get(
+        f"/api/v1/evidence-hub/artifacts/{artifact_id}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"OTM1.ACC_COST_001 should not be exposed"
+    assert response.headers["content-type"] == "application/zip"
+    assert "demo.zip" in response.headers["content-disposition"]
+    assert len(response.headers["x-artifact-sha256"]) == 64
+    audit = db_session.query(AuditLog).filter_by(action="evidence_hub.artifact.download").one()
+    assert audit.target_type == "artifact"
+    assert audit.target_id == artifact_id
+    assert artifact_id in audit.metadata_json
+    assert evidence_id in audit.metadata_json
+    assert "demo.txt" not in audit.metadata_json
+    assert "OTM1.ACC_COST_001" not in audit.metadata_json
+
+
+def test_evidence_hub_artifact_download_rejects_missing_file_without_path(
+    client,
+    admin_header,
+    db_session,
+):
+    _evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
+    artifact = db_session.query(Artifact).filter_by(id=artifact_id).one()
+    artifact_path = Path(artifact.file_path)
+    artifact_path.unlink()
+    db_session.commit()
+
+    response = client.get(
+        f"/api/v1/evidence-hub/artifacts/{artifact_id}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+    assert str(artifact_path) not in str(response.json())
+
+
+def test_evidence_hub_artifact_download_rejects_hash_mismatch_without_path(
+    client,
+    admin_header,
+    db_session,
+):
+    _evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
+    artifact = db_session.query(Artifact).filter_by(id=artifact_id).one()
+    artifact_path = Path(artifact.file_path)
+    artifact_path.write_text("changed synthetic artifact", encoding="utf-8")
+
+    response = client.get(
+        f"/api/v1/evidence-hub/artifacts/{artifact_id}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    assert str(artifact_path) not in str(response.json())
