@@ -95,3 +95,40 @@ def test_catalog_validate_column_reports_missing_column(client, admin_header):
     assert payload["column_name"] == "MISSING_COLUMN"
     assert payload["exists"] is False
     assert payload["severity"] == "ERROR"
+
+
+def test_catalog_macro_objects_seed_and_list(client, admin_header, db_session):
+    response = client.get("/api/v1/catalog/macro-objects", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    codes = [item["code"] for item in payload["items"]]
+    assert "RATE_OFFERING" in codes
+    assert "RATE_RECORD" in codes
+    assert "ITEM" in codes
+    assert "REGION" in codes
+    assert payload["total"] >= 4
+
+
+def test_catalog_macro_object_detail_expands_tables_and_dependencies(client, admin_header):
+    response = client.get("/api/v1/catalog/macro-objects/RATE_RECORD", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "RATE_RECORD"
+    assert payload["category"] == "RATES_SETUP"
+    assert payload["allow_cutover"] is True
+    assert "RATE_GEO" in [item["table_name"] for item in payload["tables"]]
+    assert "RATE_GEO_COST" in [item["table_name"] for item in payload["tables"]]
+    assert "RATE_OFFERING" in [item["depends_on_code"] for item in payload["dependencies"]]
+    assert all(item["validated_by_datadict"] is True for item in payload["tables"])
+
+
+def test_catalog_macro_object_tables_endpoint(client, admin_header):
+    response = client.get("/api/v1/catalog/macro-objects/ITEM/tables", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "ITEM" in [item["table_name"] for item in payload["items"]]
+    assert "PACKAGED_ITEM" in [item["table_name"] for item in payload["items"]]
+    assert all(item["allow_csvutil"] is True for item in payload["items"])

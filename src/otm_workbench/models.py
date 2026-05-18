@@ -287,6 +287,49 @@ class ReferenceImportBatch(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
+class OtmMacroObject(Base, TimestampMixin):
+    __tablename__ = "otm_macro_objects"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    category: Mapped[str] = mapped_column(String, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    default_load_order: Mapped[int] = mapped_column(Integer, default=0)
+    default_method: Mapped[str] = mapped_column(String, default="NA")
+    method_options_json: Mapped[str] = mapped_column(Text, default="[]")
+    allow_cutover: Mapped[bool] = mapped_column(Boolean, default=False)
+    allow_csvutil: Mapped[bool] = mapped_column(Boolean, default=False)
+    evidence_required_default: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class OtmMacroObjectTable(Base, TimestampMixin):
+    __tablename__ = "otm_macro_object_tables"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    macro_object_id: Mapped[str] = mapped_column(ForeignKey("otm_macro_objects.id"), index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    relationship_role: Mapped[str] = mapped_column(String, default="RELATED")
+    is_primary_table: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    data_category: Mapped[str] = mapped_column(String, default="UNKNOWN")
+    validated_by_datadict: Mapped[bool] = mapped_column(Boolean, default=False)
+    allow_csvutil: Mapped[bool] = mapped_column(Boolean, default=False)
+    allow_cutover: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class OtmMacroObjectDependency(Base, TimestampMixin):
+    __tablename__ = "otm_macro_object_dependencies"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    macro_object_id: Mapped[str] = mapped_column(ForeignKey("otm_macro_objects.id"), index=True)
+    depends_on_macro_object_id: Mapped[str] = mapped_column(ForeignKey("otm_macro_objects.id"), index=True)
+    dependency_type: Mapped[str] = mapped_column(String, default="MUST_LOAD_BEFORE")
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
 class ReferenceSnapshot(Base, TimestampMixin):
     __tablename__ = "reference_snapshots"
 
