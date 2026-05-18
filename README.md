@@ -28,6 +28,11 @@ The Rates Reference Catalog is backend/API-only. It validates OTM table metadata
 against the local Data Dictionary under `OTM_RESOURCES/DATA_DICT26B` and exposes
 reference catalog contracts for future tariff workflows.
 
+The Rates Batch Contract adds backend-only persisted batches for synthetic tariff
+scenarios. It stores submitted OTM table rows, validates table and column names
+against the local Data Dictionary, records batch issues, and generates technical
+CSV previews using OTM table header rules.
+
 ```powershell
 python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py
 python -m alembic upgrade head
