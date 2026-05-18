@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import CsvutilBuild, LoadPlanPackage, LoadPlanZipAnalysis, RateBatch, User
+from otm_workbench.models import CsvutilBuild, LoadPlanPackage, LoadPlanReviewItem, LoadPlanZipAnalysis, RateBatch, User
 from otm_workbench.modules.load_plan.csvutil import generate_csvutil_build, serialize_csvutil_build
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
     register_rates_package,
     serialize_load_plan_package,
+)
+from otm_workbench.modules.load_plan.review_queue import (
+    generate_review_queue_from_zip_analysis,
+    serialize_review_item,
 )
 from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
@@ -157,3 +161,56 @@ def get_zip_analysis(
     if analysis is None:
         raise HTTPException(status_code=404, detail="ZIP analysis not found.")
     return serialize_zip_analysis(analysis)
+
+
+@router.post("/review-queue/from-zip-analysis/{analysis_id}")
+def generate_review_queue_from_analysis(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    analysis = db.query(LoadPlanZipAnalysis).filter(LoadPlanZipAnalysis.id == analysis_id).first()
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="ZIP analysis not found.")
+    try:
+        return generate_review_queue_from_zip_analysis(
+            db,
+            analysis=analysis,
+            generated_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/review-queue")
+def list_review_queue_items(
+    status: str | None = None,
+    severity: str | None = None,
+    package_id: str | None = None,
+    zip_analysis_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanReviewItem)
+    if status:
+        query = query.filter(LoadPlanReviewItem.status == status)
+    if severity:
+        query = query.filter(LoadPlanReviewItem.severity == severity)
+    if package_id:
+        query = query.filter(LoadPlanReviewItem.package_id == package_id)
+    if zip_analysis_id:
+        query = query.filter(LoadPlanReviewItem.zip_analysis_id == zip_analysis_id)
+    items = query.order_by(LoadPlanReviewItem.created_at.desc()).all()
+    return PageResponse(items=[serialize_review_item(item) for item in items], total=len(items))
+
+
+@router.get("/review-queue/{item_id}")
+def get_review_queue_item(
+    item_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    return serialize_review_item(item)

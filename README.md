@@ -55,7 +55,11 @@ persists manifest/evidence/audit/event metadata without running CSVUTIL,
 connecting to OTM, creating setup review decisions, or producing cutover
 readiness.
 
+The Load Plan Setup Review Queue slice creates client-safe `PENDING_REVIEW`
+items from ZIP Analysis findings, preserving audit/event metadata, without
+making review decisions, approving packages, or producing cutover readiness.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py
 python -m alembic upgrade head
 ```
