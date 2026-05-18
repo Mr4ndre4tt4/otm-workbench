@@ -152,6 +152,43 @@ def test_batch_artifacts_and_evidence_endpoints_return_export_records(client, ad
     assert "OTM1.ACC_COST_001" not in str(evidence.json())
 
 
+def test_latest_export_endpoint_returns_manifest_artifact_and_download_url(client, admin_header):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+    export = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/export-csv",
+        headers=admin_header,
+    ).json()
+
+    response = client.get(
+        f"/api/v1/modules/rates/batches/{batch['id']}/exports/latest",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch["id"]
+    assert payload["artifact"]["id"] == export["artifact_id"]
+    assert payload["evidence"]["id"] == export["evidence_id"]
+    assert payload["manifest"]["manifest_type"] == "rates_csv_export"
+    assert payload["manifest"]["batch"]["id"] == batch["id"]
+    assert payload["download_url"].endswith(f"/artifacts/{export['artifact_id']}/download")
+    assert "OTM1.ACC_COST_001" not in str(payload)
+    assert export["file_path"] not in str(payload)
+
+
+def test_latest_export_endpoint_rejects_batch_without_export(client, admin_header):
+    batch = create_batch(client, admin_header)
+
+    response = client.get(
+        f"/api/v1/modules/rates/batches/{batch['id']}/exports/latest",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
 def test_batch_artifact_download_returns_zip_and_audit(client, admin_header, db_session):
     batch = create_batch(client, admin_header)
     add_accessorial_table(client, admin_header, batch["id"])

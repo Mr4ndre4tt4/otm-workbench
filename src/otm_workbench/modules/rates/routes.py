@@ -34,6 +34,7 @@ from otm_workbench.modules.rates.dictionary import (
 from otm_workbench.modules.rates.exports import (
     file_sha256,
     generate_rates_csv_export,
+    latest_batch_export_bundle,
     list_batch_export_artifacts,
     list_batch_export_evidence,
 )
@@ -385,6 +386,27 @@ def list_rates_batch_artifacts(
     artifacts = list_batch_export_artifacts(db, batch.id)
     items = [serialize_artifact(artifact) for artifact in artifacts]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}/exports/latest")
+def get_latest_rates_batch_export(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    bundle = latest_batch_export_bundle(db, batch.id)
+    if bundle is None:
+        raise HTTPException(status_code=404, detail="Rates export not found.")
+    return {
+        "batch_id": batch.id,
+        "artifact": serialize_artifact(bundle.artifact),
+        "evidence": serialize_evidence(bundle.evidence),
+        "manifest": json.loads(bundle.manifest.manifest_json or "{}"),
+        "download_url": f"/api/v1/modules/rates/batches/{batch.id}/artifacts/{bundle.artifact.id}/download",
+    }
 
 
 @router.get("/batches/{batch_id}/artifacts/{artifact_id}/download")
