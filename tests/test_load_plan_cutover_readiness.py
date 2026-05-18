@@ -137,3 +137,127 @@ def test_cutover_readiness_missing_sequence_snapshot(client, admin_header, db_se
     assert item["status"] == "MISSING_SEQUENCE"
     assert item["blockers"][0]["code"] == "SEQUENCE_SNAPSHOT_MISSING"
     assert "generate_sequence_snapshot" in payload["summary"]["next_actions"]
+
+
+def test_cutover_readiness_blocked_from_blocked_sequence_snapshot(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    snapshot = create_sequence_snapshot(client, admin_header, package)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["sequence_snapshot_id"] == snapshot["id"]
+    assert item["status"] == "BLOCKED"
+    assert item["summary"]["error_count"] > 0
+    assert "resolve_sequence_blockers" in response.json()["summary"]["next_actions"]
+
+
+def test_cutover_readiness_ready_from_blocker_free_sequence_snapshot(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    package_model = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    snapshot = LoadPlanSequenceSnapshot(
+        project_id=package_model.project_id,
+        environment_id=package_model.environment_id,
+        profile_id=package_model.profile_id,
+        package_id=package["id"],
+        status="READY_FOR_REVIEW",
+        sequence_json=json.dumps(
+            [{"position": 1, "table_name": "ACCESSORIAL_COST", "row_count": 1, "requirement_level": "OPTIONAL"}],
+            sort_keys=True,
+        ),
+        blockers_json="[]",
+        summary_json=json.dumps({"blocker_count": 0, "error_count": 0, "warning_count": 0}, sort_keys=True),
+        generated_by="admin@example.com",
+    )
+    db_session.add(snapshot)
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["sequence_snapshot_id"] == snapshot.id
+    assert item["status"] == "READY"
+    assert "ready_for_cutover_export" in response.json()["summary"]["next_actions"]
+
+
+def test_cutover_readiness_needs_review_from_warning_only_sequence_snapshot(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    package_model = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    snapshot = LoadPlanSequenceSnapshot(
+        project_id=package_model.project_id,
+        environment_id=package_model.environment_id,
+        profile_id=package_model.profile_id,
+        package_id=package["id"],
+        status="BLOCKED",
+        sequence_json="[]",
+        blockers_json=json.dumps(
+            [
+                {
+                    "code": "REVIEW_ITEM_EXCLUDED_FROM_CUTOVER",
+                    "severity": "WARNING",
+                    "table_name": "ACCESSORIAL_COST",
+                    "source_type": "load_plan_review_decision",
+                    "source_id": "synthetic_decision",
+                    "message": "Synthetic exclusion requires review.",
+                    "details": {},
+                }
+            ],
+            sort_keys=True,
+        ),
+        summary_json=json.dumps({"blocker_count": 1, "error_count": 0, "warning_count": 1}, sort_keys=True),
+        generated_by="admin@example.com",
+    )
+    db_session.add(snapshot)
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["status"] == "NEEDS_REVIEW"
+    assert item["summary"]["warning_count"] == 1
+    assert "review_warnings" in response.json()["summary"]["next_actions"]
+
+
+def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_unknown_column(db_session, export)
+    snapshot = create_sequence_snapshot(client, admin_header, package)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    readiness = (
+        db_session.query(LoadPlanCutoverReadiness)
+        .filter(LoadPlanCutoverReadiness.id == response.json()["items"][0]["id"])
+        .one()
+    )
+    evidence = db_session.query(Evidence).filter(Evidence.id == readiness.evidence_id).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.cutover_readiness.generate").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.cutover_readiness.generated").one()
+    assert evidence.evidence_type == "load_plan_cutover_readiness"
+    assert evidence.client_safe is True
+    assert audit.target_id == readiness.id
+    assert event.aggregate_id == readiness.id
+    assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert "OTM1.ACC_COST_001" not in audit.metadata_json
+    assert "OTM1.ACC_COST_001" not in event.payload_json
+    assert "Synthetic" not in evidence.summary_json
