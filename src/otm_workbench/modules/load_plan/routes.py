@@ -9,6 +9,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
     CsvutilBuild,
+    LoadPlanCutoverHandoff,
     LoadPlanCutoverReadiness,
     LoadPlanPackage,
     LoadPlanReadinessExport,
@@ -19,6 +20,11 @@ from otm_workbench.models import (
     User,
 )
 from otm_workbench.modules.load_plan.csvutil import generate_csvutil_build, serialize_csvutil_build
+from otm_workbench.modules.load_plan.cutover_handoff import (
+    commit_cutover_handoff,
+    cutover_handoff_eligibility,
+    serialize_cutover_handoff,
+)
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
     register_rates_package,
@@ -68,6 +74,10 @@ class SequenceSnapshotRequest(BaseModel):
 
 class CutoverReadinessGenerateRequest(BaseModel):
     package_id: str | None = None
+
+
+class CutoverHandoffRequest(BaseModel):
+    package_id: str
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -222,6 +232,62 @@ def get_latest_cutover_readiness(
     if readiness is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
     return serialize_cutover_readiness(readiness)
+
+
+@router.get("/cutover-handoff/eligibility")
+def get_cutover_handoff_eligibility(
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    return cutover_handoff_eligibility(db, package)
+
+
+@router.post("/cutover-handoff")
+def create_cutover_handoff(
+    payload: CutoverHandoffRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    try:
+        handoff = commit_cutover_handoff(db, package=package, committed_by=user.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_cutover_handoff(handoff)
+
+
+@router.get("/cutover-handoff")
+def list_cutover_handoffs(
+    package_id: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanCutoverHandoff)
+    if package_id:
+        query = query.filter(LoadPlanCutoverHandoff.package_id == package_id)
+    if status:
+        query = query.filter(LoadPlanCutoverHandoff.status == status)
+    handoffs = query.order_by(LoadPlanCutoverHandoff.committed_at.desc()).all()
+    return PageResponse(items=[serialize_cutover_handoff(handoff) for handoff in handoffs], total=len(handoffs))
+
+
+@router.get("/cutover-handoff/{handoff_id}")
+def get_cutover_handoff(
+    handoff_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    handoff = db.query(LoadPlanCutoverHandoff).filter(LoadPlanCutoverHandoff.id == handoff_id).first()
+    if handoff is None:
+        raise HTTPException(status_code=404, detail="Load Plan cutover handoff not found.")
+    return serialize_cutover_handoff(handoff)
 
 
 @router.get("/cutover-readiness/exports")

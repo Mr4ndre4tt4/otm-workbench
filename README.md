@@ -98,7 +98,13 @@ filtered client-safe evidence, recording artifact, manifest, evidence, audit,
 and domain event rows. Source artifact bytes are not bundled; individual
 artifact download remains controlled by the audited download endpoint.
 
+The Load Plan Cutover Handoff slice adds a backend-only eligibility and commit
+gate that marks packages `READY_FOR_CUTOVER` only after READY readiness,
+readiness export, and Evidence Hub archive evidence exist. It records
+client-safe evidence, audit, and domain events without executing CSVUTIL,
+uploading to OTM, or creating a real cutover package.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py tests/test_load_plan_sequence_blockers.py tests/test_load_plan_cutover_readiness.py tests/test_load_plan_readiness_export.py tests/test_evidence_hub_index.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py tests/test_load_plan_sequence_blockers.py tests/test_load_plan_cutover_readiness.py tests/test_load_plan_readiness_export.py tests/test_evidence_hub_index.py tests/test_load_plan_cutover_handoff.py
 python -m alembic upgrade head
 ```
