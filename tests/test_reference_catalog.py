@@ -201,6 +201,56 @@ def test_reference_import_and_options_api_filters_domains(client, admin_header):
     ]
 
 
+def test_rates_reference_options_api_delegates_domain_filtering_to_catalog(client, admin_header):
+    imported = client.post(
+        "/api/v1/reference/import-batches",
+        json={
+            "source_type": "json",
+            "source_description": "synthetic rates option seed",
+            "records": [
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "PUBLIC.RS_STD",
+                    "xid": "RS_STD",
+                    "domain_name": "PUBLIC",
+                    "display_name": "Standard",
+                },
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "OTM1.RS_EXP",
+                    "xid": "RS_EXP",
+                    "domain_name": "OTM1",
+                    "display_name": "Express",
+                },
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "OTM2.RS_OTHER",
+                    "xid": "RS_OTHER",
+                    "domain_name": "OTM2",
+                    "display_name": "Other",
+                },
+            ],
+        },
+        headers=admin_header,
+    )
+    assert imported.status_code == 200
+
+    response = client.get(
+        "/api/v1/modules/rates/reference/options?object_type=RATE_SERVICE&domain_name=OTM1",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["module_id"] == "rates"
+    assert payload["object_type"] == "RATE_SERVICE"
+    assert payload["allowed_domains"] == ["PUBLIC", "OTM1"]
+    assert [item["gid"] for item in payload["items"]] == [
+        "PUBLIC.RS_STD",
+        "OTM1.RS_EXP",
+    ]
+
+
 def test_reference_validate_api_uses_policy(client, admin_header):
     response = client.post(
         "/api/v1/reference/validate",
