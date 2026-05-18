@@ -463,3 +463,25 @@ class LoadPlanZipAnalysis(Base, TimestampMixin):
     findings_json: Mapped[str] = mapped_column(Text, default="[]")
     created_by: Mapped[str | None] = mapped_column(String, nullable=True)
     analyzed_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LoadPlanReviewItem(Base, TimestampMixin):
+    __tablename__ = "load_plan_review_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    package_id: Mapped[str] = mapped_column(ForeignKey("load_plan_packages.id"), index=True)
+    zip_analysis_id: Mapped[str] = mapped_column(ForeignKey("load_plan_zip_analyses.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String, default="zip_analysis_finding", index=True)
+    source_code: Mapped[str] = mapped_column(String, index=True)
+    severity: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="PENDING_REVIEW", index=True)
+    category: Mapped[str] = mapped_column(String, index=True)
+    table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    file_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text)
+    details_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True)
