@@ -351,6 +351,17 @@ Reintroduzir ferramentas técnicas apenas com governança.
 
 ## 12. Backlog inicial por frente
 
+### Roadmap pos-Rates
+
+```text
+- ROADMAP-RATES-NEXT-01: manter Rates como ciclo ativo ate fechamento do fluxo operacional.
+- ROADMAP-CATALOG-01: OTM Catalog Core registrado como proximo modulo estrutural depois dos hardenings finais de Rates.
+- ROADMAP-MD-01: Dados Mestres / Template Factory registrado para retomada depois do Catalog Core.
+- ROADMAP-CUTOVER-01: Cutover Checklist & CSVUTIL Builder registrado para retomada depois do Catalog Core e de Master Data.
+```
+
+Detalhe consolidado: [backlog_pos_rates.md](../roadmap/backlog_pos_rates.md)
+
 ### Platform
 
 ```text
