@@ -1,17 +1,29 @@
+import hashlib
 import json
 from pathlib import Path
+import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest, User
+from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence, Manifest, User, utcnow
 from otm_workbench.platform.services import file_sha256
 
 
 router = APIRouter(prefix="/api/v1/evidence-hub", tags=["evidence-hub"])
+
+
+class ArchivePackageRequest(BaseModel):
+    source_module: str | None = None
+    evidence_type: str | None = None
+    status: str | None = None
+    project_id: str | None = None
+    sensitivity_level: str | None = None
 
 
 def parse_json_object(value: str | None) -> dict[str, object]:
@@ -22,6 +34,18 @@ def parse_json_object(value: str | None) -> dict[str, object]:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def json_bytes(payload: dict[str, object] | list[dict[str, object]]) -> bytes:
+    return json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
+
+
+def entry_metadata(path: str, content: bytes) -> dict[str, object]:
+    return {
+        "path": path,
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "size_bytes": len(content),
+    }
 
 
 def serialize_artifact_summary(artifact: Artifact | None) -> dict[str, object] | None:
@@ -90,6 +114,46 @@ def downloadable_artifact(db: Session, artifact_id: str) -> tuple[Artifact, Evid
     return artifact, evidence
 
 
+def archive_filters(payload: ArchivePackageRequest) -> dict[str, object]:
+    return {
+        "source_module": payload.source_module,
+        "evidence_type": payload.evidence_type,
+        "status": payload.status,
+        "project_id": payload.project_id,
+        "sensitivity_level": payload.sensitivity_level,
+        "client_safe": True,
+    }
+
+
+def query_archive_evidence(db: Session, payload: ArchivePackageRequest) -> list[Evidence]:
+    query = db.query(Evidence).filter(Evidence.client_safe.is_(True))
+    if payload.source_module:
+        query = query.filter(Evidence.source_module == payload.source_module)
+    if payload.evidence_type:
+        query = query.filter(Evidence.evidence_type == payload.evidence_type)
+    if payload.status:
+        query = query.filter(Evidence.status == payload.status)
+    if payload.project_id:
+        query = query.filter(Evidence.project_id == payload.project_id)
+    if payload.sensitivity_level:
+        query = query.filter(Evidence.sensitivity_level == payload.sensitivity_level)
+    return query.order_by(Evidence.created_at.desc()).all()
+
+
+def unique_by_id(items: list[dict[str, object] | None]) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
+    seen: set[object] = set()
+    for item in items:
+        if not item:
+            continue
+        item_id = item.get("id")
+        if item_id in seen:
+            continue
+        seen.add(item_id)
+        result.append(item)
+    return result
+
+
 @router.get("/evidence")
 def list_evidence(
     source_module: str | None = None,
@@ -132,6 +196,148 @@ def get_evidence_detail(
     if evidence is None:
         raise HTTPException(status_code=404, detail="Evidence not found.")
     return serialize_evidence_index_item(db, evidence)
+
+
+@router.post("/archive-packages")
+def create_archive_package(
+    payload: ArchivePackageRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    evidence_items = query_archive_evidence(db, payload)
+    if not evidence_items:
+        raise HTTPException(status_code=400, detail="No client-safe evidence matched the archive filters.")
+
+    evidence_index = [serialize_evidence_index_item(db, evidence) for evidence in evidence_items]
+    artifact_index = unique_by_id([item["artifact"] for item in evidence_index])
+    manifest_index = unique_by_id([item["manifest"] for item in evidence_index])
+    filters = archive_filters(payload)
+    generated_at = utcnow()
+    timestamp = generated_at.strftime("%Y%m%dT%H%M%SZ")
+
+    evidence_content = json_bytes(evidence_index)
+    artifact_content = json_bytes(artifact_index)
+    manifest_content = json_bytes(manifest_index)
+    archive_manifest = {
+        "schema_version": "evidence-hub-archive-manifest/v1",
+        "manifest_type": "evidence_hub_archive",
+        "source_module": "evidence_hub",
+        "filters": filters,
+        "files": [
+            entry_metadata("evidence_index.json", evidence_content),
+            entry_metadata("artifact_index.json", artifact_content),
+            entry_metadata("manifest_index.json", manifest_content),
+        ],
+        "evidence_count": len(evidence_index),
+        "artifact_ref_count": len(artifact_index),
+        "manifest_ref_count": len(manifest_index),
+        "generated_at": generated_at.isoformat(),
+        "generated_by": user.email,
+    }
+    archive_manifest_content = json_bytes(archive_manifest)
+
+    archive_dir = get_settings().artifact_root / "evidence_hub" / "archives" / timestamp
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"evidence_hub_archive_{timestamp}.zip"
+    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("archive_manifest.json", archive_manifest_content)
+        archive.writestr("evidence_index.json", evidence_content)
+        archive.writestr("artifact_index.json", artifact_content)
+        archive.writestr("manifest_index.json", manifest_content)
+
+    sha256, size_bytes = file_sha256(str(archive_path))
+    artifact = Artifact(
+        source_module="evidence_hub",
+        artifact_type="evidence_hub_archive_zip",
+        file_path=str(archive_path),
+        file_name=archive_path.name,
+        content_type="application/zip",
+        sha256=sha256,
+        size_bytes=size_bytes,
+        sensitivity_level="internal",
+    )
+    db.add(artifact)
+    db.flush()
+
+    manifest = Manifest(
+        source_module="evidence_hub",
+        status="CREATED",
+        manifest_json=archive_manifest_content.decode("utf-8"),
+    )
+    db.add(manifest)
+    db.flush()
+
+    summary = {
+        "source_entity_type": "evidence_hub_archive",
+        "source_entity_id": artifact.id,
+        "evidence_count": len(evidence_index),
+        "artifact_ref_count": len(artifact_index),
+        "manifest_ref_count": len(manifest_index),
+        "filters": filters,
+        "artifact_type": "evidence_hub_archive_zip",
+    }
+    evidence = Evidence(
+        source_module="evidence_hub",
+        evidence_type="evidence_hub_archive",
+        summary_json=json.dumps(summary, sort_keys=True),
+        artifact_id=artifact.id,
+        manifest_id=manifest.id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="evidence_hub.archive_package.create",
+            target_type="artifact",
+            target_id=artifact.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "manifest_id": manifest.id,
+                    "evidence_id": evidence.id,
+                    "evidence_count": len(evidence_index),
+                    "artifact_ref_count": len(artifact_index),
+                    "manifest_ref_count": len(manifest_index),
+                    "filters": filters,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="evidence_hub.archive_package.created",
+            source_module="evidence_hub",
+            project_id=payload.project_id,
+            aggregate_type="artifact",
+            aggregate_id=artifact.id,
+            payload_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "manifest_id": manifest.id,
+                    "evidence_id": evidence.id,
+                    "evidence_count": len(evidence_index),
+                },
+                sort_keys=True,
+            ),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    return {
+        "archive_id": artifact.id,
+        "artifact_id": artifact.id,
+        "manifest_id": manifest.id,
+        "evidence_id": evidence.id,
+        "file_name": artifact.file_name,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "summary": summary,
+    }
 
 
 @router.get("/artifacts/{artifact_id}/download")
