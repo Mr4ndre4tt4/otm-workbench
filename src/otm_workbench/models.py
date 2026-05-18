@@ -501,3 +501,20 @@ class LoadPlanReviewDecision(Base, TimestampMixin):
     evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     decided_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     decided_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LoadPlanSequenceSnapshot(Base, TimestampMixin):
+    __tablename__ = "load_plan_sequence_snapshots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    package_id: Mapped[str] = mapped_column(ForeignKey("load_plan_packages.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="BLOCKED", index=True)
+    sequence_json: Mapped[str] = mapped_column(Text, default="[]")
+    blockers_json: Mapped[str] = mapped_column(Text, default="[]")
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    generated_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

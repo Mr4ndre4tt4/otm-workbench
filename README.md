@@ -66,7 +66,13 @@ Allowed statuses are `CONFIRMED`, `REJECTED`, `NEEDS_MANUAL_ACTION`, and
 decision metadata without copying decision notes into client-safe evidence,
 audit logs, or domain events.
 
+The Load Plan Sequence Blockers slice generates backend-only sequence snapshots
+with client-safe blockers from package metadata, latest ZIP Analysis, review
+decisions, and local OTM Data Dictionary parent-table dependencies. It does not
+execute CSVUTIL, connect to OTM, transition package status, or produce cutover
+readiness.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py tests/test_load_plan_sequence_blockers.py
 python -m alembic upgrade head
 ```

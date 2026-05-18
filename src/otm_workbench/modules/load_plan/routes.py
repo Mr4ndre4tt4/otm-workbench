@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import CsvutilBuild, LoadPlanPackage, LoadPlanReviewItem, LoadPlanZipAnalysis, RateBatch, User
+from otm_workbench.models import (
+    CsvutilBuild,
+    LoadPlanPackage,
+    LoadPlanReviewItem,
+    LoadPlanSequenceSnapshot,
+    LoadPlanZipAnalysis,
+    RateBatch,
+    User,
+)
 from otm_workbench.modules.load_plan.csvutil import generate_csvutil_build, serialize_csvutil_build
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
@@ -19,6 +27,11 @@ from otm_workbench.modules.load_plan.review_queue import (
     generate_review_queue_from_zip_analysis,
     serialize_review_decision,
     serialize_review_item_with_latest_decision,
+)
+from otm_workbench.modules.load_plan.sequence import (
+    generate_sequence_snapshot,
+    latest_sequence_snapshot,
+    serialize_sequence_snapshot,
 )
 from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
@@ -36,6 +49,10 @@ class ZipAnalysisRequest(BaseModel):
 class ReviewDecisionRequest(BaseModel):
     decision_status: str
     decision_note: str = ""
+
+
+class SequenceSnapshotRequest(BaseModel):
+    package_id: str
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -82,6 +99,67 @@ def get_load_plan_summary(
     user: User = Depends(require_user),
 ):
     return load_plan_package_summary(db)
+
+
+@router.post("/sequence/snapshots")
+def create_sequence_snapshot(
+    payload: SequenceSnapshotRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    try:
+        snapshot = generate_sequence_snapshot(
+            db,
+            package=package,
+            dictionary_root=Path(get_settings().otm_data_dictionary_root),
+            generated_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_sequence_snapshot(snapshot)
+
+
+@router.get("/sequence/snapshots")
+def list_sequence_snapshots(
+    package_id: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanSequenceSnapshot)
+    if package_id:
+        query = query.filter(LoadPlanSequenceSnapshot.package_id == package_id)
+    if status:
+        query = query.filter(LoadPlanSequenceSnapshot.status == status)
+    snapshots = query.order_by(LoadPlanSequenceSnapshot.generated_at.desc()).all()
+    return PageResponse(items=[serialize_sequence_snapshot(snapshot) for snapshot in snapshots], total=len(snapshots))
+
+
+@router.get("/sequence/snapshots/{snapshot_id}")
+def get_sequence_snapshot(
+    snapshot_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    snapshot = db.query(LoadPlanSequenceSnapshot).filter(LoadPlanSequenceSnapshot.id == snapshot_id).first()
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found.")
+    return serialize_sequence_snapshot(snapshot)
+
+
+@router.get("/sequence")
+def get_latest_sequence_snapshot(
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    snapshot = latest_sequence_snapshot(db, package_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found. Generate a snapshot first.")
+    return serialize_sequence_snapshot(snapshot)
 
 
 @router.post("/csvutil/build")
