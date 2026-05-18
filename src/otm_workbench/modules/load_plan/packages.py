@@ -210,3 +210,18 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
     db.commit()
     db.refresh(package)
     return package
+
+
+def load_plan_package_summary(db: Session) -> dict[str, object]:
+    packages = db.query(LoadPlanPackage).all()
+    by_source_module: dict[str, int] = {}
+    by_status: dict[str, int] = {}
+    for package in packages:
+        by_source_module[package.source_module] = by_source_module.get(package.source_module, 0) + 1
+        by_status[package.status] = by_status.get(package.status, 0) + 1
+    return {
+        "registered_packages": len(packages),
+        "by_source_module": by_source_module,
+        "by_status": by_status,
+        "next_actions": ["build_csvutil"] if packages else [],
+    }

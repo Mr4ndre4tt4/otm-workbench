@@ -125,3 +125,49 @@ def test_register_rates_package_creates_load_plan_package(client, admin_header, 
     ]
     assert package.created_by == "admin@example.com"
     assert package.registered_at is not None
+
+
+def test_load_plan_package_list_and_detail(client, admin_header):
+    batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    ).json()
+
+    listed = client.get("/api/v1/modules/load-plan/packages", headers=admin_header)
+    detail = client.get(f"/api/v1/modules/load-plan/packages/{created['id']}", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert detail.status_code == 200
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["id"] == created["id"]
+    assert detail.json()["artifact_id"] == export["artifact_id"]
+    assert detail.json()["approval_evidence_id"] == approval["evidence_id"]
+    assert detail.json()["summary"]["scenario_code"] == "ACCESSORIAL_ONLY"
+    assert "OTM1.ACC_COST_001" not in json.dumps(detail.json())
+
+
+def test_load_plan_summary_counts_packages(client, admin_header):
+    batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.get("/api/v1/modules/load-plan/summary", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["registered_packages"] == 1
+    assert payload["by_source_module"] == {"rates": 1}
+    assert payload["by_status"] == {"REGISTERED": 1}
+    assert payload["next_actions"] == ["build_csvutil"]
+
+
+def test_load_plan_module_is_registered(client, admin_header):
+    modules = client.get("/api/v1/platform/modules", headers=admin_header)
+
+    assert modules.status_code == 200
+    module_ids = [item["id"] for item in modules.json()["items"]]
+    assert "load_plan" in module_ids
