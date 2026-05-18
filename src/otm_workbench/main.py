@@ -6,6 +6,7 @@ from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from otm_workbench.config import get_settings
+from otm_workbench.catalog.routes import router as catalog_router
 from otm_workbench.database import session_scope
 from otm_workbench.evidence_hub.routes import router as evidence_hub_router
 from otm_workbench.modules.load_plan.routes import router as load_plan_router
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="OTM Workbench", version="0.1.0")
     app.include_router(platform_router)
+    app.include_router(catalog_router)
     app.include_router(evidence_hub_router)
     app.include_router(reference_router)
     app.include_router(rates_router)
