@@ -49,7 +49,13 @@ The Load Plan CSVUTIL Builder slice generates internal CTL/CL control artifacts
 from registered Load Plan packages, with manifest/evidence metadata, without
 executing CSVUTIL, connecting to OTM, or producing cutover readiness.
 
+The Load Plan ZIP Analysis slice inspects registered package ZIP artifacts,
+records client-safe file/table/row counts and Data Dictionary findings, and
+persists manifest/evidence/audit/event metadata without running CSVUTIL,
+connecting to OTM, creating setup review decisions, or producing cutover
+readiness.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py
 python -m alembic upgrade head
 ```

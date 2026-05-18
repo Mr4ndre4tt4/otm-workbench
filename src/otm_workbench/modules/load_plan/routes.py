@@ -7,18 +7,23 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import CsvutilBuild, LoadPlanPackage, RateBatch, User
+from otm_workbench.models import CsvutilBuild, LoadPlanPackage, LoadPlanZipAnalysis, RateBatch, User
 from otm_workbench.modules.load_plan.csvutil import generate_csvutil_build, serialize_csvutil_build
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
     register_rates_package,
     serialize_load_plan_package,
 )
+from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
 router = APIRouter(prefix="/api/v1/modules/load-plan", tags=["load-plan"])
 
 
 class CsvutilBuildRequest(BaseModel):
+    package_id: str
+
+
+class ZipAnalysisRequest(BaseModel):
     package_id: str
 
 
@@ -109,3 +114,46 @@ def get_csvutil_build(
     if build is None:
         raise HTTPException(status_code=404, detail="CSVUTIL build not found.")
     return serialize_csvutil_build(build)
+
+
+@router.post("/zip-analysis")
+def run_zip_analysis(
+    payload: ZipAnalysisRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    try:
+        analysis = generate_zip_analysis(
+            db,
+            package=package,
+            dictionary_root=Path(get_settings().otm_data_dictionary_root),
+            analyzed_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_zip_analysis(analysis)
+
+
+@router.get("/zip-analysis")
+def list_zip_analyses(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    analyses = db.query(LoadPlanZipAnalysis).order_by(LoadPlanZipAnalysis.created_at.desc()).all()
+    items = [serialize_zip_analysis(analysis) for analysis in analyses]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/zip-analysis/{analysis_id}")
+def get_zip_analysis(
+    analysis_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    analysis = db.query(LoadPlanZipAnalysis).filter(LoadPlanZipAnalysis.id == analysis_id).first()
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="ZIP analysis not found.")
+    return serialize_zip_analysis(analysis)
