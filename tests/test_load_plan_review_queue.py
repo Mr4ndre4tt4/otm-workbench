@@ -5,7 +5,7 @@ import zipfile
 from sqlalchemy import inspect
 
 from otm_workbench.database import engine
-from otm_workbench.models import Artifact
+from otm_workbench.models import Artifact, AuditLog, DomainEvent, LoadPlanReviewItem
 
 
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
@@ -99,3 +99,22 @@ def test_load_plan_review_items_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
     assert "load_plan_review_items" in tables
+
+
+def test_review_queue_generation_returns_zero_items_for_clean_zip_analysis(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    analysis = create_zip_analysis(client, admin_header, package)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["analysis_id"] == analysis["id"]
+    assert payload["package_id"] == package["id"]
+    assert payload["created_count"] == 0
+    assert payload["existing_count"] == 0
+    assert payload["items"] == []
+    assert db_session.query(LoadPlanReviewItem).count() == 0
