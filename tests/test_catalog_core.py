@@ -97,6 +97,27 @@ def test_catalog_validate_column_reports_missing_column(client, admin_header):
     assert payload["severity"] == "ERROR"
 
 
+def test_catalog_validate_reference_uses_policy_and_domain_scope(client, admin_header):
+    response = client.post(
+        "/api/v1/catalog/validate/reference",
+        json={
+            "module_id": "rates",
+            "field_name": "currency_gid",
+            "value": "OTM2.BRL",
+            "domain_name": "OTM1",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is False
+    assert payload["severity"] == "ERROR"
+    assert payload["policy"] == "MUST_EXIST"
+    assert payload["object_type"] == "CURRENCY"
+    assert payload["gid"] == "OTM2.BRL"
+
+
 def test_catalog_macro_objects_seed_and_list(client, admin_header, db_session):
     response = client.get("/api/v1/catalog/macro-objects", headers=admin_header)
 
