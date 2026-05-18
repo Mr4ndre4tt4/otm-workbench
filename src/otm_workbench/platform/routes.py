@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
@@ -11,6 +11,7 @@ from otm_workbench.models import (
     Evidence,
     FeatureFlag,
     Job,
+    JobEvent,
     Manifest,
     Profile,
     Project,
@@ -18,6 +19,13 @@ from otm_workbench.models import (
     Workspace,
 )
 from otm_workbench.platform.audit import write_audit
+from otm_workbench.platform.jobs import (
+    cancel_pending_job,
+    create_job as create_platform_job,
+    parse_json_object,
+    serialize_job,
+    serialize_job_event,
+)
 from otm_workbench.platform.navigation import navigation_items, registered_modules
 from otm_workbench.platform.services import authenticate, create_session, file_sha256
 
@@ -88,7 +96,13 @@ class NavigationItem(BaseModel):
 class JobCreate(BaseModel):
     job_type: str
     source_module: str
-    input_json: str = "{}"
+    project_id: str | None = None
+    profile_id: str | None = None
+    environment_id: str | None = None
+    domain_name: str | None = None
+    input: dict[str, object] = Field(default_factory=dict)
+    input_json: str | None = None
+    execute_now: bool = False
 
 
 class ArtifactCreate(BaseModel):
@@ -244,15 +258,88 @@ def create_job(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    job = Job(
-        job_type=payload.job_type,
-        source_module=payload.source_module,
-        input_json=payload.input_json,
-    )
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-    return {"id": job.id, "status": job.status}
+    try:
+        input_payload = parse_json_object(payload.input_json) if payload.input_json is not None else payload.input
+        job = create_platform_job(
+            db,
+            job_type=payload.job_type,
+            source_module=payload.source_module,
+            project_id=payload.project_id,
+            profile_id=payload.profile_id,
+            environment_id=payload.environment_id,
+            domain_name=payload.domain_name,
+            input_payload=input_payload,
+            execute_now=payload.execute_now,
+            created_by=user.email,
+        )
+    except ValueError as exc:
+        raise api_error(400, "JOB_INVALID", str(exc)) from exc
+    return serialize_job(job)
+
+
+@router.get("/jobs")
+def list_jobs(
+    source_module: str | None = None,
+    job_type: str | None = None,
+    status: str | None = None,
+    project_id: str | None = None,
+    profile_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(Job)
+    if source_module:
+        query = query.filter(Job.source_module == source_module)
+    if job_type:
+        query = query.filter(Job.job_type == job_type.upper())
+    if status:
+        query = query.filter(Job.status == status.upper())
+    if project_id:
+        query = query.filter(Job.project_id == project_id)
+    if profile_id:
+        query = query.filter(Job.profile_id == profile_id)
+    jobs = query.order_by(Job.created_at.desc()).all()
+    return PageResponse(items=[serialize_job(job) for job in jobs], total=len(jobs))
+
+
+@router.get("/jobs/{job_id}")
+def get_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
+    return serialize_job(job)
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
+    try:
+        return serialize_job(cancel_pending_job(db, job=job, actor=user.email))
+    except ValueError as exc:
+        raise api_error(400, "JOB_INVALID_TRANSITION", str(exc)) from exc
+
+
+@router.get("/jobs/{job_id}/events")
+def list_job_events(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
+    events = db.query(JobEvent).filter(JobEvent.job_id == job.id).order_by(JobEvent.created_at).all()
+    return PageResponse(items=[serialize_job_event(event) for event in events], total=len(events))
 
 
 @router.post("/artifacts")
