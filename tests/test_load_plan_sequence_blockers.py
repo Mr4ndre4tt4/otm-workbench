@@ -163,3 +163,135 @@ def test_sequence_snapshot_creates_snapshot_evidence_audit_and_event(client, adm
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert "OTM1.ACC_COST_001" not in audit.metadata_json
     assert "OTM1.ACC_COST_001" not in event.payload_json
+
+
+def test_sequence_snapshot_rejects_package_with_empty_load_sequence(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    model = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    model.load_sequence_json = "[]"
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    error_text = response.json().get("detail", response.json().get("message", ""))
+    assert "load sequence" in error_text.lower()
+
+
+def test_sequence_snapshot_marks_pending_review_item_as_blocker(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    codes = [blocker["code"] for blocker in payload["blockers"]]
+    assert "REVIEW_ITEM_PENDING" in codes
+    assert "decide_review_items" in payload["summary"]["next_actions"]
+    assert item["details"]["column_name"] not in json.dumps(payload["blockers"])
+
+
+def test_sequence_snapshot_uses_latest_review_decision_for_blockers(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    first = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "CONFIRMED", "decision_note": "Synthetic confirmed note"},
+        headers=admin_header,
+    )
+    second = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "NEEDS_MANUAL_ACTION", "decision_note": "Synthetic manual action note"},
+        headers=admin_header,
+    )
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    codes = [blocker["code"] for blocker in payload["blockers"]]
+    assert "REVIEW_ITEM_NEEDS_MANUAL_ACTION" in codes
+    assert "REVIEW_ITEM_PENDING" not in codes
+    assert "resolve_manual_actions" in payload["summary"]["next_actions"]
+    assert "Synthetic manual action note" not in json.dumps(payload)
+    assert db_session.query(LoadPlanReviewDecision).count() == 2
+
+
+def test_sequence_snapshot_confirmed_review_item_does_not_create_review_blocker(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    decision = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "CONFIRMED", "decision_note": "Synthetic confirmation"},
+        headers=admin_header,
+    )
+    assert decision.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    codes = [blocker["code"] for blocker in response.json()["blockers"]]
+    assert "REVIEW_ITEM_PENDING" not in codes
+    assert "REVIEW_ITEM_REJECTED" not in codes
+    assert "REVIEW_ITEM_NEEDS_MANUAL_ACTION" not in codes
+
+
+def test_sequence_snapshot_rejected_review_item_creates_error_blocker(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "REJECTED", "decision_note": "Synthetic rejection"},
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+
+    snapshot = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert snapshot.status_code == 200
+    blockers = snapshot.json()["blockers"]
+    assert any(item["code"] == "REVIEW_ITEM_REJECTED" and item["severity"] == "ERROR" for item in blockers)
+    assert "remove_rejected_items_or_rework_package" in snapshot.json()["summary"]["next_actions"]
+
+
+def test_sequence_snapshot_excluded_review_item_creates_warning_blocker(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "EXCLUDED_FROM_CUTOVER", "decision_note": "Synthetic exclusion"},
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+
+    snapshot = client.post(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert snapshot.status_code == 200
+    blockers = snapshot.json()["blockers"]
+    assert any(
+        item["code"] == "REVIEW_ITEM_EXCLUDED_FROM_CUTOVER" and item["severity"] == "WARNING"
+        for item in blockers
+    )
+    assert "review_exclusions" in snapshot.json()["summary"]["next_actions"]
