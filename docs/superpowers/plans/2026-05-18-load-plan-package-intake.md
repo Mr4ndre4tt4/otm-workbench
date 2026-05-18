@@ -312,10 +312,10 @@ def test_register_rates_package_creates_load_plan_package(client, admin_header, 
     assert payload["approval_evidence_id"] == approval["evidence_id"]
     assert payload["load_sequence"] == [
         {
-            "position": 10,
+            "position": 6,
             "table_name": "ACCESSORIAL_COST",
             "row_count": 1,
-            "requirement_level": "OPTIONAL",
+            "requirement_level": "REQUIRED",
         }
     ]
     assert package.created_by == "admin@example.com"
