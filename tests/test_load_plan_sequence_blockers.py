@@ -12,7 +12,6 @@ from otm_workbench.models import (
     Evidence,
     LoadPlanPackage,
     LoadPlanReviewDecision,
-    LoadPlanReviewItem,
     LoadPlanSequenceSnapshot,
 )
 
