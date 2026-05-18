@@ -16,6 +16,7 @@ from otm_workbench.catalog.services import (
     safe_load_table,
     serialize_columns,
     serialize_macro_object,
+    serialize_macro_object_load_plan,
     serialize_macro_object_table,
     serialize_table_definition,
     validate_column,
@@ -127,6 +128,18 @@ def list_catalog_macro_object_tables(
         raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
     items = [serialize_macro_object_table(row) for row in macro_object_tables(db, macro)]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/macro-objects/{macro_object_code}/load-plan")
+def get_catalog_macro_object_load_plan(
+    macro_object_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    macro = get_macro_object(db, dictionary_root(), macro_object_code)
+    if macro is None:
+        raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
+    return serialize_macro_object_load_plan(db, macro)
 
 
 @router.post("/validate/table")

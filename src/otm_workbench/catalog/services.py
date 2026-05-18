@@ -399,6 +399,50 @@ def serialize_macro_object_dependency(row: OtmMacroObjectDependency, depends_on:
     }
 
 
+def serialize_macro_object_load_plan(db: Session, macro: OtmMacroObject) -> dict[str, object]:
+    dependencies = macro_object_dependencies(db, macro)
+    target_tables = macro_object_tables(db, macro)
+    items: list[dict[str, object]] = []
+
+    for dependency, depends_on in dependencies:
+        dependency_tables = macro_object_tables(db, depends_on)
+        items.append(
+            {
+                "macro_object_code": depends_on.code,
+                "macro_object_name": depends_on.name,
+                "dependency_role": "DEPENDENCY",
+                "dependency_type": dependency.dependency_type,
+                "is_required": dependency.is_required,
+                "tables": [row.table_name for row in dependency_tables],
+                "table_count": len(dependency_tables),
+                "all_tables_validated": all(row.validated_by_datadict for row in dependency_tables),
+            }
+        )
+
+    items.append(
+        {
+            "macro_object_code": macro.code,
+            "macro_object_name": macro.name,
+            "dependency_role": "TARGET",
+            "dependency_type": "TARGET",
+            "is_required": True,
+            "tables": [row.table_name for row in target_tables],
+            "table_count": len(target_tables),
+            "all_tables_validated": all(row.validated_by_datadict for row in target_tables),
+        }
+    )
+    return {
+        "macro_object_code": macro.code,
+        "items": items,
+        "summary": {
+            "step_count": len(items),
+            "dependency_count": len(dependencies),
+            "target_table_count": len(target_tables),
+            "all_target_tables_validated": all(row.validated_by_datadict for row in target_tables),
+        },
+    }
+
+
 def serialize_macro_object(db: Session, macro: OtmMacroObject, include_children: bool = False) -> dict[str, object]:
     payload: dict[str, object] = {
         "id": macro.id,

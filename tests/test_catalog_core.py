@@ -161,3 +161,26 @@ def test_catalog_macro_object_tables_endpoint(client, admin_header):
     assert "ITEM" in [item["table_name"] for item in payload["items"]]
     assert "PACKAGED_ITEM" in [item["table_name"] for item in payload["items"]]
     assert all(item["allow_csvutil"] is True for item in payload["items"])
+
+
+def test_catalog_macro_object_load_plan_orders_dependencies_before_target(client, admin_header):
+    response = client.get("/api/v1/catalog/macro-objects/RATE_RECORD/load-plan", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["macro_object_code"] == "RATE_RECORD"
+    assert [item["macro_object_code"] for item in payload["items"]] == ["RATE_OFFERING", "RATE_RECORD"]
+    assert payload["items"][0]["dependency_role"] == "DEPENDENCY"
+    assert payload["items"][1]["dependency_role"] == "TARGET"
+    assert payload["items"][1]["tables"] == [
+        "RATE_GEO",
+        "RATE_GEO_COST",
+        "RATE_GEO_COST_GROUP",
+        "X_LANE",
+    ]
+    assert payload["summary"] == {
+        "step_count": 2,
+        "dependency_count": 1,
+        "target_table_count": 4,
+        "all_target_tables_validated": True,
+    }
