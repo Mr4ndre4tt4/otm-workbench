@@ -180,3 +180,37 @@ def generate_review_queue_from_analysis(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/review-queue")
+def list_review_queue_items(
+    status: str | None = None,
+    severity: str | None = None,
+    package_id: str | None = None,
+    zip_analysis_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    query = db.query(LoadPlanReviewItem)
+    if status:
+        query = query.filter(LoadPlanReviewItem.status == status)
+    if severity:
+        query = query.filter(LoadPlanReviewItem.severity == severity)
+    if package_id:
+        query = query.filter(LoadPlanReviewItem.package_id == package_id)
+    if zip_analysis_id:
+        query = query.filter(LoadPlanReviewItem.zip_analysis_id == zip_analysis_id)
+    items = query.order_by(LoadPlanReviewItem.created_at.desc()).all()
+    return PageResponse(items=[serialize_review_item(item) for item in items], total=len(items))
+
+
+@router.get("/review-queue/{item_id}")
+def get_review_queue_item(
+    item_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    return serialize_review_item(item)

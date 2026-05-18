@@ -192,3 +192,44 @@ def test_review_queue_generation_creates_audit_and_event(client, admin_header, d
     assert "OTM1.ACC_COST_001" not in event.payload_json
     assert "DEMO" not in audit.metadata_json
     assert "DEMO" not in event.payload_json
+
+
+def test_review_queue_list_detail_and_filters(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_unknown_column(db_session, export)
+    analysis = create_zip_analysis(client, admin_header, package)
+    created = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    ).json()["items"][0]
+
+    listed = client.get("/api/v1/modules/load-plan/review-queue", headers=admin_header)
+    filtered = client.get(
+        "/api/v1/modules/load-plan/review-queue",
+        params={"status": "PENDING_REVIEW", "severity": "ERROR", "package_id": package["id"]},
+        headers=admin_header,
+    )
+    detail = client.get(f"/api/v1/modules/load-plan/review-queue/{created['id']}", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert filtered.status_code == 200
+    assert detail.status_code == 200
+    assert listed.json()["total"] == 1
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["items"][0]["id"] == created["id"]
+    assert detail.json()["details"] == {"column_name": "SYNTHETIC_UNKNOWN_COLUMN"}
+
+
+def test_review_queue_generation_rejects_missing_analysis(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/review-queue/from-zip-analysis/missing_analysis",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_review_queue_detail_rejects_missing_item(client, admin_header):
+    response = client.get("/api/v1/modules/load-plan/review-queue/missing_item", headers=admin_header)
+
+    assert response.status_code == 404
