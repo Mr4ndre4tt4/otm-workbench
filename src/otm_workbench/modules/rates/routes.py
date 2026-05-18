@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
     Artifact,
+    AuditLog,
     Evidence,
     RateBatch,
     RateBatchIssue,
@@ -30,6 +32,7 @@ from otm_workbench.modules.rates.dictionary import (
     validate_load_sequence,
 )
 from otm_workbench.modules.rates.exports import (
+    file_sha256,
     generate_rates_csv_export,
     list_batch_export_artifacts,
     list_batch_export_evidence,
@@ -382,6 +385,58 @@ def list_rates_batch_artifacts(
     artifacts = list_batch_export_artifacts(db, batch.id)
     items = [serialize_artifact(artifact) for artifact in artifacts]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}/artifacts/{artifact_id}/download")
+def download_rates_batch_artifact(
+    batch_id: str,
+    artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+
+    artifacts = list_batch_export_artifacts(db, batch.id)
+    artifact = next((item for item in artifacts if item.id == artifact_id), None)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+
+    path = Path(artifact.file_path)
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Artifact file not found.")
+
+    actual_sha256, actual_size = file_sha256(path)
+    if actual_sha256 != artifact.sha256:
+        raise HTTPException(status_code=409, detail="Artifact hash mismatch.")
+
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="rates.batch.artifact.download",
+            target_type="artifact",
+            target_id=artifact.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "artifact_type": artifact.artifact_type,
+                    "batch_id": batch.id,
+                    "source_module": artifact.source_module,
+                    "sha256": artifact.sha256,
+                    "size_bytes": actual_size,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+    return FileResponse(
+        path,
+        media_type=artifact.content_type,
+        filename=artifact.file_name,
+        headers={"X-Artifact-SHA256": artifact.sha256},
+    )
 
 
 @router.get("/batches/{batch_id}/evidence")
