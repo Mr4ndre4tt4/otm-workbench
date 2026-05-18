@@ -143,6 +143,14 @@ def test_catalog_macro_object_detail_expands_tables_and_dependencies(client, adm
     assert "RATE_GEO_COST" in [item["table_name"] for item in payload["tables"]]
     assert "RATE_OFFERING" in [item["depends_on_code"] for item in payload["dependencies"]]
     assert all(item["validated_by_datadict"] is True for item in payload["tables"])
+    assert payload["summary"] == {
+        "table_count": 4,
+        "dependency_count": 1,
+        "validated_table_count": 4,
+        "all_tables_validated": True,
+        "csvutil_table_count": 4,
+        "cutover_table_count": 4,
+    }
 
 
 def test_catalog_macro_object_tables_endpoint(client, admin_header):
