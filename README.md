@@ -45,7 +45,11 @@ The Load Plan Package Intake slice registers approved Rates CSV exports as
 backend-only Load Plan packages, preserving links to artifacts, manifests, and
 client-safe evidence without generating CSVUTIL or cutover readiness outputs.
 
+The Load Plan CSVUTIL Builder slice generates internal CTL/CL control artifacts
+from registered Load Plan packages, with manifest/evidence metadata, without
+executing CSVUTIL, connecting to OTM, or producing cutover readiness.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py
 python -m alembic upgrade head
 ```
