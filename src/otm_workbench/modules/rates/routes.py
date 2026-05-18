@@ -39,7 +39,7 @@ from otm_workbench.modules.rates.exports import (
     list_batch_export_artifacts,
     list_batch_export_evidence,
 )
-from otm_workbench.modules.rates.scenarios import list_rate_scenarios
+from otm_workbench.modules.rates.scenarios import get_rate_scenario, list_rate_scenarios
 from otm_workbench.modules.rates.validation import validate_rate_batch
 
 router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
@@ -88,12 +88,15 @@ class ApproveRateBatchRequest(BaseModel):
 
 
 def serialize_rate_batch(batch: RateBatch) -> dict[str, object]:
+    scenario = get_rate_scenario(batch.scenario_code)
     return {
         "id": batch.id,
         "project_id": batch.project_id,
         "environment_id": batch.environment_id,
         "profile_id": batch.profile_id,
         "scenario_code": batch.scenario_code,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "name": batch.name,
         "description": batch.description,
         "status": batch.status,
@@ -163,6 +166,8 @@ def list_rates_templates(user: User = Depends(require_user)):
             "code": scenario.code,
             "name": scenario.name,
             "description": scenario.description,
+            "catalog_macro_object_code": scenario.catalog_macro_object_code,
+            "catalog_load_plan_path": scenario.catalog_load_plan_path,
             "tables": scenario.tables,
             "required_tables": scenario.required_tables,
             "optional_tables": scenario.optional_tables,

@@ -2,16 +2,23 @@ from dataclasses import dataclass
 
 from otm_workbench.modules.rates.dictionary import RATES_LOAD_SEQUENCE
 
+RATE_RECORD_MACRO_OBJECT_CODE = "RATE_RECORD"
+
 
 @dataclass(frozen=True)
 class RateScenario:
     code: str
     name: str
     description: str
+    catalog_macro_object_code: str
     tables: list[str]
     required_tables: list[str]
     optional_tables: list[str]
     pre_existing_tables: list[str]
+
+    @property
+    def catalog_load_plan_path(self) -> str:
+        return f"/api/v1/catalog/macro-objects/{self.catalog_macro_object_code}/load-plan"
 
 
 SCENARIOS = [
@@ -19,6 +26,7 @@ SCENARIOS = [
         code="COMPLETE_TARIFF",
         name="Complete tariff",
         description="Rate offering plus rate geo, accessorial, and cost tables.",
+        catalog_macro_object_code=RATE_RECORD_MACRO_OBJECT_CODE,
         tables=RATES_LOAD_SEQUENCE,
         required_tables=["X_LANE", "RATE_GEO", "RATE_GEO_COST_GROUP", "RATE_GEO_COST"],
         optional_tables=[
@@ -38,6 +46,7 @@ SCENARIOS = [
         code="RATE_GEO_ONLY",
         name="Rate geo only",
         description="Rate records and costs when the offering exists or is handled separately.",
+        catalog_macro_object_code=RATE_RECORD_MACRO_OBJECT_CODE,
         tables=[
             "X_LANE",
             "RATE_GEO",
@@ -54,6 +63,7 @@ SCENARIOS = [
         code="ACCESSORIAL_ONLY",
         name="Accessorial only",
         description="Accessorial costs and relationships without a full rate geo package.",
+        catalog_macro_object_code=RATE_RECORD_MACRO_OBJECT_CODE,
         tables=["ACCESSORIAL_COST", "RATE_OFFERING_ACCESSORIAL", "RATE_GEO_ACCESSORIAL"],
         required_tables=["ACCESSORIAL_COST"],
         optional_tables=["RATE_OFFERING_ACCESSORIAL", "RATE_GEO_ACCESSORIAL"],
