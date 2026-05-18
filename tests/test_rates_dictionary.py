@@ -36,3 +36,24 @@ def test_sequence_reports_fk_dependencies_that_are_outside_sequence():
         and issue.parent_table_name == "RATE_GEO_COST_GROUP"
         for issue in result.issues
     )
+
+
+def test_rates_dictionary_table_api_returns_pk_and_date_columns(client, admin_header):
+    response = client.get("/api/v1/modules/rates/dictionary/tables/RATE_GEO_COST", headers=admin_header)
+
+    assert response.status_code == 200
+    assert response.json()["table_name"] == "RATE_GEO_COST"
+    assert response.json()["primary_key"] == ["RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST_SEQ"]
+    assert "ATTRIBUTE_DATE1" in response.json()["date_columns"]
+
+
+def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/rates/dictionary/validate-load-sequence",
+        json={"tables": ["RATE_GEO_COST"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["valid"] is False
+    assert any(item["parent_table_name"] == "RATE_GEO_COST_GROUP" for item in response.json()["issues"])
