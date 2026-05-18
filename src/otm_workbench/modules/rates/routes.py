@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.catalog.services import reference_options_payload
+from otm_workbench.catalog.services import reference_options_payload, serialize_table_definition
 from otm_workbench.models import (
     Artifact,
     AuditLog,
@@ -488,15 +488,9 @@ def get_rates_dictionary_table(
     user: User = Depends(require_user),
 ):
     definition = load_table_definition(Path(get_settings().otm_data_dictionary_root), table_name)
-    return {
-        "table_name": definition.table_name,
-        "schema_name": definition.schema_name,
-        "description": definition.description,
-        "primary_key": definition.primary_key,
-        "required_columns": definition.required_columns,
-        "date_columns": definition.date_columns,
-        "foreign_keys": [item.__dict__ for item in definition.foreign_keys],
-    }
+    payload = serialize_table_definition(definition)
+    payload["foreign_keys"] = [item.__dict__ for item in definition.foreign_keys]
+    return payload
 
 
 @router.post("/dictionary/validate-load-sequence")
