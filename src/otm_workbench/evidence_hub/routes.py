@@ -270,6 +270,7 @@ def create_archive_package(
     summary = {
         "source_entity_type": "evidence_hub_archive",
         "source_entity_id": artifact.id,
+        "evidence_ids": [item["id"] for item in evidence_index],
         "evidence_count": len(evidence_index),
         "artifact_ref_count": len(artifact_index),
         "manifest_ref_count": len(manifest_index),
