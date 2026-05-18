@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import RateBatch, RateBatchTable, ReferenceObject, User
+from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchTable, ReferenceObject, User
 from otm_workbench.modules.rates.batches import (
     add_rate_batch_tables,
     create_rate_batch,
@@ -20,6 +20,7 @@ from otm_workbench.modules.rates.dictionary import (
     validate_load_sequence,
 )
 from otm_workbench.modules.rates.scenarios import list_rate_scenarios
+from otm_workbench.modules.rates.validation import validate_rate_batch
 
 router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
 
@@ -88,6 +89,21 @@ def serialize_rate_batch_table(table: RateBatchTable) -> dict[str, object]:
         "requirement_level": table.requirement_level,
         "row_count": table.row_count,
         "status": table.status,
+    }
+
+
+def serialize_rate_batch_issue(issue: RateBatchIssue) -> dict[str, object]:
+    return {
+        "id": issue.id,
+        "batch_id": issue.batch_id,
+        "batch_table_id": issue.batch_table_id,
+        "batch_row_id": issue.batch_row_id,
+        "severity": issue.severity,
+        "issue_code": issue.issue_code,
+        "table_name": issue.table_name,
+        "column_name": issue.column_name,
+        "message": issue.message,
+        "details_json": issue.details_json,
     }
 
 
@@ -181,6 +197,47 @@ def add_rates_batch_tables(
         "batch_id": batch.id,
         "tables": [serialize_rate_batch_table(table) for table in tables],
     }
+
+
+@router.post("/batches/{batch_id}/validate")
+def validate_rates_batch(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    issues = validate_rate_batch(
+        db,
+        dictionary_root=Path(get_settings().otm_data_dictionary_root),
+        batch=batch,
+    )
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "valid": not any(issue.severity == "ERROR" for issue in issues),
+        "issues": [serialize_rate_batch_issue(issue) for issue in issues],
+    }
+
+
+@router.get("/batches/{batch_id}/issues")
+def list_rates_batch_issues(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    issues = (
+        db.query(RateBatchIssue)
+        .filter(RateBatchIssue.batch_id == batch.id)
+        .order_by(RateBatchIssue.severity, RateBatchIssue.issue_code)
+        .all()
+    )
+    items = [serialize_rate_batch_issue(issue) for issue in issues]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/dictionary/tables")
