@@ -35,6 +35,13 @@ class RatesCsvExportResult:
     tables: list[str]
 
 
+@dataclass(frozen=True)
+class RatesCsvExportBundle:
+    artifact: Artifact
+    evidence: Evidence
+    manifest: Manifest
+
+
 def ensure_exportable_batch(db: Session, batch: RateBatch) -> None:
     if batch.status not in {"VALIDATED", "EXPORT_PREVIEWED"}:
         raise ValueError("Rate batch must be validated before CSV export.")
@@ -249,3 +256,15 @@ def list_batch_export_artifacts(db: Session, batch_id: str) -> list[Artifact]:
         .order_by(Artifact.created_at.desc())
         .all()
     )
+
+
+def latest_batch_export_bundle(db: Session, batch_id: str) -> RatesCsvExportBundle | None:
+    for evidence in list_batch_export_evidence(db, batch_id):
+        if not evidence.artifact_id or not evidence.manifest_id:
+            continue
+        artifact = db.query(Artifact).filter(Artifact.id == evidence.artifact_id).first()
+        manifest = db.query(Manifest).filter(Manifest.id == evidence.manifest_id).first()
+        if artifact is None or manifest is None:
+            continue
+        return RatesCsvExportBundle(artifact=artifact, evidence=evidence, manifest=manifest)
+    return None
