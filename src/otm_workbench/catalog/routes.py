@@ -9,9 +9,14 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import User
 from otm_workbench.catalog.services import (
+    get_macro_object,
+    list_macro_objects,
+    macro_object_tables,
     reference_options_payload,
     safe_load_table,
     serialize_columns,
+    serialize_macro_object,
+    serialize_macro_object_table,
     serialize_table_definition,
     validate_column,
     validate_table,
@@ -76,6 +81,40 @@ def list_catalog_reference_options(
         profile_id=profile_id,
         can_view_all_domains=can_view_all_domains,
     )
+
+
+@router.get("/macro-objects")
+def list_catalog_macro_objects(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    items = [serialize_macro_object(db, item) for item in list_macro_objects(db, dictionary_root())]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/macro-objects/{macro_object_code}")
+def get_catalog_macro_object(
+    macro_object_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    macro = get_macro_object(db, dictionary_root(), macro_object_code)
+    if macro is None:
+        raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
+    return serialize_macro_object(db, macro, include_children=True)
+
+
+@router.get("/macro-objects/{macro_object_code}/tables")
+def list_catalog_macro_object_tables(
+    macro_object_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    macro = get_macro_object(db, dictionary_root(), macro_object_code)
+    if macro is None:
+        raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
+    items = [serialize_macro_object_table(row) for row in macro_object_tables(db, macro)]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.post("/validate/table")
