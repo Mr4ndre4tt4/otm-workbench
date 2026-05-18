@@ -113,3 +113,125 @@ def test_load_plan_review_decisions_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
     assert "load_plan_review_decisions" in tables
+
+
+def test_review_decision_updates_item_and_creates_evidence_audit_event(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "CONFIRMED", "decision_note": "Synthetic check accepted by reviewer"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["review_item_id"] == item["id"]
+    assert payload["package_id"] == package["id"]
+    assert payload["decision_status"] == "CONFIRMED"
+    assert payload["decision_note"] == "Synthetic check accepted by reviewer"
+    assert payload["decided_by"] == "admin@example.com"
+    updated_item = db_session.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item["id"]).one()
+    decision = db_session.query(LoadPlanReviewDecision).filter(LoadPlanReviewDecision.id == payload["id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == decision.evidence_id).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.review_queue.decide").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.review_queue.decided").one()
+    summary = json.loads(evidence.summary_json)
+    assert updated_item.status == "CONFIRMED"
+    assert evidence.evidence_type == "load_plan_review_decision"
+    assert evidence.client_safe is True
+    assert summary["decision_status"] == "CONFIRMED"
+    assert summary["decision_note_present"] is True
+    assert audit.target_id == item["id"]
+    assert event.aggregate_id == item["id"]
+    assert "Synthetic check accepted by reviewer" not in audit.metadata_json
+    assert "Synthetic check accepted by reviewer" not in event.payload_json
+
+
+def test_review_queue_list_and_detail_include_latest_decision(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    decision = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "NEEDS_MANUAL_ACTION", "decision_note": ""},
+        headers=admin_header,
+    ).json()
+
+    listed = client.get("/api/v1/modules/load-plan/review-queue", headers=admin_header)
+    detail = client.get(f"/api/v1/modules/load-plan/review-queue/{item['id']}", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert detail.status_code == 200
+    listed_item = listed.json()["items"][0]
+    assert listed_item["latest_decision_id"] == decision["id"]
+    assert listed_item["latest_decision_status"] == "NEEDS_MANUAL_ACTION"
+    assert listed_item["latest_decided_at"] == decision["decided_at"]
+    assert detail.json()["latest_decision_id"] == decision["id"]
+    assert detail.json()["latest_decision_status"] == "NEEDS_MANUAL_ACTION"
+
+
+def test_review_decision_rejects_invalid_status_without_changing_item(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "APPROVED_FOR_LOAD", "decision_note": "Invalid synthetic status"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    updated_item = db_session.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item["id"]).one()
+    assert updated_item.status == "PENDING_REVIEW"
+    assert db_session.query(LoadPlanReviewDecision).count() == 0
+
+
+def test_review_decision_rejects_missing_item(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/review-queue/missing_item/decide",
+        json={"decision_status": "CONFIRMED", "decision_note": ""},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_review_decision_records_history_when_item_is_decided_again(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+
+    first = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "REJECTED", "decision_note": "First synthetic review"},
+        headers=admin_header,
+    )
+    second = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "EXCLUDED_FROM_CUTOVER", "decision_note": "Second synthetic review"},
+        headers=admin_header,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["id"] != second.json()["id"]
+    assert db_session.query(LoadPlanReviewDecision).count() == 2
+    updated_item = db_session.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item["id"]).one()
+    assert updated_item.status == "EXCLUDED_FROM_CUTOVER"
+    detail = client.get(f"/api/v1/modules/load-plan/review-queue/{item['id']}", headers=admin_header)
+    assert detail.json()["latest_decision_id"] == second.json()["id"]
+    assert detail.json()["latest_decision_status"] == "EXCLUDED_FROM_CUTOVER"
+
+
+def test_review_decision_evidence_tracks_note_presence_without_copying_note(client, admin_header, db_session):
+    package, analysis, item = create_review_item(client, admin_header, db_session)
+    note = "Do not copy this synthetic note into client-safe metadata"
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/{item['id']}/decide",
+        json={"decision_status": "CONFIRMED", "decision_note": note},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    decision = db_session.query(LoadPlanReviewDecision).filter(LoadPlanReviewDecision.id == response.json()["id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == decision.evidence_id).one()
+    summary = json.loads(evidence.summary_json)
+    assert summary["decision_note_present"] is True
+    assert note not in evidence.summary_json

@@ -15,8 +15,10 @@ from otm_workbench.modules.load_plan.packages import (
     serialize_load_plan_package,
 )
 from otm_workbench.modules.load_plan.review_queue import (
+    decide_review_item,
     generate_review_queue_from_zip_analysis,
-    serialize_review_item,
+    serialize_review_decision,
+    serialize_review_item_with_latest_decision,
 )
 from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
@@ -29,6 +31,11 @@ class CsvutilBuildRequest(BaseModel):
 
 class ZipAnalysisRequest(BaseModel):
     package_id: str
+
+
+class ReviewDecisionRequest(BaseModel):
+    decision_status: str
+    decision_note: str = ""
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -201,7 +208,30 @@ def list_review_queue_items(
     if zip_analysis_id:
         query = query.filter(LoadPlanReviewItem.zip_analysis_id == zip_analysis_id)
     items = query.order_by(LoadPlanReviewItem.created_at.desc()).all()
-    return PageResponse(items=[serialize_review_item(item) for item in items], total=len(items))
+    return PageResponse(items=[serialize_review_item_with_latest_decision(db, item) for item in items], total=len(items))
+
+
+@router.post("/review-queue/{item_id}/decide")
+def decide_review_queue_item(
+    item_id: str,
+    payload: ReviewDecisionRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    try:
+        decision = decide_review_item(
+            db,
+            item=item,
+            decision_status=payload.decision_status,
+            decision_note=payload.decision_note,
+            decided_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_review_decision(db, decision)
 
 
 @router.get("/review-queue/{item_id}")
@@ -213,4 +243,4 @@ def get_review_queue_item(
     item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
     if item is None:
         raise HTTPException(status_code=404, detail="Review queue item not found.")
-    return serialize_review_item(item)
+    return serialize_review_item_with_latest_decision(db, item)
