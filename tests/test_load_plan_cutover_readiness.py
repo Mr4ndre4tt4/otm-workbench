@@ -107,3 +107,33 @@ def test_load_plan_cutover_readiness_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
     assert "load_plan_cutover_readiness" in tables
+
+
+def test_cutover_readiness_generate_rejects_missing_package(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": "missing_package"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+
+
+def test_cutover_readiness_missing_sequence_snapshot(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-readiness/generate",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["package_count"] == 1
+    item = payload["items"][0]
+    assert item["package_id"] == package["id"]
+    assert item["sequence_snapshot_id"] is None
+    assert item["status"] == "MISSING_SEQUENCE"
+    assert item["blockers"][0]["code"] == "SEQUENCE_SNAPSHOT_MISSING"
+    assert "generate_sequence_snapshot" in payload["summary"]["next_actions"]
