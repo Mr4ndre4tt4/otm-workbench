@@ -118,3 +118,77 @@ def test_review_queue_generation_returns_zero_items_for_clean_zip_analysis(clien
     assert payload["existing_count"] == 0
     assert payload["items"] == []
     assert db_session.query(LoadPlanReviewItem).count() == 0
+
+
+def test_review_queue_generation_creates_item_for_unknown_column(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_unknown_column(db_session, export)
+    analysis = create_zip_analysis(client, admin_header, package)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["created_count"] == 1
+    assert payload["existing_count"] == 0
+    item = payload["items"][0]
+    assert item["source_type"] == "zip_analysis_finding"
+    assert item["source_code"] == "CSV_UNKNOWN_COLUMN"
+    assert item["severity"] == "ERROR"
+    assert item["status"] == "PENDING_REVIEW"
+    assert item["category"] == "DATA_DICTIONARY"
+    assert item["table_name"] == "ACCESSORIAL_COST"
+    assert item["file_name"] == "csv/001_ACCESSORIAL_COST.csv"
+    assert item["title"] == "Unknown OTM Data Dictionary column"
+    assert item["details"] == {"column_name": "SYNTHETIC_UNKNOWN_COLUMN"}
+    assert "DEMO" not in json.dumps(payload)
+    assert "OTM1.ACC_COST_001" not in json.dumps(payload)
+    assert db_session.query(LoadPlanReviewItem).count() == 1
+
+
+def test_review_queue_generation_is_idempotent_for_same_analysis(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_unknown_column(db_session, export)
+    analysis = create_zip_analysis(client, admin_header, package)
+
+    first = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+    second = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["created_count"] == 1
+    assert second.json()["created_count"] == 0
+    assert second.json()["existing_count"] == 1
+    assert first.json()["items"][0]["id"] == second.json()["items"][0]["id"]
+    assert db_session.query(LoadPlanReviewItem).count() == 1
+
+
+def test_review_queue_generation_creates_audit_and_event(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_unknown_column(db_session, export)
+    analysis = create_zip_analysis(client, admin_header, package)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.review_queue.generate_from_zip_analysis").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.review_queue.generated").one()
+    assert audit.target_id == analysis["id"]
+    assert event.aggregate_id == analysis["id"]
+    assert event.status == "PENDING"
+    assert "OTM1.ACC_COST_001" not in audit.metadata_json
+    assert "OTM1.ACC_COST_001" not in event.payload_json
+    assert "DEMO" not in audit.metadata_json
+    assert "DEMO" not in event.payload_json
