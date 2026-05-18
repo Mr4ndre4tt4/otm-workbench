@@ -83,7 +83,12 @@ as internal ZIP artifacts with `manifest.json`, `readiness.json`, and
 not provide a download endpoint, execute CSVUTIL, connect to OTM, or transition
 package status.
 
+The Evidence Hub Index slice adds backend-only list/detail APIs for client-safe
+evidence across modules, including linked artifact and manifest summaries. It
+does not download artifacts, build archive packages, expose filesystem paths, or
+return full manifest payloads.
+
 ```powershell
-python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py tests/test_load_plan_sequence_blockers.py tests/test_load_plan_cutover_readiness.py tests/test_load_plan_readiness_export.py
+python -m pytest tests/test_reference_catalog.py tests/test_rates_dictionary.py tests/test_rates_csv_preview.py tests/test_rates_batch_approval.py tests/test_load_plan_package_intake.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py tests/test_load_plan_sequence_blockers.py tests/test_load_plan_cutover_readiness.py tests/test_load_plan_readiness_export.py tests/test_evidence_hub_index.py
 python -m alembic upgrade head
 ```
