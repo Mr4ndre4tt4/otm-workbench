@@ -152,3 +152,67 @@ def test_free_text_policy_accepts_missing_value(db_session):
     assert result.valid is True
     assert result.severity == "INFO"
     assert result.policy == "FREE_TEXT"
+
+
+def test_reference_import_and_options_api_filters_domains(client, admin_header):
+    imported = client.post(
+        "/api/v1/reference/import-batches",
+        json={
+            "source_type": "json",
+            "source_description": "synthetic seed",
+            "records": [
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "PUBLIC.RS_STD",
+                    "xid": "RS_STD",
+                    "domain_name": "PUBLIC",
+                    "display_name": "Standard",
+                },
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "OTM1.RS_EXP",
+                    "xid": "RS_EXP",
+                    "domain_name": "OTM1",
+                    "display_name": "Express",
+                },
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "OTM2.RS_OTHER",
+                    "xid": "RS_OTHER",
+                    "domain_name": "OTM2",
+                    "display_name": "Other",
+                },
+            ],
+        },
+        headers=admin_header,
+    )
+    assert imported.status_code == 200
+    assert imported.json()["records_inserted"] == 3
+
+    response = client.get(
+        "/api/v1/reference/options?object_type=RATE_SERVICE&domain_name=OTM1",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert [item["gid"] for item in response.json()["items"]] == [
+        "PUBLIC.RS_STD",
+        "OTM1.RS_EXP",
+    ]
+
+
+def test_reference_validate_api_uses_policy(client, admin_header):
+    response = client.post(
+        "/api/v1/reference/validate",
+        json={
+            "module_id": "rates",
+            "field_name": "currency_gid",
+            "value": "OTM1.MISSING",
+            "domain_name": "OTM1",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["valid"] is False
+    assert response.json()["severity"] == "ERROR"
