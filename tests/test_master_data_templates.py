@@ -380,3 +380,70 @@ def test_master_data_batch_build_output_creates_output_records(client, admin_hea
     rows_by_table = {row.target_table: row for row in rows}
     assert rows_by_table["REGION"].record_index == 1
     assert '"REGION_XID": "REGION_001"' in rows_by_table["REGION"].payload_json
+
+
+def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header, db_session):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/build-csv",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["status"] == "CSV_BUILT"
+    assert payload["csv_file_count"] == 2
+    assert payload["files"][0]["table_name"] == "REGION"
+    assert payload["files"][0]["file_name"] == "001_REGION.csv"
+    assert payload["files"][0]["row_count"] == 1
+    assert payload["files"][0]["content"].splitlines() == [
+        "REGION",
+        "REGION_GID,REGION_NAME,REGION_XID",
+        "SYN.REGION_001,Synthetic Region,REGION_001",
+    ]
+    assert payload["files"][1]["table_name"] == "REGION_DETAIL"
+    assert payload["files"][1]["file_name"] == "002_REGION_DETAIL.csv"
+    assert payload["files"][1]["content"].splitlines() == [
+        "REGION_DETAIL",
+        "LOCATION_GID,REGION_GID",
+        "SYN.LOCATION_001,SYN.REGION_001",
+    ]
+
+    rows = db_session.execute(
+        text(
+            "select table_name, file_name, row_count, content "
+            "from master_data_csv_files where batch_id = :batch_id order by file_name"
+        ),
+        {"batch_id": batch_id},
+    ).all()
+    assert len(rows) == 2
+    assert rows[0].table_name == "REGION"
+    assert rows[0].file_name == "001_REGION.csv"
+    assert rows[0].row_count == 1
+    assert rows[0].content.startswith("REGION\nREGION_GID,REGION_NAME,REGION_XID")

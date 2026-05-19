@@ -8,6 +8,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import MasterDataBatch, MasterDataTemplate, User
 from otm_workbench.modules.master_data.templates import (
+    build_master_data_csv_files,
     build_master_data_template_workbook,
     build_master_data_output_records,
     map_master_data_batch_to_canonical_records,
@@ -167,5 +168,25 @@ def build_master_data_batch_output(
             409,
             "MASTER_DATA_BATCH_OUTPUT_NOT_READY",
             "Master Data batch is not ready for output record generation.",
+            details={"error": str(exc)},
+        ) from exc
+
+
+@router.post("/batches/{batch_id}/build-csv")
+def build_master_data_batch_csv(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    try:
+        return build_master_data_csv_files(db, batch, dictionary_root())
+    except ValueError as exc:
+        raise api_error(
+            409,
+            "MASTER_DATA_BATCH_CSV_NOT_READY",
+            "Master Data batch is not ready for CSV generation.",
             details={"error": str(exc)},
         ) from exc

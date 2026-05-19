@@ -282,6 +282,18 @@ class MasterDataOutputRecord(Base, TimestampMixin):
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
 
 
+class MasterDataCsvFile(Base, TimestampMixin):
+    __tablename__ = "master_data_csv_files"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("master_data_batches.id"), index=True)
+    template_code: Mapped[str] = mapped_column(String, index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    file_name: Mapped[str] = mapped_column(String)
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[str] = mapped_column(Text, default="")
+
+
 class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 

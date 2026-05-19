@@ -11,9 +11,11 @@ from otm_workbench.models import (
     Artifact,
     MasterDataBatch,
     MasterDataCanonicalRecord,
+    MasterDataCsvFile,
     MasterDataOutputRecord,
     MasterDataTemplate,
 )
+from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.platform.services import file_sha256
 
 
@@ -409,4 +411,60 @@ def build_master_data_output_records(
         "status": batch.status,
         "output_record_count": len(response_records),
         "records": response_records,
+    }
+
+
+def build_master_data_csv_files(
+    db: Session,
+    batch: MasterDataBatch,
+    dictionary_root: Path,
+) -> dict[str, object]:
+    if batch.status != "OUTPUT_BUILT":
+        raise ValueError("Only output-built Master Data batches can build CSV files.")
+
+    db.query(MasterDataCsvFile).filter(MasterDataCsvFile.batch_id == batch.id).delete()
+    output_records = (
+        db.query(MasterDataOutputRecord)
+        .filter(MasterDataOutputRecord.batch_id == batch.id)
+        .order_by(MasterDataOutputRecord.created_at, MasterDataOutputRecord.record_index)
+        .all()
+    )
+    records_by_table: dict[str, list[dict[str, object]]] = {}
+    for output_record in output_records:
+        records_by_table.setdefault(output_record.target_table, []).append(
+            json.loads(output_record.payload_json)
+        )
+
+    response_files = []
+    for index, table_name in enumerate(records_by_table, start=1):
+        rows = records_by_table[table_name]
+        columns = sorted({column for row in rows for column in row})
+        content = build_otm_csv_preview(dictionary_root, table_name, columns, rows)
+        file_name = f"{index:03d}_{table_name}.csv"
+        csv_file = MasterDataCsvFile(
+            batch_id=batch.id,
+            template_code=batch.template_code,
+            table_name=table_name,
+            file_name=file_name,
+            row_count=len(rows),
+            content=content,
+        )
+        db.add(csv_file)
+        response_files.append(
+            {
+                "table_name": table_name,
+                "file_name": file_name,
+                "row_count": len(rows),
+                "content": content,
+            }
+        )
+
+    batch.status = "CSV_BUILT"
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "csv_file_count": len(response_files),
+        "files": response_files,
     }
