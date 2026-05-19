@@ -103,6 +103,9 @@ def test_rates_validate_load_sequence_rejects_non_rates_catalog_macro_object(cli
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert payload["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert payload["details"] == {"catalog_macro_object_code": "LOCATION"}
     assert payload["catalog_macro_object_code"] == "LOCATION"
     assert payload["valid"] is False
     assert payload["known_tables"] == []

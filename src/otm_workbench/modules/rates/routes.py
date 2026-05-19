@@ -43,6 +43,27 @@ from otm_workbench.modules.rates.scenarios import get_rate_scenario, list_rate_s
 from otm_workbench.modules.rates.validation import validate_rate_batch
 
 router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
+UNSUPPORTED_RATES_CATALOG_CODE = "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+UNSUPPORTED_RATES_CATALOG_MESSAGE = "Catalog macro-object is outside the Rates module sequence."
+
+
+def is_unsupported_rates_catalog_macro_object(catalog_macro_object_code: str | None) -> bool:
+    return bool(catalog_macro_object_code and catalog_macro_object_code != "RATE_RECORD")
+
+
+def unsupported_rates_catalog_payload(catalog_macro_object_code: str) -> dict[str, object]:
+    return {
+        "code": UNSUPPORTED_RATES_CATALOG_CODE,
+        "message": UNSUPPORTED_RATES_CATALOG_MESSAGE,
+        "details": {"catalog_macro_object_code": catalog_macro_object_code},
+    }
+
+
+def unsupported_rates_catalog_error(catalog_macro_object_code: str) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail=unsupported_rates_catalog_payload(catalog_macro_object_code),
+    )
 
 
 class LoadSequenceRequest(BaseModel):
@@ -574,8 +595,9 @@ def validate_rates_load_sequence(
     payload: LoadSequenceRequest,
     user: User = Depends(require_user),
 ):
-    if payload.catalog_macro_object_code and payload.catalog_macro_object_code != "RATE_RECORD":
+    if is_unsupported_rates_catalog_macro_object(payload.catalog_macro_object_code):
         return {
+            **unsupported_rates_catalog_payload(payload.catalog_macro_object_code),
             "catalog_macro_object_code": payload.catalog_macro_object_code,
             "valid": False,
             "known_tables": [],
@@ -585,7 +607,7 @@ def validate_rates_load_sequence(
                     "severity": "ERROR",
                     "table_name": payload.tables[0] if payload.tables else None,
                     "parent_table_name": None,
-                    "message": "Catalog macro-object is outside the Rates module sequence.",
+                    "message": UNSUPPORTED_RATES_CATALOG_MESSAGE,
                 }
             ],
         }
@@ -625,7 +647,8 @@ def list_rates_reference_options(
     )
     if catalog_macro_object_code:
         payload["catalog_macro_object_code"] = catalog_macro_object_code
-        if catalog_macro_object_code != "RATE_RECORD":
+        if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
+            payload.update(unsupported_rates_catalog_payload(catalog_macro_object_code))
             payload["items"] = []
     return payload
 
@@ -663,7 +686,8 @@ def list_rate_offerings(
     payload = PageResponse(items=items, total=len(items)).model_dump()
     if catalog_macro_object_code:
         payload["catalog_macro_object_code"] = catalog_macro_object_code
-        if catalog_macro_object_code != "RATE_RECORD":
+        if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
+            payload.update(unsupported_rates_catalog_payload(catalog_macro_object_code))
             payload["items"] = []
             payload["total"] = 0
     return payload
@@ -700,6 +724,8 @@ def check_rate_offering_duplicate(
     }
     if payload.catalog_macro_object_code:
         response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+        if is_unsupported_rates_catalog_macro_object(payload.catalog_macro_object_code):
+            response.update(unsupported_rates_catalog_payload(payload.catalog_macro_object_code))
     return response
 
 
@@ -708,8 +734,8 @@ def preview_rates_csv(
     payload: CsvPreviewRequest,
     user: User = Depends(require_user),
 ):
-    if payload.catalog_macro_object_code and payload.catalog_macro_object_code != "RATE_RECORD":
-        raise HTTPException(status_code=400, detail="Catalog macro-object is outside the Rates module sequence.")
+    if is_unsupported_rates_catalog_macro_object(payload.catalog_macro_object_code):
+        raise unsupported_rates_catalog_error(payload.catalog_macro_object_code)
     content = build_otm_csv_preview(
         Path(get_settings().otm_data_dictionary_root),
         payload.table_name,

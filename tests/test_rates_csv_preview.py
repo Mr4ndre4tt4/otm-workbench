@@ -90,4 +90,6 @@ def test_csv_preview_api_rejects_non_rates_catalog_macro_object(client, admin_he
     )
 
     assert response.status_code == 400
+    assert response.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
     assert response.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert response.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
