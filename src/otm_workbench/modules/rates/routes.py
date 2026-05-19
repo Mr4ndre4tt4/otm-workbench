@@ -160,7 +160,10 @@ def serialize_evidence(evidence: Evidence) -> dict[str, object]:
 
 
 @router.get("/templates")
-def list_rates_templates(user: User = Depends(require_user)):
+def list_rates_templates(
+    catalog_macro_object_code: str | None = None,
+    user: User = Depends(require_user),
+):
     items = [
         {
             "code": scenario.code,
@@ -175,6 +178,12 @@ def list_rates_templates(user: User = Depends(require_user)):
         }
         for scenario in list_rate_scenarios()
     ]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["catalog_macro_object_code"] == catalog_macro_object_code
+        ]
     return PageResponse(items=items, total=len(items))
 
 

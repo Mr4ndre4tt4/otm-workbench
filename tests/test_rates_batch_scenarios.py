@@ -45,6 +45,33 @@ def test_rates_templates_include_catalog_context(client, admin_header):
     )
 
 
+def test_rates_templates_filter_by_catalog_macro_object(client, admin_header):
+    listed = client.get("/api/v1/modules/rates/templates", headers=admin_header)
+    catalog_matched = client.get(
+        "/api/v1/modules/rates/templates",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/rates/templates",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
+    assert listed.json()["total"] == 3
+    assert catalog_matched.json()["total"] == 3
+    assert [item["code"] for item in catalog_matched.json()["items"]] == [
+        "COMPLETE_TARIFF",
+        "RATE_GEO_ONLY",
+        "ACCESSORIAL_ONLY",
+    ]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
+
+
 def test_created_rate_batch_includes_catalog_context(client, admin_header):
     response = client.post(
         "/api/v1/modules/rates/batches",
