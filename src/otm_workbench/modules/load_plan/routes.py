@@ -373,6 +373,10 @@ def list_readiness_exports(
     exports = query.order_by(LoadPlanReadinessExport.exported_at.desc()).all()
     items = [serialize_readiness_export(export) for export in exports]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items
