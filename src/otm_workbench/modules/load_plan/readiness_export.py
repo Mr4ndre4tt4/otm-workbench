@@ -54,6 +54,15 @@ def serialize_readiness_export(export: LoadPlanReadinessExport) -> dict[str, obj
     }
 
 
+def catalog_context_for_readiness(readiness: LoadPlanCutoverReadiness) -> dict[str, object]:
+    summary = parse_json_object(readiness.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def generate_readiness_export(
     db: Session,
     *,
@@ -70,6 +79,7 @@ def generate_readiness_export(
 
     readiness_payload = serialize_cutover_readiness(readiness)
     blockers_payload = parse_json_list(readiness.blockers_json)
+    catalog_context = catalog_context_for_readiness(readiness)
     summary_payload = {
         "source_entity_type": "load_plan_cutover_readiness",
         "source_entity_id": readiness.id,
@@ -78,6 +88,7 @@ def generate_readiness_export(
         "blocker_count": len(blockers_payload),
         "exported_at": generated_at,
         "exported_by": exported_by,
+        **catalog_context,
     }
 
     readiness_content = json_bytes(readiness_payload)
@@ -90,6 +101,7 @@ def generate_readiness_export(
         "source_entity_id": readiness.id,
         "package_id": readiness.package_id,
         "readiness_status": readiness.status,
+        **catalog_context,
         "files": [
             entry_metadata("readiness.json", readiness_content),
             entry_metadata("blockers.json", blockers_content),
@@ -136,6 +148,7 @@ def generate_readiness_export(
         "readiness_status": readiness.status,
         "artifact_type": "load_plan_readiness_export_zip",
         "blocker_count": len(blockers_payload),
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=readiness.project_id,
