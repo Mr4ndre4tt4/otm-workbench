@@ -78,6 +78,8 @@ def test_export_creates_zip_with_manifest_and_csv(client, admin_header):
     payload = response.json()
     zip_path = Path(payload["file_path"])
     assert zip_path.exists()
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert payload["file_name"].endswith(".zip")
     assert payload["tables"] == ["ACCESSORIAL_COST"]
 
