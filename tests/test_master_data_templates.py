@@ -52,9 +52,9 @@ def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_hea
                     "data_type": "string",
                 },
                 {
-                    "name": "description",
-                    "label": "Description",
-                    "target_column": "DESCRIPTION",
+                    "name": "region_name",
+                    "label": "Region Name",
+                    "target_column": "REGION_NAME",
                     "required": False,
                     "data_type": "string",
                 },
@@ -82,3 +82,20 @@ def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_hea
             ],
         },
     ]
+
+
+def test_master_data_template_validation_uses_catalog_dictionary(client, admin_header):
+    response = client.post("/api/v1/modules/master-data/templates/REGIONS_BASIC/validate", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "REGIONS_BASIC"
+    assert payload["valid"] is True
+    assert payload["severity"] == "INFO"
+    assert payload["issues"] == []
+    assert payload["summary"] == {
+        "sheet_count": 2,
+        "field_count": 5,
+        "validated_table_count": 2,
+        "validated_column_count": 5,
+    }

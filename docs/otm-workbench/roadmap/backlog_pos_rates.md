@@ -364,7 +364,7 @@ Artifacts + Evidence
 5. API de list/detail de templates. [ENTREGUE MVP0 inicial]
 6. Template Builder para gerar Excel.
 7. Batch upload/parse.
-8. Validacao estrutural e de relacionamento.
+8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas e colunas]
 9. Mapping Engine basico.
 10. Geracao de output records.
 11. Geracao de CSVs.
