@@ -366,7 +366,7 @@ Artifacts + Evidence
 7. Batch upload/parse. [INICIADO com upload XLSX, parse por sheet e persistencia em master_data_batches]
 8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas/colunas e issues estruturais de workbook]
 9. Mapping Engine basico. [INICIADO com mapeamento de batch PARSED para canonical records por target_column]
-10. Geracao de output records.
+10. Geracao de output records. [INICIADO com materializacao de canonical records em master_data_output_records]
 11. Geracao de CSVs.
 12. ZIP + MANIFEST.json.
 13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template]

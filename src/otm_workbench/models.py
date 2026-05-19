@@ -271,6 +271,17 @@ class MasterDataCanonicalRecord(Base, TimestampMixin):
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
 
 
+class MasterDataOutputRecord(Base, TimestampMixin):
+    __tablename__ = "master_data_output_records"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("master_data_batches.id"), index=True)
+    template_code: Mapped[str] = mapped_column(String, index=True)
+    target_table: Mapped[str] = mapped_column(String, index=True)
+    record_index: Mapped[int] = mapped_column(Integer)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
 class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 
