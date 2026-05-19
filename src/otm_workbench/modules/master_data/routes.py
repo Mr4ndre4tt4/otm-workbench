@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
@@ -9,6 +9,7 @@ from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import MasterDataTemplate, User
 from otm_workbench.modules.master_data.templates import (
     build_master_data_template_workbook,
+    parse_master_data_template_workbook,
     seed_master_data_templates,
     serialize_master_data_template,
     validate_master_data_template,
@@ -82,3 +83,39 @@ def build_master_data_template_workbook_endpoint(
             details=validation,
         )
     return build_master_data_template_workbook(db, template, Path(get_settings().artifact_root))
+
+
+@router.post("/templates/{template_code}/batches")
+def create_master_data_batch_from_workbook(
+    template_code: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_master_data_templates(db)
+    template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == template_code.upper()).first()
+    if template is None:
+        raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
+    validation = validate_master_data_template(template, dictionary_root())
+    if not validation["valid"]:
+        raise api_error(
+            409,
+            "MASTER_DATA_TEMPLATE_INVALID",
+            "Master Data template must be valid before batch parsing.",
+            details=validation,
+        )
+    try:
+        return parse_master_data_template_workbook(
+            db,
+            template,
+            file.file,
+            file.filename or "master_data_upload.xlsx",
+            file.content_type or "application/octet-stream",
+        )
+    except (KeyError, ValueError) as exc:
+        raise api_error(
+            422,
+            "MASTER_DATA_WORKBOOK_INVALID",
+            "Uploaded workbook does not match the template.",
+            details={"error": str(exc)},
+        ) from exc

@@ -1,6 +1,9 @@
+from io import BytesIO
 from pathlib import Path
 
+from openpyxl import Workbook
 from openpyxl import load_workbook
+from sqlalchemy import text
 
 from otm_workbench.models import Artifact
 
@@ -133,3 +136,55 @@ def test_master_data_template_build_workbook_creates_artifact(client, admin_head
     assert workbook.sheetnames == ["REGIONS", "REGION_DETAILS"]
     assert [cell.value for cell in workbook["REGIONS"][1]] == ["Region GID", "Region XID", "Region Name"]
     assert [cell.value for cell in workbook["REGION_DETAILS"][1]] == ["Region GID", "Location GID"]
+
+
+def test_master_data_template_batch_upload_parses_workbook(client, admin_header, db_session):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "REGIONS_BASIC"
+    assert payload["status"] == "PARSED"
+    assert payload["file_name"] == "regions_basic_upload.xlsx"
+    assert payload["sheet_count"] == 2
+    assert payload["row_count"] == 2
+    assert payload["issue_count"] == 0
+    assert payload["sheet_summaries"] == [
+        {"sheet_code": "REGIONS", "target_table": "REGION", "row_count": 1},
+        {"sheet_code": "REGION_DETAILS", "target_table": "REGION_DETAIL", "row_count": 1},
+    ]
+
+    row = db_session.execute(
+        text(
+            "select template_code, status, file_name, row_count, issue_count "
+            "from master_data_batches where id = :batch_id"
+        ),
+        {"batch_id": payload["batch_id"]},
+    ).one()
+    assert row.template_code == "REGIONS_BASIC"
+    assert row.status == "PARSED"
+    assert row.file_name == "regions_basic_upload.xlsx"
+    assert row.row_count == 2
+    assert row.issue_count == 0
