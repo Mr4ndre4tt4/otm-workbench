@@ -133,9 +133,17 @@ def test_readiness_export_creates_zip_artifact_manifest_evidence_audit_event(
     assert evidence.evidence_type == "load_plan_readiness_export"
     assert evidence.client_safe is True
     evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
         evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit.target_id == export.id
