@@ -361,6 +361,10 @@ def test_rate_offerings_filter_by_catalog_macro_object(client, admin_header):
     assert catalog_matched.json()["total"] == 1
     assert catalog_matched.json()["items"][0]["gid"] == "OTM1.RO_STD"
     assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        catalog_matched.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
     assert catalog_unmatched.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
