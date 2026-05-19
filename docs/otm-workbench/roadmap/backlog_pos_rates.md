@@ -254,6 +254,7 @@ Ja existe uma fundacao minima:
 - Catalog Core reference options e validate/reference ja consomem Active Context quando domain_name nao e informado;
 - Project Setup Status basico disponivel em GET /api/v1/platform/projects/{project_id}/setup-status;
 - Effective Capabilities basico disponivel em GET /api/v1/platform/active-context/capabilities;
+- Navigation Contract ja filtra module.required_capability usando capabilities efetivas do projeto ativo;
 - Role e Capability basicos;
 - FeatureFlag;
 - Module Registry;
@@ -271,7 +272,7 @@ Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
 - feature flags com escopo GLOBAL/PROJECT/PROFILE/USER/MODULE;
 - APIs admin endurecidas;
 - audit log para mudancas administrativas;
-- bloqueio backend para modulo admin/dev-only por role/capability/flag.
+- bloqueio backend para endpoints funcionais por role/capability/flag.
 ```
 
 ### Ajustes recomendados no documento antes de virar spec executavel

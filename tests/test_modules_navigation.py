@@ -1,3 +1,6 @@
+from otm_workbench.models import Capability, Role, RoleCapability, SessionToken, UserProjectRole
+
+
 def test_modules_endpoint_returns_registered_master_data(client, admin_header):
     response = client.get("/api/v1/platform/modules", headers=admin_header)
 
@@ -41,3 +44,43 @@ def test_modules_endpoint_returns_catalog_core_module(client, admin_header):
     assert response.status_code == 200
     module_ids = [item["id"] for item in response.json()["items"]]
     assert "catalog" in module_ids
+
+
+def test_navigation_filters_required_capability_by_active_project(client, admin_header, auth_header, db_session):
+    hidden = client.get("/api/v1/platform/navigation", headers=auth_header)
+    assert hidden.status_code == 200
+    assert "rates" not in [item["id"] for item in hidden.json()["items"]]
+
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rollout"},
+        headers=admin_header,
+    ).json()
+    user_token = auth_header["Authorization"].split(" ", 1)[1]
+    user_id = db_session.get(SessionToken, user_token).user_id
+    role = Role(name="Rates Viewer")
+    capability = Capability(name="rates.reference.view")
+    db_session.add_all([role, capability])
+    db_session.flush()
+    db_session.add_all(
+        [
+            RoleCapability(role_id=role.id, capability_id=capability.id),
+            UserProjectRole(user_id=user_id, project_id=project["id"], role_id=role.id),
+        ]
+    )
+    db_session.commit()
+    active_context = client.post(
+        "/api/v1/platform/active-context",
+        json={"project_id": project["id"], "domain_name": "otm1"},
+        headers=auth_header,
+    )
+    visible = client.get("/api/v1/platform/navigation", headers=auth_header)
+
+    assert active_context.status_code == 200
+    assert visible.status_code == 200
+    assert "rates" in [item["id"] for item in visible.json()["items"]]
