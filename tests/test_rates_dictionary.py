@@ -76,9 +76,16 @@ def test_rates_dictionary_tables_filter_by_catalog_macro_object(client, admin_he
     assert catalog_unmatched.status_code == 200
     assert listed.json()["total"] == len(RATES_LOAD_SEQUENCE)
     assert catalog_matched.json()["total"] == len(RATES_LOAD_SEQUENCE)
+    assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        catalog_matched.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert catalog_matched.json()["items"][0]["table_name"] == RATES_LOAD_SEQUENCE[0]
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
 
 
 def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_header):

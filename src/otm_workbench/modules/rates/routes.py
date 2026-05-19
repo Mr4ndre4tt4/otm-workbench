@@ -574,9 +574,18 @@ def list_rates_dictionary_tables(
     user: User = Depends(require_user),
 ):
     items = [{"table_name": item} for item in RATES_LOAD_SEQUENCE]
-    if catalog_macro_object_code and catalog_macro_object_code != "RATE_RECORD":
-        items = []
-    return PageResponse(items=items, total=len(items))
+    payload = PageResponse(items=items, total=len(items)).model_dump()
+    scenario = get_rate_scenario("complete_tariff")
+    if catalog_macro_object_code and catalog_macro_object_code != scenario.catalog_macro_object_code:
+        payload.update(unsupported_rates_catalog_payload(catalog_macro_object_code))
+        payload["catalog_macro_object_code"] = catalog_macro_object_code
+        payload["items"] = []
+        payload["total"] = 0
+        return payload
+    if catalog_macro_object_code:
+        payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
+    return payload
 
 
 @router.get("/dictionary/tables/{table_name}")
