@@ -304,6 +304,9 @@ def test_rates_reference_options_filter_by_catalog_macro_object(client, admin_he
         "PUBLIC.RS_STD",
         "OTM1.RS_EXP",
     ]
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert catalog_unmatched.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert catalog_unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
     assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
     assert catalog_unmatched.json()["items"] == []
 
@@ -356,6 +359,9 @@ def test_rate_offerings_filter_by_catalog_macro_object(client, admin_header):
     assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert catalog_unmatched.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert catalog_unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
     assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
 
 
@@ -434,6 +440,9 @@ def test_rate_offering_duplicate_check_returns_warning(client, admin_header):
     )
 
     assert non_rates_response.status_code == 200
+    assert non_rates_response.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert non_rates_response.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert non_rates_response.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
     assert non_rates_response.json()["catalog_macro_object_code"] == "LOCATION"
     assert non_rates_response.json()["severity"] == "INFO"
     assert non_rates_response.json()["candidates"] == []
