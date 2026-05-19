@@ -457,6 +457,10 @@ def list_csvutil_builds(
     builds = db.query(CsvutilBuild).order_by(CsvutilBuild.created_at.desc()).all()
     items = [serialize_csvutil_build(build) for build in builds]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items

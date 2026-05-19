@@ -212,6 +212,10 @@ def test_csvutil_build_list_and_detail(client, admin_header):
     assert catalog_matched.json()["items"][0]["id"] == created["id"]
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_CATALOG_MACRO_OBJECT"
+    assert catalog_unmatched.json()["message"] == "Catalog macro-object is outside the Load Plan package scope."
+    assert catalog_unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
     assert detail.json()["summary"]["package_type"] == "rates_csv_zip"
 
 
