@@ -14,6 +14,9 @@ python -m uvicorn otm_workbench.main:app --reload
 
 The MVP 0 surface is backend/API-only.
 
+Current Rates MVP0 backend state is documented in
+`docs/otm-workbench/modules/rates_estado_atual_mvp0.md`.
+
 ## MVP 0 Verification
 
 ```powershell

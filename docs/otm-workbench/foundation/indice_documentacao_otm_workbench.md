@@ -53,6 +53,7 @@
 | `estrategia_qa_testes_observabilidade_otm_workbench.md` | Define testes, QA, logs, health checks, métricas e release checklist. |
 | `plano_mvp_roadmap_execucao_otm_workbench.md` | Define sequência de MVPs, critérios de aceite, riscos e prompt para Codex. |
 | `glossario_convencoes_otm_workbench.md` | Define nomes, status, rotas, capabilities, eventos e termos padronizados. |
+| `../modules/rates_estado_atual_mvp0.md` | Consolida o estado backend/API/DB-first atual do modulo Rates MVP0, seus contratos, integracoes e pendencias. |
 
 ---
 
