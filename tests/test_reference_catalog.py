@@ -251,6 +251,63 @@ def test_rates_reference_options_api_delegates_domain_filtering_to_catalog(clien
     ]
 
 
+def test_rates_reference_options_filter_by_catalog_macro_object(client, admin_header):
+    imported = client.post(
+        "/api/v1/reference/import-batches",
+        json={
+            "source_type": "json",
+            "source_description": "synthetic rates catalog option seed",
+            "records": [
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "PUBLIC.RS_STD",
+                    "xid": "RS_STD",
+                    "domain_name": "PUBLIC",
+                    "display_name": "Standard",
+                },
+                {
+                    "object_type": "RATE_SERVICE",
+                    "gid": "OTM1.RS_EXP",
+                    "xid": "RS_EXP",
+                    "domain_name": "OTM1",
+                    "display_name": "Express",
+                },
+            ],
+        },
+        headers=admin_header,
+    )
+    assert imported.status_code == 200
+
+    catalog_matched = client.get(
+        "/api/v1/modules/rates/reference/options",
+        params={
+            "object_type": "RATE_SERVICE",
+            "domain_name": "OTM1",
+            "catalog_macro_object_code": "RATE_RECORD",
+        },
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/rates/reference/options",
+        params={
+            "object_type": "RATE_SERVICE",
+            "domain_name": "OTM1",
+            "catalog_macro_object_code": "LOCATION",
+        },
+        headers=admin_header,
+    )
+
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
+    assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert [item["gid"] for item in catalog_matched.json()["items"]] == [
+        "PUBLIC.RS_STD",
+        "OTM1.RS_EXP",
+    ]
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
+    assert catalog_unmatched.json()["items"] == []
+
+
 def test_reference_validate_api_uses_policy(client, admin_header):
     response = client.post(
         "/api/v1/reference/validate",
