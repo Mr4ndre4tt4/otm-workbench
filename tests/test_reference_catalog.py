@@ -308,6 +308,57 @@ def test_rates_reference_options_filter_by_catalog_macro_object(client, admin_he
     assert catalog_unmatched.json()["items"] == []
 
 
+def test_rate_offerings_filter_by_catalog_macro_object(client, admin_header):
+    imported = client.post(
+        "/api/v1/reference/import-batches",
+        json={
+            "source_type": "json",
+            "source_description": "synthetic rate offering list seed",
+            "records": [
+                {
+                    "object_type": "RATE_OFFERING",
+                    "gid": "OTM1.RO_STD",
+                    "xid": "RO_STD",
+                    "domain_name": "OTM1",
+                    "display_name": "Synthetic Standard Offering",
+                    "metadata_json": {
+                        "servprov_gid": "OTM1.SERVPROV_A",
+                        "transport_mode_gid": "PUBLIC.TL",
+                        "rate_service_gid": "OTM1.RS_STD",
+                        "equipment_group_profile_gid": "PUBLIC.EQP_DRY",
+                    },
+                }
+            ],
+        },
+        headers=admin_header,
+    )
+    assert imported.status_code == 200
+
+    listed = client.get("/api/v1/modules/rates/reference/rate-offerings", headers=admin_header)
+    catalog_matched = client.get(
+        "/api/v1/modules/rates/reference/rate-offerings",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/rates/reference/rate-offerings",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["gid"] == "OTM1.RO_STD"
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["gid"] == "OTM1.RO_STD"
+    assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
+
+
 def test_reference_validate_api_uses_policy(client, admin_header):
     response = client.post(
         "/api/v1/reference/validate",
