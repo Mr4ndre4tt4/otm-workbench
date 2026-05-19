@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import MasterDataTemplate, User
+from otm_workbench.models import MasterDataBatch, MasterDataTemplate, User
 from otm_workbench.modules.master_data.templates import (
     build_master_data_template_workbook,
+    map_master_data_batch_to_canonical_records,
     parse_master_data_template_workbook,
     seed_master_data_templates,
     serialize_master_data_template,
@@ -117,5 +118,33 @@ def create_master_data_batch_from_workbook(
             422,
             "MASTER_DATA_WORKBOOK_INVALID",
             "Uploaded workbook does not match the template.",
+            details={"error": str(exc)},
+        ) from exc
+
+
+@router.post("/batches/{batch_id}/map")
+def map_master_data_batch(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_master_data_templates(db)
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    template = (
+        db.query(MasterDataTemplate)
+        .filter(MasterDataTemplate.code == batch.template_code)
+        .first()
+    )
+    if template is None:
+        raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
+    try:
+        return map_master_data_batch_to_canonical_records(db, template, batch)
+    except ValueError as exc:
+        raise api_error(
+            409,
+            "MASTER_DATA_BATCH_NOT_MAPPABLE",
+            "Master Data batch is not ready for mapping.",
             details={"error": str(exc)},
         ) from exc
