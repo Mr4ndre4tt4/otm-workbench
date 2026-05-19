@@ -250,6 +250,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 7. POST /api/v1/modules/rates/csv/preview propaga catalog_load_plan_path quando executado no contexto RATE_RECORD.
 8. GET /api/v1/modules/rates/reference/options propaga catalog_load_plan_path quando filtrado por RATE_RECORD.
 9. GET /api/v1/modules/rates/reference/rate-offerings propaga catalog_load_plan_path quando filtrado por RATE_RECORD.
+10. POST /api/v1/modules/rates/reference/rate-offerings/duplicate-check propaga catalog_load_plan_path quando executado no contexto RATE_RECORD.
 ```
 
 ---

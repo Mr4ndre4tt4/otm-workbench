@@ -749,9 +749,13 @@ def check_rate_offering_duplicate(
         "candidates": candidates,
     }
     if payload.catalog_macro_object_code:
-        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+        scenario = get_rate_scenario("complete_tariff")
+        response["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        response["catalog_load_plan_path"] = scenario.catalog_load_plan_path
         if is_unsupported_rates_catalog_macro_object(payload.catalog_macro_object_code):
             response.update(unsupported_rates_catalog_payload(payload.catalog_macro_object_code))
+            response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+            response.pop("catalog_load_plan_path", None)
     return response
 
 

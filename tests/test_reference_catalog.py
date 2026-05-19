@@ -431,6 +431,10 @@ def test_rate_offering_duplicate_check_returns_warning(client, admin_header):
 
     assert response.status_code == 200
     assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        response.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert response.json()["severity"] == "WARNING"
     assert response.json()["candidates"][0]["gid"] == "OTM1.RO_STD"
 
