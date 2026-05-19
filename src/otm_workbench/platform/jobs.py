@@ -48,6 +48,16 @@ def emit_job_event(
     created_by: str | None,
     payload: dict[str, object] | None = None,
 ) -> None:
+    event_payload = {
+        "job_id": job.id,
+        "job_type": job.job_type,
+        "source_module": job.source_module,
+        "project_id": job.project_id,
+        "profile_id": job.profile_id,
+        "environment_id": job.environment_id,
+        "domain_name": job.domain_name,
+        **(payload or {}),
+    }
     db.add(
         JobEvent(
             job_id=job.id,
@@ -55,7 +65,7 @@ def emit_job_event(
             status_before=status_before,
             status_after=status_after,
             message=message,
-            payload_json=json.dumps(payload or {}, sort_keys=True),
+            payload_json=json.dumps(event_payload, sort_keys=True),
             created_by=created_by,
         )
     )

@@ -115,6 +115,9 @@ def test_cancel_pending_job_records_event_and_audit(client, admin_header, db_ses
     event = db_session.query(JobEvent).filter(JobEvent.job_id == created["id"], JobEvent.event_type == "JOB_CANCELLED").one()
     assert event.status_before == "PENDING"
     assert event.status_after == "CANCELLED"
+    event_payload = json.loads(event.payload_json)
+    assert event_payload["environment_id"] == "env_demo"
+    assert event_payload["domain_name"] == "OTM1"
     audit = db_session.query(AuditLog).filter(AuditLog.action == "job.cancel").one()
     assert audit.target_id == created["id"]
     audit_metadata = json.loads(audit.metadata_json)
@@ -222,10 +225,16 @@ def test_list_job_events_filters_by_type_and_status(client, admin_header):
     assert response.json()["items"][0]["status_after"] == "SUCCEEDED"
 
 
-def test_missing_job_handler_fails_safely(client, admin_header):
+def test_missing_job_handler_fails_safely(client, admin_header, db_session):
     response = client.post(
         "/api/v1/platform/jobs",
-        json={"job_type": "UNKNOWN_HANDLER", "source_module": "platform", "execute_now": True},
+        json={
+            "job_type": "UNKNOWN_HANDLER",
+            "source_module": "platform",
+            "environment_id": "env_demo",
+            "domain_name": "OTM1",
+            "execute_now": True,
+        },
         headers=admin_header,
     )
 
@@ -234,6 +243,11 @@ def test_missing_job_handler_fails_safely(client, admin_header):
     assert payload["status"] == "FAILED"
     assert payload["error"]["code"] == "JOB_HANDLER_NOT_REGISTERED"
     assert "UNKNOWN_HANDLER" not in payload["error"]["message"]
+    event = db_session.query(JobEvent).filter(JobEvent.job_id == payload["id"], JobEvent.event_type == "JOB_FAILED").one()
+    event_payload = json.loads(event.payload_json)
+    assert event_payload["error_code"] == "JOB_HANDLER_NOT_REGISTERED"
+    assert event_payload["environment_id"] == "env_demo"
+    assert event_payload["domain_name"] == "OTM1"
 
 
 def test_artifact_hash_metadata_and_evidence_are_client_safe(client, admin_header):
