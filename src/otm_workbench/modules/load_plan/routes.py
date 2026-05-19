@@ -158,6 +158,7 @@ def create_sequence_snapshot(
 def list_sequence_snapshots(
     package_id: str | None = None,
     status: str | None = None,
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -167,7 +168,14 @@ def list_sequence_snapshots(
     if status:
         query = query.filter(LoadPlanSequenceSnapshot.status == status)
     snapshots = query.order_by(LoadPlanSequenceSnapshot.generated_at.desc()).all()
-    return PageResponse(items=[serialize_sequence_snapshot(snapshot) for snapshot in snapshots], total=len(snapshots))
+    items = [serialize_sequence_snapshot(snapshot) for snapshot in snapshots]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/sequence/snapshots/{snapshot_id}")

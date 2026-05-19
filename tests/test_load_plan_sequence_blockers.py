@@ -330,6 +330,16 @@ def test_sequence_snapshot_list_detail_and_latest_endpoints(client, admin_header
         params={"package_id": package["id"], "status": "BLOCKED"},
         headers=admin_header,
     )
+    catalog_matched = client.get(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/load-plan/sequence/snapshots",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
     detail = client.get(
         f"/api/v1/modules/load-plan/sequence/snapshots/{snapshot['id']}",
         headers=admin_header,
@@ -342,10 +352,16 @@ def test_sequence_snapshot_list_detail_and_latest_endpoints(client, admin_header
 
     assert listed.status_code == 200
     assert filtered.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
     assert detail.status_code == 200
     assert latest.status_code == 200
     assert listed.json()["total"] == 1
     assert filtered.json()["items"][0]["id"] == snapshot["id"]
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["id"] == snapshot["id"]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
     assert detail.json()["id"] == snapshot["id"]
     assert latest.json()["id"] == snapshot["id"]
 
