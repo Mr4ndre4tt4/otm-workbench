@@ -448,8 +448,11 @@ def get_latest_rates_batch_export(
     bundle = latest_batch_export_bundle(db, batch.id)
     if bundle is None:
         raise HTTPException(status_code=404, detail="Rates export not found.")
+    scenario = get_rate_scenario(batch.scenario_code)
     return {
         "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "artifact": serialize_artifact(bundle.artifact),
         "evidence": serialize_evidence(bundle.evidence),
         "manifest": json.loads(bundle.manifest.manifest_json or "{}"),
