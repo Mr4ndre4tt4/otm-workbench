@@ -177,6 +177,17 @@ Se Master Data e Cutover forem implementados antes desse core, ha alto risco de 
 7. Testes de contrato.
 ```
 
+### Primeiro recorte MVP0 entregue
+
+```text
+1. OTM Catalog Core registrado no module registry como modulo ACTIVE.
+2. GET /api/v1/catalog/health disponivel.
+3. APIs de tabelas/colunas apoiadas no Data Dictionary local disponiveis.
+4. Reference options e validacoes de referencia expostas pelo Catalog Core.
+5. Macro-objects, tables, dependencies e load-plan minimo expostos.
+6. Testes de contrato cobrindo registry, health, data dictionary, references e macro-objects.
+```
+
 ### Fora do primeiro recorte
 
 ```text

@@ -33,3 +33,11 @@ def test_modules_endpoint_returns_rates_module(client, admin_header):
     assert response.status_code == 200
     module_ids = [item["id"] for item in response.json()["items"]]
     assert "rates" in module_ids
+
+
+def test_modules_endpoint_returns_catalog_core_module(client, admin_header):
+    response = client.get("/api/v1/platform/modules", headers=admin_header)
+
+    assert response.status_code == 200
+    module_ids = [item["id"] for item in response.json()["items"]]
+    assert "catalog" in module_ids

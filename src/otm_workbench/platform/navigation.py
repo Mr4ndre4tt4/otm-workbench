@@ -26,6 +26,12 @@ def seed_modules(db: Session) -> None:
             required_capability="rates.reference.view",
         ),
         Module(
+            id="catalog",
+            display_name="OTM Catalog Core",
+            route_base="/catalog",
+            status="ACTIVE",
+        ),
+        Module(
             id="load_plan",
             display_name="Load Plan",
             route_base="/load-plan",
@@ -62,7 +68,7 @@ def flag_enabled(db: Session, name: str | None) -> bool:
 
 def registered_modules(db: Session) -> list[Module]:
     seed_modules(db)
-    order = ["master_data", "home", "evidence", "rates", "load_plan", "admin", "dev_tools"]
+    order = ["master_data", "home", "evidence", "catalog", "rates", "load_plan", "admin", "dev_tools"]
     modules_by_id = {module.id: module for module in db.query(Module).all()}
     return [modules_by_id[module_id] for module_id in order if module_id in modules_by_id]
 
