@@ -131,6 +131,11 @@ def test_approval_succeeds_with_warnings_and_sets_status(client, admin_header, d
     assert payload["status"] == "APPROVED"
     assert payload["approved_at"] is not None
     assert payload["approved_by"] == "admin@example.com"
+    assert payload["readiness"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        payload["readiness"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert payload["readiness"]["issue_summary"]["warnings"] == 1
     refreshed_batch = db_session.query(RateBatch).filter(RateBatch.id == batch["id"]).one()
     summary = json.loads(refreshed_batch.summary_json)
@@ -199,6 +204,11 @@ def test_repeated_approval_is_idempotent(client, admin_header, db_session):
 
     assert first.status_code == 200
     assert second.status_code == 200
+    assert second.json()["readiness"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        second.json()["readiness"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert first.json()["evidence_id"] == second.json()["evidence_id"]
     assert db_session.query(Evidence).filter(Evidence.evidence_type == "rates_batch_approval").count() == 1
     assert db_session.query(AuditLog).filter(AuditLog.action == "rates.batch.approve").count() == 1
