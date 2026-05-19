@@ -50,6 +50,7 @@ class LoadSequenceRequest(BaseModel):
 
 
 class RateOfferingDuplicateCheckRequest(BaseModel):
+    catalog_macro_object_code: str | None = None
     servprov_gid: str
     transport_mode_gid: str
     rate_service_gid: str
@@ -608,18 +609,20 @@ def check_rate_offering_duplicate(
     user: User = Depends(require_user),
 ):
     candidates = []
-    for item in db.query(ReferenceObject).filter(ReferenceObject.object_type == "RATE_OFFERING").all():
-        metadata = json.loads(item.metadata_json or "{}")
-        if all(metadata.get(key) == value for key, value in payload.model_dump().items()):
-            candidates.append(
-                {
-                    "gid": item.gid,
-                    "xid": item.xid,
-                    "domain_name": item.domain_name,
-                    "display_name": item.display_name,
-                }
-            )
-    return {
+    lookup_fields = payload.model_dump(exclude={"catalog_macro_object_code"})
+    if payload.catalog_macro_object_code in (None, "RATE_RECORD"):
+        for item in db.query(ReferenceObject).filter(ReferenceObject.object_type == "RATE_OFFERING").all():
+            metadata = json.loads(item.metadata_json or "{}")
+            if all(metadata.get(key) == value for key, value in lookup_fields.items()):
+                candidates.append(
+                    {
+                        "gid": item.gid,
+                        "xid": item.xid,
+                        "domain_name": item.domain_name,
+                        "display_name": item.display_name,
+                    }
+                )
+    response = {
         "severity": "WARNING" if candidates else "INFO",
         "message": (
             "Potential duplicate Rate Offering found."
@@ -628,6 +631,9 @@ def check_rate_offering_duplicate(
         ),
         "candidates": candidates,
     }
+    if payload.catalog_macro_object_code:
+        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+    return response
 
 
 @router.post("/csv/preview")
