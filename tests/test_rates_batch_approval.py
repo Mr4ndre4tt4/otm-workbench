@@ -159,11 +159,20 @@ def test_approval_creates_evidence_audit_and_event(client, admin_header, db_sess
     evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
     audit = db_session.query(AuditLog).filter(AuditLog.action == "rates.batch.approve").one()
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "rates.batch.approved").one()
+    evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
 
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert evidence.client_safe is True
     assert evidence.evidence_type == "rates_batch_approval"
     assert evidence.artifact_id == export.json()["artifact_id"]
     assert evidence.manifest_id == export.json()["manifest_id"]
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert audit.target_id == batch["id"]
     assert event.aggregate_id == batch["id"]

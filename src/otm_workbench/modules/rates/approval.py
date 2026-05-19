@@ -13,6 +13,7 @@ from otm_workbench.models import (
     utcnow,
 )
 from otm_workbench.modules.rates.exports import list_batch_export_artifacts, list_batch_export_evidence
+from otm_workbench.modules.rates.scenarios import get_rate_scenario
 
 
 @dataclass(frozen=True)
@@ -122,12 +123,15 @@ def approve_rate_batch(
         existing = get_existing_approval_evidence(db, batch.id)
         summary = json.loads(batch.summary_json or "{}")
         approval = summary.get("approval", {})
+        scenario = get_rate_scenario(batch.scenario_code)
         return {
             "batch_id": batch.id,
             "status": batch.status,
             "approved_at": approval.get("approved_at") or (batch.approved_at.isoformat() if batch.approved_at else None),
             "approved_by": approval.get("approved_by") or approved_by,
             "evidence_id": existing.id if existing else approval.get("evidence_id"),
+            "catalog_macro_object_code": scenario.catalog_macro_object_code,
+            "catalog_load_plan_path": scenario.catalog_load_plan_path,
             "readiness": get_rate_batch_readiness(db, batch).to_dict(),
         }
 
@@ -138,6 +142,11 @@ def approve_rate_batch(
         raise ValueError("Rate batch is not ready for approval.")
 
     approved_at = utcnow()
+    scenario = get_rate_scenario(batch.scenario_code)
+    catalog_context = {
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+    }
     artifact_id, manifest_id = get_latest_export_references(db, batch.id)
     evidence_summary = {
         "source_entity_type": "rate_batch",
@@ -151,6 +160,7 @@ def approve_rate_batch(
         "row_count": readiness.row_count,
         "has_export_artifact": artifact_id is not None,
         "approval_note": approval_note,
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=batch.project_id,
@@ -176,6 +186,7 @@ def approve_rate_batch(
                     "evidence_id": evidence.id,
                     "approved_by": approved_by,
                     "issue_summary": readiness.issue_summary,
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -193,6 +204,7 @@ def approve_rate_batch(
                     "evidence_id": evidence.id,
                     "approved_by": approved_by,
                     "status": "APPROVED",
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -206,6 +218,7 @@ def approve_rate_batch(
         "approved_at": approved_at.isoformat(),
         "approval_note": approval_note,
         "evidence_id": evidence.id,
+        **catalog_context,
     }
     batch.status = "APPROVED"
     batch.approved_at = approved_at
@@ -218,5 +231,6 @@ def approve_rate_batch(
         "approved_at": approved_at.isoformat(),
         "approved_by": approved_by,
         "evidence_id": evidence.id,
+        **catalog_context,
         "readiness": get_rate_batch_readiness(db, batch).to_dict(),
     }
