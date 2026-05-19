@@ -191,6 +191,10 @@ def list_sequence_snapshots(
     snapshots = query.order_by(LoadPlanSequenceSnapshot.generated_at.desc()).all()
     items = [serialize_sequence_snapshot(snapshot) for snapshot in snapshots]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items
