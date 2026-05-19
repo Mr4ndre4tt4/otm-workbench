@@ -226,12 +226,25 @@ def load_plan_package_summary(db: Session) -> dict[str, object]:
     packages = db.query(LoadPlanPackage).all()
     by_source_module: dict[str, int] = {}
     by_status: dict[str, int] = {}
+    by_catalog_macro_object: dict[str, dict[str, object]] = {}
     for package in packages:
         by_source_module[package.source_module] = by_source_module.get(package.source_module, 0) + 1
         by_status[package.status] = by_status.get(package.status, 0) + 1
+        summary = parse_json_object(package.summary_json)
+        macro_object_code = summary.get("catalog_macro_object_code")
+        if isinstance(macro_object_code, str) and macro_object_code:
+            catalog_summary = by_catalog_macro_object.setdefault(
+                macro_object_code,
+                {
+                    "package_count": 0,
+                    "catalog_load_plan_path": summary.get("catalog_load_plan_path"),
+                },
+            )
+            catalog_summary["package_count"] = int(catalog_summary["package_count"]) + 1
     return {
         "registered_packages": len(packages),
         "by_source_module": by_source_module,
         "by_status": by_status,
+        "by_catalog_macro_object": by_catalog_macro_object,
         "next_actions": ["build_csvutil"] if packages else [],
     }

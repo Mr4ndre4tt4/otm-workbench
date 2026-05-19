@@ -162,6 +162,12 @@ def test_load_plan_summary_counts_packages(client, admin_header):
     assert payload["registered_packages"] == 1
     assert payload["by_source_module"] == {"rates": 1}
     assert payload["by_status"] == {"REGISTERED": 1}
+    assert payload["by_catalog_macro_object"] == {
+        "RATE_RECORD": {
+            "package_count": 1,
+            "catalog_load_plan_path": "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+        }
+    }
     assert payload["next_actions"] == ["build_csvutil"]
 
 
