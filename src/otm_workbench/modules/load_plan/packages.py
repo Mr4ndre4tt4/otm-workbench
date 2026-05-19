@@ -108,6 +108,10 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
 
     load_sequence = load_sequence_for_batch(db, batch.id)
     scenario = get_rate_scenario(batch.scenario_code)
+    catalog_context = {
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+    }
     table_count = len(load_sequence)
     row_count = sum(int(item["row_count"]) for item in load_sequence)
     if table_count == 0 or row_count == 0:
@@ -117,8 +121,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         "source_module": "rates",
         "source_batch_id": batch.id,
         "scenario_code": batch.scenario_code,
-        "catalog_macro_object_code": scenario.catalog_macro_object_code,
-        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        **catalog_context,
         "domain_name": batch.domain_name,
         "source_status": batch.status,
         "package_type": "rates_csv_zip",
@@ -153,8 +156,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         "upstream_source_module": "rates",
         "upstream_entity_type": "rate_batch",
         "upstream_entity_id": batch.id,
-        "catalog_macro_object_code": scenario.catalog_macro_object_code,
-        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        **catalog_context,
         "package_type": "rates_csv_zip",
         "artifact_id": export_evidence.artifact_id,
         "manifest_id": export_evidence.manifest_id,
@@ -189,6 +191,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
                     "artifact_id": export_evidence.artifact_id,
                     "manifest_id": export_evidence.manifest_id,
                     "evidence_id": intake_evidence.id,
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -207,6 +210,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
                     "source_entity_id": batch.id,
                     "package_type": "rates_csv_zip",
                     "status": "REGISTERED",
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
