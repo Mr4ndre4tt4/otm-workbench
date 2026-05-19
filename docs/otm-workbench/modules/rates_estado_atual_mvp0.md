@@ -249,6 +249,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 6. GET /api/v1/modules/rates/dictionary/tables/{table_name} aceita catalog_macro_object_code, propaga contexto RATE_RECORD e rejeita macro-objeto fora de Rates.
 7. POST /api/v1/modules/rates/csv/preview propaga catalog_load_plan_path quando executado no contexto RATE_RECORD.
 8. GET /api/v1/modules/rates/reference/options propaga catalog_load_plan_path quando filtrado por RATE_RECORD.
+9. GET /api/v1/modules/rates/reference/rate-offerings propaga catalog_load_plan_path quando filtrado por RATE_RECORD.
 ```
 
 ---
