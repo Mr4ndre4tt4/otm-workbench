@@ -250,6 +250,7 @@ Ja existe uma fundacao minima:
 ```text
 - User/Auth local;
 - Project, Profile e Environment basicos;
+- Active Context MVP0 com GET/POST, domain_name normalizado e allowed_domains PUBLIC + dominio ativo;
 - Role e Capability basicos;
 - FeatureFlag;
 - Module Registry;
@@ -261,7 +262,6 @@ Ja existe uma fundacao minima:
 Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
 
 ```text
-- Active Context persistido e consultavel;
 - allowed_domains derivado de profile/role/capability;
 - capability checks granulares por acao;
 - Domain Access Policy reaproveitada por Catalog, Rates, Master Data e Cutover;
@@ -287,8 +287,8 @@ Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
 ### Primeiro recorte MVP0 recomendado
 
 ```text
-1. Active Context model/API usando Project, Profile e Environment existentes.
-2. Domain Access Policy simples: PUBLIC + profile.default_domain_name.
+1. Active Context model/API usando Project, Profile e Environment existentes. [ENTREGUE MVP0 inicial]
+2. Domain Access Policy simples: PUBLIC + domain_name ativo. [ENTREGUE MVP0 inicial]
 3. Excecao controlada para DBA/MASTER com allowed_domains = ["*"].
 4. Endpoint GET /api/v1/platform/active-context.
 5. Endpoint POST /api/v1/platform/active-context.
