@@ -227,15 +227,36 @@ def parse_master_data_template_workbook(
     workbook = load_workbook(file_obj, data_only=True)
     sheet_summaries = []
     parsed_rows: dict[str, list[dict[str, object]]] = {}
+    issues = []
     row_count = 0
 
     for sheet in sheets:
+        if sheet["code"] not in workbook.sheetnames:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_WORKBOOK_SHEET_MISSING",
+                    "severity": "ERROR",
+                    "sheet_code": sheet["code"],
+                    "message": "Uploaded workbook is missing a template sheet.",
+                }
+            )
+            continue
         worksheet = workbook[sheet["code"]]
         fields = sheet["fields"]
         expected_headers = [field["label"] for field in fields]
         actual_headers = [cell.value for cell in worksheet[1]][: len(expected_headers)]
         if actual_headers != expected_headers:
-            raise ValueError(f"Invalid headers for sheet {sheet['code']}.")
+            issues.append(
+                {
+                    "code": "MASTER_DATA_WORKBOOK_HEADERS_INVALID",
+                    "severity": "ERROR",
+                    "sheet_code": sheet["code"],
+                    "message": "Uploaded workbook headers do not match the template.",
+                    "expected_headers": expected_headers,
+                    "actual_headers": actual_headers,
+                }
+            )
+            continue
 
         sheet_rows = []
         for row in worksheet.iter_rows(min_row=2, values_only=True):
@@ -264,9 +285,12 @@ def parse_master_data_template_workbook(
         content_type=content_type,
         sheet_summaries_json=json.dumps(sheet_summaries),
         parsed_rows_json=json.dumps(parsed_rows, sort_keys=True),
-        row_count=row_count,
-        issue_count=0,
+        issues_json=json.dumps(issues, sort_keys=True),
+        row_count=0 if issues else row_count,
+        issue_count=len(issues),
     )
+    if issues:
+        batch.status = "PARSE_FAILED"
     db.add(batch)
     db.commit()
     db.refresh(batch)
@@ -280,4 +304,5 @@ def parse_master_data_template_workbook(
         "row_count": batch.row_count,
         "issue_count": batch.issue_count,
         "sheet_summaries": sheet_summaries,
+        "issues": issues,
     }

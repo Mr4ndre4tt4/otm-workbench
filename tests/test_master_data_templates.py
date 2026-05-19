@@ -188,3 +188,59 @@ def test_master_data_template_batch_upload_parses_workbook(client, admin_header,
     assert row.file_name == "regions_basic_upload.xlsx"
     assert row.row_count == 2
     assert row.issue_count == 0
+
+
+def test_master_data_template_batch_upload_persists_parse_issues(client, admin_header, db_session):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Wrong Region", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_bad_headers.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "REGIONS_BASIC"
+    assert payload["status"] == "PARSE_FAILED"
+    assert payload["file_name"] == "regions_basic_bad_headers.xlsx"
+    assert payload["row_count"] == 0
+    assert payload["issue_count"] == 1
+    assert payload["issues"] == [
+        {
+            "code": "MASTER_DATA_WORKBOOK_HEADERS_INVALID",
+            "severity": "ERROR",
+            "sheet_code": "REGIONS",
+            "message": "Uploaded workbook headers do not match the template.",
+            "expected_headers": ["Region GID", "Region XID", "Region Name"],
+            "actual_headers": ["Wrong Region", "Region XID", "Region Name"],
+        }
+    ]
+
+    row = db_session.execute(
+        text(
+            "select status, row_count, issue_count, issues_json "
+            "from master_data_batches where id = :batch_id"
+        ),
+        {"batch_id": payload["batch_id"]},
+    ).one()
+    assert row.status == "PARSE_FAILED"
+    assert row.row_count == 0
+    assert row.issue_count == 1
+    assert "MASTER_DATA_WORKBOOK_HEADERS_INVALID" in row.issues_json
