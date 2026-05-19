@@ -12,6 +12,7 @@ from otm_workbench.modules.master_data.templates import (
     build_master_data_template_workbook,
     build_master_data_output_records,
     map_master_data_batch_to_canonical_records,
+    export_master_data_csv_package,
     parse_master_data_template_workbook,
     seed_master_data_templates,
     serialize_master_data_template,
@@ -188,5 +189,30 @@ def build_master_data_batch_csv(
             409,
             "MASTER_DATA_BATCH_CSV_NOT_READY",
             "Master Data batch is not ready for CSV generation.",
+            details={"error": str(exc)},
+        ) from exc
+
+
+@router.post("/batches/{batch_id}/export-csv-package")
+def export_master_data_batch_csv_package(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    try:
+        return export_master_data_csv_package(
+            db,
+            batch,
+            Path(get_settings().artifact_root),
+            user.id,
+        )
+    except ValueError as exc:
+        raise api_error(
+            409,
+            "MASTER_DATA_BATCH_EXPORT_NOT_READY",
+            "Master Data batch is not ready for CSV package export.",
             details={"error": str(exc)},
         ) from exc

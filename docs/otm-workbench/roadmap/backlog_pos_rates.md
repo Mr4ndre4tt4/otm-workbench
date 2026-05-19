@@ -368,8 +368,8 @@ Artifacts + Evidence
 9. Mapping Engine basico. [INICIADO com mapeamento de batch PARSED para canonical records por target_column]
 10. Geracao de output records. [INICIADO com materializacao de canonical records em master_data_output_records]
 11. Geracao de CSVs. [INICIADO com master_data_csv_files e CSV OTM por tabela]
-12. ZIP + MANIFEST.json.
-13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template]
+12. ZIP + MANIFEST.json. [INICIADO com pacote CSV ZIP e manifest.json]
+13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template e pacote CSV ZIP]
 14. Seed de Items & Packaging Standard.
 ```
 
