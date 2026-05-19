@@ -664,9 +664,13 @@ def list_rates_reference_options(
         can_view_all_domains=can_view_all_domains,
     )
     if catalog_macro_object_code:
-        payload["catalog_macro_object_code"] = catalog_macro_object_code
+        scenario = get_rate_scenario("complete_tariff")
+        payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
         if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
             payload.update(unsupported_rates_catalog_payload(catalog_macro_object_code))
+            payload["catalog_macro_object_code"] = catalog_macro_object_code
+            payload.pop("catalog_load_plan_path", None)
             payload["items"] = []
     return payload
 
