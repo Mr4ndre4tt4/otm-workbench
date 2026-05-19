@@ -164,12 +164,17 @@ def test_sequence_snapshot_creates_snapshot_evidence_audit_and_event(client, adm
     assert evidence.client_safe is True
     snapshot_summary = json.loads(snapshot.summary_json)
     evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
     assert snapshot_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
         evidence_summary["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert audit.target_id == snapshot.id
     assert event.aggregate_id == snapshot.id
     assert "OTM1.ACC_COST_001" not in evidence.summary_json

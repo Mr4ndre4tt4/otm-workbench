@@ -357,6 +357,7 @@ def generate_sequence_snapshot(
                     "status": status,
                     "evidence_id": evidence.id,
                     "blocker_count": summary["blocker_count"],
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -369,7 +370,7 @@ def generate_sequence_snapshot(
             project_id=package.project_id,
             aggregate_type="load_plan_sequence_snapshot",
             aggregate_id=snapshot.id,
-            payload_json=json.dumps({"package_id": package.id, "status": status}, sort_keys=True),
+            payload_json=json.dumps({"package_id": package.id, "status": status, **catalog_context}, sort_keys=True),
             status="PENDING",
         )
     )
