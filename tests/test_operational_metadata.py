@@ -33,6 +33,44 @@ def test_create_job(client, admin_header, db_session):
     assert audit_metadata["domain_name"] == "OTM1"
 
 
+def test_create_job_rejects_large_input_payload(client, admin_header):
+    response = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "CATALOG_IMPORT_DATA_DICTIONARY",
+            "source_module": "catalog",
+            "input": {"blob": "x" * 17000},
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "JOB_INVALID"
+    assert "payload" in response.json()["message"].lower()
+
+
+def test_run_job_fails_safely_when_result_payload_is_large(client, admin_header):
+    created = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "DEMO_ECHO",
+            "source_module": "platform",
+            "input": {"blob": "x" * 16370},
+        },
+        headers=admin_header,
+    ).json()
+
+    response = client.post(f"/api/v1/platform/jobs/{created['id']}/run", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "FAILED"
+    assert payload["error"]["code"] == "JOB_RESULT_TOO_LARGE"
+    assert payload["result"] == {}
+    assert "x" * 100 not in str(payload["result"])
+    assert "x" * 100 not in str(payload["error"])
+
+
 def test_list_and_detail_jobs_return_client_safe_payload(client, admin_header):
     created = client.post(
         "/api/v1/platform/jobs",
