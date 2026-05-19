@@ -41,6 +41,8 @@ def test_readiness_returns_blockers_for_draft_batch(client, admin_header):
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert payload["ready_for_approval"] is False
     assert payload["ready_for_export"] is False
     assert "BATCH_NOT_VALIDATED" in payload["blockers"]

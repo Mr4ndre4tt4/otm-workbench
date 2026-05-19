@@ -260,7 +260,11 @@ def get_rates_batch_readiness(
     batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
     if batch is None:
         raise HTTPException(status_code=404, detail="Rate batch not found.")
-    return get_rate_batch_readiness(db, batch).to_dict()
+    scenario = get_rate_scenario(batch.scenario_code)
+    payload = get_rate_batch_readiness(db, batch).to_dict()
+    payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+    payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
+    return payload
 
 
 @router.post("/batches/{batch_id}/approve")
