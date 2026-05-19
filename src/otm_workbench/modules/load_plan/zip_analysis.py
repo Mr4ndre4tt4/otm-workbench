@@ -357,6 +357,7 @@ def generate_zip_analysis(
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
                     "finding_count": summary["finding_count"],
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -369,7 +370,10 @@ def generate_zip_analysis(
             project_id=package.project_id,
             aggregate_type="load_plan_zip_analysis",
             aggregate_id=analysis.id,
-            payload_json=json.dumps({"package_id": package.id, "status": "ANALYZED"}, sort_keys=True),
+            payload_json=json.dumps(
+                {"package_id": package.id, "status": "ANALYZED", **catalog_context},
+                sort_keys=True,
+            ),
             status="PENDING",
         )
     )
