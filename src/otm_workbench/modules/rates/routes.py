@@ -604,6 +604,7 @@ def validate_rates_load_sequence(
     payload: LoadSequenceRequest,
     user: User = Depends(require_user),
 ):
+    scenario = get_rate_scenario("complete_tariff")
     if is_unsupported_rates_catalog_macro_object(payload.catalog_macro_object_code):
         return {
             **unsupported_rates_catalog_payload(payload.catalog_macro_object_code),
@@ -628,7 +629,8 @@ def validate_rates_load_sequence(
         "issues": [item.__dict__ for item in result.issues],
     }
     if payload.catalog_macro_object_code:
-        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+        response["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        response["catalog_load_plan_path"] = scenario.catalog_load_plan_path
     return response
 
 
