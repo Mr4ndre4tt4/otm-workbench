@@ -40,6 +40,7 @@ from otm_workbench.modules.load_plan.readiness_export import (
     serialize_readiness_export,
 )
 from otm_workbench.modules.load_plan.review_queue import (
+    catalog_context_for_package_id,
     decide_review_item,
     generate_review_queue_from_zip_analysis,
     serialize_review_decision,
@@ -508,6 +509,7 @@ def list_review_queue_items(
     severity: str | None = None,
     package_id: str | None = None,
     zip_analysis_id: str | None = None,
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -521,6 +523,13 @@ def list_review_queue_items(
     if zip_analysis_id:
         query = query.filter(LoadPlanReviewItem.zip_analysis_id == zip_analysis_id)
     items = query.order_by(LoadPlanReviewItem.created_at.desc()).all()
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if catalog_context_for_package_id(db, item.package_id).get("catalog_macro_object_code")
+            == catalog_macro_object_code
+        ]
     return PageResponse(items=[serialize_review_item_with_latest_decision(db, item) for item in items], total=len(items))
 
 
