@@ -566,8 +566,13 @@ def map_master_data_batch_to_canonical_records(
     template: MasterDataTemplate,
     batch: MasterDataBatch,
 ) -> dict[str, object]:
-    if batch.status not in {"PARSED", "RELATIONSHIP_VALIDATED"}:
-        raise ValueError("Only parsed or relationship-validated Master Data batches can be mapped.")
+    if MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code):
+        if batch.status != "RELATIONSHIP_VALIDATED":
+            raise ValueError(
+                "Master Data batch must be relationship-validated before mapping."
+            )
+    elif batch.status != "PARSED":
+        raise ValueError("Only parsed Master Data batches can be mapped.")
 
     sheets = json.loads(template.sheets_json)
     parsed_rows = json.loads(batch.parsed_rows_json)
