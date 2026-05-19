@@ -185,6 +185,14 @@ def test_review_queue_generation_creates_audit_and_event(client, admin_header, d
     assert response.status_code == 200
     audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.review_queue.generate_from_zip_analysis").one()
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.review_queue.generated").one()
+    payload = response.json()
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert audit.target_id == analysis["id"]
     assert event.aggregate_id == analysis["id"]
     assert event.status == "PENDING"
