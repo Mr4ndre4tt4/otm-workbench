@@ -279,5 +279,9 @@ def test_cutover_handoff_commit_is_idempotent_and_list_detail_work(client, admin
     assert catalog_unmatched.status_code == 200
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_CATALOG_MACRO_OBJECT"
+    assert catalog_unmatched.json()["message"] == "Catalog macro-object is outside the Load Plan package scope."
+    assert catalog_unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
     assert detail.status_code == 200
     assert detail.json()["id"] == first.json()["id"]
