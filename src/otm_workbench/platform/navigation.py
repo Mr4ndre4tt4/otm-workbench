@@ -1,6 +1,15 @@
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import FeatureFlag, Module, User
+from otm_workbench.models import (
+    ActiveContext,
+    Capability,
+    FeatureFlag,
+    Module,
+    Role,
+    RoleCapability,
+    User,
+    UserProjectRole,
+)
 
 
 def seed_modules(db: Session) -> None:
@@ -73,14 +82,41 @@ def registered_modules(db: Session) -> list[Module]:
     return [modules_by_id[module_id] for module_id in order if module_id in modules_by_id]
 
 
+def effective_capability_names(db: Session, user: User) -> set[str]:
+    if user.is_admin:
+        return {"*"}
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if not active_context or not active_context.project_id:
+        return set()
+    rows = (
+        db.query(Capability.name)
+        .join(RoleCapability, RoleCapability.capability_id == Capability.id)
+        .join(Role, Role.id == RoleCapability.role_id)
+        .join(UserProjectRole, UserProjectRole.role_id == Role.id)
+        .filter(
+            UserProjectRole.user_id == user.id,
+            UserProjectRole.project_id == active_context.project_id,
+        )
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def has_required_capability(capabilities: set[str], required_capability: str | None) -> bool:
+    return not required_capability or "*" in capabilities or required_capability in capabilities
+
+
 def navigation_items(db: Session, user: User) -> list[dict[str, str]]:
     items = []
+    capabilities = effective_capability_names(db, user)
     for module in registered_modules(db):
         if module.admin_only and not user.is_admin:
             continue
         if module.dev_only and (not user.is_admin or not flag_enabled(db, module.feature_flag)):
             continue
         if not flag_enabled(db, module.feature_flag):
+            continue
+        if not has_required_capability(capabilities, module.required_capability):
             continue
         items.append(
             {
