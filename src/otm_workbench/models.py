@@ -71,6 +71,18 @@ class Environment(Base, TimestampMixin):
     environment_type: Mapped[str] = mapped_column(String, default="DEV")
 
 
+class ActiveContext(Base, TimestampMixin):
+    __tablename__ = "active_contexts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    project_id: Mapped[str | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(ForeignKey("profiles.id"), nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(ForeignKey("environments.id"), nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    can_view_all_domains: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class Role(Base, TimestampMixin):
     __tablename__ = "roles"
 

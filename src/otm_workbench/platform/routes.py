@@ -6,6 +6,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.models import (
     Artifact,
+    ActiveContext,
     AuditLog,
     Environment,
     Evidence,
@@ -75,6 +76,14 @@ class EnvironmentCreate(BaseModel):
     environment_type: str = "DEV"
 
 
+class ActiveContextUpdate(BaseModel):
+    project_id: str | None = None
+    profile_id: str | None = None
+    environment_id: str | None = None
+    domain_name: str | None = None
+    can_view_all_domains: bool = False
+
+
 class IdNameResponse(BaseModel):
     id: str
     name: str
@@ -92,6 +101,29 @@ class NavigationItem(BaseModel):
     label: str
     path: str
     status: str
+
+
+def allowed_domains_for_context(domain_name: str | None, can_view_all_domains: bool) -> list[str]:
+    if can_view_all_domains:
+        return ["*"]
+    domains = ["PUBLIC"]
+    if domain_name and domain_name.upper() not in domains:
+        domains.append(domain_name.upper())
+    return domains
+
+
+def serialize_active_context(context: ActiveContext | None, user: User) -> dict[str, object]:
+    domain_name = context.domain_name if context and context.domain_name else None
+    can_view_all_domains = bool(context and context.can_view_all_domains)
+    return {
+        "user_id": user.id,
+        "project_id": context.project_id if context else None,
+        "profile_id": context.profile_id if context else None,
+        "environment_id": context.environment_id if context else None,
+        "domain_name": domain_name,
+        "allowed_domains": allowed_domains_for_context(domain_name, can_view_all_domains),
+        "can_view_all_domains": can_view_all_domains,
+    }
 
 
 class JobCreate(BaseModel):
@@ -224,6 +256,43 @@ def create_environment(
     db.commit()
     db.refresh(environment)
     return IdNameResponse(id=environment.id, name=environment.name)
+
+
+@router.get("/active-context")
+def get_active_context(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    return serialize_active_context(context, user)
+
+
+@router.post("/active-context")
+def set_active_context(
+    payload: ActiveContextUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    if payload.project_id and db.get(Project, payload.project_id) is None:
+        raise api_error(400, "ACTIVE_CONTEXT_INVALID_PROJECT", "Project not found.")
+    if payload.profile_id and db.get(Profile, payload.profile_id) is None:
+        raise api_error(400, "ACTIVE_CONTEXT_INVALID_PROFILE", "Profile not found.")
+    if payload.environment_id and db.get(Environment, payload.environment_id) is None:
+        raise api_error(400, "ACTIVE_CONTEXT_INVALID_ENVIRONMENT", "Environment not found.")
+
+    context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if context is None:
+        context = ActiveContext(user_id=user.id)
+        db.add(context)
+    context.project_id = payload.project_id
+    context.profile_id = payload.profile_id
+    context.environment_id = payload.environment_id
+    context.domain_name = payload.domain_name.upper() if payload.domain_name else None
+    context.can_view_all_domains = payload.can_view_all_domains
+    db.commit()
+    db.refresh(context)
+    write_audit(db, user, "active_context.update", "active_context", context.id)
+    return serialize_active_context(context, user)
 
 
 @router.get("/modules", response_model=PageResponse[ModuleResponse])
