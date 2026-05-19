@@ -33,6 +33,13 @@ OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict/*.json
 
 Quando houver duvida tecnica ou funcional de OTM, a regra do projeto e consultar a documentacao oficial Oracle ou perguntar antes de assumir comportamento.
 
+Referencias oficiais Oracle usadas para validar o contrato CSV inicial:
+
+```text
+- Oracle Transportation Management Data Management Guide - CSV:
+  https://docs.oracle.com/en/cloud/saas/transportation/26b/otmdm/csv.html
+```
+
 ---
 
 ## 3. Contrato CSV OTM
@@ -51,6 +58,16 @@ Se houver coluna/valor de data, incluir antes das linhas de valores:
 exec alter session set nls_date_format = 'YYYY-MM-DD HH24:MI:SS'
 ```
 
+Validacao Oracle registrada:
+
+```text
+- a primeira linha do arquivo CSV identifica a tabela;
+- a segunda linha lista os nomes das colunas;
+- linhas seguintes carregam os valores;
+- comandos SQL prefixados por EXEC SQL podem aparecer apos a linha de colunas e antes dos dados;
+- a documentacao Oracle mostra o uso de ALTER SESSION para definir NLS_DATE_FORMAT antes dos dados.
+```
+
 Regras ja registradas no backend para o recorte de Rates:
 
 ```text
@@ -62,6 +79,17 @@ Regras ja registradas no backend para o recorte de Rates:
 - CHARGE_AMOUNT_BASE em branco quando a regra tecnica exigir;
 - arquivos/manifestos client-safe, sem paths internos em resposta publica.
 ```
+
+Pontos ainda tratados como regra funcional/procedural do projeto, e nao como afirmacao Oracle ja fechada:
+
+```text
+- quando remover RATE_GEO_SEQ do CSV gerado;
+- quando resetar RATE_GEO_SEQ/RATE_GEO_COST_SEQ fora do arquivo;
+- quando manter CHARGE_AMOUNT_BASE em branco;
+- quando forcar RATE_GEO_COST_GROUP_SEQ=1.
+```
+
+Esses pontos devem ser validados com documentacao Oracle especifica, ambiente lab ou decisao funcional antes de virar regra final de carga.
 
 ---
 
@@ -226,7 +254,7 @@ Antes de considerar Rates MVP0 fechado:
 
 ```text
 1. Revisar fixtures/exemplos sinteticos contra exemplos reais anonimizados sem copiar dados de cliente.
-2. Validar, com documentacao oficial Oracle quando necessario, regras especiais de sequencias/campos de CSV antes de promover para contrato final.
+2. Validar regras especiais de sequencias/campos de CSV que ainda nao foram confirmadas por fonte Oracle direta ou ambiente lab.
 ```
 
 Depois desses hardenings, a recomendacao e:
