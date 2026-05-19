@@ -64,6 +64,7 @@ def test_csv_preview_api(client, admin_header):
     response = client.post(
         "/api/v1/modules/rates/csv/preview",
         json={
+            "catalog_macro_object_code": "RATE_RECORD",
             "table_name": "RATE_GEO_COST",
             "columns": ["RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST_SEQ"],
             "rows": [{"RATE_GEO_COST_GROUP_GID": "OTM1.RGCG_1", "RATE_GEO_COST_SEQ": 1}],
@@ -72,4 +73,21 @@ def test_csv_preview_api(client, admin_header):
     )
 
     assert response.status_code == 200
+    assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert response.json()["content"].splitlines()[0] == "RATE_GEO_COST"
+
+
+def test_csv_preview_api_rejects_non_rates_catalog_macro_object(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/rates/csv/preview",
+        json={
+            "catalog_macro_object_code": "LOCATION",
+            "table_name": "LOCATION",
+            "columns": ["LOCATION_GID"],
+            "rows": [{"LOCATION_GID": "OTM1.LOC_A"}],
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
