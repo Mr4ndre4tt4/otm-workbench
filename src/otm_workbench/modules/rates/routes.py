@@ -498,8 +498,13 @@ def list_rates_batch_evidence(
 
 
 @router.get("/dictionary/tables")
-def list_rates_dictionary_tables(user: User = Depends(require_user)):
+def list_rates_dictionary_tables(
+    catalog_macro_object_code: str | None = None,
+    user: User = Depends(require_user),
+):
     items = [{"table_name": item} for item in RATES_LOAD_SEQUENCE]
+    if catalog_macro_object_code and catalog_macro_object_code != "RATE_RECORD":
+        items = []
     return PageResponse(items=items, total=len(items))
 
 
