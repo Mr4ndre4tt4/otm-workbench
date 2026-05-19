@@ -147,6 +147,32 @@ def test_load_plan_package_list_and_detail(client, admin_header):
     assert "OTM1.ACC_COST_001" not in json.dumps(detail.json())
 
 
+def test_load_plan_package_list_filters_by_catalog_macro_object(client, admin_header):
+    batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    ).json()
+
+    matched = client.get(
+        "/api/v1/modules/load-plan/packages",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    unmatched = client.get(
+        "/api/v1/modules/load-plan/packages",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert matched.status_code == 200
+    assert unmatched.status_code == 200
+    assert matched.json()["total"] == 1
+    assert matched.json()["items"][0]["id"] == created["id"]
+    assert unmatched.json()["total"] == 0
+    assert unmatched.json()["items"] == []
+
+
 def test_load_plan_summary_counts_packages(client, admin_header):
     batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
     created = client.post(

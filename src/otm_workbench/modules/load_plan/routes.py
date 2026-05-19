@@ -98,11 +98,18 @@ def register_load_plan_package_from_rates(
 
 @router.get("/packages")
 def list_load_plan_packages(
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at.desc()).all()
     items = [serialize_load_plan_package(package) for package in packages]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
     return PageResponse(items=items, total=len(items))
 
 
