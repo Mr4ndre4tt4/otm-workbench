@@ -507,7 +507,137 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 
 ---
 
-## 8. Ordem recomendada depois de Rates
+## 8. Integration Mapping Studio
+
+**Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_integration_mapping_studio_backendfirst.md`
+
+**Arquivos de apoio analisados:** payload XML de PlannedShipment, payload JSON de criacao de viagem, amostras de GET REST, documento funcional DOCX e diagrama de mapping. Os dados reais desses arquivos nao devem ser copiados para o repositorio; qualquer teste futuro deve usar fixtures sinteticas como `OTM1`, `PUBLIC`, `DEMO`, `EXT_SYSTEM` e `CARRIER_API`.
+
+### Decisao
+
+O Integration Mapping Studio faz sentido como modulo estrategico futuro, mas nao
+deve furar a fila atual. Ele deve entrar depois de Jobs, Catalog Core,
+Project/Profile/Admin e Assets Library estarem minimamente disponiveis, porque
+depende diretamente de:
+
+```text
+- Jobs / Processing Engine para parse, preview, validacao e geracao de spec;
+- Artifact Store para payloads, schema tree exports, previews e specs geradas;
+- Evidence Hub para registrar validacao/aprovacao sem expor payload cru;
+- Assets Library para reutilizar payloads, specs, diagramas, collections e mapping exports;
+- Catalog Core para validar objetos OTM, paths conhecidos, refnums, status e endpoints;
+- Project/Profile/Admin para escopo, visibilidade, capabilities e active context.
+```
+
+### O que os arquivos de apoio mostram
+
+O cenario de referencia deve ser tratado de forma generica e sanitizada como:
+
+```text
+OTM PlannedShipment XML
+-> Integration Mapping Studio
+-> External carrier/delivery API JSON
+```
+
+Padroes tecnicos confirmados pelos apoios:
+
+```text
+- schema de origem XML com ShipmentHeader, ShipmentStop, ShipUnit e Release;
+- schema de destino JSON com header e colecao de entregas;
+- mappings diretos de identificadores e datas;
+- formatacao de data para ISO 8601;
+- lookup REST para dados complementares de location/refnum/address;
+- filtro por qualifier de refnum;
+- loop em stops de destino;
+- join entre stop, ship unit e release;
+- agregacoes como contagem/distinct;
+- response handling para sucesso/erro;
+- documentacao funcional/tecnica geravel a partir do mapping persistido.
+```
+
+### O que faz sentido
+
+```text
+- Tratar o modulo como specification-first, nao como executor produtivo de integracao.
+- Persistir Integration Definition, schemas, schema nodes, mappings, loops, joins, lookups e response actions.
+- Gerar schema tree de XML/JSON por API.
+- Validar source_path e target_path antes de preview.
+- Manter transformacoes controladas, como DIRECT, CONSTANT, CONCAT, FORMAT_DATE_ISO8601, FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE e DEFAULT_IF_EMPTY.
+- Usar mocks de lookup no MVP0; nao chamar sistemas externos obrigatoriamente.
+- Gerar preview local como job e artifact.
+- Gerar spec Markdown como artifact e, futuramente, asset.
+- Registrar audit log/domain events para mudancas relevantes.
+- Criar fixtures sinteticas para testes, nunca reaproveitando dados reais dos arquivos de apoio.
+```
+
+### O que nao faz sentido no MVP0
+
+```text
+- Substituir OIC ou virar iPaaS proprio.
+- Executar integracao produtiva.
+- Fazer deploy externo.
+- Gerar package OIC completo.
+- Criar canvas visual antes do modelo backend estar estavel.
+- Permitir codigo arbitrario como transformacao.
+- Armazenar credenciais em mappings/lookups.
+- Usar payload real de cliente em testes, artifacts ou evidencias.
+- Depender de DOCX/PDF como formato obrigatorio de spec no MVP0.
+- Fazer import completo de OpenAPI/XSD complexo.
+```
+
+### Primeiro recorte MVP0 recomendado
+
+```text
+1. Skeleton backend do modulo integration_mapping.
+2. Module registry + health endpoint.
+3. Modelo/API de Integration Definition com status DRAFT.
+4. Modelo/API de systems/endpoints sem credenciais reais.
+5. Upload/import de payload XML/JSON como artifact interno.
+6. Parser simples XML/JSON para schema tree.
+7. Persistencia de schema documents e schema nodes.
+8. Mapping CRUD tabular.
+9. Transformation type catalog com seeds controlados.
+10. Loop definition simples para colecoes.
+11. Join rule simples para relacionar estruturas do payload origem.
+12. Lookup definition com mocks, sem chamada real obrigatoria.
+13. Validation service para paths, required targets, loops, joins e lookups.
+14. Preview job com fixture sintetica e resultado como artifact.
+15. Markdown spec generator com identificacao, schemas, mappings, loops, lookups, response handling e casos de teste.
+16. Audit log/domain events para create/update/validate/preview/generate-spec.
+17. Testes com cenario sintetico inspirado no padrao OTM PlannedShipment -> External Delivery JSON.
+```
+
+### Fora do primeiro recorte
+
+```text
+- UI completa;
+- canvas visual;
+- geracao ou deploy de package OIC;
+- runtime produtivo de integracao;
+- autenticacao real em sistemas externos;
+- monitoramento produtivo;
+- debugger avancado;
+- linguagem livre de expressao;
+- transformacao por codigo customizado;
+- colaboracao em tempo real;
+- geracao automatica por IA sem revisao humana;
+- DOCX/PDF obrigatorio;
+- OpenAPI/XSD complexo completo.
+```
+
+### Posicao recomendada na fila
+
+```text
+1. Nao interromper o ciclo atual de Rates/Load Plan/Catalog.
+2. Nao entrar antes de Jobs, Catalog Core e Project/Profile/Admin Foundation.
+3. Entrar preferencialmente depois de Assets Library MVP0, porque payloads, specs e diagrams devem virar assets governados.
+4. Se antecipado, limitar a primeira entrega a Integration Definition + schema parser + mapping CRUD + validation, sem preview completo.
+5. Usar sempre exemplos sinteticos e remover qualquer dado real dos arquivos de apoio.
+```
+
+---
+
+## 9. Ordem recomendada depois de Rates
 
 ```text
 1. Fechar hardening de Rates/Load Plan/Evidence Hub.
@@ -519,12 +649,13 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 7. Integrar load packages de Dados Mestres no Load Plan existente.
 8. Implementar Cutover Checklist & CSVUTIL Builder.
 9. Implementar Assets Library MVP0, se a fila ainda exigir biblioteca governada de arquivos reutilizaveis.
-10. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover e Assets.
+10. Implementar Integration Mapping Studio MVP0, se a fila pedir especificacao/mapping de integracoes.
+11. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets e Integrations.
 ```
 
 ---
 
-## 9. Guardrails permanentes
+## 10. Guardrails permanentes
 
 ```text
 - Backend-first, API-first, DB-first e UI-agnostic.
