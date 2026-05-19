@@ -397,6 +397,49 @@ def test_master_data_batch_relationship_validation_persists_orphan_issues(
     assert "MASTER_DATA_RELATIONSHIP_ORPHAN" in row.issues_json
 
 
+def test_master_data_batch_relationship_validation_reports_actual_workbook_row(
+    client,
+    admin_header,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["region_gid", "region_xid", "region_name"])
+    regions.append(["REGION_GID", "REGION_XID", "REGION_NAME"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["region_gid", "location_gid"])
+    details.append(["REGION_GID", "LOCATION_GID"])
+    details.append(["SYN.REGION_999", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_generated_orphan_detail.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "RELATIONSHIP_FAILED"
+    assert payload["issues"][0]["row_number"] == 4
+
+
 def test_master_data_batch_relationship_validation_is_idempotent(client, admin_header):
     workbook = Workbook()
     regions = workbook.active
