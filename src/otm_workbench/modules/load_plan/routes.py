@@ -281,6 +281,7 @@ def create_cutover_handoff(
 def list_cutover_handoffs(
     package_id: str | None = None,
     status: str | None = None,
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -290,7 +291,14 @@ def list_cutover_handoffs(
     if status:
         query = query.filter(LoadPlanCutoverHandoff.status == status)
     handoffs = query.order_by(LoadPlanCutoverHandoff.committed_at.desc()).all()
-    return PageResponse(items=[serialize_cutover_handoff(handoff) for handoff in handoffs], total=len(handoffs))
+    items = [serialize_cutover_handoff(handoff) for handoff in handoffs]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/cutover-handoff/{handoff_id}")

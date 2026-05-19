@@ -253,6 +253,16 @@ def test_cutover_handoff_commit_is_idempotent_and_list_detail_work(client, admin
         params={"package_id": package["id"], "status": "READY_FOR_CUTOVER"},
         headers=admin_header,
     )
+    catalog_matched = client.get(
+        "/api/v1/modules/load-plan/cutover-handoff",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/load-plan/cutover-handoff",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
     detail = client.get(
         f"/api/v1/modules/load-plan/cutover-handoff/{first.json()['id']}",
         headers=admin_header,
@@ -263,5 +273,11 @@ def test_cutover_handoff_commit_is_idempotent_and_list_detail_work(client, admin
     assert first.json()["id"] == second.json()["id"]
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
+    assert catalog_matched.status_code == 200
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["id"] == first.json()["id"]
+    assert catalog_unmatched.status_code == 200
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
     assert detail.status_code == 200
     assert detail.json()["id"] == first.json()["id"]
