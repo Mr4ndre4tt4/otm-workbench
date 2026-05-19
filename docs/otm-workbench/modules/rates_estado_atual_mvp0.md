@@ -255,6 +255,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 12. GET /api/v1/modules/rates/batches retorna contrato padronizado para catalog_macro_object_code fora de RATE_RECORD.
 13. GET /api/v1/modules/load-plan/packages retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 14. GET /api/v1/modules/load-plan/sequence/snapshots retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
+15. GET /api/v1/modules/load-plan/cutover-readiness retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 ```
 
 ---

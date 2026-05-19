@@ -262,6 +262,10 @@ def list_cutover_readiness(
     items = query.order_by(LoadPlanCutoverReadiness.generated_at.desc()).all()
     serialized_items = [serialize_cutover_readiness(item) for item in items]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         serialized_items = [
             item
             for item in serialized_items
