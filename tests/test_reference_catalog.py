@@ -300,6 +300,10 @@ def test_rates_reference_options_filter_by_catalog_macro_object(client, admin_he
     assert catalog_matched.status_code == 200
     assert catalog_unmatched.status_code == 200
     assert catalog_matched.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        catalog_matched.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert [item["gid"] for item in catalog_matched.json()["items"]] == [
         "PUBLIC.RS_STD",
         "OTM1.RS_EXP",
