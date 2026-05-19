@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 
+from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from otm_workbench.catalog.services import validate_column, validate_table
-from otm_workbench.models import MasterDataTemplate
+from otm_workbench.models import Artifact, MasterDataTemplate
+from otm_workbench.platform.services import file_sha256
 
 
 REGIONS_BASIC_TEMPLATE = {
@@ -159,4 +161,54 @@ def validate_master_data_template(template: MasterDataTemplate, dictionary_root:
             "validated_table_count": len(validated_tables),
             "validated_column_count": validated_column_count,
         },
+    }
+
+
+def build_master_data_template_workbook(
+    db: Session,
+    template: MasterDataTemplate,
+    artifact_root: Path,
+) -> dict[str, object]:
+    sheets = json.loads(template.sheets_json)
+    workbook = Workbook()
+    default_sheet = workbook.active
+    field_count = 0
+
+    for index, sheet in enumerate(sheets):
+        worksheet = default_sheet if index == 0 else workbook.create_sheet()
+        worksheet.title = sheet["code"][:31]
+        fields = sheet["fields"]
+        field_count += len(fields)
+        worksheet.append([field["label"] for field in fields])
+        worksheet.append([field["name"] for field in fields])
+        worksheet.append([field["target_column"] for field in fields])
+
+    output_dir = artifact_root / "master_data" / "templates" / template.code.lower()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    file_name = f"{template.code.lower()}_v{template.version}.xlsx"
+    output_path = output_dir / file_name
+    workbook.save(output_path)
+
+    digest, size = file_sha256(str(output_path))
+    artifact = Artifact(
+        source_module="master_data",
+        artifact_type="master_data_template_workbook",
+        file_path=str(output_path),
+        file_name=file_name,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        sha256=digest,
+        size_bytes=size,
+        sensitivity_level="client_safe",
+    )
+    db.add(artifact)
+    db.commit()
+    db.refresh(artifact)
+
+    return {
+        "template_code": template.code,
+        "artifact_id": artifact.id,
+        "file_name": artifact.file_name,
+        "content_type": artifact.content_type,
+        "sheet_count": len(sheets),
+        "field_count": field_count,
     }
