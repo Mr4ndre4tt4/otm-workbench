@@ -519,6 +519,14 @@ def validate_master_data_batch_relationships(
     db: Session,
     batch: MasterDataBatch,
 ) -> dict[str, object]:
+    if batch.status in {"RELATIONSHIP_VALIDATED", "RELATIONSHIP_FAILED"}:
+        issues = json.loads(batch.issues_json or "[]")
+        return {
+            "batch_id": batch.id,
+            "status": batch.status,
+            "issue_count": batch.issue_count,
+            "issues": issues,
+        }
     if batch.status != "PARSED":
         raise ValueError("Only parsed Master Data batches can be relationship-validated.")
 

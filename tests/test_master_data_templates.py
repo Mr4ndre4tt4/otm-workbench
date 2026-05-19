@@ -355,6 +355,50 @@ def test_master_data_batch_relationship_validation_persists_orphan_issues(
     assert "MASTER_DATA_RELATIONSHIP_ORPHAN" in row.issues_json
 
 
+def test_master_data_batch_relationship_validation_is_idempotent(client, admin_header):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    first_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+
+    second_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert second_response.json() == {
+        "batch_id": batch_id,
+        "status": "RELATIONSHIP_VALIDATED",
+        "issue_count": 0,
+        "issues": [],
+    }
+
+
 def test_master_data_batch_mapping_requires_relationship_validation(client, admin_header):
     workbook = Workbook()
     regions = workbook.active
