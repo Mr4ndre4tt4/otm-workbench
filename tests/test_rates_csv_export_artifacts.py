@@ -235,6 +235,12 @@ def test_batch_artifact_download_returns_zip_and_audit(client, admin_header, db_
     audit = db_session.query(AuditLog).filter_by(action="rates.batch.artifact.download").one()
     assert audit.target_type == "artifact"
     assert audit.target_id == export["artifact_id"]
+    audit_metadata = json.loads(audit.metadata_json)
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        audit_metadata["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert batch["id"] in audit.metadata_json
     assert "OTM1.ACC_COST_001" not in audit.metadata_json
     assert export["file_path"] not in audit.metadata_json

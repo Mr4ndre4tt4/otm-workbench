@@ -495,6 +495,7 @@ def download_rates_batch_artifact(
     if actual_sha256 != artifact.sha256:
         raise HTTPException(status_code=409, detail="Artifact hash mismatch.")
 
+    scenario = get_rate_scenario(batch.scenario_code)
     db.add(
         AuditLog(
             actor_user_id=user.email,
@@ -506,6 +507,8 @@ def download_rates_batch_artifact(
                     "artifact_id": artifact.id,
                     "artifact_type": artifact.artifact_type,
                     "batch_id": batch.id,
+                    "catalog_macro_object_code": scenario.catalog_macro_object_code,
+                    "catalog_load_plan_path": scenario.catalog_load_plan_path,
                     "source_module": artifact.source_module,
                     "sha256": artifact.sha256,
                     "size_bytes": actual_size,
