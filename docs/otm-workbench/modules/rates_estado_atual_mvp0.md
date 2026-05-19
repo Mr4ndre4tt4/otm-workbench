@@ -258,6 +258,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 15. GET /api/v1/modules/load-plan/cutover-readiness retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 16. GET /api/v1/modules/load-plan/cutover-handoff retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 17. GET /api/v1/modules/load-plan/cutover-readiness/exports retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
+18. GET /api/v1/modules/load-plan/csvutil/builds retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 ```
 
 ---
