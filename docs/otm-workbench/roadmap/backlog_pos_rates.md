@@ -642,7 +642,75 @@ Padroes tecnicos confirmados pelos apoios:
 
 ---
 
-## 9. Ordem recomendada depois de Rates
+## 9. Order Release Generator Pipeline
+
+**Fonte:** `C:/Users/Enzo Trabalho/Documents/Projetos/OTM General/gerador_or.zip`
+
+**Spec:** `docs/superpowers/specs/2026-05-19-order-release-generator-pipeline-design.md`
+
+### Decisao
+
+O Order Release Generator Pipeline faz sentido como modulo futuro especializado,
+mas nao deve reutilizar diretamente o script recebido. O apoio mostra um fluxo
+util para gerar Order Releases por template tabular, agrupar linhas por release,
+montar XML OTM Transmission/GLogXMLElement/Release/ReleaseLine e opcionalmente
+salvar XML local ou postar no OTM.
+
+O modulo deve nascer backend-first, DB-first, API-first e template-driven, para
+que a UI futura consiga alterar templates, campos, aliases, defaults,
+transformacoes e refnums sem editar codigo.
+
+### Sinergias
+
+```text
+- Jobs / Processing Engine para parse, validation, preview, generate XML e submit.
+- Catalog Core para validar ORDER_RELEASE, locations, items, commodities, THUs, refnum qualifiers, release method e domain scope.
+- Assets Library para guardar templates, payloads de exemplo, specs e XMLs reutilizaveis.
+- Evidence Hub para registrar generated XML, validation reports e submission results sem expor payload cru.
+- Project/Profile/Admin para capabilities, active environment, domain e conexoes OTM permitidas.
+- Integration Mapping Studio para compartilhar conceitos de schema tree/mapping, sem transformar este modulo em iPaaS generico.
+```
+
+### Primeiro recorte recomendado
+
+```text
+1. Registrar modulo order-release-generator.
+2. Criar health endpoint.
+3. Persistir templates versionados.
+4. Criar seed sintetico TL Order Release.
+5. Criar batch e rows normalizados.
+6. Validar colunas obrigatorias e agrupamento por release_gid.
+7. Gerar preview XML com fixture sintetica.
+8. Persistir XML/db.xml como artifact.
+9. Criar evidence client-safe.
+10. Integrar preview/generate com Jobs.
+11. Deixar submit OTM bloqueado/guarded no MVP0 sem capability/conexao.
+```
+
+### Fora do primeiro recorte
+
+```text
+- UI de template;
+- upload produtivo ao OTM;
+- credenciais em planilha;
+- runtime generico de integracao;
+- copiar dados reais dos arquivos de apoio;
+- suporte completo a todos os campos de Order Release;
+- validacao OTM real obrigatoria.
+```
+
+### Posicao recomendada na fila
+
+```text
+1. Nao interromper Jobs/Catalog Core.
+2. Entrar depois de Jobs MVP0 e Catalog Core minimo.
+3. Pode entrar antes do Integration Mapping Studio completo se for limitado a Order Release + XML artifact local.
+4. Submit OTM direto deve aguardar Project/Profile/Admin capabilities e conexoes governadas.
+```
+
+---
+
+## 10. Ordem recomendada depois de Rates
 
 ```text
 1. Fechar hardening de Rates/Load Plan/Evidence Hub.
@@ -654,13 +722,14 @@ Padroes tecnicos confirmados pelos apoios:
 7. Integrar load packages de Dados Mestres no Load Plan existente.
 8. Implementar Cutover Checklist & CSVUTIL Builder.
 9. Implementar Assets Library MVP0, se a fila ainda exigir biblioteca governada de arquivos reutilizaveis.
-10. Implementar Integration Mapping Studio MVP0, se a fila pedir especificacao/mapping de integracoes.
-11. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets e Integrations.
+10. Implementar Order Release Generator Pipeline MVP0 se a fila pedir geracao governada de XML/db.xml para testes OTM.
+11. Implementar Integration Mapping Studio MVP0, se a fila pedir especificacao/mapping de integracoes.
+12. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets, Order Release Generator e Integrations.
 ```
 
 ---
 
-## 10. Guardrails permanentes
+## 11. Guardrails permanentes
 
 ```text
 - Backend-first, API-first, DB-first e UI-agnostic.
