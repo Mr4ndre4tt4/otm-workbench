@@ -167,6 +167,11 @@ def test_cutover_handoff_commit_creates_records_and_transitions_package(
     assert eligibility.json()["eligible"] is True
     assert eligibility.json()["readiness_export_id"] == export["id"]
     assert eligibility.json()["archive_evidence_id"] == archive["evidence_id"]
+    assert eligibility.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        eligibility.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
 
     response = client.post(
         "/api/v1/modules/load-plan/cutover-handoff",
