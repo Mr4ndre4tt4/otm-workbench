@@ -217,6 +217,7 @@ def generate_load_plan_cutover_readiness(
 def list_cutover_readiness(
     package_id: str | None = None,
     status: str | None = None,
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -226,7 +227,14 @@ def list_cutover_readiness(
     if status:
         query = query.filter(LoadPlanCutoverReadiness.status == status)
     items = query.order_by(LoadPlanCutoverReadiness.generated_at.desc()).all()
-    return PageResponse(items=[serialize_cutover_readiness(item) for item in items], total=len(items))
+    serialized_items = [serialize_cutover_readiness(item) for item in items]
+    if catalog_macro_object_code:
+        serialized_items = [
+            item
+            for item in serialized_items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
+    return PageResponse(items=serialized_items, total=len(serialized_items))
 
 
 @router.get("/cutover-readiness/latest")
