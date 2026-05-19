@@ -290,6 +290,71 @@ def test_master_data_template_batch_upload_persists_parse_issues(client, admin_h
     assert "MASTER_DATA_WORKBOOK_HEADERS_INVALID" in row.issues_json
 
 
+def test_master_data_batch_relationship_validation_persists_orphan_issues(
+    client,
+    admin_header,
+    db_session,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_999", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_orphan_detail.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["status"] == "RELATIONSHIP_FAILED"
+    assert payload["issue_count"] == 1
+    assert payload["issues"] == [
+        {
+            "code": "MASTER_DATA_RELATIONSHIP_ORPHAN",
+            "severity": "ERROR",
+            "sheet_code": "REGION_DETAILS",
+            "field_name": "region_gid",
+            "row_number": 2,
+            "message": "Child row references a parent key that does not exist in the same batch.",
+            "parent_sheet_code": "REGIONS",
+            "parent_field_name": "region_gid",
+            "missing_value": "SYN.REGION_999",
+        }
+    ]
+
+    row = db_session.execute(
+        text(
+            "select status, issue_count, issues_json "
+            "from master_data_batches where id = :batch_id"
+        ),
+        {"batch_id": batch_id},
+    ).one()
+    assert row.status == "RELATIONSHIP_FAILED"
+    assert row.issue_count == 1
+    assert "MASTER_DATA_RELATIONSHIP_ORPHAN" in row.issues_json
+
+
 def test_master_data_batch_mapping_creates_canonical_records(client, admin_header, db_session):
     workbook = Workbook()
     regions = workbook.active

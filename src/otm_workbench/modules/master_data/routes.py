@@ -16,6 +16,7 @@ from otm_workbench.modules.master_data.templates import (
     parse_master_data_template_workbook,
     seed_master_data_templates,
     serialize_master_data_template,
+    validate_master_data_batch_relationships,
     validate_master_data_template,
 )
 
@@ -121,6 +122,26 @@ def create_master_data_batch_from_workbook(
             422,
             "MASTER_DATA_WORKBOOK_INVALID",
             "Uploaded workbook does not match the template.",
+            details={"error": str(exc)},
+        ) from exc
+
+
+@router.post("/batches/{batch_id}/validate-relationships")
+def validate_master_data_batch_relationships_endpoint(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    try:
+        return validate_master_data_batch_relationships(db, batch)
+    except ValueError as exc:
+        raise api_error(
+            409,
+            "MASTER_DATA_BATCH_RELATIONSHIP_NOT_READY",
+            "Master Data batch is not ready for relationship validation.",
             details={"error": str(exc)},
         ) from exc
 

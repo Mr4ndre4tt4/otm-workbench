@@ -251,6 +251,31 @@ MASTER_DATA_TEMPLATE_SEEDS = [
     ITEMS_PACKAGING_STANDARD_TEMPLATE,
 ]
 
+MASTER_DATA_RELATIONSHIP_RULES = {
+    "REGIONS_BASIC": [
+        {
+            "parent_sheet_code": "REGIONS",
+            "parent_field_name": "region_gid",
+            "child_sheet_code": "REGION_DETAILS",
+            "child_field_name": "region_gid",
+        },
+    ],
+    "ITEMS_PACKAGING_STANDARD": [
+        {
+            "parent_sheet_code": "ITEMS",
+            "parent_field_name": "item_gid",
+            "child_sheet_code": "PACKAGING",
+            "child_field_name": "item_gid",
+        },
+        {
+            "parent_sheet_code": "PACKAGING",
+            "parent_field_name": "packaged_item_gid",
+            "child_sheet_code": "TI_HI",
+            "child_field_name": "packaged_item_gid",
+        },
+    ],
+}
+
 
 def seed_master_data_templates(db: Session) -> None:
     changed = False
@@ -490,13 +515,59 @@ def parse_master_data_template_workbook(
     }
 
 
+def validate_master_data_batch_relationships(
+    db: Session,
+    batch: MasterDataBatch,
+) -> dict[str, object]:
+    if batch.status != "PARSED":
+        raise ValueError("Only parsed Master Data batches can be relationship-validated.")
+
+    parsed_rows = json.loads(batch.parsed_rows_json)
+    issues = []
+    for rule in MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code, []):
+        parent_values = {
+            row.get(rule["parent_field_name"])
+            for row in parsed_rows.get(rule["parent_sheet_code"], [])
+            if row.get(rule["parent_field_name"]) not in {None, ""}
+        }
+        for row_index, child_row in enumerate(parsed_rows.get(rule["child_sheet_code"], []), start=2):
+            child_value = child_row.get(rule["child_field_name"])
+            if child_value in {None, ""} or child_value in parent_values:
+                continue
+            issues.append(
+                {
+                    "code": "MASTER_DATA_RELATIONSHIP_ORPHAN",
+                    "severity": "ERROR",
+                    "sheet_code": rule["child_sheet_code"],
+                    "field_name": rule["child_field_name"],
+                    "row_number": row_index,
+                    "message": "Child row references a parent key that does not exist in the same batch.",
+                    "parent_sheet_code": rule["parent_sheet_code"],
+                    "parent_field_name": rule["parent_field_name"],
+                    "missing_value": child_value,
+                }
+            )
+
+    batch.status = "RELATIONSHIP_FAILED" if issues else "RELATIONSHIP_VALIDATED"
+    batch.issues_json = json.dumps(issues, sort_keys=True)
+    batch.issue_count = len(issues)
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "issue_count": batch.issue_count,
+        "issues": issues,
+    }
+
+
 def map_master_data_batch_to_canonical_records(
     db: Session,
     template: MasterDataTemplate,
     batch: MasterDataBatch,
 ) -> dict[str, object]:
-    if batch.status != "PARSED":
-        raise ValueError("Only parsed Master Data batches can be mapped.")
+    if batch.status not in {"PARSED", "RELATIONSHIP_VALIDATED"}:
+        raise ValueError("Only parsed or relationship-validated Master Data batches can be mapped.")
 
     sheets = json.loads(template.sheets_json)
     parsed_rows = json.loads(batch.parsed_rows_json)
