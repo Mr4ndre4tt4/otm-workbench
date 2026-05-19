@@ -1,7 +1,9 @@
 import json
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from otm_workbench.catalog.services import validate_column, validate_table
 from otm_workbench.models import MasterDataTemplate
 
 
@@ -34,9 +36,9 @@ REGIONS_BASIC_TEMPLATE = {
                     "data_type": "string",
                 },
                 {
-                    "name": "description",
-                    "label": "Description",
-                    "target_column": "DESCRIPTION",
+                    "name": "region_name",
+                    "label": "Region Name",
+                    "target_column": "REGION_NAME",
                     "required": False,
                     "data_type": "string",
                 },
@@ -105,4 +107,56 @@ def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, ob
         "description": template.description,
         "created_at": template.created_at.isoformat() if template.created_at else None,
         "updated_at": template.updated_at.isoformat() if template.updated_at else None,
+    }
+
+
+def validate_master_data_template(template: MasterDataTemplate, dictionary_root: Path) -> dict[str, object]:
+    sheets = json.loads(template.sheets_json)
+    issues = []
+    validated_tables = set()
+    validated_column_count = 0
+    field_count = 0
+    for sheet in sheets:
+        target_table = sheet["target_table"]
+        table_result = validate_table(dictionary_root, target_table, usage="cutover")
+        if table_result["exists"] and table_result["severity"] != "ERROR":
+            validated_tables.add(target_table)
+        else:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_TABLE_INVALID",
+                    "severity": "ERROR",
+                    "sheet_code": sheet["code"],
+                    "target_table": target_table,
+                    "message": table_result["message"],
+                }
+            )
+        for field in sheet["fields"]:
+            field_count += 1
+            column_result = validate_column(dictionary_root, target_table, field["target_column"])
+            if column_result["exists"]:
+                validated_column_count += 1
+            else:
+                issues.append(
+                    {
+                        "code": "MASTER_DATA_TEMPLATE_COLUMN_INVALID",
+                        "severity": "ERROR",
+                        "sheet_code": sheet["code"],
+                        "field_name": field["name"],
+                        "target_table": target_table,
+                        "target_column": field["target_column"],
+                        "message": column_result["message"],
+                    }
+                )
+    return {
+        "template_code": template.code,
+        "valid": not issues,
+        "severity": "INFO" if not issues else "ERROR",
+        "issues": issues,
+        "summary": {
+            "sheet_count": len(sheets),
+            "field_count": field_count,
+            "validated_table_count": len(validated_tables),
+            "validated_column_count": validated_column_count,
+        },
     }
