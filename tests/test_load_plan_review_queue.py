@@ -217,14 +217,30 @@ def test_review_queue_list_detail_and_filters(client, admin_header, db_session):
         params={"status": "PENDING_REVIEW", "severity": "ERROR", "package_id": package["id"]},
         headers=admin_header,
     )
+    catalog_matched = client.get(
+        "/api/v1/modules/load-plan/review-queue",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/load-plan/review-queue",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
     detail = client.get(f"/api/v1/modules/load-plan/review-queue/{created['id']}", headers=admin_header)
 
     assert listed.status_code == 200
     assert filtered.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
     assert detail.status_code == 200
     assert listed.json()["total"] == 1
     assert filtered.json()["total"] == 1
     assert filtered.json()["items"][0]["id"] == created["id"]
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["id"] == created["id"]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
     assert detail.json()["details"] == {"column_name": "SYNTHETIC_UNKNOWN_COLUMN"}
 
 
