@@ -466,7 +466,15 @@ def parse_master_data_template_workbook(
             continue
 
         sheet_rows = []
-        for row in worksheet.iter_rows(min_row=2, values_only=True):
+        expected_field_names = [field["name"] for field in fields]
+        expected_target_columns = [field["target_column"] for field in fields]
+        field_name_row = [cell.value for cell in worksheet[2]][: len(expected_field_names)]
+        target_column_row = [cell.value for cell in worksheet[3]][: len(expected_target_columns)]
+        data_start_row = 4 if (
+            field_name_row == expected_field_names
+            and target_column_row == expected_target_columns
+        ) else 2
+        for row in worksheet.iter_rows(min_row=data_start_row, values_only=True):
             values = list(row[: len(fields)])
             if all(value is None for value in values):
                 continue

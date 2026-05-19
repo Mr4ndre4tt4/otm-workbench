@@ -234,6 +234,48 @@ def test_master_data_template_batch_upload_parses_workbook(client, admin_header,
     assert row.issue_count == 0
 
 
+def test_master_data_template_batch_upload_skips_generated_metadata_rows(
+    client,
+    admin_header,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["region_gid", "region_xid", "region_name"])
+    regions.append(["REGION_GID", "REGION_XID", "REGION_NAME"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["region_gid", "location_gid"])
+    details.append(["REGION_GID", "LOCATION_GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_generated_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "PARSED"
+    assert payload["row_count"] == 2
+    assert payload["sheet_summaries"] == [
+        {"sheet_code": "REGIONS", "target_table": "REGION", "row_count": 1},
+        {"sheet_code": "REGION_DETAILS", "target_table": "REGION_DETAIL", "row_count": 1},
+    ]
+
+
 def test_master_data_template_batch_upload_persists_parse_issues(client, admin_header, db_session):
     workbook = Workbook()
     regions = workbook.active
