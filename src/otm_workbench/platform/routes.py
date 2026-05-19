@@ -338,13 +338,20 @@ def cancel_job(
 @router.get("/jobs/{job_id}/events")
 def list_job_events(
     job_id: str,
+    event_type: str | None = None,
+    status_after: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     job = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
         raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
-    events = db.query(JobEvent).filter(JobEvent.job_id == job.id).order_by(JobEvent.created_at).all()
+    query = db.query(JobEvent).filter(JobEvent.job_id == job.id)
+    if event_type:
+        query = query.filter(JobEvent.event_type == event_type.upper())
+    if status_after:
+        query = query.filter(JobEvent.status_after == status_after.upper())
+    events = query.order_by(JobEvent.created_at).all()
     return PageResponse(items=[serialize_job_event(event) for event in events], total=len(events))
 
 
