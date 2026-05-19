@@ -357,11 +357,11 @@ Artifacts + Evidence
 ### Escopo MVP0 sugerido
 
 ```text
-1. Skeleton do modulo master_data.
-2. Template Definition, Version, Sheet e Field.
+1. Skeleton do modulo master_data. [ENTREGUE MVP0 inicial]
+2. Template Definition, Version, Sheet e Field. [INICIADO com MasterDataTemplate DB]
 3. Relationship, Output Object e Output Mapping.
-4. Seed do template Regions Basic.
-5. API de list/detail de templates.
+4. Seed do template Regions Basic. [ENTREGUE MVP0 inicial]
+5. API de list/detail de templates. [INICIADO com GET /templates]
 6. Template Builder para gerar Excel.
 7. Batch upload/parse.
 8. Validacao estrutural e de relacionamento.

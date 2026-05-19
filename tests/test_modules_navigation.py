@@ -6,7 +6,7 @@ def test_modules_endpoint_returns_registered_master_data(client, admin_header):
 
     assert response.status_code == 200
     assert response.json()["items"][0]["id"] == "master_data"
-    assert response.json()["items"][0]["status"] == "PLANNED"
+    assert response.json()["items"][0]["status"] == "ACTIVE"
 
 
 def test_navigation_hides_dev_only_when_flag_is_disabled(client, admin_header):
