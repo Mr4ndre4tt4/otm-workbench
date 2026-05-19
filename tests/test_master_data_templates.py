@@ -355,6 +355,39 @@ def test_master_data_batch_relationship_validation_persists_orphan_issues(
     assert "MASTER_DATA_RELATIONSHIP_ORPHAN" in row.issues_json
 
 
+def test_master_data_batch_mapping_requires_relationship_validation(client, admin_header):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+
+    assert response.status_code == 409
+    payload = response.json()
+    assert payload["code"] == "MASTER_DATA_BATCH_NOT_MAPPABLE"
+    assert "relationship-validated" in payload["details"]["error"]
+
+
 def test_master_data_batch_mapping_creates_canonical_records(client, admin_header, db_session):
     workbook = Workbook()
     regions = workbook.active
@@ -379,6 +412,10 @@ def test_master_data_batch_mapping_creates_canonical_records(client, admin_heade
         },
     )
     batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
 
     response = client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
 
@@ -446,6 +483,10 @@ def test_master_data_batch_build_output_creates_output_records(client, admin_hea
         },
     )
     batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
 
     response = client.post(
@@ -515,6 +556,10 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
         },
     )
     batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
 
@@ -586,6 +631,10 @@ def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
         },
     )
     batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
