@@ -46,40 +46,45 @@ Ele deve entrar **antes do Catalog Core completo** ou como primeira fatia imedia
 
 ### Estado atual no backend
 
-Ja existe uma fundacao minima:
+Jobs / Processing Engine ja saiu da fundacao minima e agora possui um MVP0 operacional backend-first:
 
 ```text
 - modelo Job;
 - POST /api/v1/platform/jobs;
-- status PENDING;
-- input_json/result_json basicos.
-```
-
-Mas ainda faltam pecas importantes antes de usar isso como motor operacional:
-
-```text
-- list/detail de jobs;
+- GET /api/v1/platform/jobs com filtros por source_module, job_type, status, project_id, profile_id, environment_id e domain_name;
+- GET /api/v1/platform/jobs/{job_id};
+- POST /api/v1/platform/jobs/{job_id}/run para executar jobs PENDING;
+- POST /api/v1/platform/jobs/{job_id}/cancel para cancelamento logico de jobs PENDING;
+- GET /api/v1/platform/jobs/{job_id}/events com filtros por event_type e status_after;
 - lifecycle PENDING/RUNNING/SUCCEEDED/FAILED/CANCELLED;
-- eventos de job;
-- cancelamento logico de job PENDING;
-- handler registry;
-- handler demo;
-- erro padronizado;
-- audit log de criacao/conclusao/falha/cancelamento;
-- vinculo explicito com artifact/evidence.
+- eventos de job persistidos;
+- handler registry simples;
+- handler demo local DEMO_ECHO;
+- erro padronizado para handler inexistente;
+- audit logs client-safe para criacao, sucesso, falha e cancelamento;
+- audit/event payloads carregam contexto project_id/profile_id/environment_id/domain_name.
 ```
 
-### Primeiro recorte MVP0 recomendado
+Ainda faltam pecas importantes antes de usar isso como motor operacional amplo:
 
 ```text
-1. Endurecer o modelo/API existente de Job sem Celery/Redis.
-2. Criar list/detail/cancel.
-3. Criar service de lifecycle com transicoes validas.
-4. Criar handler registry simples.
-5. Criar handler demo local.
-6. Persistir eventos de job.
-7. Registrar audit log client-safe.
-8. Criar testes de contrato.
+- vinculo explicito com artifact/evidence.
+- politicas para jobs reais de Catalog Core;
+- convencao de outputs de job para imports/snapshots;
+- limites MVP0 de payload/result para evitar armazenar dados sensiveis.
+```
+
+### Primeiro recorte MVP0 entregue
+
+```text
+1. Modelo/API de Job endurecido sem Celery/Redis.
+2. List/detail/cancel/run criados.
+3. Service de lifecycle com transicoes validas para run/cancel.
+4. Handler registry simples criado.
+5. Handler demo local criado.
+6. Eventos de job persistidos e filtraveis.
+7. Audit log client-safe registrado com contexto operacional.
+8. Testes de contrato criados.
 ```
 
 ### Fora do primeiro recorte
