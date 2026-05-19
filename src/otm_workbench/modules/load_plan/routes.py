@@ -414,11 +414,18 @@ def build_csvutil_artifacts(
 
 @router.get("/csvutil/builds")
 def list_csvutil_builds(
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     builds = db.query(CsvutilBuild).order_by(CsvutilBuild.created_at.desc()).all()
     items = [serialize_csvutil_build(build) for build in builds]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
     return PageResponse(items=items, total=len(items))
 
 
