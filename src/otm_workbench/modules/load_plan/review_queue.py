@@ -312,6 +312,7 @@ def generate_review_queue_from_zip_analysis(
         raise ValueError("ZIP Analysis must be ANALYZED before review queue generation.")
     findings = parse_json_list(analysis.findings_json)
     selected = [item for item in findings if item.get("severity") in {"ERROR", "WARNING"}]
+    catalog_context = catalog_context_for_package_id(db, analysis.package_id)
     created: list[LoadPlanReviewItem] = []
     existing: list[LoadPlanReviewItem] = []
 
@@ -344,6 +345,7 @@ def generate_review_queue_from_zip_analysis(
                     "created_count": len(created),
                     "existing_count": len(existing),
                     "selected_finding_count": len(selected),
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -361,6 +363,7 @@ def generate_review_queue_from_zip_analysis(
                     "package_id": analysis.package_id,
                     "created_count": len(created),
                     "existing_count": len(existing),
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -375,5 +378,6 @@ def generate_review_queue_from_zip_analysis(
         "package_id": analysis.package_id,
         "created_count": len(created),
         "existing_count": len(existing),
+        **catalog_context,
         "items": [serialize_review_item(item) for item in created + existing],
     }
