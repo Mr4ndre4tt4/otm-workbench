@@ -90,3 +90,71 @@ def test_active_context_can_be_set_and_read_with_allowed_domains(client, admin_h
     assert payload["domain_name"] == "OTM1"
     assert payload["allowed_domains"] == ["PUBLIC", "OTM1"]
     assert payload["can_view_all_domains"] is False
+
+
+def test_project_setup_status_reports_ready_when_context_profile_and_environment_exist(client, admin_header):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rollout"},
+        headers=admin_header,
+    ).json()
+    profile = client.post(
+        "/api/v1/platform/profiles",
+        json={"project_id": project["id"], "name": "Default"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": project["id"],
+            "profile_id": profile["id"],
+            "environment_id": environment["id"],
+            "domain_name": "otm1",
+        },
+        headers=admin_header,
+    )
+
+    response = client.get(f"/api/v1/platform/projects/{project['id']}/setup-status", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] == project["id"]
+    assert payload["status"] == "READY"
+    assert payload["profile_count"] == 1
+    assert payload["environment_count"] == 1
+    assert payload["active_context_selected"] is True
+    assert payload["missing_requirements"] == []
+
+
+def test_project_setup_status_reports_missing_requirements(client, admin_header):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rollout"},
+        headers=admin_header,
+    ).json()
+
+    response = client.get(f"/api/v1/platform/projects/{project['id']}/setup-status", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] == project["id"]
+    assert payload["status"] == "INCOMPLETE"
+    assert payload["profile_count"] == 0
+    assert payload["environment_count"] == 0
+    assert payload["active_context_selected"] is False
+    assert payload["missing_requirements"] == ["PROFILE", "ENVIRONMENT", "ACTIVE_CONTEXT"]

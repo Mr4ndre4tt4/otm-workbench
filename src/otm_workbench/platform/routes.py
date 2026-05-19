@@ -126,6 +126,32 @@ def serialize_active_context(context: ActiveContext | None, user: User) -> dict[
     }
 
 
+def project_setup_status_payload(db: Session, project_id: str, user: User) -> dict[str, object]:
+    project = db.get(Project, project_id)
+    if project is None:
+        raise api_error(404, "PROJECT_NOT_FOUND", "Project not found.")
+    profile_count = db.query(Profile).filter(Profile.project_id == project_id).count()
+    environment_count = db.query(Environment).filter(Environment.project_id == project_id).count()
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    active_context_selected = bool(active_context and active_context.project_id == project_id)
+    missing_requirements = []
+    if profile_count == 0:
+        missing_requirements.append("PROFILE")
+    if environment_count == 0:
+        missing_requirements.append("ENVIRONMENT")
+    if not active_context_selected:
+        missing_requirements.append("ACTIVE_CONTEXT")
+    return {
+        "project_id": project.id,
+        "project_name": project.name,
+        "status": "READY" if not missing_requirements else "INCOMPLETE",
+        "profile_count": profile_count,
+        "environment_count": environment_count,
+        "active_context_selected": active_context_selected,
+        "missing_requirements": missing_requirements,
+    }
+
+
 class JobCreate(BaseModel):
     job_type: str
     source_module: str
@@ -226,6 +252,15 @@ def create_project(
     db.commit()
     db.refresh(project)
     return IdNameResponse(id=project.id, name=project.name)
+
+
+@router.get("/projects/{project_id}/setup-status")
+def get_project_setup_status(
+    project_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return project_setup_status_payload(db, project_id, user)
 
 
 @router.post("/profiles", response_model=IdNameResponse)
