@@ -537,6 +537,7 @@ def validate_rates_load_sequence(
 def list_rates_reference_options(
     object_type: str,
     domain_name: str = "OTM1",
+    catalog_macro_object_code: str | None = None,
     project_id: str | None = None,
     environment_id: str | None = None,
     profile_id: str | None = None,
@@ -544,7 +545,7 @@ def list_rates_reference_options(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    return reference_options_payload(
+    payload = reference_options_payload(
         db,
         module_id="rates",
         object_type=object_type,
@@ -554,6 +555,11 @@ def list_rates_reference_options(
         profile_id=profile_id,
         can_view_all_domains=can_view_all_domains,
     )
+    if catalog_macro_object_code:
+        payload["catalog_macro_object_code"] = catalog_macro_object_code
+        if catalog_macro_object_code != "RATE_RECORD":
+            payload["items"] = []
+    return payload
 
 
 @router.get("/reference/rate-offerings")
