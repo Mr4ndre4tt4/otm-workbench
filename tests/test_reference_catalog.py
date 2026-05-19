@@ -405,6 +405,7 @@ def test_rate_offering_duplicate_check_returns_warning(client, admin_header):
     response = client.post(
         "/api/v1/modules/rates/reference/rate-offerings/duplicate-check",
         json={
+            "catalog_macro_object_code": "RATE_RECORD",
             "servprov_gid": "OTM1.SERVPROV_A",
             "transport_mode_gid": "PUBLIC.TL",
             "rate_service_gid": "OTM1.RS_STD",
@@ -415,5 +416,24 @@ def test_rate_offering_duplicate_check_returns_warning(client, admin_header):
     )
 
     assert response.status_code == 200
+    assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert response.json()["severity"] == "WARNING"
     assert response.json()["candidates"][0]["gid"] == "OTM1.RO_STD"
+
+    non_rates_response = client.post(
+        "/api/v1/modules/rates/reference/rate-offerings/duplicate-check",
+        json={
+            "catalog_macro_object_code": "LOCATION",
+            "servprov_gid": "OTM1.SERVPROV_A",
+            "transport_mode_gid": "PUBLIC.TL",
+            "rate_service_gid": "OTM1.RS_STD",
+            "equipment_group_profile_gid": "PUBLIC.EQP_DRY",
+            "currency_gid": "PUBLIC.USD",
+        },
+        headers=admin_header,
+    )
+
+    assert non_rates_response.status_code == 200
+    assert non_rates_response.json()["catalog_macro_object_code"] == "LOCATION"
+    assert non_rates_response.json()["severity"] == "INFO"
+    assert non_rates_response.json()["candidates"] == []
