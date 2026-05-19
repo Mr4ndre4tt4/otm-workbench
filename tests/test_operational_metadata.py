@@ -52,6 +52,40 @@ def test_list_and_detail_jobs_return_client_safe_payload(client, admin_header):
     assert "input_json" not in detail.json()
 
 
+def test_list_jobs_filters_by_environment_and_domain(client, admin_header):
+    first = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "CATALOG_IMPORT_DATA_DICTIONARY",
+            "source_module": "catalog",
+            "environment_id": "env_dev",
+            "domain_name": "OTM1",
+        },
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "CATALOG_IMPORT_DATA_DICTIONARY",
+            "source_module": "catalog",
+            "environment_id": "env_test",
+            "domain_name": "OTM2",
+        },
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/platform/jobs?source_module=catalog&environment_id=env_dev&domain_name=otm1",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["id"] == first["id"]
+    assert response.json()["items"][0]["environment_id"] == "env_dev"
+    assert response.json()["items"][0]["domain_name"] == "OTM1"
+
+
 def test_cancel_pending_job_records_event_and_audit(client, admin_header, db_session):
     created = client.post(
         "/api/v1/platform/jobs",

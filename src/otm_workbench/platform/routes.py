@@ -284,6 +284,8 @@ def list_jobs(
     status: str | None = None,
     project_id: str | None = None,
     profile_id: str | None = None,
+    environment_id: str | None = None,
+    domain_name: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -298,6 +300,10 @@ def list_jobs(
         query = query.filter(Job.project_id == project_id)
     if profile_id:
         query = query.filter(Job.profile_id == profile_id)
+    if environment_id:
+        query = query.filter(Job.environment_id == environment_id)
+    if domain_name:
+        query = query.filter(Job.domain_name == domain_name.upper())
     jobs = query.order_by(Job.created_at.desc()).all()
     return PageResponse(items=[serialize_job(job) for job in jobs], total=len(jobs))
 
