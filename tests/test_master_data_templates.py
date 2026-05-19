@@ -1,3 +1,5 @@
+import json
+import zipfile
 from io import BytesIO
 from pathlib import Path
 
@@ -5,7 +7,7 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from sqlalchemy import text
 
-from otm_workbench.models import Artifact
+from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest
 
 
 def test_master_data_health(client, admin_header):
@@ -447,3 +449,74 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
     assert rows[0].file_name == "001_REGION.csv"
     assert rows[0].row_count == 1
     assert rows[0].content.startswith("REGION\nREGION_GID,REGION_NAME,REGION_XID")
+
+
+def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
+    client,
+    admin_header,
+    db_session,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["status"] == "EXPORTED"
+    assert payload["file_name"].startswith("master_data_batch_")
+    assert payload["file_name"].endswith(".zip")
+    assert payload["tables"] == ["REGION", "REGION_DETAIL"]
+
+    artifact = db_session.query(Artifact).filter(Artifact.id == payload["artifact_id"]).one()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "master_data.batch.export_csv").one()
+    assert artifact.source_module == "master_data"
+    assert artifact.artifact_type == "master_data_csv_zip"
+    assert artifact.content_type == "application/zip"
+    assert artifact.sensitivity_level == "client_safe"
+    assert evidence.evidence_type == "master_data_csv_export"
+    assert evidence.client_safe is True
+    assert str(artifact.id) in audit.metadata_json
+
+    with zipfile.ZipFile(artifact.file_path) as archive:
+        names = sorted(archive.namelist())
+        assert names == ["csv/001_REGION.csv", "csv/002_REGION_DETAIL.csv", "manifest.json"]
+        csv_text = archive.read("csv/001_REGION.csv").decode("utf-8")
+        manifest_payload = json.loads(archive.read("manifest.json").decode("utf-8"))
+
+    assert csv_text.splitlines()[0] == "REGION"
+    assert manifest_payload["manifest_type"] == "master_data_csv_export"
+    assert manifest_payload["schema_version"] == "master-data-csv-export-manifest/v1"
+    assert manifest_payload["source_entity_id"] == batch_id
+    assert manifest_payload["files"][0]["file_name"] == "001_REGION.csv"
+    assert json.loads(manifest.manifest_json)["manifest_type"] == "master_data_csv_export"

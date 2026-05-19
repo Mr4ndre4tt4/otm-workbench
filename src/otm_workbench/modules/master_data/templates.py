@@ -1,4 +1,6 @@
 import json
+import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import BinaryIO
 
@@ -9,6 +11,9 @@ from sqlalchemy.orm import Session
 from otm_workbench.catalog.services import validate_column, validate_table
 from otm_workbench.models import (
     Artifact,
+    AuditLog,
+    Evidence,
+    Manifest,
     MasterDataBatch,
     MasterDataCanonicalRecord,
     MasterDataCsvFile,
@@ -467,4 +472,135 @@ def build_master_data_csv_files(
         "status": batch.status,
         "csv_file_count": len(response_files),
         "files": response_files,
+    }
+
+
+def export_master_data_csv_package(
+    db: Session,
+    batch: MasterDataBatch,
+    artifact_root: Path,
+    generated_by: str,
+) -> dict[str, object]:
+    if batch.status != "CSV_BUILT":
+        raise ValueError("Only CSV-built Master Data batches can be exported.")
+
+    csv_files = (
+        db.query(MasterDataCsvFile)
+        .filter(MasterDataCsvFile.batch_id == batch.id)
+        .order_by(MasterDataCsvFile.file_name)
+        .all()
+    )
+    if not csv_files:
+        raise ValueError("Master Data batch has no CSV files to export.")
+
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    export_dir = artifact_root / "master_data" / batch.id / "csv_exports" / timestamp
+    export_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = export_dir / f"master_data_batch_{batch.id}.zip"
+
+    manifest_files = [
+        {
+            "table_name": csv_file.table_name,
+            "file_name": csv_file.file_name,
+            "row_count": csv_file.row_count,
+            "size_bytes": len(csv_file.content.encode("utf-8")),
+        }
+        for csv_file in csv_files
+    ]
+    manifest_payload = {
+        "schema_version": "master-data-csv-export-manifest/v1",
+        "manifest_type": "master_data_csv_export",
+        "source_module": "master_data",
+        "source_entity_type": "master_data_batch",
+        "source_entity_id": batch.id,
+        "batch": {
+            "id": batch.id,
+            "template_code": batch.template_code,
+            "status": "EXPORTED",
+            "row_count": batch.row_count,
+            "issue_count": batch.issue_count,
+        },
+        "files": manifest_files,
+        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+        "generated_by": generated_by,
+    }
+    manifest_text = json.dumps(manifest_payload, indent=2, sort_keys=True)
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", manifest_text)
+        for csv_file in csv_files:
+            archive.writestr(f"csv/{csv_file.file_name}", csv_file.content)
+
+    zip_hash, zip_size = file_sha256(str(zip_path))
+    artifact = Artifact(
+        source_module="master_data",
+        artifact_type="master_data_csv_zip",
+        file_path=str(zip_path),
+        file_name=zip_path.name,
+        content_type="application/zip",
+        sha256=zip_hash,
+        size_bytes=zip_size,
+        sensitivity_level="client_safe",
+    )
+    db.add(artifact)
+    db.flush()
+
+    manifest = Manifest(
+        source_module="master_data",
+        status="CREATED",
+        manifest_json=manifest_text,
+    )
+    db.add(manifest)
+    db.flush()
+
+    evidence_summary = {
+        "source_entity_type": "master_data_batch",
+        "source_entity_id": batch.id,
+        "template_code": batch.template_code,
+        "table_count": len(csv_files),
+        "row_count": sum(csv_file.row_count for csv_file in csv_files),
+        "artifact_type": "master_data_csv_zip",
+    }
+    evidence = Evidence(
+        source_module="master_data",
+        evidence_type="master_data_csv_export",
+        summary_json=json.dumps(evidence_summary, sort_keys=True),
+        artifact_id=artifact.id,
+        manifest_id=manifest.id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+
+    audit = AuditLog(
+        actor_user_id=generated_by,
+        action="master_data.batch.export_csv",
+        target_type="master_data_batch",
+        target_id=batch.id,
+        metadata_json=json.dumps(
+            {
+                "artifact_id": artifact.id,
+                "manifest_id": manifest.id,
+                "evidence_id": evidence.id,
+                "table_count": len(csv_files),
+            },
+            sort_keys=True,
+        ),
+    )
+    db.add(audit)
+
+    batch.status = "EXPORTED"
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "artifact_id": artifact.id,
+        "manifest_id": manifest.id,
+        "evidence_id": evidence.id,
+        "file_name": artifact.file_name,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "tables": [csv_file.table_name for csv_file in csv_files],
     }
