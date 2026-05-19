@@ -112,6 +112,14 @@ def get_latest_export_references(db: Session, batch_id: str) -> tuple[str | None
     return latest.artifact_id, latest.manifest_id
 
 
+def get_rate_batch_readiness_payload(db: Session, batch: RateBatch) -> dict[str, object]:
+    scenario = get_rate_scenario(batch.scenario_code)
+    payload = get_rate_batch_readiness(db, batch).to_dict()
+    payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+    payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
+    return payload
+
+
 def approve_rate_batch(
     db: Session,
     *,
@@ -132,7 +140,7 @@ def approve_rate_batch(
             "evidence_id": existing.id if existing else approval.get("evidence_id"),
             "catalog_macro_object_code": scenario.catalog_macro_object_code,
             "catalog_load_plan_path": scenario.catalog_load_plan_path,
-            "readiness": get_rate_batch_readiness(db, batch).to_dict(),
+            "readiness": get_rate_batch_readiness_payload(db, batch),
         }
 
     readiness = get_rate_batch_readiness(db, batch)
@@ -232,5 +240,5 @@ def approve_rate_batch(
         "approved_by": approved_by,
         "evidence_id": evidence.id,
         **catalog_context,
-        "readiness": get_rate_batch_readiness(db, batch).to_dict(),
+        "readiness": get_rate_batch_readiness_payload(db, batch),
     }
