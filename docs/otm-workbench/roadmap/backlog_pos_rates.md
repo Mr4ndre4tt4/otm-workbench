@@ -364,7 +364,7 @@ Artifacts + Evidence
 5. API de list/detail de templates. [ENTREGUE MVP0 inicial]
 6. Template Builder para gerar Excel. [INICIADO com endpoint build-workbook gerando XLSX sintético e Artifact client-safe]
 7. Batch upload/parse. [INICIADO com upload XLSX, parse por sheet e persistencia em master_data_batches]
-8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas/colunas e issues estruturais de workbook]
+8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas/colunas, issues estruturais de workbook e relacionamento same-batch]
 9. Mapping Engine basico. [INICIADO com mapeamento de batch PARSED para canonical records por target_column]
 10. Geracao de output records. [INICIADO com materializacao de canonical records em master_data_output_records]
 11. Geracao de CSVs. [INICIADO com master_data_csv_files e CSV OTM por tabela]
