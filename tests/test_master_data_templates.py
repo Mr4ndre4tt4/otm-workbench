@@ -311,3 +311,72 @@ def test_master_data_batch_mapping_creates_canonical_records(client, admin_heade
     rows_by_sheet = {row.sheet_code: row for row in rows}
     assert rows_by_sheet["REGIONS"].target_table == "REGION"
     assert '"REGION_GID": "SYN.REGION_001"' in rows_by_sheet["REGIONS"].payload_json
+
+
+def test_master_data_batch_build_output_creates_output_records(client, admin_header, db_session):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/build-output",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["status"] == "OUTPUT_BUILT"
+    assert payload["output_record_count"] == 2
+    assert payload["records"] == [
+        {
+            "target_table": "REGION",
+            "record_index": 1,
+            "payload": {
+                "REGION_GID": "SYN.REGION_001",
+                "REGION_NAME": "Synthetic Region",
+                "REGION_XID": "REGION_001",
+            },
+        },
+        {
+            "target_table": "REGION_DETAIL",
+            "record_index": 1,
+            "payload": {
+                "LOCATION_GID": "SYN.LOCATION_001",
+                "REGION_GID": "SYN.REGION_001",
+            },
+        },
+    ]
+
+    rows = db_session.execute(
+        text(
+            "select target_table, record_index, payload_json "
+            "from master_data_output_records where batch_id = :batch_id"
+        ),
+        {"batch_id": batch_id},
+    ).all()
+    assert len(rows) == 2
+    rows_by_table = {row.target_table: row for row in rows}
+    assert rows_by_table["REGION"].record_index == 1
+    assert '"REGION_XID": "REGION_001"' in rows_by_table["REGION"].payload_json

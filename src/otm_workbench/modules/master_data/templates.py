@@ -11,6 +11,7 @@ from otm_workbench.models import (
     Artifact,
     MasterDataBatch,
     MasterDataCanonicalRecord,
+    MasterDataOutputRecord,
     MasterDataTemplate,
 )
 from otm_workbench.platform.services import file_sha256
@@ -362,5 +363,50 @@ def map_master_data_batch_to_canonical_records(
         "batch_id": batch.id,
         "status": batch.status,
         "canonical_record_count": len(response_records),
+        "records": response_records,
+    }
+
+
+def build_master_data_output_records(
+    db: Session,
+    batch: MasterDataBatch,
+) -> dict[str, object]:
+    if batch.status != "MAPPED":
+        raise ValueError("Only mapped Master Data batches can build output records.")
+
+    db.query(MasterDataOutputRecord).filter(MasterDataOutputRecord.batch_id == batch.id).delete()
+    canonical_records = (
+        db.query(MasterDataCanonicalRecord)
+        .filter(MasterDataCanonicalRecord.batch_id == batch.id)
+        .order_by(MasterDataCanonicalRecord.created_at, MasterDataCanonicalRecord.record_index)
+        .all()
+    )
+
+    response_records = []
+    for canonical_record in canonical_records:
+        payload = json.loads(canonical_record.payload_json)
+        output_record = MasterDataOutputRecord(
+            batch_id=batch.id,
+            template_code=batch.template_code,
+            target_table=canonical_record.target_table,
+            record_index=canonical_record.record_index,
+            payload_json=json.dumps(payload, sort_keys=True),
+        )
+        db.add(output_record)
+        response_records.append(
+            {
+                "target_table": canonical_record.target_table,
+                "record_index": canonical_record.record_index,
+                "payload": payload,
+            }
+        )
+
+    batch.status = "OUTPUT_BUILT"
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "output_record_count": len(response_records),
         "records": response_records,
     }
