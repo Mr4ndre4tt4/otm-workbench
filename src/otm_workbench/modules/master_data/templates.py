@@ -86,28 +86,197 @@ REGIONS_BASIC_TEMPLATE = {
     "description": "Synthetic starter template for region master data.",
 }
 
+ITEMS_PACKAGING_STANDARD_TEMPLATE = {
+    "code": "ITEMS_PACKAGING_STANDARD",
+    "name": "Items & Packaging Standard",
+    "version": 1,
+    "status": "PUBLISHED",
+    "catalog_macro_object_code": "ITEM",
+    "data_category": "MASTER_DATA",
+    "target_tables": ["ITEM", "SHIP_UNIT_SPEC", "PACKAGED_ITEM", "TI_HI"],
+    "sheets": [
+        {
+            "code": "ITEMS",
+            "name": "Items",
+            "target_table": "ITEM",
+            "fields": [
+                {
+                    "name": "item_gid",
+                    "label": "Item GID",
+                    "target_column": "ITEM_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "item_xid",
+                    "label": "Item XID",
+                    "target_column": "ITEM_XID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "description",
+                    "label": "Description",
+                    "target_column": "DESCRIPTION",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "item_type_gid",
+                    "label": "Item Type GID",
+                    "target_column": "ITEM_TYPE_GID",
+                    "required": False,
+                    "data_type": "string",
+                },
+            ],
+        },
+        {
+            "code": "PACKAGING",
+            "name": "Packaging",
+            "target_table": "PACKAGED_ITEM",
+            "fields": [
+                {
+                    "name": "packaged_item_gid",
+                    "label": "Packaged Item GID",
+                    "target_column": "PACKAGED_ITEM_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "packaged_item_xid",
+                    "label": "Packaged Item XID",
+                    "target_column": "PACKAGED_ITEM_XID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "item_gid",
+                    "label": "Item GID",
+                    "target_column": "ITEM_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "packaging_unit_gid",
+                    "label": "Packaging Unit GID",
+                    "target_column": "PACKAGING_UNIT_GID",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "weight",
+                    "label": "Weight",
+                    "target_column": "PACKAGE_SHIP_UNIT_WEIGHT",
+                    "required": False,
+                    "data_type": "number",
+                },
+                {
+                    "name": "weight_uom",
+                    "label": "Weight UOM",
+                    "target_column": "PACKAGE_SHIP_UNIT_WEIGHT_UOM",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "volume",
+                    "label": "Volume",
+                    "target_column": "PACKAGE_SU_VOLUME",
+                    "required": False,
+                    "data_type": "number",
+                },
+                {
+                    "name": "volume_uom",
+                    "label": "Volume UOM",
+                    "target_column": "PACKAGE_SU_VOLUME_UOM_CODE",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "length",
+                    "label": "Length",
+                    "target_column": "PACKAGE_SU_LENGTH",
+                    "required": False,
+                    "data_type": "number",
+                },
+                {
+                    "name": "width",
+                    "label": "Width",
+                    "target_column": "PACKAGE_SU_WIDTH",
+                    "required": False,
+                    "data_type": "number",
+                },
+            ],
+        },
+        {
+            "code": "TI_HI",
+            "name": "TI HI",
+            "target_table": "TI_HI",
+            "fields": [
+                {
+                    "name": "packaged_item_gid",
+                    "label": "Packaged Item GID",
+                    "target_column": "PACKAGED_ITEM_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "packaging_unit_gid",
+                    "label": "Packaging Unit GID",
+                    "target_column": "PACKAGING_UNIT_GID",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "num_layers",
+                    "label": "Number of Layers",
+                    "target_column": "NUM_LAYERS",
+                    "required": False,
+                    "data_type": "number",
+                },
+                {
+                    "name": "quantity_per_layer",
+                    "label": "Quantity per Layer",
+                    "target_column": "QUANTITY_PER_LAYER",
+                    "required": False,
+                    "data_type": "number",
+                },
+            ],
+        },
+    ],
+    "description": "Synthetic starter template for item and packaged item master data.",
+}
+
+MASTER_DATA_TEMPLATE_SEEDS = [
+    REGIONS_BASIC_TEMPLATE,
+    ITEMS_PACKAGING_STANDARD_TEMPLATE,
+]
+
 
 def seed_master_data_templates(db: Session) -> None:
-    exists = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == REGIONS_BASIC_TEMPLATE["code"]).first()
-    if exists:
-        if not json.loads(exists.sheets_json):
-            exists.sheets_json = json.dumps(REGIONS_BASIC_TEMPLATE["sheets"])
-            db.commit()
-        return
-    db.add(
-        MasterDataTemplate(
-            code=REGIONS_BASIC_TEMPLATE["code"],
-            name=REGIONS_BASIC_TEMPLATE["name"],
-            version=REGIONS_BASIC_TEMPLATE["version"],
-            status=REGIONS_BASIC_TEMPLATE["status"],
-            catalog_macro_object_code=REGIONS_BASIC_TEMPLATE["catalog_macro_object_code"],
-            data_category=REGIONS_BASIC_TEMPLATE["data_category"],
-            target_tables_json=json.dumps(REGIONS_BASIC_TEMPLATE["target_tables"]),
-            sheets_json=json.dumps(REGIONS_BASIC_TEMPLATE["sheets"]),
-            description=REGIONS_BASIC_TEMPLATE["description"],
+    changed = False
+    for seed in MASTER_DATA_TEMPLATE_SEEDS:
+        exists = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == seed["code"]).first()
+        if exists:
+            if not json.loads(exists.sheets_json):
+                exists.sheets_json = json.dumps(seed["sheets"])
+                changed = True
+            continue
+        db.add(
+            MasterDataTemplate(
+                code=seed["code"],
+                name=seed["name"],
+                version=seed["version"],
+                status=seed["status"],
+                catalog_macro_object_code=seed["catalog_macro_object_code"],
+                data_category=seed["data_category"],
+                target_tables_json=json.dumps(seed["target_tables"]),
+                sheets_json=json.dumps(seed["sheets"]),
+                description=seed["description"],
+            )
         )
-    )
-    db.commit()
+        changed = True
+    if changed:
+        db.commit()
 
 
 def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, object]:

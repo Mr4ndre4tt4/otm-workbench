@@ -26,8 +26,9 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total"] == 1
-    template = payload["items"][0]
+    assert payload["total"] == 2
+    templates_by_code = {template["code"]: template for template in payload["items"]}
+    template = templates_by_code["REGIONS_BASIC"]
     assert template["code"] == "REGIONS_BASIC"
     assert template["name"] == "Regions Basic"
     assert template["version"] == 1
@@ -35,6 +36,10 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
     assert template["catalog_macro_object_code"] == "REGION"
     assert template["target_tables"] == ["REGION", "REGION_DETAIL"]
     assert template["data_category"] == "MASTER_DATA"
+    items_template = templates_by_code["ITEMS_PACKAGING_STANDARD"]
+    assert items_template["name"] == "Items & Packaging Standard"
+    assert items_template["catalog_macro_object_code"] == "ITEM"
+    assert items_template["target_tables"] == ["ITEM", "SHIP_UNIT_SPEC", "PACKAGED_ITEM", "TI_HI"]
 
 
 def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_header):
@@ -110,6 +115,43 @@ def test_master_data_template_validation_uses_catalog_dictionary(client, admin_h
         "field_count": 5,
         "validated_table_count": 2,
         "validated_column_count": 5,
+    }
+
+
+def test_master_data_items_packaging_template_detail_and_validation(client, admin_header):
+    detail = client.get(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD",
+        headers=admin_header,
+    )
+
+    assert detail.status_code == 200
+    payload = detail.json()
+    assert payload["code"] == "ITEMS_PACKAGING_STANDARD"
+    assert [sheet["code"] for sheet in payload["sheets"]] == ["ITEMS", "PACKAGING", "TI_HI"]
+    assert payload["sheets"][0]["target_table"] == "ITEM"
+    assert [field["target_column"] for field in payload["sheets"][0]["fields"]] == [
+        "ITEM_GID",
+        "ITEM_XID",
+        "DESCRIPTION",
+        "ITEM_TYPE_GID",
+    ]
+    assert payload["sheets"][1]["target_table"] == "PACKAGED_ITEM"
+    assert payload["sheets"][2]["target_table"] == "TI_HI"
+
+    validation = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    validation_payload = validation.json()
+    assert validation_payload["valid"] is True
+    assert validation_payload["issues"] == []
+    assert validation_payload["summary"] == {
+        "sheet_count": 3,
+        "field_count": 18,
+        "validated_table_count": 3,
+        "validated_column_count": 18,
     }
 
 
