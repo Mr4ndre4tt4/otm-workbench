@@ -46,6 +46,7 @@ router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
 
 
 class LoadSequenceRequest(BaseModel):
+    catalog_macro_object_code: str | None = None
     tables: list[str] = RATES_LOAD_SEQUENCE
 
 
@@ -525,13 +526,31 @@ def validate_rates_load_sequence(
     payload: LoadSequenceRequest,
     user: User = Depends(require_user),
 ):
+    if payload.catalog_macro_object_code and payload.catalog_macro_object_code != "RATE_RECORD":
+        return {
+            "catalog_macro_object_code": payload.catalog_macro_object_code,
+            "valid": False,
+            "known_tables": [],
+            "missing_tables": [],
+            "issues": [
+                {
+                    "severity": "ERROR",
+                    "table_name": payload.tables[0] if payload.tables else None,
+                    "parent_table_name": None,
+                    "message": "Catalog macro-object is outside the Rates module sequence.",
+                }
+            ],
+        }
     result = validate_load_sequence(Path(get_settings().otm_data_dictionary_root), payload.tables)
-    return {
+    response = {
         "valid": result.valid,
         "known_tables": result.known_tables,
         "missing_tables": result.missing_tables,
         "issues": [item.__dict__ for item in result.issues],
     }
+    if payload.catalog_macro_object_code:
+        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+    return response
 
 
 @router.get("/reference/options")
