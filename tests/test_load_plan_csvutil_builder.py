@@ -97,6 +97,11 @@ def test_csvutil_build_succeeds_for_registered_package(client, admin_header, db_
     assert payload["summary"]["table_count"] == 1
     assert payload["summary"]["row_count"] == 1
     assert payload["summary"]["package_type"] == "rates_csv_zip"
+    assert payload["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        payload["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert build.created_by == "admin@example.com"
     assert build.built_at is not None
 
@@ -154,10 +159,17 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
     assert "OTM1.ACC_COST_001" not in cl_text
     assert manifest_json["manifest_type"] == "csvutil_build"
     assert manifest_json["package"]["id"] == package["id"]
+    assert manifest_json["package"]["catalog_macro_object_code"] == "RATE_RECORD"
     assert {item["artifact_type"] for item in manifest_json["files"]} == {"csvutil_ctl", "csvutil_cl"}
     assert evidence.client_safe is True
     assert evidence.evidence_type == "csvutil_build"
     assert evidence.artifact_id == ctl.id
+    evidence_summary = json.loads(evidence.summary_json)
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert audit.target_id == payload["id"]
     assert event.aggregate_id == payload["id"]

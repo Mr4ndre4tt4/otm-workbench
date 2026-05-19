@@ -97,6 +97,15 @@ def ensure_analyzable_package(db: Session, package: LoadPlanPackage) -> tuple[Ar
     return artifact, load_sequence
 
 
+def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def read_csv_header(lines: list[str]) -> list[str]:
     if len(lines) < 2:
         return []
@@ -211,6 +220,7 @@ def generate_zip_analysis(
     analyzed_by: str,
 ) -> LoadPlanZipAnalysis:
     artifact, load_sequence = ensure_analyzable_package(db, package)
+    catalog_context = catalog_context_for_package(package)
     load_sequence_tables = {str(item["table_name"]).upper() for item in load_sequence}
     expected_rows_by_table = {str(item["table_name"]).upper(): int(item.get("row_count", 0)) for item in load_sequence}
     files: list[dict[str, object]] = []
@@ -251,6 +261,7 @@ def generate_zip_analysis(
         "finding_count": len(findings),
         "error_count": error_count,
         "warning_count": warning_count,
+        **catalog_context,
     }
     manifest_payload = {
         "schema_version": "load-plan-zip-analysis-manifest/v1",
@@ -263,6 +274,7 @@ def generate_zip_analysis(
             "source_module": package.source_module,
             "source_entity_id": package.source_entity_id,
             "package_type": package.package_type,
+            **catalog_context,
         },
         "source_artifact": {
             "artifact_id": artifact.id,
@@ -316,6 +328,7 @@ def generate_zip_analysis(
         "finding_count": summary["finding_count"],
         "error_count": summary["error_count"],
         "warning_count": summary["warning_count"],
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=package.project_id,

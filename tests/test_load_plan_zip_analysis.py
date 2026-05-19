@@ -88,6 +88,11 @@ def test_zip_analysis_succeeds_for_registered_package(client, admin_header, db_s
     assert payload["summary"]["csv_file_count"] == 1
     assert payload["summary"]["table_count"] == 1
     assert payload["summary"]["row_count"] == 1
+    assert payload["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        payload["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert payload["summary"]["error_count"] == 0
     assert payload["summary"]["warning_count"] == 0
     assert payload["findings"] == []
@@ -114,10 +119,17 @@ def test_zip_analysis_creates_manifest_evidence_audit_and_event(client, admin_he
 
     assert manifest_json["manifest_type"] == "zip_analysis"
     assert manifest_json["package"]["id"] == package["id"]
+    assert manifest_json["package"]["catalog_macro_object_code"] == "RATE_RECORD"
     assert manifest_json["files"][0]["table_name"] == "ACCESSORIAL_COST"
     assert evidence.client_safe is True
     assert evidence.evidence_type == "load_plan_zip_analysis"
     assert evidence.artifact_id == export["artifact_id"]
+    evidence_summary = json.loads(evidence.summary_json)
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert "OTM1.ACC_COST_001" not in manifest.manifest_json
     assert audit.target_id == payload["id"]

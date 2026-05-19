@@ -76,6 +76,15 @@ def ensure_buildable_package(package: LoadPlanPackage) -> list[dict[str, object]
     return load_sequence
 
 
+def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def create_artifact(
     db: Session,
     *,
@@ -119,6 +128,7 @@ def generate_csvutil_build(
     ctl_artifact = create_artifact(db, package=package, artifact_type="csvutil_ctl", path=ctl_path)
     cl_artifact = create_artifact(db, package=package, artifact_type="csvutil_cl", path=cl_path)
     built_at = iso_now()
+    catalog_context = catalog_context_for_package(package)
     files = [
         {
             "artifact_type": ctl_artifact.artifact_type,
@@ -144,6 +154,7 @@ def generate_csvutil_build(
             "source_module": package.source_module,
             "source_entity_id": package.source_entity_id,
             "package_type": package.package_type,
+            **catalog_context,
         },
         "files": files,
         "load_sequence": load_sequence,
@@ -169,6 +180,7 @@ def generate_csvutil_build(
         "row_count": sum(int(item.get("row_count", 0)) for item in load_sequence),
         "ctl_artifact_type": "csvutil_ctl",
         "cl_artifact_type": "csvutil_cl",
+        **catalog_context,
     }
     build = CsvutilBuild(
         project_id=package.project_id,
@@ -197,6 +209,7 @@ def generate_csvutil_build(
         "cl_artifact_id": cl_artifact.id,
         "manifest_id": manifest.id,
         "status": "BUILT",
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=package.project_id,
