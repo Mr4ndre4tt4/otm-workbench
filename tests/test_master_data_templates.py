@@ -1,3 +1,10 @@
+from pathlib import Path
+
+from openpyxl import load_workbook
+
+from otm_workbench.models import Artifact
+
+
 def test_master_data_health(client, admin_header):
     response = client.get("/api/v1/modules/master-data/health", headers=admin_header)
 
@@ -99,3 +106,30 @@ def test_master_data_template_validation_uses_catalog_dictionary(client, admin_h
         "validated_table_count": 2,
         "validated_column_count": 5,
     }
+
+
+def test_master_data_template_build_workbook_creates_artifact(client, admin_header, db_session):
+    response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/build-workbook",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "REGIONS_BASIC"
+    assert payload["file_name"] == "regions_basic_v1.xlsx"
+    assert payload["content_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert payload["sheet_count"] == 2
+    assert payload["field_count"] == 5
+
+    artifact = db_session.query(Artifact).filter(Artifact.id == payload["artifact_id"]).one()
+    assert artifact.source_module == "master_data"
+    assert artifact.artifact_type == "master_data_template_workbook"
+    assert artifact.sensitivity_level == "client_safe"
+
+    workbook_path = Path(artifact.file_path)
+    assert workbook_path.exists()
+    workbook = load_workbook(workbook_path)
+    assert workbook.sheetnames == ["REGIONS", "REGION_DETAILS"]
+    assert [cell.value for cell in workbook["REGIONS"][1]] == ["Region GID", "Region XID", "Region Name"]
+    assert [cell.value for cell in workbook["REGION_DETAILS"][1]] == ["Region GID", "Location GID"]
