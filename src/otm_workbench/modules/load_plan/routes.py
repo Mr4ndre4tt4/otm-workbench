@@ -330,6 +330,10 @@ def list_cutover_handoffs(
     handoffs = query.order_by(LoadPlanCutoverHandoff.committed_at.desc()).all()
     items = [serialize_cutover_handoff(handoff) for handoff in handoffs]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items
