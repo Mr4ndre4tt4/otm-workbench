@@ -1,9 +1,10 @@
+import json
 from pathlib import Path
 
 from otm_workbench.models import AuditLog, Job, JobEvent
 
 
-def test_create_job(client, admin_header):
+def test_create_job(client, admin_header, db_session):
     response = client.post(
         "/api/v1/platform/jobs",
         json={
@@ -24,6 +25,12 @@ def test_create_job(client, admin_header):
     assert payload["progress"] == 0
     assert payload["message"] == "Job created."
     assert payload["input"] == {"ping": "ok"}
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "job.create").one()
+    audit_metadata = json.loads(audit.metadata_json)
+    assert audit_metadata["project_id"] == "project_demo"
+    assert audit_metadata["profile_id"] == "profile_demo"
+    assert audit_metadata["environment_id"] == "env_demo"
+    assert audit_metadata["domain_name"] == "OTM1"
 
 
 def test_list_and_detail_jobs_return_client_safe_payload(client, admin_header):
@@ -89,7 +96,12 @@ def test_list_jobs_filters_by_environment_and_domain(client, admin_header):
 def test_cancel_pending_job_records_event_and_audit(client, admin_header, db_session):
     created = client.post(
         "/api/v1/platform/jobs",
-        json={"job_type": "CATALOG_IMPORT_DATA_DICTIONARY", "source_module": "catalog"},
+        json={
+            "job_type": "CATALOG_IMPORT_DATA_DICTIONARY",
+            "source_module": "catalog",
+            "environment_id": "env_demo",
+            "domain_name": "OTM1",
+        },
         headers=admin_header,
     ).json()
 
@@ -105,6 +117,9 @@ def test_cancel_pending_job_records_event_and_audit(client, admin_header, db_ses
     assert event.status_after == "CANCELLED"
     audit = db_session.query(AuditLog).filter(AuditLog.action == "job.cancel").one()
     assert audit.target_id == created["id"]
+    audit_metadata = json.loads(audit.metadata_json)
+    assert audit_metadata["environment_id"] == "env_demo"
+    assert audit_metadata["domain_name"] == "OTM1"
 
 
 def test_cancel_running_job_is_rejected(client, admin_header, db_session):
