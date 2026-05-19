@@ -25,6 +25,15 @@ def handoff_blocker(code: str, message: str) -> dict[str, object]:
     return {"code": code, "severity": "ERROR", "message": message, "details": {}}
 
 
+def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def serialize_cutover_handoff(handoff: LoadPlanCutoverHandoff) -> dict[str, object]:
     return {
         "id": handoff.id,
@@ -135,6 +144,7 @@ def commit_cutover_handoff(
     if not eligibility["eligible"]:
         raise ValueError(json.dumps({"blockers": eligibility["blockers"]}, sort_keys=True))
 
+    catalog_context = catalog_context_for_package(package)
     summary = {
         "package_id": package.id,
         "readiness_id": eligibility["readiness_id"],
@@ -142,6 +152,7 @@ def commit_cutover_handoff(
         "readiness_export_id": eligibility["readiness_export_id"],
         "archive_evidence_id": eligibility["archive_evidence_id"],
         "status": READY_FOR_CUTOVER_STATUS,
+        **catalog_context,
     }
     committed_at = utcnow()
     handoff = LoadPlanCutoverHandoff(
