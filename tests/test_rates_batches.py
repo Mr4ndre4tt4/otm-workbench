@@ -114,6 +114,9 @@ def test_add_rate_batch_tables_api_sorts_by_rates_sequence(client, admin_header)
     )
 
     assert response.status_code == 200
+    assert response.json()["batch_id"] == created["id"]
+    assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert response.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert [item["table_name"] for item in response.json()["tables"]] == [
         "X_LANE",
         "RATE_GEO_COST",

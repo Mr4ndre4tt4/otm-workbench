@@ -303,8 +303,11 @@ def add_rates_batch_tables(
         batch=batch,
         tables=[item.model_dump() for item in payload.tables],
     )
+    scenario = get_rate_scenario(batch.scenario_code)
     return {
         "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "tables": [serialize_rate_batch_table(table) for table in tables],
     }
 
