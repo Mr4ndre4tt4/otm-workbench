@@ -188,6 +188,8 @@ def test_latest_export_endpoint_returns_manifest_artifact_and_download_url(clien
     assert response.status_code == 200
     payload = response.json()
     assert payload["batch_id"] == batch["id"]
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert payload["artifact"]["id"] == export["artifact_id"]
     assert payload["evidence"]["id"] == export["evidence_id"]
     assert payload["manifest"]["manifest_type"] == "rates_csv_export"
