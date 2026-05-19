@@ -70,6 +70,10 @@ def test_rates_templates_filter_by_catalog_macro_object(client, admin_header):
     ]
     assert catalog_unmatched.json()["total"] == 0
     assert catalog_unmatched.json()["items"] == []
+    assert catalog_unmatched.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert catalog_unmatched.json()["message"] == "Catalog macro-object is outside the Rates module sequence."
+    assert catalog_unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
+    assert catalog_unmatched.json()["catalog_macro_object_code"] == "LOCATION"
 
 
 def test_created_rate_batch_includes_catalog_context(client, admin_header):

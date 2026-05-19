@@ -203,6 +203,11 @@ def list_rates_templates(
         for scenario in list_rate_scenarios()
     ]
     if catalog_macro_object_code:
+        if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_rates_catalog_payload(catalog_macro_object_code))
+            payload["catalog_macro_object_code"] = catalog_macro_object_code
+            return payload
         items = [
             item
             for item in items
