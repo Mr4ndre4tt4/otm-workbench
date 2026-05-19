@@ -108,4 +108,8 @@ def test_batch_issues_endpoint_returns_persisted_issues(client, admin_header):
     )
 
     assert response.status_code == 200
-    assert response.json()["total"] >= 1
+    payload = response.json()
+    assert payload["batch_id"] == batch["id"]
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    assert payload["total"] >= 1
