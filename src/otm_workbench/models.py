@@ -239,6 +239,7 @@ class MasterDataTemplate(Base, TimestampMixin):
     catalog_macro_object_code: Mapped[str] = mapped_column(String, index=True)
     data_category: Mapped[str] = mapped_column(String, default="MASTER_DATA")
     target_tables_json: Mapped[str] = mapped_column(Text, default="[]")
+    sheets_json: Mapped[str] = mapped_column(Text, default="[]")
     description: Mapped[str] = mapped_column(Text, default="")
 
 
