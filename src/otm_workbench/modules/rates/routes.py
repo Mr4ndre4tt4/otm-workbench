@@ -377,7 +377,13 @@ def preview_rates_batch_csv(
         previews.append({"table_name": batch_table.table_name, "content": content})
     batch.status = "EXPORT_PREVIEWED"
     db.commit()
-    return {"batch_id": batch.id, "previews": previews}
+    scenario = get_rate_scenario(batch.scenario_code)
+    return {
+        "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        "previews": previews,
+    }
 
 
 @router.post("/batches/{batch_id}/export-csv")
