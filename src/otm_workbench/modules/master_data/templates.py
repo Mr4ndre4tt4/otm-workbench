@@ -701,10 +701,28 @@ def build_master_data_csv_files(
             json.loads(output_record.payload_json)
         )
 
+    template = (
+        db.query(MasterDataTemplate)
+        .filter(MasterDataTemplate.code == batch.template_code)
+        .first()
+    )
+    template_columns_by_table: dict[str, list[str]] = {}
+    if template is not None:
+        for sheet in json.loads(template.sheets_json):
+            target_table = sheet["target_table"]
+            table_columns = template_columns_by_table.setdefault(target_table, [])
+            for field in sheet["fields"]:
+                target_column = field["target_column"]
+                if target_column not in table_columns:
+                    table_columns.append(target_column)
+
     response_files = []
     for index, table_name in enumerate(records_by_table, start=1):
         rows = records_by_table[table_name]
-        columns = sorted({column for row in rows for column in row})
+        row_columns = {column for row in rows for column in row}
+        template_columns = template_columns_by_table.get(table_name, [])
+        columns = [column for column in template_columns if column in row_columns]
+        columns.extend(sorted(row_columns - set(columns)))
         content = build_otm_csv_preview(dictionary_root, table_name, columns, rows)
         file_name = f"{index:03d}_{table_name}.csv"
         csv_file = MasterDataCsvFile(
