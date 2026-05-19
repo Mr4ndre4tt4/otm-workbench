@@ -228,6 +228,20 @@ class Evidence(Base, TimestampMixin):
     sensitivity_level: Mapped[str] = mapped_column(String, default="client_safe")
 
 
+class MasterDataTemplate(Base, TimestampMixin):
+    __tablename__ = "master_data_templates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String, default="DRAFT")
+    catalog_macro_object_code: Mapped[str] = mapped_column(String, index=True)
+    data_category: Mapped[str] = mapped_column(String, default="MASTER_DATA")
+    target_tables_json: Mapped[str] = mapped_column(Text, default="[]")
+    description: Mapped[str] = mapped_column(Text, default="")
+
+
 class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 

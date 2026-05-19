@@ -18,7 +18,7 @@ def seed_modules(db: Session) -> None:
             id="master_data",
             display_name="Data Factory",
             route_base="/master-data",
-            status="PLANNED",
+            status="ACTIVE",
         ),
         Module(id="home", display_name="Project Cockpit", route_base="/home", status="ACTIVE"),
         Module(
