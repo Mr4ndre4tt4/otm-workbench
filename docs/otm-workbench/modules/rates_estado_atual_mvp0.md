@@ -244,6 +244,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 1. Audit metadata do download direto de artifact de Rates carrega catalog_macro_object_code e catalog_load_plan_path.
 2. Resposta nested de readiness dentro de approval repete o contexto de Catalog.
 3. Contrato de macro-objeto nao suportado foi padronizado para endpoints de Rates que recebem catalog_macro_object_code.
+4. GET /api/v1/modules/rates/dictionary/tables propaga catalog_macro_object_code e catalog_load_plan_path quando filtrado por RATE_RECORD.
 ```
 
 ---
