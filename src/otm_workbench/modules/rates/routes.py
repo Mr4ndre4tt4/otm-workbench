@@ -426,7 +426,14 @@ def list_rates_batch_artifacts(
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     artifacts = list_batch_export_artifacts(db, batch.id)
     items = [serialize_artifact(artifact) for artifact in artifacts]
-    return PageResponse(items=items, total=len(items))
+    scenario = get_rate_scenario(batch.scenario_code)
+    return {
+        "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        "items": items,
+        "total": len(items),
+    }
 
 
 @router.get("/batches/{batch_id}/exports/latest")
@@ -513,7 +520,14 @@ def list_rates_batch_evidence(
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     evidence_items = list_batch_export_evidence(db, batch.id)
     items = [serialize_evidence(evidence) for evidence in evidence_items]
-    return PageResponse(items=items, total=len(items))
+    scenario = get_rate_scenario(batch.scenario_code)
+    return {
+        "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        "items": items,
+        "total": len(items),
+    }
 
 
 @router.get("/dictionary/tables")

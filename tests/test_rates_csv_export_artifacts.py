@@ -160,7 +160,13 @@ def test_batch_artifacts_and_evidence_endpoints_return_export_records(client, ad
 
     assert artifacts.status_code == 200
     assert evidence.status_code == 200
+    assert artifacts.json()["batch_id"] == batch["id"]
+    assert artifacts.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert artifacts.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert artifacts.json()["items"][0]["id"] == export["artifact_id"]
+    assert evidence.json()["batch_id"] == batch["id"]
+    assert evidence.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert evidence.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert evidence.json()["items"][0]["id"] == export["evidence_id"]
     assert "OTM1.ACC_COST_001" not in str(evidence.json())
 
