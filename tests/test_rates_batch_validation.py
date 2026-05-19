@@ -21,6 +21,8 @@ def test_validation_errors_when_required_table_missing(client, admin_header):
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert payload["valid"] is False
     assert any(issue["issue_code"] == "REQUIRED_TABLE_MISSING" for issue in payload["issues"])
 

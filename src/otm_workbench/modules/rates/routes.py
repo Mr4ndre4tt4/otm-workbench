@@ -319,8 +319,11 @@ def validate_rates_batch(
         dictionary_root=Path(get_settings().otm_data_dictionary_root),
         batch=batch,
     )
+    scenario = get_rate_scenario(batch.scenario_code)
     return {
         "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
         "status": batch.status,
         "valid": not any(issue.severity == "ERROR" for issue in issues),
         "issues": [serialize_rate_batch_issue(issue) for issue in issues],
