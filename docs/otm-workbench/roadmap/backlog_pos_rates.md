@@ -251,6 +251,7 @@ Ja existe uma fundacao minima:
 - User/Auth local;
 - Project, Profile e Environment basicos;
 - Active Context MVP0 com GET/POST, domain_name normalizado e allowed_domains PUBLIC + dominio ativo;
+- Catalog Core reference options ja consome Active Context quando domain_name nao e informado;
 - Role e Capability basicos;
 - FeatureFlag;
 - Module Registry;

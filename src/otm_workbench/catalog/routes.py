@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import User
+from otm_workbench.models import ActiveContext, User
 from otm_workbench.catalog.services import (
     get_macro_object,
     list_macro_objects,
@@ -52,6 +52,10 @@ def dictionary_root() -> Path:
     return Path(get_settings().otm_data_dictionary_root)
 
 
+def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
+    return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
 @router.get("/health")
 def catalog_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "catalog"}
@@ -77,7 +81,7 @@ def list_catalog_table_columns(table_name: str, user: User = Depends(require_use
 @router.get("/reference/options")
 def list_catalog_reference_options(
     object_type: str,
-    domain_name: str = "OTM1",
+    domain_name: str | None = None,
     project_id: str | None = None,
     environment_id: str | None = None,
     profile_id: str | None = None,
@@ -85,14 +89,20 @@ def list_catalog_reference_options(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    context = active_context_for_user(db, user)
+    effective_domain_name = domain_name or (context.domain_name if context and context.domain_name else "OTM1")
+    effective_project_id = project_id or (context.project_id if context else None)
+    effective_environment_id = environment_id or (context.environment_id if context else None)
+    effective_profile_id = profile_id or (context.profile_id if context else None)
+    effective_can_view_all_domains = can_view_all_domains or bool(context and context.can_view_all_domains)
     return reference_options_payload(
         db,
         object_type=object_type,
-        domain_name=domain_name,
-        project_id=project_id,
-        environment_id=environment_id,
-        profile_id=profile_id,
-        can_view_all_domains=can_view_all_domains,
+        domain_name=effective_domain_name,
+        project_id=effective_project_id,
+        environment_id=effective_environment_id,
+        profile_id=effective_profile_id,
+        can_view_all_domains=effective_can_view_all_domains,
     )
 
 

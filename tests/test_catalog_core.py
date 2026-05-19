@@ -66,6 +66,28 @@ def test_catalog_reference_options_filter_public_and_profile_domain(client, admi
     assert "OTM2.RS_OTHER" not in str(payload)
 
 
+def test_catalog_reference_options_use_active_context_domain_when_omitted(client, admin_header, db_session):
+    seed_reference_options(db_session)
+    context = client.post(
+        "/api/v1/platform/active-context",
+        json={"domain_name": "otm2"},
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/catalog/reference/options?object_type=RATE_SERVICE",
+        headers=admin_header,
+    )
+
+    assert context.status_code == 200
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["domain_name"] == "OTM2"
+    assert payload["allowed_domains"] == ["PUBLIC", "OTM2"]
+    assert [item["gid"] for item in payload["items"]] == ["PUBLIC.RS_STANDARD", "OTM2.RS_OTHER"]
+    assert "OTM1.RS_EXPRESS" not in str(payload)
+
+
 def test_catalog_validate_table_blocks_transactional_table(client, admin_header):
     response = client.post(
         "/api/v1/catalog/validate/table",
