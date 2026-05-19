@@ -254,6 +254,7 @@ class MasterDataBatch(Base, TimestampMixin):
     content_type: Mapped[str] = mapped_column(String)
     sheet_summaries_json: Mapped[str] = mapped_column(Text, default="[]")
     parsed_rows_json: Mapped[str] = mapped_column(Text, default="{}")
+    issues_json: Mapped[str] = mapped_column(Text, default="[]")
     row_count: Mapped[int] = mapped_column(Integer, default=0)
     issue_count: Mapped[int] = mapped_column(Integer, default=0)
 
