@@ -131,6 +131,8 @@ def test_review_decision_updates_item_and_creates_evidence_audit_event(client, a
     assert payload["decision_status"] == "CONFIRMED"
     assert payload["decision_note"] == "Synthetic check accepted by reviewer"
     assert payload["decided_by"] == "admin@example.com"
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     updated_item = db_session.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item["id"]).one()
     decision = db_session.query(LoadPlanReviewDecision).filter(LoadPlanReviewDecision.id == payload["id"]).one()
     evidence = db_session.query(Evidence).filter(Evidence.id == decision.evidence_id).one()
@@ -142,6 +144,8 @@ def test_review_decision_updates_item_and_creates_evidence_audit_event(client, a
     assert evidence.client_safe is True
     assert summary["decision_status"] == "CONFIRMED"
     assert summary["decision_note_present"] is True
+    assert summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert summary["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert audit.target_id == item["id"]
     assert event.aggregate_id == item["id"]
     assert "Synthetic check accepted by reviewer" not in audit.metadata_json
