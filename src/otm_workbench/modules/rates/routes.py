@@ -591,11 +591,18 @@ def list_rates_dictionary_tables(
 @router.get("/dictionary/tables/{table_name}")
 def get_rates_dictionary_table(
     table_name: str,
+    catalog_macro_object_code: str | None = None,
     user: User = Depends(require_user),
 ):
+    if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
+        raise unsupported_rates_catalog_error(catalog_macro_object_code)
     definition = load_table_definition(Path(get_settings().otm_data_dictionary_root), table_name)
     payload = serialize_table_definition(definition)
     payload["foreign_keys"] = [item.__dict__ for item in definition.foreign_keys]
+    if catalog_macro_object_code:
+        scenario = get_rate_scenario("complete_tariff")
+        payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
     return payload
 
 

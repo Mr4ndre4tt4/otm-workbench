@@ -246,6 +246,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 3. Contrato de macro-objeto nao suportado foi padronizado para endpoints de Rates que recebem catalog_macro_object_code.
 4. GET /api/v1/modules/rates/dictionary/tables propaga catalog_macro_object_code e catalog_load_plan_path quando filtrado por RATE_RECORD.
 5. POST /api/v1/modules/rates/dictionary/validate-load-sequence propaga catalog_load_plan_path quando validado no contexto RATE_RECORD.
+6. GET /api/v1/modules/rates/dictionary/tables/{table_name} aceita catalog_macro_object_code, propaga contexto RATE_RECORD e rejeita macro-objeto fora de Rates.
 ```
 
 ---
