@@ -97,6 +97,10 @@ def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_hea
 
     assert response.status_code == 200
     assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        response.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert response.json()["valid"] is False
     assert any(item["parent_table_name"] == "RATE_GEO_COST_GROUP" for item in response.json()["issues"])
 
