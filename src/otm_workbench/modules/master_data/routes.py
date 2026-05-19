@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import get_db, require_user
+from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import MasterDataTemplate, User
 from otm_workbench.modules.master_data.templates import (
     seed_master_data_templates,
@@ -26,3 +26,16 @@ def list_master_data_templates(
     templates = db.query(MasterDataTemplate).order_by(MasterDataTemplate.code).all()
     items = [serialize_master_data_template(template) for template in templates]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/templates/{template_code}")
+def get_master_data_template(
+    template_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_master_data_templates(db)
+    template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == template_code.upper()).first()
+    if template is None:
+        raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
+    return serialize_master_data_template(template)
