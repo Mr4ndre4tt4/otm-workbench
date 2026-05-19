@@ -80,5 +80,7 @@ def test_batch_csv_preview_endpoint_returns_table_previews(client, admin_header)
     assert response.status_code == 200
     payload = response.json()
     assert payload["batch_id"] == batch["id"]
+    assert payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert payload["previews"][0]["table_name"] == "ACCESSORIAL_COST"
     assert payload["previews"][0]["content"].splitlines()[0] == "ACCESSORIAL_COST"
