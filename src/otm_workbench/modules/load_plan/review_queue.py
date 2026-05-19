@@ -6,6 +6,7 @@ from otm_workbench.models import (
     AuditLog,
     DomainEvent,
     Evidence,
+    LoadPlanPackage,
     LoadPlanReviewDecision,
     LoadPlanReviewItem,
     LoadPlanZipAnalysis,
@@ -107,6 +108,7 @@ def serialize_review_item_with_latest_decision(db: Session, item: LoadPlanReview
 
 def serialize_review_decision(db: Session, decision: LoadPlanReviewDecision) -> dict[str, object]:
     item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == decision.review_item_id).one()
+    catalog_context = catalog_context_for_package_id(db, decision.package_id)
     return {
         "id": decision.id,
         "project_id": decision.project_id,
@@ -119,7 +121,20 @@ def serialize_review_decision(db: Session, decision: LoadPlanReviewDecision) -> 
         "evidence_id": decision.evidence_id,
         "decided_by": decision.decided_by,
         "decided_at": decision.decided_at.isoformat() if decision.decided_at else None,
+        **catalog_context,
         "review_item": serialize_review_item_with_latest_decision(db, item),
+    }
+
+
+def catalog_context_for_package_id(db: Session, package_id: str) -> dict[str, object]:
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
+    if package is None:
+        return {}
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
     }
 
 
@@ -137,6 +152,7 @@ def decide_review_item(
         raise ValueError(f"Decision status must be one of: {allowed}.")
 
     decided_at = utcnow()
+    catalog_context = catalog_context_for_package_id(db, item.package_id)
     evidence = Evidence(
         project_id=item.project_id,
         source_module="load_plan",
@@ -152,6 +168,7 @@ def decide_review_item(
                 "decision_note_present": bool(decision_note.strip()),
                 "decided_by": decided_by,
                 "decided_at": decided_at.isoformat(),
+                **catalog_context,
             },
             sort_keys=True,
         ),
