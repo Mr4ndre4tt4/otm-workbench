@@ -252,6 +252,7 @@ def generate_readiness_for_package(
                     "status": status,
                     "evidence_id": evidence.id,
                     "blocker_count": summary["blocker_count"],
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -264,7 +265,7 @@ def generate_readiness_for_package(
             project_id=package.project_id,
             aggregate_type="load_plan_cutover_readiness",
             aggregate_id=readiness.id,
-            payload_json=json.dumps({"package_id": package.id, "status": status}, sort_keys=True),
+            payload_json=json.dumps({"package_id": package.id, "status": status, **catalog_context}, sort_keys=True),
             status="PENDING",
         )
     )

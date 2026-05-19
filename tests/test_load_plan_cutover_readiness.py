@@ -260,12 +260,20 @@ def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(clien
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.cutover_readiness.generated").one()
     readiness_summary = json.loads(readiness.summary_json)
     evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
     assert evidence.evidence_type == "load_plan_cutover_readiness"
     assert evidence.client_safe is True
     assert readiness_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
         evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit.target_id == readiness.id
