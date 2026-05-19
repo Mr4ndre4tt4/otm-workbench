@@ -564,6 +564,7 @@ def list_rates_reference_options(
 
 @router.get("/reference/rate-offerings")
 def list_rate_offerings(
+    catalog_macro_object_code: str | None = None,
     servprov_gid: str | None = None,
     transport_mode_gid: str | None = None,
     rate_service_gid: str | None = None,
@@ -591,7 +592,13 @@ def list_rate_offerings(
         }
         for item in objects
     ]
-    return PageResponse(items=items, total=len(items))
+    payload = PageResponse(items=items, total=len(items)).model_dump()
+    if catalog_macro_object_code:
+        payload["catalog_macro_object_code"] = catalog_macro_object_code
+        if catalog_macro_object_code != "RATE_RECORD":
+            payload["items"] = []
+            payload["total"] = 0
+    return payload
 
 
 @router.post("/reference/rate-offerings/duplicate-check")
