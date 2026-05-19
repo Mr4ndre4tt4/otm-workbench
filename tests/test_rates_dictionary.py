@@ -84,10 +84,34 @@ def test_rates_dictionary_tables_filter_by_catalog_macro_object(client, admin_he
 def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_header):
     response = client.post(
         "/api/v1/modules/rates/dictionary/validate-load-sequence",
-        json={"tables": ["RATE_GEO_COST"]},
+        json={"catalog_macro_object_code": "RATE_RECORD", "tables": ["RATE_GEO_COST"]},
         headers=admin_header,
     )
 
     assert response.status_code == 200
+    assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert response.json()["valid"] is False
     assert any(item["parent_table_name"] == "RATE_GEO_COST_GROUP" for item in response.json()["issues"])
+
+
+def test_rates_validate_load_sequence_rejects_non_rates_catalog_macro_object(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/rates/dictionary/validate-load-sequence",
+        json={"catalog_macro_object_code": "LOCATION", "tables": ["LOCATION"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["catalog_macro_object_code"] == "LOCATION"
+    assert payload["valid"] is False
+    assert payload["known_tables"] == []
+    assert payload["missing_tables"] == []
+    assert payload["issues"] == [
+        {
+            "severity": "ERROR",
+            "table_name": "LOCATION",
+            "parent_table_name": None,
+            "message": "Catalog macro-object is outside the Rates module sequence.",
+        }
+    ]
