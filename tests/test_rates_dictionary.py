@@ -58,6 +58,29 @@ def test_rates_dictionary_table_api_returns_pk_and_date_columns(client, admin_he
     assert response.json()["is_transactional"] is False
 
 
+def test_rates_dictionary_tables_filter_by_catalog_macro_object(client, admin_header):
+    listed = client.get("/api/v1/modules/rates/dictionary/tables", headers=admin_header)
+    catalog_matched = client.get(
+        "/api/v1/modules/rates/dictionary/tables",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/rates/dictionary/tables",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
+    assert listed.json()["total"] == len(RATES_LOAD_SEQUENCE)
+    assert catalog_matched.json()["total"] == len(RATES_LOAD_SEQUENCE)
+    assert catalog_matched.json()["items"][0]["table_name"] == RATES_LOAD_SEQUENCE[0]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
+
+
 def test_rates_validate_load_sequence_api_reports_dependencies(client, admin_header):
     response = client.post(
         "/api/v1/modules/rates/dictionary/validate-load-sequence",
