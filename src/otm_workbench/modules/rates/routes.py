@@ -60,6 +60,7 @@ class RateOfferingDuplicateCheckRequest(BaseModel):
 
 
 class CsvPreviewRequest(BaseModel):
+    catalog_macro_object_code: str | None = None
     table_name: str
     columns: list[str]
     rows: list[dict[str, object]]
@@ -660,10 +661,15 @@ def preview_rates_csv(
     payload: CsvPreviewRequest,
     user: User = Depends(require_user),
 ):
+    if payload.catalog_macro_object_code and payload.catalog_macro_object_code != "RATE_RECORD":
+        raise HTTPException(status_code=400, detail="Catalog macro-object is outside the Rates module sequence.")
     content = build_otm_csv_preview(
         Path(get_settings().otm_data_dictionary_root),
         payload.table_name,
         payload.columns,
         payload.rows,
     )
-    return {"content": content}
+    response = {"content": content}
+    if payload.catalog_macro_object_code:
+        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+    return response
