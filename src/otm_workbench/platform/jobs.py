@@ -228,6 +228,15 @@ def run_job_now(db: Session, *, job: Job, actor: str) -> None:
     audit_job(db, actor=actor, action="job.succeed", job=job)
 
 
+def run_pending_job(db: Session, *, job: Job, actor: str) -> Job:
+    if job.status != "PENDING":
+        raise ValueError("Only PENDING jobs can be run in MVP0.")
+    run_job_now(db, job=job, actor=actor)
+    db.commit()
+    db.refresh(job)
+    return job
+
+
 def cancel_pending_job(db: Session, *, job: Job, actor: str) -> Job:
     if job.status != "PENDING":
         raise ValueError("Only PENDING jobs can be cancelled in MVP0.")

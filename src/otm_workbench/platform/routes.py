@@ -23,6 +23,7 @@ from otm_workbench.platform.jobs import (
     cancel_pending_job,
     create_job as create_platform_job,
     parse_json_object,
+    run_pending_job,
     serialize_job,
     serialize_job_event,
 )
@@ -331,6 +332,21 @@ def cancel_job(
         raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
     try:
         return serialize_job(cancel_pending_job(db, job=job, actor=user.email))
+    except ValueError as exc:
+        raise api_error(400, "JOB_INVALID_TRANSITION", str(exc)) from exc
+
+
+@router.post("/jobs/{job_id}/run")
+def run_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise api_error(404, "JOB_NOT_FOUND", "Job not found.")
+    try:
+        return serialize_job(run_pending_job(db, job=job, actor=user.email))
     except ValueError as exc:
         raise api_error(400, "JOB_INVALID_TRANSITION", str(exc)) from exc
 

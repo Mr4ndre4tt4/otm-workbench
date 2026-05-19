@@ -144,6 +144,46 @@ def test_demo_job_handler_runs_to_success_with_events(client, admin_header, db_s
     assert [event.event_type for event in events] == ["JOB_CREATED", "JOB_STARTED", "JOB_SUCCEEDED"]
 
 
+def test_run_pending_job_endpoint_executes_registered_handler(client, admin_header, db_session):
+    created = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "DEMO_ECHO",
+            "source_module": "platform",
+            "input": {"value": "synthetic"},
+        },
+        headers=admin_header,
+    ).json()
+
+    response = client.post(f"/api/v1/platform/jobs/{created['id']}/run", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "SUCCEEDED"
+    assert payload["progress"] == 100
+    assert payload["result"] == {"echo": {"value": "synthetic"}}
+    events = db_session.query(JobEvent).filter(JobEvent.job_id == payload["id"]).order_by(JobEvent.created_at).all()
+    assert [event.event_type for event in events] == ["JOB_CREATED", "JOB_STARTED", "JOB_SUCCEEDED"]
+
+
+def test_run_completed_job_is_rejected(client, admin_header):
+    created = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "DEMO_ECHO",
+            "source_module": "platform",
+            "input": {"value": "synthetic"},
+            "execute_now": True,
+        },
+        headers=admin_header,
+    ).json()
+
+    response = client.post(f"/api/v1/platform/jobs/{created['id']}/run", headers=admin_header)
+
+    assert response.status_code == 400
+    assert "pending" in response.json()["message"].lower()
+
+
 def test_list_job_events_filters_by_type_and_status(client, admin_header):
     job = client.post(
         "/api/v1/platform/jobs",
