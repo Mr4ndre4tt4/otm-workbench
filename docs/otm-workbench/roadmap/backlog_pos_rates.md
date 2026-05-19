@@ -406,7 +406,108 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 
 ---
 
-## 7. Ordem recomendada depois de Rates
+## 7. Assets Library
+
+**Fonte:** `C:/Users/Enzo Trabalho/Downloads/mvp0_assets_library_backendfirst.md`
+
+### Decisao
+
+O Assets Library faz sentido como modulo transversal de plataforma, mas nao deve
+furar a fila atual. Ele deve entrar depois de Rates/Load Plan, Jobs, Catalog Core
+e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
+
+```text
+- Artifact Store para armazenamento fisico;
+- Evidence Hub para nao confundir asset reutilizavel com evidencia validada;
+- Catalog Core para links com macro-objetos, tabelas e campos OTM;
+- Project/Profile/Admin para escopo, visibilidade, capability e active context;
+- Jobs / Processing Engine para scans, indexacao e operacoes pesadas futuras.
+```
+
+### O que faz sentido
+
+```text
+- Tratar asset como arquivo reutilizavel governado, nao como artifact nem evidence.
+- DB-first para tipos, categorias, tags, visibilidades, status, escopos e sensibilidade.
+- Versionamento simples com current_version_id e historico preservado.
+- Links genericos para modulo, macro-objeto, tabela OTM, batch, checklist, artifact e evidence.
+- Upload/download com SHA256, metadados e storage local controlado.
+- Scanner simples de risco para tokens, passwords, Authorization, client_secret e chaves.
+- Audit log para criacao, alteracao, download, nova versao, link e classificacao.
+- API-first e UI-agnostic para a UI futura apenas consumir classificacoes e acoes.
+```
+
+### Ajustes recomendados antes de virar spec executavel
+
+```text
+- Nao criar um "Google Drive interno"; metadata obrigatoria e governanca devem vir na primeira fatia.
+- Evitar tabela propria asset_audit_logs no MVP0 se AuditLog/DomainEvent existentes forem suficientes.
+- Reaproveitar Artifact Store para metadados tecnicos de arquivo quando possivel, mantendo semantica de Asset separada.
+- Nao implementar editor DOCX/PDF, preview avancado de ZIP, execucao de SQL/OIC/migration project ou sync cloud.
+- Nao permitir GLOBAL para assets com possivel segredo ou dados sensiveis.
+- Validar links de MACRO_OBJECT/OTM_TABLE contra Catalog Core/Data Dictionary.
+- Usar exemplos sinteticos como OTM1, PUBLIC e DEMO; nao registrar nomes de clientes reais.
+```
+
+### Primeiro recorte MVP0 recomendado
+
+```text
+1. Skeleton backend do modulo assets.
+2. Modelos DB-first para asset classifications:
+   - asset_types;
+   - asset_categories;
+   - asset_tags;
+   - asset_visibility_levels;
+   - asset_scope_types;
+   - asset_statuses;
+   - asset_sensitivity_levels;
+   - asset_link_types.
+3. Seeds iniciais system-protected.
+4. APIs de listagem de classificacoes.
+5. APIs ADMIN/DBA/MASTER para criar tipo e categoria.
+6. Modelo central de asset + asset_versions + asset_files.
+7. Criar asset em DRAFT via API.
+8. Upload da primeira versao com SHA256 e size_bytes.
+9. Download da versao atual com audit quando sensivel.
+10. Criar nova versao sem apagar a anterior.
+11. Editar metadata basica e arquivar/deprecar asset.
+12. Links genericos para MODULE, MACRO_OBJECT, OTM_TABLE, RATE_BATCH, ARTIFACT e EVIDENCE.
+13. Busca/filtros simples por tipo, categoria, tag, status, escopo, modulo, macro-objeto e tabela OTM.
+14. Scanner simples de possiveis segredos e bloqueio de GLOBAL quando houver risco.
+15. Testes de permissao, versionamento, filtros, download auditado e scanner.
+```
+
+### Fora do primeiro recorte
+
+```text
+- UI completa;
+- marketplace interno;
+- workflow complexo de aprovacao/publicacao;
+- OCR;
+- full-text search avancado;
+- preview avancado de ZIP;
+- editor DOCX/PDF;
+- execucao de SQL, OIC, migration project ou CSVUTIL;
+- integracao direta com Google Drive/SharePoint;
+- validacao profunda de migration project;
+- worker distribuido para scans/indexacao.
+```
+
+### Posicao recomendada na fila
+
+```text
+1. Nao interromper o ciclo atual de Rates/Load Plan/Catalog.
+2. Nao entrar antes de Project/Profile/Admin Foundation, porque escopo e visibilidade sao centrais.
+3. Entrar preferencialmente depois do MVP0 de Master Data e Cutover Checklist,
+   ou como primeira fatia transversal logo antes deles apenas se precisarmos anexar
+   templates, guias e pacotes reutilizaveis de forma governada.
+4. Se antecipado, limitar a primeira entrega a classifications + metadata + links,
+   sem upload pesado e sem editor de conteudo.
+```
+
+---
+
+## 8. Ordem recomendada depois de Rates
 
 ```text
 1. Fechar hardening de Rates/Load Plan/Evidence Hub.
@@ -417,12 +518,13 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 6. Implementar Dados Mestres / Template Factory MVP0.
 7. Integrar load packages de Dados Mestres no Load Plan existente.
 8. Implementar Cutover Checklist & CSVUTIL Builder.
-9. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data e Cutover.
+9. Implementar Assets Library MVP0, se a fila ainda exigir biblioteca governada de arquivos reutilizaveis.
+10. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover e Assets.
 ```
 
 ---
 
-## 8. Guardrails permanentes
+## 9. Guardrails permanentes
 
 ```text
 - Backend-first, API-first, DB-first e UI-agnostic.
