@@ -8,6 +8,7 @@ from otm_workbench.models import (
     Artifact,
     ActiveContext,
     AuditLog,
+    Capability,
     Environment,
     Evidence,
     FeatureFlag,
@@ -16,7 +17,10 @@ from otm_workbench.models import (
     Manifest,
     Profile,
     Project,
+    Role,
+    RoleCapability,
     User,
+    UserProjectRole,
     Workspace,
 )
 from otm_workbench.platform.audit import write_audit
@@ -149,6 +153,44 @@ def project_setup_status_payload(db: Session, project_id: str, user: User) -> di
         "environment_count": environment_count,
         "active_context_selected": active_context_selected,
         "missing_requirements": missing_requirements,
+    }
+
+
+def effective_capabilities_payload(db: Session, user: User) -> dict[str, object]:
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    project_id = active_context.project_id if active_context else None
+    if user.is_admin:
+        return {
+            "user_id": user.id,
+            "project_id": project_id,
+            "is_admin": True,
+            "roles": ["ADMIN"],
+            "capabilities": ["*"],
+        }
+    if not project_id:
+        return {
+            "user_id": user.id,
+            "project_id": None,
+            "is_admin": False,
+            "roles": [],
+            "capabilities": [],
+        }
+    rows = (
+        db.query(Role, Capability)
+        .join(UserProjectRole, UserProjectRole.role_id == Role.id)
+        .join(RoleCapability, RoleCapability.role_id == Role.id)
+        .join(Capability, Capability.id == RoleCapability.capability_id)
+        .filter(UserProjectRole.user_id == user.id, UserProjectRole.project_id == project_id)
+        .all()
+    )
+    roles = sorted({role.name for role, _capability in rows})
+    capabilities = sorted({capability.name for _role, capability in rows})
+    return {
+        "user_id": user.id,
+        "project_id": project_id,
+        "is_admin": False,
+        "roles": roles,
+        "capabilities": capabilities,
     }
 
 
@@ -300,6 +342,14 @@ def get_active_context(
 ):
     context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
     return serialize_active_context(context, user)
+
+
+@router.get("/active-context/capabilities")
+def get_active_context_capabilities(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return effective_capabilities_payload(db, user)
 
 
 @router.post("/active-context")
