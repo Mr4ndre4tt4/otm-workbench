@@ -190,12 +190,28 @@ def test_csvutil_build_list_and_detail(client, admin_header):
     ).json()
 
     listed = client.get("/api/v1/modules/load-plan/csvutil/builds", headers=admin_header)
+    catalog_matched = client.get(
+        "/api/v1/modules/load-plan/csvutil/builds",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/load-plan/csvutil/builds",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
     detail = client.get(f"/api/v1/modules/load-plan/csvutil/builds/{created['id']}", headers=admin_header)
 
     assert listed.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
     assert detail.status_code == 200
     assert listed.json()["total"] == 1
     assert listed.json()["items"][0]["id"] == created["id"]
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["id"] == created["id"]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
     assert detail.json()["summary"]["package_type"] == "rates_csv_zip"
 
 
