@@ -194,6 +194,15 @@ def derive_next_actions(blockers: list[dict[str, object]]) -> list[str]:
     return actions
 
 
+def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def generate_sequence_snapshot(
     db: Session,
     *,
@@ -209,6 +218,7 @@ def generate_sequence_snapshot(
     if not load_sequence:
         raise ValueError("Load Plan package must have a load sequence before sequence snapshot generation.")
 
+    catalog_context = catalog_context_for_package(package)
     latest_analysis = latest_zip_analysis(db, package.id)
     package_tables = {str(item["table_name"]).upper() for item in load_sequence if item.get("table_name")}
     blockers: list[dict[str, object]] = []
@@ -294,6 +304,7 @@ def generate_sequence_snapshot(
         "error_count": error_count,
         "warning_count": warning_count,
         "next_actions": derive_next_actions(blockers),
+        **catalog_context,
     }
     generated_at = utcnow()
     snapshot = LoadPlanSequenceSnapshot(
@@ -321,6 +332,7 @@ def generate_sequence_snapshot(
         "blocker_count": summary["blocker_count"],
         "error_count": summary["error_count"],
         "warning_count": summary["warning_count"],
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=package.project_id,

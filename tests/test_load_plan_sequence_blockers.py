@@ -145,6 +145,11 @@ def test_sequence_snapshot_creates_snapshot_evidence_audit_and_event(client, adm
     assert payload["package_id"] == package["id"]
     assert payload["status"] == "BLOCKED"
     assert payload["generated_by"] == "admin@example.com"
+    assert payload["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        payload["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert payload["sequence"][0]["table_name"] == "ACCESSORIAL_COST"
     assert payload["sequence"][0]["dictionary_table_found"] is True
     assert "ACCESSORIAL_CODE" in payload["sequence"][0]["parent_tables"]
@@ -157,6 +162,14 @@ def test_sequence_snapshot_creates_snapshot_evidence_audit_and_event(client, adm
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.sequence.snapshot.generated").one()
     assert evidence.evidence_type == "load_plan_sequence_snapshot"
     assert evidence.client_safe is True
+    snapshot_summary = json.loads(snapshot.summary_json)
+    evidence_summary = json.loads(evidence.summary_json)
+    assert snapshot_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert audit.target_id == snapshot.id
     assert event.aggregate_id == snapshot.id
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
