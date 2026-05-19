@@ -74,6 +74,10 @@ def test_csv_preview_api(client, admin_header):
 
     assert response.status_code == 200
     assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        response.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert response.json()["content"].splitlines()[0] == "RATE_GEO_COST"
 
 
