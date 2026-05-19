@@ -664,15 +664,15 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
     assert payload["files"][0]["row_count"] == 1
     assert payload["files"][0]["content"].splitlines() == [
         "REGION",
-        "REGION_GID,REGION_NAME,REGION_XID",
-        "SYN.REGION_001,Synthetic Region,REGION_001",
+        "REGION_GID,REGION_XID,REGION_NAME",
+        "SYN.REGION_001,REGION_001,Synthetic Region",
     ]
     assert payload["files"][1]["table_name"] == "REGION_DETAIL"
     assert payload["files"][1]["file_name"] == "002_REGION_DETAIL.csv"
     assert payload["files"][1]["content"].splitlines() == [
         "REGION_DETAIL",
-        "LOCATION_GID,REGION_GID",
-        "SYN.LOCATION_001,SYN.REGION_001",
+        "REGION_GID,LOCATION_GID",
+        "SYN.REGION_001,SYN.LOCATION_001",
     ]
 
     rows = db_session.execute(
@@ -686,7 +686,7 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
     assert rows[0].table_name == "REGION"
     assert rows[0].file_name == "001_REGION.csv"
     assert rows[0].row_count == 1
-    assert rows[0].content.startswith("REGION\nREGION_GID,REGION_NAME,REGION_XID")
+    assert rows[0].content.startswith("REGION\nREGION_GID,REGION_XID,REGION_NAME")
 
 
 def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
