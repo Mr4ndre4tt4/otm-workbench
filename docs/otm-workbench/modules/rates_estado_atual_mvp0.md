@@ -173,10 +173,20 @@ Rates ja carrega contexto de Catalog em:
 - direct export response;
 - readiness;
 - approval;
+- nested approval readiness;
+- artifact download audit metadata;
 - table ingestion.
 ```
 
 Esse contexto tambem ja foi propagado para os fluxos derivados de Load Plan, Evidence Hub e cutover quando o pacote nasce de Rates.
+
+Endpoints de Rates que recebem `catalog_macro_object_code` fora de `RATE_RECORD` usam o contrato padronizado:
+
+```text
+code = UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT
+message = Catalog macro-object is outside the Rates module sequence.
+details.catalog_macro_object_code = <macro-objeto recebido>
+```
 
 ---
 
@@ -198,16 +208,25 @@ Ele nao e uma tela de arquivos soltos. E uma camada governada de evidencias para
 
 ---
 
-## 9. Pendencias abertas recomendadas
+## 9. Hardening recente
+
+Itens fechados apos a consolidacao inicial deste documento:
+
+```text
+1. Audit metadata do download direto de artifact de Rates carrega catalog_macro_object_code e catalog_load_plan_path.
+2. Resposta nested de readiness dentro de approval repete o contexto de Catalog.
+3. Contrato de macro-objeto nao suportado foi padronizado para endpoints de Rates que recebem catalog_macro_object_code.
+```
+
+---
+
+## 10. Pendencias abertas recomendadas
 
 Antes de considerar Rates MVP0 fechado:
 
 ```text
-1. Revisar se o audit metadata do download direto de artifact de Rates deve carregar catalog_macro_object_code e catalog_load_plan_path.
-2. Confirmar se a resposta nested de readiness dentro de approval deve repetir o contexto de Catalog ou se o top-level e suficiente.
-3. Consolidar contrato de erros para macro-objeto nao suportado em todos os endpoints de Rates.
-4. Revisar fixtures/exemplos sinteticos contra exemplos reais anonimizados sem copiar dados de cliente.
-5. Validar, com documentacao oficial Oracle quando necessario, regras especiais de sequencias/campos de CSV antes de promover para contrato final.
+1. Revisar fixtures/exemplos sinteticos contra exemplos reais anonimizados sem copiar dados de cliente.
+2. Validar, com documentacao oficial Oracle quando necessario, regras especiais de sequencias/campos de CSV antes de promover para contrato final.
 ```
 
 Depois desses hardenings, a recomendacao e:
@@ -222,7 +241,7 @@ Depois desses hardenings, a recomendacao e:
 
 ---
 
-## 10. Testes de referencia
+## 11. Testes de referencia
 
 Suites diretamente relacionadas:
 
