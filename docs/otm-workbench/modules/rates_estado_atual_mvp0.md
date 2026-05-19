@@ -253,6 +253,7 @@ Itens fechados apos a consolidacao inicial deste documento:
 10. POST /api/v1/modules/rates/reference/rate-offerings/duplicate-check propaga catalog_load_plan_path quando executado no contexto RATE_RECORD.
 11. GET /api/v1/modules/rates/templates retorna contrato padronizado para catalog_macro_object_code fora de RATE_RECORD.
 12. GET /api/v1/modules/rates/batches retorna contrato padronizado para catalog_macro_object_code fora de RATE_RECORD.
+13. GET /api/v1/modules/load-plan/packages retorna contrato padronizado para catalog_macro_object_code fora do escopo suportado de Load Plan.
 ```
 
 ---

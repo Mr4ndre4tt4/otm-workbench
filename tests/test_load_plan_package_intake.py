@@ -171,6 +171,10 @@ def test_load_plan_package_list_filters_by_catalog_macro_object(client, admin_he
     assert matched.json()["items"][0]["id"] == created["id"]
     assert unmatched.json()["total"] == 0
     assert unmatched.json()["items"] == []
+    assert unmatched.json()["code"] == "UNSUPPORTED_CATALOG_MACRO_OBJECT"
+    assert unmatched.json()["message"] == "Catalog macro-object is outside the Load Plan package scope."
+    assert unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
+    assert unmatched.json()["catalog_macro_object_code"] == "LOCATION"
 
 
 def test_load_plan_summary_counts_packages(client, admin_header):

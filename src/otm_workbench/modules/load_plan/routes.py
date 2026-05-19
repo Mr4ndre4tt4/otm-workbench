@@ -54,6 +54,22 @@ from otm_workbench.modules.load_plan.sequence import (
 from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
 router = APIRouter(prefix="/api/v1/modules/load-plan", tags=["load-plan"])
+SUPPORTED_CATALOG_MACRO_OBJECTS = {"RATE_RECORD"}
+UNSUPPORTED_CATALOG_CODE = "UNSUPPORTED_CATALOG_MACRO_OBJECT"
+UNSUPPORTED_CATALOG_MESSAGE = "Catalog macro-object is outside the Load Plan package scope."
+
+
+def is_unsupported_catalog_macro_object(catalog_macro_object_code: str | None) -> bool:
+    return bool(catalog_macro_object_code and catalog_macro_object_code not in SUPPORTED_CATALOG_MACRO_OBJECTS)
+
+
+def unsupported_catalog_payload(catalog_macro_object_code: str) -> dict[str, object]:
+    return {
+        "code": UNSUPPORTED_CATALOG_CODE,
+        "message": UNSUPPORTED_CATALOG_MESSAGE,
+        "details": {"catalog_macro_object_code": catalog_macro_object_code},
+        "catalog_macro_object_code": catalog_macro_object_code,
+    }
 
 
 class CsvutilBuildRequest(BaseModel):
@@ -106,6 +122,10 @@ def list_load_plan_packages(
     packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at.desc()).all()
     items = [serialize_load_plan_package(package) for package in packages]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items
