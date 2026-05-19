@@ -511,6 +511,10 @@ def list_zip_analyses(
     analyses = db.query(LoadPlanZipAnalysis).order_by(LoadPlanZipAnalysis.created_at.desc()).all()
     items = [serialize_zip_analysis(analysis) for analysis in analyses]
     if catalog_macro_object_code:
+        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+            payload = PageResponse(items=[], total=0).model_dump()
+            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+            return payload
         items = [
             item
             for item in items
