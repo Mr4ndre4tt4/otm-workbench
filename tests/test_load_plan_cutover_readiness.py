@@ -187,6 +187,11 @@ def test_cutover_readiness_ready_from_blocker_free_sequence_snapshot(client, adm
     item = response.json()["items"][0]
     assert item["sequence_snapshot_id"] == snapshot.id
     assert item["status"] == "READY"
+    assert item["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        item["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert "ready_for_cutover_export" in response.json()["summary"]["next_actions"]
 
 
@@ -253,8 +258,16 @@ def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(clien
     evidence = db_session.query(Evidence).filter(Evidence.id == readiness.evidence_id).one()
     audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.cutover_readiness.generate").one()
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.cutover_readiness.generated").one()
+    readiness_summary = json.loads(readiness.summary_json)
+    evidence_summary = json.loads(evidence.summary_json)
     assert evidence.evidence_type == "load_plan_cutover_readiness"
     assert evidence.client_safe is True
+    assert readiness_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert audit.target_id == readiness.id
     assert event.aggregate_id == readiness.id
     assert "OTM1.ACC_COST_001" not in evidence.summary_json

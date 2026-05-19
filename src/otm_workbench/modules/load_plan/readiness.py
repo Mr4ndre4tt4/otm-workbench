@@ -93,6 +93,15 @@ def next_actions_for_status(status: str) -> list[str]:
     return ["ready_for_cutover_export"]
 
 
+def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
+    summary = parse_json_object(package.summary_json)
+    return {
+        key: summary[key]
+        for key in ("catalog_macro_object_code", "catalog_load_plan_path")
+        if summary.get(key)
+    }
+
+
 def serialize_cutover_readiness(readiness: LoadPlanCutoverReadiness) -> dict[str, object]:
     return {
         "id": readiness.id,
@@ -181,6 +190,7 @@ def generate_readiness_for_package(
         else parse_json_list(sequence_snapshot.blockers_json)
     )
     status = readiness_status_from_blockers(blockers, sequence_snapshot)
+    catalog_context = catalog_context_for_package(package)
     readiness_payload = {
         "package_id": package.id,
         "sequence_snapshot_id": sequence_snapshot.id if sequence_snapshot is not None else None,
@@ -188,6 +198,7 @@ def generate_readiness_for_package(
         "checks": readiness_checks(status, sequence_snapshot, blockers),
     }
     summary = summarize_readiness_stub(status, blockers)
+    summary.update(catalog_context)
     generated_at = utcnow()
     readiness = LoadPlanCutoverReadiness(
         project_id=package.project_id,
@@ -214,6 +225,7 @@ def generate_readiness_for_package(
         "blocker_count": summary["blocker_count"],
         "error_count": summary["error_count"],
         "warning_count": summary["warning_count"],
+        **catalog_context,
     }
     evidence = Evidence(
         project_id=package.project_id,
