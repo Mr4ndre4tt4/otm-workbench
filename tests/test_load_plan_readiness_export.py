@@ -120,6 +120,11 @@ def test_readiness_export_creates_zip_artifact_manifest_evidence_audit_event(
     assert payload["readiness_id"] == readiness["id"]
     assert payload["status"] == "EXPORTED"
     assert payload["summary"]["readiness_status"] == "MISSING_SEQUENCE"
+    assert payload["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        payload["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert artifact.artifact_type == "load_plan_readiness_export_zip"
     assert artifact.content_type == "application/zip"
     assert artifact.sensitivity_level == "internal"
@@ -127,6 +132,12 @@ def test_readiness_export_creates_zip_artifact_manifest_evidence_audit_event(
     assert manifest.source_module == "load_plan"
     assert evidence.evidence_type == "load_plan_readiness_export"
     assert evidence.client_safe is True
+    evidence_summary = json.loads(evidence.summary_json)
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert audit.target_id == export.id
     assert event.aggregate_id == export.id
 
@@ -152,6 +163,8 @@ def test_readiness_export_zip_contains_manifest_readiness_and_blockers(
 
     assert manifest["schema_version"] == "load-plan-readiness-export-manifest/v1"
     assert manifest["source_entity_id"] == readiness["id"]
+    assert manifest["catalog_macro_object_code"] == "RATE_RECORD"
+    assert manifest["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert {item["path"] for item in manifest["files"]} == {"readiness.json", "blockers.json"}
     assert readiness_payload["id"] == readiness["id"]
     assert readiness_payload["status"] == "MISSING_SEQUENCE"
