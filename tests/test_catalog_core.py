@@ -140,6 +140,44 @@ def test_catalog_validate_reference_uses_policy_and_domain_scope(client, admin_h
     assert payload["gid"] == "OTM2.BRL"
 
 
+def test_catalog_validate_reference_uses_active_context_domain_when_omitted(client, admin_header, db_session):
+    db_session.add(
+        ReferenceObject(
+            object_type="CURRENCY",
+            gid="OTM2.BRL",
+            xid="BRL",
+            domain_name="OTM2",
+            display_name="Brazilian Real",
+        )
+    )
+    db_session.commit()
+    context = client.post(
+        "/api/v1/platform/active-context",
+        json={"domain_name": "otm2"},
+        headers=admin_header,
+    )
+
+    response = client.post(
+        "/api/v1/catalog/validate/reference",
+        json={
+            "module_id": "rates",
+            "field_name": "currency_gid",
+            "value": "OTM2.BRL",
+        },
+        headers=admin_header,
+    )
+
+    assert context.status_code == 200
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["severity"] == "INFO"
+    assert payload["policy"] == "MUST_EXIST"
+    assert payload["object_type"] == "CURRENCY"
+    assert payload["gid"] == "OTM2.BRL"
+    assert payload["domain_name"] == "OTM2"
+
+
 def test_catalog_macro_objects_seed_and_list(client, admin_header, db_session):
     response = client.get("/api/v1/catalog/macro-objects", headers=admin_header)
 

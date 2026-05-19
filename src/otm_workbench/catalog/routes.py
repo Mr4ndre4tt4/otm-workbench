@@ -41,7 +41,7 @@ class ValidateReferenceRequest(BaseModel):
     module_id: str
     field_name: str
     value: str
-    domain_name: str = "OTM1"
+    domain_name: str | None = None
     project_id: str | None = None
     environment_id: str | None = None
     profile_id: str | None = None
@@ -54,6 +54,24 @@ def dictionary_root() -> Path:
 
 def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
     return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
+def effective_reference_context(
+    context: ActiveContext | None,
+    *,
+    domain_name: str | None,
+    project_id: str | None,
+    environment_id: str | None,
+    profile_id: str | None,
+    can_view_all_domains: bool,
+) -> ReferenceContext:
+    return ReferenceContext(
+        project_id=project_id or (context.project_id if context else None),
+        environment_id=environment_id or (context.environment_id if context else None),
+        profile_id=profile_id or (context.profile_id if context else None),
+        domain_name=domain_name or (context.domain_name if context and context.domain_name else "OTM1"),
+        can_view_all_domains=can_view_all_domains or bool(context and context.can_view_all_domains),
+    )
 
 
 @router.get("/health")
@@ -90,19 +108,22 @@ def list_catalog_reference_options(
     user: User = Depends(require_user),
 ):
     context = active_context_for_user(db, user)
-    effective_domain_name = domain_name or (context.domain_name if context and context.domain_name else "OTM1")
-    effective_project_id = project_id or (context.project_id if context else None)
-    effective_environment_id = environment_id or (context.environment_id if context else None)
-    effective_profile_id = profile_id or (context.profile_id if context else None)
-    effective_can_view_all_domains = can_view_all_domains or bool(context and context.can_view_all_domains)
+    reference_context = effective_reference_context(
+        context,
+        domain_name=domain_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        profile_id=profile_id,
+        can_view_all_domains=can_view_all_domains,
+    )
     return reference_options_payload(
         db,
         object_type=object_type,
-        domain_name=effective_domain_name,
-        project_id=effective_project_id,
-        environment_id=effective_environment_id,
-        profile_id=effective_profile_id,
-        can_view_all_domains=effective_can_view_all_domains,
+        domain_name=reference_context.domain_name,
+        project_id=reference_context.project_id,
+        environment_id=reference_context.environment_id,
+        profile_id=reference_context.profile_id,
+        can_view_all_domains=reference_context.can_view_all_domains,
     )
 
 
@@ -174,7 +195,9 @@ def validate_catalog_reference(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    context = ReferenceContext(
+    active_context = active_context_for_user(db, user)
+    context = effective_reference_context(
+        active_context,
         project_id=payload.project_id,
         environment_id=payload.environment_id,
         profile_id=payload.profile_id,
