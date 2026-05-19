@@ -412,7 +412,11 @@ def export_rates_batch_csv(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return result.__dict__
+    scenario = get_rate_scenario(batch.scenario_code)
+    payload = result.__dict__
+    payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+    payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
+    return payload
 
 
 @router.get("/batches/{batch_id}/artifacts")
