@@ -310,6 +310,7 @@ def list_readiness_exports(
     package_id: str | None = None,
     readiness_id: str | None = None,
     status: str | None = None,
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -321,7 +322,14 @@ def list_readiness_exports(
     if status:
         query = query.filter(LoadPlanReadinessExport.status == status)
     exports = query.order_by(LoadPlanReadinessExport.exported_at.desc()).all()
-    return PageResponse(items=[serialize_readiness_export(export) for export in exports], total=len(exports))
+    items = [serialize_readiness_export(export) for export in exports]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/cutover-readiness/exports/{export_id}")
