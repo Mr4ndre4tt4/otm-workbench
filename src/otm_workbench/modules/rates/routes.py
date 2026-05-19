@@ -204,11 +204,18 @@ def create_rates_batch(
 
 @router.get("/batches")
 def list_rates_batches(
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     batches = db.query(RateBatch).order_by(RateBatch.created_at.desc()).all()
     items = [serialize_rate_batch(batch) for batch in batches]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["catalog_macro_object_code"] == catalog_macro_object_code
+        ]
     return PageResponse(items=items, total=len(items))
 
 

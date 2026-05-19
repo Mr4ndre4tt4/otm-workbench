@@ -56,3 +56,33 @@ def test_created_rate_batch_includes_catalog_context(client, admin_header):
     payload = response.json()
     assert payload["catalog_macro_object_code"] == "RATE_RECORD"
     assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+
+
+def test_rates_batch_list_filters_by_catalog_macro_object(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/rates/batches",
+        headers=admin_header,
+        json={"scenario_code": "RATE_GEO_ONLY", "name": "Synthetic rate geo", "domain_name": "OTM1"},
+    ).json()
+
+    listed = client.get("/api/v1/modules/rates/batches", headers=admin_header)
+    catalog_matched = client.get(
+        "/api/v1/modules/rates/batches",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    catalog_unmatched = client.get(
+        "/api/v1/modules/rates/batches",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert catalog_matched.status_code == 200
+    assert catalog_unmatched.status_code == 200
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["id"] == created["id"]
+    assert catalog_matched.json()["total"] == 1
+    assert catalog_matched.json()["items"][0]["id"] == created["id"]
+    assert catalog_unmatched.json()["total"] == 0
+    assert catalog_unmatched.json()["items"] == []
