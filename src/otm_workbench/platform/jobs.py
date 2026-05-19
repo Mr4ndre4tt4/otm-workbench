@@ -8,6 +8,7 @@ from otm_workbench.models import AuditLog, Job, JobEvent, utcnow
 
 
 TERMINAL_STATUSES = {"SUCCEEDED", "FAILED", "CANCELLED"}
+MAX_JOB_JSON_BYTES = 16 * 1024
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,13 @@ def parse_json_object(raw: str | None) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise ValueError("Job JSON payload must be an object.")
     return payload
+
+
+def dumps_limited_json_object(payload: dict[str, object], *, label: str) -> str:
+    raw = json.dumps(payload, sort_keys=True)
+    if len(raw.encode("utf-8")) > MAX_JOB_JSON_BYTES:
+        raise ValueError(f"Job {label} payload exceeds the MVP0 size limit of {MAX_JOB_JSON_BYTES} bytes.")
+    return raw
 
 
 def emit_job_event(
@@ -163,7 +171,7 @@ def create_job(
         status="PENDING",
         progress=0,
         message="Job created.",
-        input_json=json.dumps(input_payload, sort_keys=True),
+        input_json=dumps_limited_json_object(input_payload, label="input"),
         result_json="{}",
         error_details_json="{}",
         created_by=created_by,
@@ -228,7 +236,28 @@ def run_job_now(db: Session, *, job: Job, actor: str) -> None:
     job.status = "SUCCEEDED"
     job.progress = 100
     job.message = result.message
-    job.result_json = json.dumps(result.result, sort_keys=True)
+    try:
+        job.result_json = dumps_limited_json_object(result.result, label="result")
+    except ValueError:
+        job.status = "FAILED"
+        job.message = "Job failed."
+        job.result_json = "{}"
+        job.error_code = "JOB_RESULT_TOO_LARGE"
+        job.error_message = "Job result payload exceeds the MVP0 size limit."
+        job.error_details_json = json.dumps({"max_bytes": MAX_JOB_JSON_BYTES}, sort_keys=True)
+        job.finished_at = utcnow()
+        emit_job_event(
+            db,
+            job=job,
+            event_type="JOB_FAILED",
+            status_before="RUNNING",
+            status_after="FAILED",
+            message="Job failed.",
+            created_by=actor,
+            payload={"error_code": job.error_code},
+        )
+        audit_job(db, actor=actor, action="job.fail", job=job, metadata={"error_code": job.error_code})
+        return
     job.finished_at = utcnow()
     emit_job_event(
         db,
