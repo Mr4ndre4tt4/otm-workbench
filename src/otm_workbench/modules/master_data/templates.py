@@ -7,7 +7,12 @@ from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from otm_workbench.catalog.services import validate_column, validate_table
-from otm_workbench.models import Artifact, MasterDataBatch, MasterDataTemplate
+from otm_workbench.models import (
+    Artifact,
+    MasterDataBatch,
+    MasterDataCanonicalRecord,
+    MasterDataTemplate,
+)
 from otm_workbench.platform.services import file_sha256
 
 
@@ -305,4 +310,57 @@ def parse_master_data_template_workbook(
         "issue_count": batch.issue_count,
         "sheet_summaries": sheet_summaries,
         "issues": issues,
+    }
+
+
+def map_master_data_batch_to_canonical_records(
+    db: Session,
+    template: MasterDataTemplate,
+    batch: MasterDataBatch,
+) -> dict[str, object]:
+    if batch.status != "PARSED":
+        raise ValueError("Only parsed Master Data batches can be mapped.")
+
+    sheets = json.loads(template.sheets_json)
+    parsed_rows = json.loads(batch.parsed_rows_json)
+    db.query(MasterDataCanonicalRecord).filter(
+        MasterDataCanonicalRecord.batch_id == batch.id
+    ).delete()
+
+    response_records = []
+    for sheet in sheets:
+        fields = sheet["fields"]
+        rows = parsed_rows.get(sheet["code"], [])
+        for index, parsed_row in enumerate(rows, start=1):
+            payload = {
+                field["target_column"]: parsed_row.get(field["name"])
+                for field in fields
+                if field["name"] in parsed_row
+            }
+            canonical_record = MasterDataCanonicalRecord(
+                batch_id=batch.id,
+                template_code=batch.template_code,
+                sheet_code=sheet["code"],
+                target_table=sheet["target_table"],
+                record_index=index,
+                payload_json=json.dumps(payload, sort_keys=True),
+            )
+            db.add(canonical_record)
+            response_records.append(
+                {
+                    "sheet_code": sheet["code"],
+                    "target_table": sheet["target_table"],
+                    "record_index": index,
+                    "payload": payload,
+                }
+            )
+
+    batch.status = "MAPPED"
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "canonical_record_count": len(response_records),
+        "records": response_records,
     }
