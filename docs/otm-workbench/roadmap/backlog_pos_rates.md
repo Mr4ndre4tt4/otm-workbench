@@ -370,7 +370,7 @@ Artifacts + Evidence
 11. Geracao de CSVs. [INICIADO com master_data_csv_files e CSV OTM por tabela]
 12. ZIP + MANIFEST.json. [INICIADO com pacote CSV ZIP e manifest.json]
 13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template e pacote CSV ZIP]
-14. Seed de Items & Packaging Standard.
+14. Seed de Items & Packaging Standard. [ENTREGUE MVP0 inicial com ITEM, PACKAGED_ITEM e TI_HI validados no Data Dictionary]
 ```
 
 ---
