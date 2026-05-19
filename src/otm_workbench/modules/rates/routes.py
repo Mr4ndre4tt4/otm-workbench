@@ -762,5 +762,7 @@ def preview_rates_csv(
     )
     response = {"content": content}
     if payload.catalog_macro_object_code:
-        response["catalog_macro_object_code"] = payload.catalog_macro_object_code
+        scenario = get_rate_scenario("complete_tariff")
+        response["catalog_macro_object_code"] = scenario.catalog_macro_object_code
+        response["catalog_load_plan_path"] = scenario.catalog_load_plan_path
     return response
