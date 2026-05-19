@@ -144,6 +144,29 @@ def test_demo_job_handler_runs_to_success_with_events(client, admin_header, db_s
     assert [event.event_type for event in events] == ["JOB_CREATED", "JOB_STARTED", "JOB_SUCCEEDED"]
 
 
+def test_list_job_events_filters_by_type_and_status(client, admin_header):
+    job = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "DEMO_ECHO",
+            "source_module": "platform",
+            "input": {"value": "synthetic"},
+            "execute_now": True,
+        },
+        headers=admin_header,
+    ).json()
+
+    response = client.get(
+        f"/api/v1/platform/jobs/{job['id']}/events?event_type=job_succeeded&status_after=succeeded",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["event_type"] == "JOB_SUCCEEDED"
+    assert response.json()["items"][0]["status_after"] == "SUCCEEDED"
+
+
 def test_missing_job_handler_fails_safely(client, admin_header):
     response = client.post(
         "/api/v1/platform/jobs",
