@@ -46,16 +46,37 @@ def test_sequence_reports_fk_dependencies_that_are_outside_sequence():
 
 
 def test_rates_dictionary_table_api_returns_pk_and_date_columns(client, admin_header):
-    response = client.get("/api/v1/modules/rates/dictionary/tables/RATE_GEO_COST", headers=admin_header)
+    response = client.get(
+        "/api/v1/modules/rates/dictionary/tables/RATE_GEO_COST",
+        params={"catalog_macro_object_code": "RATE_RECORD"},
+        headers=admin_header,
+    )
 
     assert response.status_code == 200
     assert response.json()["table_name"] == "RATE_GEO_COST"
+    assert response.json()["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        response.json()["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
     assert response.json()["primary_key"] == ["RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST_SEQ"]
     assert "ATTRIBUTE_DATE1" in response.json()["date_columns"]
     assert response.json()["data_category"] == "RATES_SETUP"
     assert response.json()["allow_csvutil"] is True
     assert response.json()["allow_cutover"] is True
     assert response.json()["is_transactional"] is False
+
+
+def test_rates_dictionary_table_api_rejects_non_rates_catalog_macro_object(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/rates/dictionary/tables/LOCATION",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
+    assert response.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
 
 
 def test_rates_dictionary_tables_filter_by_catalog_macro_object(client, admin_header):
