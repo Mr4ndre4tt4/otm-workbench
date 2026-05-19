@@ -456,11 +456,18 @@ def run_zip_analysis(
 
 @router.get("/zip-analysis")
 def list_zip_analyses(
+    catalog_macro_object_code: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     analyses = db.query(LoadPlanZipAnalysis).order_by(LoadPlanZipAnalysis.created_at.desc()).all()
     items = [serialize_zip_analysis(analysis) for analysis in analyses]
+    if catalog_macro_object_code:
+        items = [
+            item
+            for item in items
+            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+        ]
     return PageResponse(items=items, total=len(items))
 
 
