@@ -148,6 +148,19 @@ def summarize_readiness_stub(status: str, blockers: list[dict[str, object]]) -> 
 def summarize_readiness(items: list[LoadPlanCutoverReadiness]) -> dict[str, object]:
     blockers = [blocker for item in items for blocker in parse_json_list(item.blockers_json)]
     statuses = [item.status for item in items]
+    by_catalog_macro_object: dict[str, dict[str, object]] = {}
+    for item in items:
+        summary = parse_json_object(item.summary_json)
+        macro_object_code = summary.get("catalog_macro_object_code")
+        if isinstance(macro_object_code, str) and macro_object_code:
+            catalog_summary = by_catalog_macro_object.setdefault(
+                macro_object_code,
+                {
+                    "package_count": 0,
+                    "catalog_load_plan_path": summary.get("catalog_load_plan_path"),
+                },
+            )
+            catalog_summary["package_count"] = int(catalog_summary["package_count"]) + 1
     error_count = sum(1 for item in blockers if item.get("severity") == "ERROR")
     warning_count = sum(1 for item in blockers if item.get("severity") == "WARNING")
     next_actions: list[str] = []
@@ -165,6 +178,7 @@ def summarize_readiness(items: list[LoadPlanCutoverReadiness]) -> dict[str, obje
         "blocker_count": len(blockers),
         "error_count": error_count,
         "warning_count": warning_count,
+        "by_catalog_macro_object": by_catalog_macro_object,
         "next_actions": next_actions,
     }
 

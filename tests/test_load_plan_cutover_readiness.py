@@ -344,5 +344,11 @@ def test_cutover_readiness_aggregate_generation(client, admin_header, db_session
 
     assert response.status_code == 200
     assert response.json()["summary"]["package_count"] == 2
+    assert response.json()["summary"]["by_catalog_macro_object"] == {
+        "RATE_RECORD": {
+            "package_count": 2,
+            "catalog_load_plan_path": "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+        }
+    }
     assert len(response.json()["items"]) == 2
     assert db_session.query(LoadPlanCutoverReadiness).count() == 2
