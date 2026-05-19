@@ -243,6 +243,21 @@ class MasterDataTemplate(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(Text, default="")
 
 
+class MasterDataBatch(Base, TimestampMixin):
+    __tablename__ = "master_data_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    template_id: Mapped[str] = mapped_column(ForeignKey("master_data_templates.id"), index=True)
+    template_code: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="PARSED")
+    file_name: Mapped[str] = mapped_column(String)
+    content_type: Mapped[str] = mapped_column(String)
+    sheet_summaries_json: Mapped[str] = mapped_column(Text, default="[]")
+    parsed_rows_json: Mapped[str] = mapped_column(Text, default="{}")
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    issue_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 

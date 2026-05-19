@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
+from typing import BinaryIO
 
+from openpyxl import load_workbook
 from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from otm_workbench.catalog.services import validate_column, validate_table
-from otm_workbench.models import Artifact, MasterDataTemplate
+from otm_workbench.models import Artifact, MasterDataBatch, MasterDataTemplate
 from otm_workbench.platform.services import file_sha256
 
 
@@ -211,4 +213,71 @@ def build_master_data_template_workbook(
         "content_type": artifact.content_type,
         "sheet_count": len(sheets),
         "field_count": field_count,
+    }
+
+
+def parse_master_data_template_workbook(
+    db: Session,
+    template: MasterDataTemplate,
+    file_obj: BinaryIO,
+    file_name: str,
+    content_type: str,
+) -> dict[str, object]:
+    sheets = json.loads(template.sheets_json)
+    workbook = load_workbook(file_obj, data_only=True)
+    sheet_summaries = []
+    parsed_rows: dict[str, list[dict[str, object]]] = {}
+    row_count = 0
+
+    for sheet in sheets:
+        worksheet = workbook[sheet["code"]]
+        fields = sheet["fields"]
+        expected_headers = [field["label"] for field in fields]
+        actual_headers = [cell.value for cell in worksheet[1]][: len(expected_headers)]
+        if actual_headers != expected_headers:
+            raise ValueError(f"Invalid headers for sheet {sheet['code']}.")
+
+        sheet_rows = []
+        for row in worksheet.iter_rows(min_row=2, values_only=True):
+            values = list(row[: len(fields)])
+            if all(value is None for value in values):
+                continue
+            parsed_row = {field["name"]: values[index] for index, field in enumerate(fields)}
+            sheet_rows.append(parsed_row)
+
+        parsed_rows[sheet["code"]] = sheet_rows
+        sheet_row_count = len(sheet_rows)
+        row_count += sheet_row_count
+        sheet_summaries.append(
+            {
+                "sheet_code": sheet["code"],
+                "target_table": sheet["target_table"],
+                "row_count": sheet_row_count,
+            }
+        )
+
+    batch = MasterDataBatch(
+        template_id=template.id,
+        template_code=template.code,
+        status="PARSED",
+        file_name=file_name,
+        content_type=content_type,
+        sheet_summaries_json=json.dumps(sheet_summaries),
+        parsed_rows_json=json.dumps(parsed_rows, sort_keys=True),
+        row_count=row_count,
+        issue_count=0,
+    )
+    db.add(batch)
+    db.commit()
+    db.refresh(batch)
+
+    return {
+        "batch_id": batch.id,
+        "template_code": batch.template_code,
+        "status": batch.status,
+        "file_name": batch.file_name,
+        "sheet_count": len(sheet_summaries),
+        "row_count": batch.row_count,
+        "issue_count": batch.issue_count,
+        "sheet_summaries": sheet_summaries,
     }
