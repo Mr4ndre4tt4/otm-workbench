@@ -99,6 +99,7 @@ def cutover_handoff_eligibility(db: Session, package: LoadPlanPackage) -> dict[s
     blockers: list[dict[str, object]] = []
     readiness_export = None
     archive_evidence = None
+    catalog_context = catalog_context_for_package(package)
 
     if readiness is None:
         blockers.append(handoff_blocker("CUTOVER_READINESS_MISSING", "Generate cutover readiness first."))
@@ -127,6 +128,7 @@ def cutover_handoff_eligibility(db: Session, package: LoadPlanPackage) -> dict[s
         "archive_evidence_id": archive_evidence.id if archive_evidence else None,
         "blockers": blockers,
         "next_actions": ["commit_cutover_handoff"] if eligible else [item["code"] for item in blockers],
+        **catalog_context,
     }
 
 
