@@ -101,6 +101,27 @@ def test_csvutil_build_succeeds_for_registered_package(client, admin_header, db_
     assert build.built_at is not None
 
 
+def test_registered_rates_package_includes_catalog_context(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    package_row = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == package["evidence_id"]).one()
+    package_summary = json.loads(package_row.summary_json)
+    evidence_summary = json.loads(evidence.summary_json)
+
+    assert package["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        package["summary"]["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
+    assert package_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
+
+
 def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, admin_header, db_session):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
 
