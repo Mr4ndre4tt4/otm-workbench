@@ -186,6 +186,8 @@ def test_register_rates_package_creates_client_safe_evidence_audit_and_event(cli
     evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
     audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_rates").one()
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").one()
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
 
     assert evidence.source_module == "load_plan"
     assert evidence.evidence_type == "load_plan_package_intake"
@@ -194,6 +196,9 @@ def test_register_rates_package_creates_client_safe_evidence_audit_and_event(cli
     assert evidence.manifest_id == export["manifest_id"]
     assert approval["evidence_id"] in evidence.summary_json
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert audit.target_id == payload["id"]
     assert event.aggregate_id == payload["id"]
     assert event.status == "PENDING"
