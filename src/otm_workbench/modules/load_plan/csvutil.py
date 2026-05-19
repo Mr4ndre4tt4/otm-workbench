@@ -238,6 +238,7 @@ def generate_csvutil_build(
                     "cl_artifact_id": cl_artifact.id,
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -250,7 +251,7 @@ def generate_csvutil_build(
             project_id=package.project_id,
             aggregate_type="csvutil_build",
             aggregate_id=build.id,
-            payload_json=json.dumps({"package_id": package.id, "status": "BUILT"}, sort_keys=True),
+            payload_json=json.dumps({"package_id": package.id, "status": "BUILT", **catalog_context}, sort_keys=True),
             status="PENDING",
         )
     )

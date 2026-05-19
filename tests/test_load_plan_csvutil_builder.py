@@ -165,11 +165,16 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
     assert evidence.evidence_type == "csvutil_build"
     assert evidence.artifact_id == ctl.id
     evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
         evidence_summary["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert audit.target_id == payload["id"]
     assert event.aggregate_id == payload["id"]
