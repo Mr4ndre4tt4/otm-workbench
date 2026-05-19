@@ -202,6 +202,7 @@ def commit_cutover_handoff(
                     "archive_evidence_id": handoff.archive_evidence_id,
                     "evidence_id": evidence.id,
                     "status": READY_FOR_CUTOVER_STATUS,
+                    **catalog_context,
                 },
                 sort_keys=True,
             ),
@@ -215,7 +216,7 @@ def commit_cutover_handoff(
             aggregate_type="load_plan_cutover_handoff",
             aggregate_id=handoff.id,
             payload_json=json.dumps(
-                {"package_id": package.id, "status": READY_FOR_CUTOVER_STATUS},
+                {"package_id": package.id, "status": READY_FOR_CUTOVER_STATUS, **catalog_context},
                 sort_keys=True,
             ),
             status="PENDING",

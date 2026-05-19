@@ -192,10 +192,18 @@ def test_cutover_handoff_commit_creates_records_and_transitions_package(
     assert evidence.client_safe is True
     handoff_summary = json.loads(handoff.summary_json)
     evidence_summary = json.loads(evidence.summary_json)
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
     assert handoff_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
         evidence_summary["catalog_load_plan_path"]
+        == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+    )
+    assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert (
+        event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit.target_id == handoff.id
