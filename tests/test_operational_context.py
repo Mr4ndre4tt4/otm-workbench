@@ -1,3 +1,6 @@
+from otm_workbench.models import Capability, Role, RoleCapability, SessionToken, UserProjectRole
+
+
 def test_create_workspace_project_profile_environment(client, admin_header):
     workspace = client.post(
         "/api/v1/platform/workspaces",
@@ -158,3 +161,60 @@ def test_project_setup_status_reports_missing_requirements(client, admin_header)
     assert payload["environment_count"] == 0
     assert payload["active_context_selected"] is False
     assert payload["missing_requirements"] == ["PROFILE", "ENVIRONMENT", "ACTIVE_CONTEXT"]
+
+
+def test_active_context_capabilities_return_roles_and_capabilities_for_project(
+    client,
+    admin_header,
+    auth_header,
+    db_session,
+):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rollout"},
+        headers=admin_header,
+    ).json()
+    user_token = auth_header["Authorization"].split(" ", 1)[1]
+    user_id = db_session.get(SessionToken, user_token).user_id
+    role = Role(name="Catalog Steward")
+    capability = Capability(name="catalog.reference.validate")
+    db_session.add_all([role, capability])
+    db_session.flush()
+    db_session.add_all(
+        [
+            RoleCapability(role_id=role.id, capability_id=capability.id),
+            UserProjectRole(user_id=user_id, project_id=project["id"], role_id=role.id),
+        ]
+    )
+    db_session.commit()
+    active_context = client.post(
+        "/api/v1/platform/active-context",
+        json={"project_id": project["id"], "domain_name": "otm1"},
+        headers=auth_header,
+    )
+
+    response = client.get("/api/v1/platform/active-context/capabilities", headers=auth_header)
+
+    assert active_context.status_code == 200
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] == project["id"]
+    assert payload["is_admin"] is False
+    assert payload["roles"] == ["Catalog Steward"]
+    assert payload["capabilities"] == ["catalog.reference.validate"]
+
+
+def test_active_context_capabilities_return_admin_wildcard(client, admin_header):
+    response = client.get("/api/v1/platform/active-context/capabilities", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] is None
+    assert payload["is_admin"] is True
+    assert payload["roles"] == ["ADMIN"]
+    assert payload["capabilities"] == ["*"]

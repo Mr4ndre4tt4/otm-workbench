@@ -253,6 +253,7 @@ Ja existe uma fundacao minima:
 - Active Context MVP0 com GET/POST, domain_name normalizado e allowed_domains PUBLIC + dominio ativo;
 - Catalog Core reference options e validate/reference ja consomem Active Context quando domain_name nao e informado;
 - Project Setup Status basico disponivel em GET /api/v1/platform/projects/{project_id}/setup-status;
+- Effective Capabilities basico disponivel em GET /api/v1/platform/active-context/capabilities;
 - Role e Capability basicos;
 - FeatureFlag;
 - Module Registry;
@@ -265,7 +266,7 @@ Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
 
 ```text
 - allowed_domains derivado de profile/role/capability;
-- capability checks granulares por acao;
+- capability checks granulares por acao usando Effective Capabilities;
 - Domain Access Policy reaproveitada por Catalog, Rates, Master Data e Cutover;
 - feature flags com escopo GLOBAL/PROJECT/PROFILE/USER/MODULE;
 - APIs admin endurecidas;
@@ -293,7 +294,7 @@ Mas ainda faltam pecas importantes para virar a fonte de verdade de plataforma:
 3. Excecao controlada para DBA/MASTER com allowed_domains = ["*"].
 4. Endpoint GET /api/v1/platform/active-context.
 5. Endpoint POST /api/v1/platform/active-context.
-6. Capability helper reutilizavel para checagens backend.
+6. Capability helper reutilizavel para checagens backend. [ENTREGUE MVP0 inicial]
 7. Project Setup Status basico. [ENTREGUE MVP0 inicial]
 8. Testes de contrato para USER/ADMIN/DBA/MASTER.
 9. Integrar Catalog reference options ao active context em fatia posterior.
