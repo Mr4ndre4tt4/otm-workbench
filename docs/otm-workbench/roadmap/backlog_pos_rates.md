@@ -637,7 +637,7 @@ Padroes tecnicos confirmados pelos apoios:
 8. Mapping CRUD tabular. [ENTREGUE primeira fatia backend OTM-45]
 9. Transformation type catalog com seeds controlados. [ENTREGUE primeira fatia backend OTM-46]
 10. Loop definition simples para colecoes. [ENTREGUE primeira fatia backend OTM-47]
-11. Join rule simples para relacionar estruturas do payload origem.
+11. Join rule simples para relacionar estruturas do payload origem. [ENTREGUE primeira fatia backend OTM-48]
 12. Lookup definition com mocks, sem chamada real obrigatoria.
 13. Validation service para paths, required targets, loops, joins e lookups.
 14. Preview job com fixture sintetica e resultado como artifact.
