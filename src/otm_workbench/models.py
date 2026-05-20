@@ -241,6 +241,28 @@ class AssetClassification(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
 
+class Asset(Base, TimestampMixin):
+    __tablename__ = "assets"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    asset_type: Mapped[str] = mapped_column(String, index=True)
+    category: Mapped[str] = mapped_column(String, index=True)
+    visibility: Mapped[str] = mapped_column(String, index=True)
+    scope_type: Mapped[str] = mapped_column(String, index=True)
+    sensitivity: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    macro_object_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    otm_table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    tags_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
