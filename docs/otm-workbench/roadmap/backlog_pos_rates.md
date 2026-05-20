@@ -642,7 +642,7 @@ Padroes tecnicos confirmados pelos apoios:
 13. Validation service para paths, required targets, loops, joins e lookups. [ENTREGUE primeira fatia backend OTM-50]
 14. Preview job com fixture sintetica e resultado como artifact. [ENTREGUE primeira fatia backend OTM-51]
 15. Markdown spec generator com identificacao, schemas, mappings, loops, lookups, response handling e casos de teste. [ENTREGUE primeira fatia backend OTM-52]
-16. Audit log/domain events para create/update/validate/preview/generate-spec.
+16. Audit log/domain events para create/update/validate/preview/generate-spec. [ENTREGUE primeira fatia backend OTM-53]
 17. Testes com cenario sintetico inspirado no padrao OTM PlannedShipment -> External Delivery JSON.
 ```
 
