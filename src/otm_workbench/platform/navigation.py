@@ -47,6 +47,12 @@ def seed_modules(db: Session) -> None:
             status="PLANNED",
         ),
         Module(
+            id="assets",
+            display_name="Assets Library",
+            route_base="/assets",
+            status="ACTIVE",
+        ),
+        Module(
             id="admin",
             display_name="Admin Console",
             route_base="/admin",
@@ -77,7 +83,17 @@ def flag_enabled(db: Session, name: str | None) -> bool:
 
 def registered_modules(db: Session) -> list[Module]:
     seed_modules(db)
-    order = ["master_data", "home", "evidence", "catalog", "rates", "load_plan", "admin", "dev_tools"]
+    order = [
+        "master_data",
+        "home",
+        "evidence",
+        "catalog",
+        "rates",
+        "load_plan",
+        "assets",
+        "admin",
+        "dev_tools",
+    ]
     modules_by_id = {module.id: module for module in db.query(Module).all()}
     return [modules_by_id[module_id] for module_id in order if module_id in modules_by_id]
 
