@@ -290,6 +290,22 @@ class AssetLink(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class OrderReleaseTemplate(Base, TimestampMixin):
+    __tablename__ = "order_release_templates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    version: Mapped[int] = mapped_column(Integer, default=1, index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    macro_object_code: Mapped[str] = mapped_column(String, default="ORDER_RELEASE", index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    required_columns_json: Mapped[str] = mapped_column(Text, default="[]")
+    optional_columns_json: Mapped[str] = mapped_column(Text, default="[]")
+    defaults_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

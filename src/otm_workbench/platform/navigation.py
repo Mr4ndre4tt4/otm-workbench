@@ -53,6 +53,12 @@ def seed_modules(db: Session) -> None:
             status="ACTIVE",
         ),
         Module(
+            id="order_release_generator",
+            display_name="Order Release Generator",
+            route_base="/order-release-generator",
+            status="ACTIVE",
+        ),
+        Module(
             id="admin",
             display_name="Admin Console",
             route_base="/admin",
@@ -91,6 +97,7 @@ def registered_modules(db: Session) -> list[Module]:
         "rates",
         "load_plan",
         "assets",
+        "order_release_generator",
         "admin",
         "dev_tools",
     ]
