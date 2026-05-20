@@ -28,6 +28,7 @@ from otm_workbench.modules.integration_mapping.payload_artifacts import (
     import_payload_artifact,
     serialize_payload_artifact,
 )
+from otm_workbench.modules.integration_mapping.preview import build_integration_preview
 from otm_workbench.modules.integration_mapping.mappings import (
     create_integration_mapping,
     serialize_integration_mapping,
@@ -220,6 +221,32 @@ def validate_definition(
     if definition is None:
         raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
     return validate_integration_definition(db, definition)
+
+
+@router.post("/definitions/{definition_id}/preview")
+def preview_definition(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    validation = validate_integration_definition(db, definition)
+    if not validation["is_valid"]:
+        raise api_error(
+            409,
+            "INTEGRATION_PREVIEW_VALIDATION_FAILED",
+            "Integration Mapping definition must pass validation before preview.",
+            {"issue_count": validation["issue_count"], "issues": validation["issues"]},
+        )
+    return build_integration_preview(
+        db,
+        definition=definition,
+        validation=validation,
+        artifact_root=get_settings().artifact_root,
+        created_by=user.email,
+    )
 
 
 @router.post("/systems")
