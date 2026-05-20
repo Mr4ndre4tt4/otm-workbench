@@ -1,0 +1,55 @@
+# GUI Auth Session Flow
+
+**Status:** initial GUI session flow delivered  
+**Branch:** `codex/gui-auth-session`
+
+## Objective
+
+Let the browser-first GUI consume protected backend contracts through a real
+FastAPI session token instead of calling platform endpoints anonymously.
+
+## Implemented
+
+- Login panel rendered before protected contracts are called.
+- Login submits to `POST /api/v1/platform/session/login`.
+- Successful login stores the bearer token through a platform session storage
+  adapter.
+- API client attaches `Authorization: Bearer <token>` when a token is present.
+- Navigation, Project Cockpit summary, and user preferences queries are enabled
+  only after authentication.
+- Sign out clears the session token and returns the shell to the login state.
+
+## Ownership Boundary
+
+The frontend stores only the current browser session token. It does not own:
+
+- user identity truth;
+- roles or permissions;
+- module visibility;
+- durable preferences;
+- lifecycle or readiness decisions.
+
+Those remain backend-owned and are fetched after authentication.
+
+## Files
+
+```text
+frontend/src/platform/auth.tsx
+frontend/src/platform/authContext.ts
+frontend/src/platform/useAuth.ts
+frontend/src/platform/sessionStorage.ts
+frontend/src/platform/api.ts
+frontend/src/platform/hooks.ts
+frontend/src/app/App.tsx
+```
+
+## Verification
+
+```text
+npm run test
+npm run lint
+npm run build
+```
+
+The auth tests assert that protected contracts are not called before login and
+that authenticated requests receive the bearer token after login.

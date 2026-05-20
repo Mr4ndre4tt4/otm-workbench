@@ -14,6 +14,11 @@ export type NavigationItem = {
 
 export type NavigationResponse = PageResponse<NavigationItem>;
 
+export type LoginResponse = {
+  access_token: string;
+  token_type: "bearer";
+};
+
 export type AvailableAction = {
   key: string;
   label: string;

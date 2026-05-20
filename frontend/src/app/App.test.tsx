@@ -1,34 +1,108 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: false }
-  }
-});
+import { AuthProvider } from "../platform/auth";
 
 function renderApp() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  });
   return render(
     <QueryClientProvider client={queryClient}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
 
 describe("App shell", () => {
-  it("renders the workbench shell identity before API data resolves", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise(() => undefined))
-    );
+  afterEach(() => {
+    sessionStorage.clear();
+    vi.unstubAllGlobals();
+  });
 
+  it("renders a backend session login before protected contracts are called", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     renderApp();
 
     expect(screen.getByText("Workbench")).toBeInTheDocument();
-    expect(screen.getByText("Backend-owned contracts")).toBeInTheDocument();
-    expect(screen.getByText("Loading Project Cockpit...")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sign in to OTM Workbench" })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("logs in with the backend session endpoint and sends bearer auth to protected contracts", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [], total: 0, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              module_id: "home",
+              title: "Project Cockpit",
+              status: "needs_context",
+              description: "Project-level operational overview.",
+              active_context: {},
+              setup_status: null,
+              counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+              module_summary: { total: 0, counts_by_status: {}, items: [] },
+              recent_jobs: [],
+              recent_artifacts: [],
+              recent_evidence: [],
+              available_actions: []
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp();
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Project Cockpit" })).toBeInTheDocument());
+    expect(sessionStorage.getItem("otm_workbench.session_token")).toBe("session_token");
   });
 });

@@ -1,6 +1,9 @@
 import { Activity, AlertCircle, Archive, CheckCircle2, ChevronRight, Moon, Sun } from "lucide-react";
+import { type FormEvent, useState } from "react";
 
-import { useCockpitSummary, useNavigation, useUserPreferences } from "../platform/hooks";
+import { ApiError } from "../platform/api";
+import { login, useCockpitSummary, useNavigation, useUserPreferences } from "../platform/hooks";
+import { useAuth } from "../platform/useAuth";
 import { Button, IconButton, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem } from "../platform/types";
 
@@ -51,8 +54,72 @@ function ActionBar({ actions }: { actions: AvailableAction[] }) {
   );
 }
 
-function CockpitContent() {
-  const cockpit = useCockpitSummary();
+function LoginPanel() {
+  const auth = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const response = await login(email, password);
+      auth.signIn(response.access_token);
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(caught.message);
+      } else {
+        setError("Unable to sign in.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="login-panel" aria-label="Workbench sign in">
+      <div>
+        <p className="section-label">Backend session</p>
+        <h1>Sign in to OTM Workbench</h1>
+        <p>Use a backend session so navigation, permissions, preferences, and cockpit data stay API-owned.</p>
+      </div>
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label>
+          <span>Email</span>
+          <input
+            autoComplete="email"
+            name="email"
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            type="email"
+            value={email}
+          />
+        </label>
+        <label>
+          <span>Password</span>
+          <input
+            autoComplete="current-password"
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            type="password"
+            value={password}
+          />
+        </label>
+        {error ? <p className="form-error">{error}</p> : null}
+        <Button disabled={isSubmitting} type="submit" variant="primary">
+          {isSubmitting ? "Signing in..." : "Sign in"}
+        </Button>
+      </form>
+    </section>
+  );
+}
+
+function CockpitContent({ token }: { token: string }) {
+  const cockpit = useCockpitSummary(token);
 
   if (cockpit.isLoading) {
     return <section className="state-panel">Loading Project Cockpit...</section>;
@@ -155,8 +222,9 @@ function CockpitContent() {
 }
 
 export function App() {
-  const navigation = useNavigation();
-  const preferences = useUserPreferences();
+  const auth = useAuth();
+  const navigation = useNavigation(auth.token);
+  const preferences = useUserPreferences(auth.token);
   const themeMode = preferences.data?.theme_mode ?? "light";
 
   return (
@@ -176,6 +244,9 @@ export function App() {
         <div className="topbar">
           <span>Backend-owned contracts</span>
           <div className="topbar-actions">
+            {auth.isAuthenticated ? (
+              <Button onClick={auth.signOut}>Sign out</Button>
+            ) : null}
             <IconButton label="Light mode">
               <Sun aria-hidden="true" />
             </IconButton>
@@ -184,7 +255,7 @@ export function App() {
             </IconButton>
           </div>
         </div>
-        <CockpitContent />
+        {auth.token ? <CockpitContent token={auth.token} /> : <LoginPanel />}
       </main>
     </div>
   );
