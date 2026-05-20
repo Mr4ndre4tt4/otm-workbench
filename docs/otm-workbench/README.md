@@ -31,6 +31,7 @@ Para frontend e experiência do usuário:
 2. [Guia de desenvolvimento modular](foundation/guia_desenvolvimento_modular_otm_workbench.md)
 3. [Modelo de dados e contratos de API](foundation/modelo_dados_contratos_api_otm_workbench.md)
 4. [Glossário e convenções](foundation/glossario_convencoes_otm_workbench.md)
+5. [GUI MVP1 Plan](gui/GUI_MVP1_PLAN.md)
 
 ## Decisões Base
 
