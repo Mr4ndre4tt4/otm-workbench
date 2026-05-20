@@ -638,7 +638,7 @@ Padroes tecnicos confirmados pelos apoios:
 9. Transformation type catalog com seeds controlados. [ENTREGUE primeira fatia backend OTM-46]
 10. Loop definition simples para colecoes. [ENTREGUE primeira fatia backend OTM-47]
 11. Join rule simples para relacionar estruturas do payload origem. [ENTREGUE primeira fatia backend OTM-48]
-12. Lookup definition com mocks, sem chamada real obrigatoria.
+12. Lookup definition com mocks, sem chamada real obrigatoria. [ENTREGUE primeira fatia backend OTM-49]
 13. Validation service para paths, required targets, loops, joins e lookups.
 14. Preview job com fixture sintetica e resultado como artifact.
 15. Markdown spec generator com identificacao, schemas, mappings, loops, lookups, response handling e casos de teste.

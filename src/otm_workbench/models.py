@@ -474,6 +474,24 @@ class IntegrationJoinRule(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationLookupDefinition(Base, TimestampMixin):
+    __tablename__ = "integration_lookup_definitions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    source_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    target_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    input_path: Mapped[str] = mapped_column(String, index=True)
+    output_path: Mapped[str] = mapped_column(String, index=True)
+    lookup_type: Mapped[str] = mapped_column(String, default="MOCK", index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    mock_response_json: Mapped[str] = mapped_column(Text, default="")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
