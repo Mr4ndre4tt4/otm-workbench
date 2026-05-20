@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -21,7 +23,9 @@ from otm_workbench.models import (
     RoleCapability,
     User,
     UserProjectRole,
+    UserPreference,
     Workspace,
+    utcnow,
 )
 from otm_workbench.platform.audit import write_audit
 from otm_workbench.platform.jobs import (
@@ -52,6 +56,22 @@ class CurrentUserResponse(BaseModel):
     id: str
     email: str
     is_admin: bool
+
+
+class UserPreferenceResponse(BaseModel):
+    user_id: str
+    theme_mode: str
+    follow_system_theme: bool
+    density: str
+    sidebar_mode: str
+    updated_at: str
+
+
+class UserPreferenceUpdate(BaseModel):
+    theme_mode: Literal["light", "dark"] = "light"
+    follow_system_theme: bool = False
+    density: Literal["comfortable", "compact"] = "comfortable"
+    sidebar_mode: Literal["expanded", "collapsed"] = "expanded"
 
 
 class FeatureFlagRequest(BaseModel):
@@ -128,6 +148,27 @@ def serialize_active_context(context: ActiveContext | None, user: User) -> dict[
         "allowed_domains": allowed_domains_for_context(domain_name, can_view_all_domains),
         "can_view_all_domains": can_view_all_domains,
     }
+
+
+def get_or_create_user_preference(db: Session, user: User) -> UserPreference:
+    preference = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    if preference is None:
+        preference = UserPreference(user_id=user.id)
+        db.add(preference)
+        db.commit()
+        db.refresh(preference)
+    return preference
+
+
+def serialize_user_preference(preference: UserPreference) -> UserPreferenceResponse:
+    return UserPreferenceResponse(
+        user_id=preference.user_id,
+        theme_mode=preference.theme_mode,
+        follow_system_theme=preference.follow_system_theme,
+        density=preference.density,
+        sidebar_mode=preference.sidebar_mode,
+        updated_at=preference.updated_at.isoformat(),
+    )
 
 
 def project_setup_status_payload(db: Session, project_id: str, user: User) -> dict[str, object]:
@@ -241,6 +282,32 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 @router.get("/session/me", response_model=CurrentUserResponse)
 def me(user: User = Depends(require_user)) -> CurrentUserResponse:
     return CurrentUserResponse(id=user.id, email=user.email, is_admin=user.is_admin)
+
+
+@router.get("/user-preferences", response_model=UserPreferenceResponse)
+def get_user_preferences(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> UserPreferenceResponse:
+    preference = get_or_create_user_preference(db, user)
+    return serialize_user_preference(preference)
+
+
+@router.put("/user-preferences", response_model=UserPreferenceResponse)
+def update_user_preferences(
+    payload: UserPreferenceUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> UserPreferenceResponse:
+    preference = get_or_create_user_preference(db, user)
+    preference.theme_mode = payload.theme_mode
+    preference.follow_system_theme = payload.follow_system_theme
+    preference.density = payload.density
+    preference.sidebar_mode = payload.sidebar_mode
+    preference.updated_at = utcnow()
+    db.commit()
+    db.refresh(preference)
+    return serialize_user_preference(preference)
 
 
 @router.post("/feature-flags")
