@@ -16,6 +16,8 @@ from otm_workbench.modules.load_plan.packages import parse_json_list, parse_json
 
 
 DEFAULT_TEMPLATE_CODE = "MVP0_STANDARD_CUTOVER"
+ALLOWED_ITEM_STATUSES = {"PENDING", "DONE", "BLOCKED", "SKIPPED"}
+ALLOWED_ITEM_METHODS = {"CSVUTIL", "REVIEW", "MANUAL", "SYSTEM"}
 
 DEFAULT_TEMPLATE_ITEMS = [
     {
@@ -212,6 +214,105 @@ def serialize_checklist(db: Session, checklist: CutoverChecklist) -> dict[str, o
         "created_by": checklist.created_by,
         "items": [serialize_checklist_item(item) for item in items],
     }
+
+
+def checklist_status_counts(db: Session, checklist_id: str) -> dict[str, int]:
+    items = (
+        db.query(CutoverChecklistItem)
+        .filter(CutoverChecklistItem.checklist_id == checklist_id)
+        .all()
+    )
+    counts: dict[str, int] = {}
+    for item in items:
+        counts[item.status] = counts.get(item.status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def refresh_checklist_summary(db: Session, checklist: CutoverChecklist) -> None:
+    summary = parse_json_object(checklist.summary_json)
+    summary["status_counts"] = checklist_status_counts(db, checklist.id)
+    checklist.summary_json = json.dumps(summary, sort_keys=True)
+    db.flush()
+
+
+def update_checklist_item(
+    db: Session,
+    *,
+    item: CutoverChecklistItem,
+    status: str | None,
+    method: str | None,
+    evidence_id: str | None,
+    updated_by: str,
+) -> CutoverChecklist:
+    if status is not None and status not in ALLOWED_ITEM_STATUSES:
+        raise ValueError("Invalid cutover checklist item status.")
+    if method is not None and method not in ALLOWED_ITEM_METHODS:
+        raise ValueError("Invalid cutover checklist item method.")
+
+    final_status = status or item.status
+    final_evidence_id = evidence_id if evidence_id is not None else item.evidence_id
+    if final_status == "DONE" and item.evidence_required and not final_evidence_id:
+        raise ValueError("Evidence is required before marking this checklist item as DONE.")
+
+    evidence = None
+    if evidence_id:
+        evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
+        if evidence is None:
+            raise LookupError("Evidence not found.")
+        if not evidence.client_safe:
+            raise ValueError("Evidence must be client-safe before linking it to a cutover checklist item.")
+
+    previous_status = item.status
+    previous_method = item.method
+    if status is not None:
+        item.status = status
+    if method is not None:
+        item.method = method
+    if evidence_id is not None:
+        item.evidence_id = evidence_id
+    db.flush()
+
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == item.checklist_id).one()
+    refresh_checklist_summary(db, checklist)
+    summary = parse_json_object(checklist.summary_json)
+    audit_payload = {
+        "checklist_id": checklist.id,
+        "package_id": checklist.package_id,
+        "item_id": item.id,
+        "item_code": item.item_code,
+        "table_name": item.table_name,
+        "previous_status": previous_status,
+        "status": item.status,
+        "previous_method": previous_method,
+        "method": item.method,
+        "evidence_id": item.evidence_id,
+        "status_counts": summary.get("status_counts", {}),
+    }
+    if checklist.catalog_macro_object_code:
+        audit_payload["catalog_macro_object_code"] = checklist.catalog_macro_object_code
+    db.add(
+        AuditLog(
+            actor_user_id=updated_by,
+            action="load_plan.cutover_checklist_item.update",
+            target_type="cutover_checklist_item",
+            target_id=item.id,
+            metadata_json=json.dumps(audit_payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="load_plan.cutover_checklist_item.updated",
+            source_module="load_plan",
+            project_id=checklist.project_id,
+            aggregate_type="cutover_checklist_item",
+            aggregate_id=item.id,
+            payload_json=json.dumps(audit_payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    db.refresh(checklist)
+    return checklist
 
 
 def create_checklist_from_package(
