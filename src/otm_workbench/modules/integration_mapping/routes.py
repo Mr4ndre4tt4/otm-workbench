@@ -5,10 +5,15 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import IntegrationDefinition, IntegrationEndpoint, IntegrationSystem, User
+from otm_workbench.config import get_settings
+from otm_workbench.models import Artifact, IntegrationDefinition, IntegrationEndpoint, IntegrationPayloadArtifact, IntegrationSystem, User
 from otm_workbench.modules.integration_mapping.definitions import (
     create_integration_definition,
     serialize_integration_definition,
+)
+from otm_workbench.modules.integration_mapping.payload_artifacts import (
+    import_payload_artifact,
+    serialize_payload_artifact,
 )
 from otm_workbench.modules.integration_mapping.systems import (
     create_integration_endpoint,
@@ -51,6 +56,16 @@ class IntegrationEndpointCreateRequest(BaseModel):
     path: str
     method: str
     payload_format: str
+    description: str = ""
+
+
+class IntegrationPayloadArtifactCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    payload_role: str
+    payload_format: str
+    file_name: str
+    content: str
     description: str = ""
 
 
@@ -162,4 +177,54 @@ def list_endpoints(
         .all()
     )
     items = [serialize_integration_endpoint(endpoint) for endpoint in endpoints]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.post("/definitions/{definition_id}/payload-artifacts")
+def create_payload_artifact(
+    definition_id: str,
+    payload: IntegrationPayloadArtifactCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        payload_artifact = import_payload_artifact(
+            db,
+            definition=definition,
+            payload=payload.model_dump(),
+            artifact_root=get_settings().artifact_root,
+            user=user,
+        )
+    except ValueError as exc:
+        if str(exc) == "payload_format_unsupported":
+            raise api_error(
+                400,
+                "INTEGRATION_PAYLOAD_FORMAT_UNSUPPORTED",
+                "Integration payload format must be XML or JSON.",
+            ) from exc
+        raise api_error(400, "INTEGRATION_SECRET_RISK", str(exc)) from exc
+    artifact = db.get(Artifact, payload_artifact.artifact_id)
+    return serialize_payload_artifact(payload_artifact, artifact)
+
+
+@router.get("/definitions/{definition_id}/payload-artifacts")
+def list_payload_artifacts(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    rows = (
+        db.query(IntegrationPayloadArtifact, Artifact)
+        .join(Artifact, Artifact.id == IntegrationPayloadArtifact.artifact_id)
+        .filter(IntegrationPayloadArtifact.definition_id == definition.id)
+        .order_by(IntegrationPayloadArtifact.created_at.desc())
+        .all()
+    )
+    items = [serialize_payload_artifact(payload_artifact, artifact) for payload_artifact, artifact in rows]
     return PageResponse(items=items, total=len(items))
