@@ -90,10 +90,12 @@ def unsupported_catalog_payload(catalog_macro_object_code: str) -> dict[str, obj
 class CsvutilBuildRequest(BaseModel):
     package_id: str
     parameter_set: dict[str, object] | None = None
+    table_overrides: dict[str, object] | None = None
 
 
 class CsvutilChecklistBuildRequest(BaseModel):
     parameter_set: dict[str, object] | None = None
+    table_overrides: dict[str, object] | None = None
 
 
 class ZipAnalysisRequest(BaseModel):
@@ -557,6 +559,7 @@ def build_csvutil_artifacts(
             artifact_root=Path(get_settings().artifact_root),
             built_by=user.email,
             parameter_set=payload.parameter_set,
+            table_overrides=payload.table_overrides,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -584,6 +587,7 @@ def build_csvutil_artifacts_from_cutover_checklist(
             artifact_root=Path(get_settings().artifact_root),
             built_by=user.email,
             parameter_set=payload.parameter_set if payload else None,
+            table_overrides=payload.table_overrides if payload else None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

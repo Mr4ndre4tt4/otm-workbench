@@ -48,6 +48,34 @@ def normalize_parameter_set(parameter_set: dict[str, object] | None = None) -> d
     return normalized
 
 
+def normalize_table_overrides(
+    table_overrides: dict[str, object] | None,
+    load_sequence: list[dict[str, object]],
+) -> dict[str, dict[str, str]]:
+    if not table_overrides:
+        return {}
+    selected_tables = {str(item["table_name"]).upper() for item in load_sequence}
+    normalized: dict[str, dict[str, str]] = {}
+    for table_name, raw_override in table_overrides.items():
+        normalized_table = str(table_name).strip().upper()
+        if normalized_table not in selected_tables:
+            raise ValueError(f"CSVUTIL table override references a table that is not selected: {normalized_table}.")
+        if not isinstance(raw_override, dict):
+            raise ValueError("CSVUTIL table override must be an object.")
+        item_override: dict[str, str] = {}
+        for key, value in raw_override.items():
+            if key not in {"mode", "delimiter"}:
+                raise ValueError(f"Unsupported CSVUTIL table override parameter: {key}.")
+            normalized_value = str(value).strip().upper()
+            if key == "mode" and normalized_value not in ALLOWED_CSVUTIL_MODES:
+                raise ValueError("Invalid CSVUTIL table override mode.")
+            if key == "delimiter" and normalized_value not in ALLOWED_DELIMITERS:
+                raise ValueError("Invalid CSVUTIL table override delimiter.")
+            item_override[key] = normalized_value
+        normalized[normalized_table] = item_override
+    return dict(sorted(normalized.items()))
+
+
 def csv_relative_name(index: int, table_name: str) -> str:
     return f"csv/{index:03d}_{table_name}.csv"
 
@@ -56,6 +84,7 @@ def build_ctl_text(
     package: LoadPlanPackage,
     load_sequence: list[dict[str, object]],
     parameter_set: dict[str, str],
+    table_overrides: dict[str, dict[str, str]] | None = None,
 ) -> str:
     lines = [
         "# OTM Workbench CSVUTIL CTL",
@@ -66,6 +95,10 @@ def build_ctl_text(
         f"# encoding={parameter_set['encoding']}",
         f"# date_format={parameter_set['date_format']}",
     ]
+    for table_name, override in (table_overrides or {}).items():
+        mode = override.get("mode", parameter_set["mode"])
+        delimiter = override.get("delimiter", parameter_set["delimiter"])
+        lines.append(f"# table_override {table_name} mode={mode} delimiter={delimiter}")
     for index, item in enumerate(load_sequence, start=1):
         table_name = str(item["table_name"])
         lines.append(f"{index:03d},{table_name},{csv_relative_name(index, table_name)}")
@@ -76,6 +109,7 @@ def build_cl_text(
     package: LoadPlanPackage,
     load_sequence: list[dict[str, object]],
     parameter_set: dict[str, str],
+    table_overrides: dict[str, dict[str, str]] | None = None,
 ) -> str:
     lines = [
         "# OTM Workbench CSVUTIL CL",
@@ -87,7 +121,10 @@ def build_cl_text(
     ]
     for index, item in enumerate(load_sequence, start=1):
         table_name = str(item["table_name"])
-        lines.append(f"LOAD {table_name} FROM {csv_relative_name(index, table_name)}")
+        override = (table_overrides or {}).get(table_name.upper(), {})
+        mode = override.get("mode", parameter_set["mode"])
+        delimiter = override.get("delimiter", parameter_set["delimiter"])
+        lines.append(f"LOAD {table_name} FROM {csv_relative_name(index, table_name)} MODE {mode} DELIMITER {delimiter}")
     return "\n".join(lines) + "\n"
 
 
@@ -167,15 +204,23 @@ def generate_csvutil_build_with_sequence(
     source_entity_id: str | None = None,
     checklist_id: str | None = None,
     parameter_set: dict[str, object] | None = None,
+    table_overrides: dict[str, object] | None = None,
 ) -> CsvutilBuild:
     normalized_parameter_set = normalize_parameter_set(parameter_set)
+    normalized_table_overrides = normalize_table_overrides(table_overrides, load_sequence)
     timestamp = utc_timestamp()
     build_dir = artifact_root / "load_plan" / package.id / "csvutil" / timestamp
     build_dir.mkdir(parents=True, exist_ok=True)
     ctl_path = build_dir / f"csvutil_{package.id}.ctl"
     cl_path = build_dir / f"csvutil_{package.id}.cl"
-    ctl_path.write_text(build_ctl_text(package, load_sequence, normalized_parameter_set), encoding="utf-8")
-    cl_path.write_text(build_cl_text(package, load_sequence, normalized_parameter_set), encoding="utf-8")
+    ctl_path.write_text(
+        build_ctl_text(package, load_sequence, normalized_parameter_set, normalized_table_overrides),
+        encoding="utf-8",
+    )
+    cl_path.write_text(
+        build_cl_text(package, load_sequence, normalized_parameter_set, normalized_table_overrides),
+        encoding="utf-8",
+    )
 
     ctl_artifact = create_artifact(db, package=package, artifact_type="csvutil_ctl", path=ctl_path)
     cl_artifact = create_artifact(db, package=package, artifact_type="csvutil_cl", path=cl_path)
@@ -211,6 +256,7 @@ def generate_csvutil_build_with_sequence(
         "files": files,
         "load_sequence": load_sequence,
         "parameter_set": normalized_parameter_set,
+        "table_overrides": normalized_table_overrides,
         "built_at": built_at,
         "built_by": built_by,
     }
@@ -238,6 +284,7 @@ def generate_csvutil_build_with_sequence(
         "ctl_artifact_type": "csvutil_ctl",
         "cl_artifact_type": "csvutil_cl",
         "parameter_set": normalized_parameter_set,
+        "table_overrides": normalized_table_overrides,
         **catalog_context,
     }
     if checklist_id:
@@ -273,6 +320,7 @@ def generate_csvutil_build_with_sequence(
         "manifest_id": manifest.id,
         "status": "BUILT",
         "parameter_set": normalized_parameter_set,
+        "table_overrides": normalized_table_overrides,
         **catalog_context,
     }
     if checklist_id:
@@ -307,6 +355,7 @@ def generate_csvutil_build_with_sequence(
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
                     "parameter_set": normalized_parameter_set,
+                    "table_overrides": normalized_table_overrides,
                     **({"checklist_id": checklist_id} if checklist_id else {}),
                     **catalog_context,
                 },
@@ -328,6 +377,7 @@ def generate_csvutil_build_with_sequence(
                     "source_entity_type": source_entity_type,
                     "source_entity_id": source_entity_id or package.id,
                     "parameter_set": normalized_parameter_set,
+                    "table_overrides": normalized_table_overrides,
                     **({"checklist_id": checklist_id} if checklist_id else {}),
                     **catalog_context,
                 },
@@ -348,6 +398,7 @@ def generate_csvutil_build(
     artifact_root: Path,
     built_by: str,
     parameter_set: dict[str, object] | None = None,
+    table_overrides: dict[str, object] | None = None,
 ) -> CsvutilBuild:
     load_sequence = ensure_buildable_package(package)
     return generate_csvutil_build_with_sequence(
@@ -357,6 +408,7 @@ def generate_csvutil_build(
         built_by=built_by,
         load_sequence=load_sequence,
         parameter_set=parameter_set,
+        table_overrides=table_overrides,
     )
 
 
@@ -395,6 +447,7 @@ def generate_csvutil_build_from_checklist(
     artifact_root: Path,
     built_by: str,
     parameter_set: dict[str, object] | None = None,
+    table_overrides: dict[str, object] | None = None,
 ) -> CsvutilBuild:
     ensure_buildable_package(package)
     load_sequence = checklist_csvutil_sequence(db, checklist)
@@ -410,4 +463,5 @@ def generate_csvutil_build_from_checklist(
         source_entity_id=checklist.id,
         checklist_id=checklist.id,
         parameter_set=parameter_set,
+        table_overrides=table_overrides,
     )
