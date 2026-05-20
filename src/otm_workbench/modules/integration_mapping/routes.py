@@ -10,6 +10,7 @@ from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
     IntegrationEndpoint,
+    IntegrationMapping,
     IntegrationPayloadArtifact,
     IntegrationSchemaDocument,
     IntegrationSchemaNode,
@@ -23,6 +24,10 @@ from otm_workbench.modules.integration_mapping.definitions import (
 from otm_workbench.modules.integration_mapping.payload_artifacts import (
     import_payload_artifact,
     serialize_payload_artifact,
+)
+from otm_workbench.modules.integration_mapping.mappings import (
+    create_integration_mapping,
+    serialize_integration_mapping,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.schema_documents import (
@@ -82,6 +87,16 @@ class IntegrationPayloadArtifactCreateRequest(BaseModel):
     file_name: str
     content: str
     description: str = ""
+
+
+class IntegrationMappingCreateRequest(BaseModel):
+    source_schema_document_id: str
+    target_schema_document_id: str
+    source_path: str
+    target_path: str
+    transform_type: str = "DIRECT"
+    description: str = ""
+    sequence_index: int = 0
 
 
 @router.get("/health")
@@ -333,3 +348,61 @@ def list_schema_nodes(
     )
     items = [serialize_schema_node(node) for node in nodes]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/definitions/{definition_id}/mappings")
+def create_mapping(
+    definition_id: str,
+    payload: IntegrationMappingCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        mapping = create_integration_mapping(db, definition=definition, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if "schema_document_invalid" in str(exc):
+            raise api_error(
+                400,
+                "INTEGRATION_MAPPING_SCHEMA_DOCUMENT_INVALID",
+                "Mapping schema documents must belong to the Integration Definition.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_MAPPING_PATH_INVALID",
+            "Mapping source_path and target_path must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_mapping(mapping)
+
+
+@router.get("/definitions/{definition_id}/mappings")
+def list_mappings(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    mappings = (
+        db.query(IntegrationMapping)
+        .filter(IntegrationMapping.definition_id == definition.id)
+        .order_by(IntegrationMapping.sequence_index, IntegrationMapping.created_at)
+        .all()
+    )
+    items = [serialize_integration_mapping(mapping) for mapping in mappings]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/mappings/{mapping_id}")
+def get_mapping(
+    mapping_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    mapping = db.get(IntegrationMapping, mapping_id)
+    if mapping is None:
+        raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
+    return serialize_integration_mapping(mapping)

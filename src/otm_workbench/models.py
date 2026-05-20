@@ -413,6 +413,22 @@ class IntegrationSchemaNode(Base, TimestampMixin):
     sequence_index: Mapped[int] = mapped_column(Integer, index=True)
 
 
+class IntegrationMapping(Base, TimestampMixin):
+    __tablename__ = "integration_mappings"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    source_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    target_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    source_path: Mapped[str] = mapped_column(String, index=True)
+    target_path: Mapped[str] = mapped_column(String, index=True)
+    transform_type: Mapped[str] = mapped_column(String, default="DIRECT", index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
