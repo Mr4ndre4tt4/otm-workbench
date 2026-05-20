@@ -30,6 +30,7 @@ from otm_workbench.modules.load_plan.cutover_handoff import (
 )
 from otm_workbench.modules.load_plan.cutover_checklist import (
     create_checklist_from_package,
+    generate_checklist_readiness,
     list_seeded_templates,
     serialize_checklist,
     update_checklist_item,
@@ -244,6 +245,18 @@ def patch_cutover_checklist_item(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_checklist(db, checklist)
+
+
+@router.post("/cutover-checklists/{checklist_id}/readiness")
+def generate_cutover_checklist_readiness(
+    checklist_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    return generate_checklist_readiness(db, checklist=checklist, generated_by=user.email)
 
 
 @router.post("/sequence/snapshots")
