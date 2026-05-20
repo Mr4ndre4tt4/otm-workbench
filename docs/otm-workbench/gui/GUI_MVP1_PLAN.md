@@ -492,6 +492,8 @@ Delivered follow-up contracts:
 ```text
 - GET /api/v1/platform/project-cockpit/summary
   documented in GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md
+- Initial browser-first React/Vite shell
+  documented in GUI_SHELL_SCAFFOLD.md
 ```
 
 ## 12. Implementation Order
