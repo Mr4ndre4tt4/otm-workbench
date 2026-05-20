@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import OrderReleaseBatch, OrderReleaseBatchRow, OrderReleaseTemplate, User
@@ -13,6 +14,7 @@ from otm_workbench.modules.order_release_generator.templates import (
     seed_order_release_templates,
     serialize_order_release_template,
 )
+from otm_workbench.modules.order_release_generator.xml_artifacts import generate_order_release_xml_artifact
 from otm_workbench.modules.order_release_generator.xml_preview import build_order_release_xml
 
 
@@ -106,3 +108,28 @@ def preview_batch_xml(
         .all()
     )
     return build_order_release_xml(batch, rows)
+
+
+@router.post("/batches/{batch_id}/generate-xml-artifact")
+def generate_batch_xml_artifact(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.get(OrderReleaseBatch, batch_id)
+    if batch is None:
+        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    if batch.status != "VALID":
+        raise api_error(409, "ORDER_RELEASE_BATCH_INVALID", "Order Release batch must be valid before XML generation.")
+    rows = (
+        db.query(OrderReleaseBatchRow)
+        .filter(OrderReleaseBatchRow.batch_id == batch.id)
+        .order_by(OrderReleaseBatchRow.row_number)
+        .all()
+    )
+    return generate_order_release_xml_artifact(
+        db,
+        batch=batch,
+        rows=rows,
+        artifact_root=get_settings().artifact_root,
+    )
