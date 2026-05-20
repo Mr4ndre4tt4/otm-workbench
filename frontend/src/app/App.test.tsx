@@ -311,4 +311,88 @@ describe("App shell", () => {
       expect.objectContaining({ method: "PUT" })
     );
   });
+
+  it("stores density and sidebar preferences through the backend contract", async () => {
+    let savedPreferences = {
+      theme_mode: "light",
+      follow_system_theme: false,
+      density: "comfortable",
+      sidebar_mode: "expanded"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [{ id: "home", label: "Home", path: "/", status: "ACTIVE" }],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences") && init?.method === "PUT") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        savedPreferences = JSON.parse(String(init?.body));
+        return Promise.resolve(
+          new Response(JSON.stringify(savedPreferences), { status: 200, headers: { "Content-Type": "application/json" } })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(savedPreferences), { status: 200, headers: { "Content-Type": "application/json" } })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              module_id: "home",
+              title: "Project Cockpit",
+              status: "needs_context",
+              description: "Project-level operational overview.",
+              active_context: {},
+              setup_status: null,
+              counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+              module_summary: { total: 1, counts_by_status: { ACTIVE: 1 }, items: [] },
+              recent_jobs: [],
+              recent_artifacts: [],
+              recent_evidence: [],
+              available_actions: []
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const view = renderApp();
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Project Cockpit" });
+    await userEvent.click(screen.getByRole("button", { name: "Use compact density" }));
+
+    await waitFor(() => expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-density", "compact"));
+    expect(savedPreferences).toMatchObject({ density: "compact", sidebar_mode: "expanded" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+
+    await waitFor(() => expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-sidebar", "collapsed"));
+    expect(savedPreferences).toMatchObject({ density: "compact", sidebar_mode: "collapsed" });
+  });
 });

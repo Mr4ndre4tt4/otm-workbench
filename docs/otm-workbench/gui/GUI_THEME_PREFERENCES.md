@@ -1,13 +1,13 @@
-# GUI Theme Preferences
+# GUI Shell Preferences
 
 **Status:** implemented
-**Branch:** `codex/gui-theme-preferences`
+**Branch:** `codex/gui-shell-preference-controls`
 
 ## Objective
 
-Make light, dark, and system theme choices backend-owned from the first GUI
+Make theme, density, and sidebar choices backend-owned from the first GUI
 iteration, so future browser, desktop, and collaborative clients can consume the
-same user preference contract.
+same user preference contract instead of reimplementing local-only state.
 
 ## Backend Contract
 
@@ -37,14 +37,22 @@ Supported values:
 
 ## GUI Behavior
 
-The topbar theme controls now call the backend preference contract:
+The topbar preference controls now call the backend preference contract:
 
 - Sun icon sets `theme_mode = light`
 - Moon icon sets `theme_mode = dark`
 - Monitor icon sets `theme_mode = system` and `follow_system_theme = true`
+- Rows icon toggles `density` between `comfortable` and `compact`
+- Sidebar icon toggles `sidebar_mode` between `expanded` and `collapsed`
 
-The active mode is reflected with `aria-pressed`, an active button style, and
-the root shell `data-theme` attribute.
+The active preference is reflected with `aria-pressed`, an active button style,
+and root shell attributes:
+
+```text
+data-theme
+data-density
+data-sidebar
+```
 
 ## Desktop-Ready Note
 
@@ -56,5 +64,5 @@ client can map the same value to the OS theme source without changing the API.
 
 - Backend preference defaults and update/read cycle covered by
   `tests/test_operational_context.py`.
-- GUI preference write and active button state covered by
+- GUI preference writes and active shell state covered by
   `frontend/src/app/App.test.tsx`.

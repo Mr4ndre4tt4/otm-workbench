@@ -1,4 +1,16 @@
-import { Activity, AlertCircle, Archive, CheckCircle2, ChevronRight, Monitor, Moon, Sun } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  Archive,
+  CheckCircle2,
+  ChevronRight,
+  Monitor,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Rows3,
+  Sun
+} from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -25,14 +37,14 @@ function navIcon(moduleId: string) {
   return <ChevronRight aria-hidden="true" />;
 }
 
-function SidebarNav({ items }: { items: NavigationItem[] }) {
+function SidebarNav({ items, sidebarMode }: { items: NavigationItem[]; sidebarMode: UserPreferences["sidebar_mode"] }) {
   return (
     <nav className="sidebar-nav" aria-label="Workbench modules">
       {items.map((item) => (
         <a className={item.id === "home" ? "nav-item nav-item-active" : "nav-item"} href={item.path} key={item.id}>
           <span className="nav-icon">{navIcon(item.id)}</span>
-          <span>{item.label}</span>
-          <StatusChip status={item.status} />
+          <span className="nav-label">{item.label}</span>
+          {sidebarMode === "expanded" ? <StatusChip status={item.status} /> : null}
         </a>
       ))}
     </nav>
@@ -334,7 +346,7 @@ function ContextSwitcher({ token }: { token: string }) {
   );
 }
 
-function ThemeControls({
+function PreferenceControls({
   preferences,
   token
 }: {
@@ -344,16 +356,25 @@ function ThemeControls({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const currentMode = preferences?.theme_mode ?? "light";
+  const currentDensity = preferences?.density ?? "comfortable";
+  const currentSidebarMode = preferences?.sidebar_mode ?? "expanded";
 
-  async function applyTheme(themeMode: UserPreferences["theme_mode"]) {
+  async function applyPreferences(nextValues: Partial<UserPreferences>) {
     if (!token) return;
     setError(null);
     const nextPreferences: UserPreferences = {
-      theme_mode: themeMode,
-      follow_system_theme: themeMode === "system",
+      theme_mode: preferences?.theme_mode ?? "light",
+      follow_system_theme: preferences?.follow_system_theme ?? false,
       density: preferences?.density ?? "comfortable",
-      sidebar_mode: preferences?.sidebar_mode ?? "expanded"
+      sidebar_mode: preferences?.sidebar_mode ?? "expanded",
+      ...nextValues
     };
+    if (nextPreferences.theme_mode === "system") {
+      nextPreferences.follow_system_theme = true;
+    }
+    if (nextPreferences.theme_mode !== "system") {
+      nextPreferences.follow_system_theme = false;
+    }
     try {
       await updateUserPreferences(token, nextPreferences);
       queryClient.setQueryData(["platform", "user-preferences"], nextPreferences);
@@ -362,19 +383,19 @@ function ThemeControls({
       if (caught instanceof ApiError) {
         setError(caught.message);
       } else {
-        setError("Unable to update theme preference.");
+        setError("Unable to update preference.");
       }
     }
   }
 
   return (
-    <div className="theme-controls" aria-label="Theme preference">
+    <div className="preference-controls" aria-label="Workbench preferences">
       <IconButton
         aria-pressed={currentMode === "light"}
         className={currentMode === "light" ? "icon-button-active" : ""}
         disabled={!token}
         label="Use light mode"
-        onClick={() => void applyTheme("light")}
+        onClick={() => void applyPreferences({ theme_mode: "light" })}
       >
         <Sun aria-hidden="true" />
       </IconButton>
@@ -383,7 +404,7 @@ function ThemeControls({
         className={currentMode === "dark" ? "icon-button-active" : ""}
         disabled={!token}
         label="Use dark mode"
-        onClick={() => void applyTheme("dark")}
+        onClick={() => void applyPreferences({ theme_mode: "dark" })}
       >
         <Moon aria-hidden="true" />
       </IconButton>
@@ -392,11 +413,33 @@ function ThemeControls({
         className={currentMode === "system" ? "icon-button-active" : ""}
         disabled={!token}
         label="Follow system theme"
-        onClick={() => void applyTheme("system")}
+        onClick={() => void applyPreferences({ theme_mode: "system" })}
       >
         <Monitor aria-hidden="true" />
       </IconButton>
-      {error ? <span className="theme-error">{error}</span> : null}
+      <IconButton
+        aria-pressed={currentDensity === "compact"}
+        className={currentDensity === "compact" ? "icon-button-active" : ""}
+        disabled={!token}
+        label={currentDensity === "compact" ? "Use comfortable density" : "Use compact density"}
+        onClick={() =>
+          void applyPreferences({ density: currentDensity === "compact" ? "comfortable" : "compact" })
+        }
+      >
+        <Rows3 aria-hidden="true" />
+      </IconButton>
+      <IconButton
+        aria-pressed={currentSidebarMode === "collapsed"}
+        className={currentSidebarMode === "collapsed" ? "icon-button-active" : ""}
+        disabled={!token}
+        label={currentSidebarMode === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
+        onClick={() =>
+          void applyPreferences({ sidebar_mode: currentSidebarMode === "collapsed" ? "expanded" : "collapsed" })
+        }
+      >
+        {currentSidebarMode === "collapsed" ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+      </IconButton>
+      {error ? <span className="preference-error">{error}</span> : null}
     </div>
   );
 }
@@ -406,18 +449,20 @@ export function App() {
   const navigation = useNavigation(auth.token);
   const preferences = useUserPreferences(auth.token);
   const themeMode = preferences.data?.theme_mode ?? "light";
+  const density = preferences.data?.density ?? "comfortable";
+  const sidebarMode = preferences.data?.sidebar_mode ?? "expanded";
 
   return (
-    <div className="app-shell" data-theme={themeMode}>
+    <div className="app-shell" data-density={density} data-sidebar={sidebarMode} data-theme={themeMode}>
       <aside className="sidebar">
         <div className="brand-lockup">
           <span className="brand-mark">OTM</span>
-          <div>
+          <div className="brand-text">
             <strong>Workbench</strong>
             <span>Implementation cockpit</span>
           </div>
         </div>
-        <SidebarNav items={navigation.data?.items ?? []} />
+        <SidebarNav items={navigation.data?.items ?? []} sidebarMode={sidebarMode} />
       </aside>
 
       <main className="main-area">
@@ -427,7 +472,7 @@ export function App() {
             {auth.isAuthenticated ? (
               <Button onClick={auth.signOut}>Sign out</Button>
             ) : null}
-            <ThemeControls preferences={preferences.data} token={auth.token} />
+            <PreferenceControls preferences={preferences.data} token={auth.token} />
           </div>
         </div>
         {auth.token ? <CockpitContent token={auth.token} /> : <LoginPanel />}
