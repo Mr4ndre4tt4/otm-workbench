@@ -59,6 +59,12 @@ def seed_modules(db: Session) -> None:
             status="ACTIVE",
         ),
         Module(
+            id="integration_mapping",
+            display_name="Integration Mapping Studio",
+            route_base="/integration-mapping",
+            status="ACTIVE",
+        ),
+        Module(
             id="admin",
             display_name="Admin Console",
             route_base="/admin",
@@ -98,6 +104,7 @@ def registered_modules(db: Session) -> list[Module]:
         "load_plan",
         "assets",
         "order_release_generator",
+        "integration_mapping",
         "admin",
         "dev_tools",
     ]
