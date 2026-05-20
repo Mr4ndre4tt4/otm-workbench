@@ -15,7 +15,8 @@ def main() -> None:
     if args.command == "bootstrap-admin":
         with session_scope() as db:
             user = bootstrap_admin(db, email=args.email, password=args.password)
-        print(f"Admin user ready: {user.email}")
+            email = user.email
+        print(f"Admin user ready: {email}")
 
 
 if __name__ == "__main__":

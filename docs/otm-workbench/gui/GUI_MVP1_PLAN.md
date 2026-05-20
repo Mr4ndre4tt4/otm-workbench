@@ -498,6 +498,8 @@ Delivered follow-up contracts:
   documented in GUI_AUTH_SESSION_FLOW.md
 - Initial authenticated context switcher
   documented in GUI_CONTEXT_SWITCHER.md
+- Local GUI + FastAPI integration validation
+  documented in GUI_LOCAL_INTEGRATION_VALIDATION.md
 ```
 
 ## 12. Implementation Order
