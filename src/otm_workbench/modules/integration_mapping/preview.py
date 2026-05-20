@@ -44,6 +44,12 @@ def build_preview_payload(
         "preview": {
             "mode": "synthetic_metadata_only",
             "external_calls_executed": False,
+            "scenario": {
+                "code": "planned_shipment_to_external_delivery",
+                "source_object": "OTM PlannedShipment",
+                "target_object": "External Delivery JSON",
+                "payload_policy": "metadata_only_no_external_calls",
+            },
             "entity_counts": counts,
             "sample_result": {
                 "status": "generated_from_metadata",

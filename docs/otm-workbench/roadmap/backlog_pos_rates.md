@@ -643,7 +643,7 @@ Padroes tecnicos confirmados pelos apoios:
 14. Preview job com fixture sintetica e resultado como artifact. [ENTREGUE primeira fatia backend OTM-51]
 15. Markdown spec generator com identificacao, schemas, mappings, loops, lookups, response handling e casos de teste. [ENTREGUE primeira fatia backend OTM-52]
 16. Audit log/domain events para create/update/validate/preview/generate-spec. [ENTREGUE primeira fatia backend OTM-53]
-17. Testes com cenario sintetico inspirado no padrao OTM PlannedShipment -> External Delivery JSON.
+17. Testes com cenario sintetico inspirado no padrao OTM PlannedShipment -> External Delivery JSON. [ENTREGUE primeira fatia backend OTM-54]
 ```
 
 ### Fora do primeiro recorte
