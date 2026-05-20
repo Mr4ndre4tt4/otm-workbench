@@ -17,3 +17,15 @@ def test_metadata_contains_foundation_tables():
     assert "users" in table_names
     assert "workspaces" in table_names
     assert "modules" in table_names
+
+
+def test_coordinate_quality_tables_exist(db_session):
+    batch_rows = db_session.execute(
+        text("select count(*) from master_data_coordinate_quality_batches")
+    ).scalar()
+    result_rows = db_session.execute(
+        text("select count(*) from master_data_coordinate_quality_results")
+    ).scalar()
+
+    assert batch_rows == 0
+    assert result_rows == 0
