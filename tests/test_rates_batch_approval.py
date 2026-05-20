@@ -31,6 +31,54 @@ def add_accessorial_table(client, admin_header, batch_id):
     )
 
 
+def action_by_key(actions, key):
+    return next(action for action in actions if action["key"] == key)
+
+
+def test_rate_batch_detail_exposes_backend_owned_available_actions_for_draft(client, admin_header):
+    batch = create_batch(client, admin_header)
+
+    response = client.get(f"/api/v1/modules/rates/batches/{batch['id']}", headers=admin_header)
+
+    assert response.status_code == 200
+    actions = response.json()["available_actions"]
+    validate = action_by_key(actions, "validate")
+    approve = action_by_key(actions, "approve")
+    export_csv = action_by_key(actions, "export_csv")
+    assert validate["method"] == "POST"
+    assert validate["href"].endswith(f"/batches/{batch['id']}/validate")
+    assert validate["disabled"] is False
+    assert validate["result_hint"] == "refresh_object"
+    assert approve["disabled"] is True
+    assert approve["disabled_reason"] == "BATCH_NOT_VALIDATED;NO_TABLES;NO_ROWS"
+    assert approve["requires_confirmation"] is True
+    assert export_csv["disabled"] is True
+    assert export_csv["disabled_reason"] == "BATCH_NOT_VALIDATED;NO_TABLES;NO_ROWS"
+
+
+def test_rate_batch_readiness_exposes_enabled_actions_when_ready(client, admin_header):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+
+    response = client.get(
+        f"/api/v1/modules/rates/batches/{batch['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    actions = response.json()["available_actions"]
+    approve = action_by_key(actions, "approve")
+    export_csv = action_by_key(actions, "export_csv")
+    assert approve["disabled"] is False
+    assert approve["variant"] == "primary"
+    assert approve["permission"] == "rates.batch.approve"
+    assert approve["result_hint"] == "refresh_object"
+    assert export_csv["disabled"] is False
+    assert export_csv["variant"] == "secondary"
+    assert export_csv["result_hint"] == "download"
+
+
 def test_readiness_returns_blockers_for_draft_batch(client, admin_header):
     batch = create_batch(client, admin_header)
 

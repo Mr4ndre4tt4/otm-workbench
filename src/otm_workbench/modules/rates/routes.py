@@ -183,6 +183,128 @@ def serialize_evidence(evidence: Evidence) -> dict[str, object]:
     }
 
 
+def action_disabled_reason(blockers: list[str], fallback: str) -> str:
+    return ";".join(blockers) if blockers else fallback
+
+
+def rates_action(
+    *,
+    batch_id: str,
+    key: str,
+    label: str,
+    method: str,
+    path_suffix: str,
+    variant: str,
+    icon_key: str,
+    requires_confirmation: bool,
+    disabled: bool,
+    disabled_reason: str | None,
+    permission: str,
+    result_hint: str,
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": method,
+        "href": f"/api/v1/modules/rates/batches/{batch_id}{path_suffix}",
+        "variant": variant,
+        "icon_key": icon_key,
+        "requires_confirmation": requires_confirmation,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "permission": permission,
+        "result_hint": result_hint,
+    }
+
+
+def build_rate_batch_available_actions(db: Session, batch: RateBatch) -> list[dict[str, object]]:
+    readiness = get_rate_batch_readiness(db, batch)
+    approval_disabled = not readiness.ready_for_approval
+    export_disabled = not readiness.ready_for_export
+    artifacts_disabled = not bool(list_batch_export_artifacts(db, batch.id))
+    evidence_disabled = not bool(list_batch_export_evidence(db, batch.id))
+    return [
+        rates_action(
+            batch_id=batch.id,
+            key="validate",
+            label="Validate",
+            method="POST",
+            path_suffix="/validate",
+            variant="secondary",
+            icon_key="check-circle",
+            requires_confirmation=False,
+            disabled=batch.status == "APPROVED",
+            disabled_reason="ALREADY_APPROVED" if batch.status == "APPROVED" else None,
+            permission="rates.batch.validate",
+            result_hint="refresh_object",
+        ),
+        rates_action(
+            batch_id=batch.id,
+            key="approve",
+            label="Approve",
+            method="POST",
+            path_suffix="/approve",
+            variant="primary",
+            icon_key="badge-check",
+            requires_confirmation=True,
+            disabled=approval_disabled,
+            disabled_reason=(
+                action_disabled_reason(readiness.blockers, "NOT_READY_FOR_APPROVAL")
+                if approval_disabled
+                else None
+            ),
+            permission="rates.batch.approve",
+            result_hint="refresh_object",
+        ),
+        rates_action(
+            batch_id=batch.id,
+            key="export_csv",
+            label="Export CSV",
+            method="POST",
+            path_suffix="/export-csv",
+            variant="secondary",
+            icon_key="download",
+            requires_confirmation=False,
+            disabled=export_disabled,
+            disabled_reason=(
+                action_disabled_reason(readiness.blockers, "NOT_READY_FOR_EXPORT")
+                if export_disabled
+                else None
+            ),
+            permission="rates.batch.export",
+            result_hint="download",
+        ),
+        rates_action(
+            batch_id=batch.id,
+            key="view_artifacts",
+            label="View artifacts",
+            method="GET",
+            path_suffix="/artifacts",
+            variant="menu",
+            icon_key="archive",
+            requires_confirmation=False,
+            disabled=artifacts_disabled,
+            disabled_reason="NO_ARTIFACTS" if artifacts_disabled else None,
+            permission="rates.batch.view",
+            result_hint="refresh_list",
+        ),
+        rates_action(
+            batch_id=batch.id,
+            key="view_evidence",
+            label="View evidence",
+            method="GET",
+            path_suffix="/evidence",
+            variant="menu",
+            icon_key="file-check",
+            requires_confirmation=False,
+            disabled=evidence_disabled,
+            disabled_reason="NO_EVIDENCE" if evidence_disabled else None,
+            permission="rates.batch.view",
+            result_hint="refresh_list",
+        ),
+    ]
+
+
 @router.get("/templates")
 def list_rates_templates(
     catalog_macro_object_code: str | None = None,
@@ -279,6 +401,7 @@ def get_rates_batch(
     )
     payload = serialize_rate_batch(batch)
     payload["tables"] = [serialize_rate_batch_table(table) for table in tables]
+    payload["available_actions"] = build_rate_batch_available_actions(db, batch)
     return payload
 
 
@@ -295,6 +418,7 @@ def get_rates_batch_readiness(
     payload = get_rate_batch_readiness(db, batch).to_dict()
     payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
     payload["catalog_load_plan_path"] = scenario.catalog_load_plan_path
+    payload["available_actions"] = build_rate_batch_available_actions(db, batch)
     return payload
 
 
