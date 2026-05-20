@@ -168,3 +168,106 @@ def test_get_cutover_checklist_detail(client, admin_header, db_session):
     assert payload["id"] == created["id"]
     assert payload["package_id"] == package.id
     assert len(payload["items"]) == 4
+
+
+def test_update_cutover_checklist_item_requires_evidence_for_done(client, admin_header, db_session):
+    package = create_registered_locations_package(db_session)
+    created = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    item = next(item for item in created["items"] if item["item_code"] == "TABLE_READY")
+
+    response = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+        json={"status": "DONE"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "evidence" in response.json()["message"].lower()
+
+
+def test_update_cutover_checklist_item_status_method_and_evidence(client, admin_header, db_session):
+    package = create_registered_locations_package(db_session)
+    created = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    item = next(item for item in created["items"] if item["table_name"] == "LOCATION")
+    evidence = Evidence(
+        source_module="load_plan",
+        evidence_type="cutover_table_readiness",
+        summary_json=json.dumps(
+            {
+                "source_entity_type": "cutover_checklist_item",
+                "checklist_id": created["id"],
+                "table_name": "LOCATION",
+            },
+            sort_keys=True,
+        ),
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db_session.add(evidence)
+    db_session.commit()
+
+    response = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+        json={"status": "DONE", "method": "CSVUTIL", "evidence_id": evidence.id},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    updated = next(item for item in payload["items"] if item["table_name"] == "LOCATION")
+    assert updated["status"] == "DONE"
+    assert updated["method"] == "CSVUTIL"
+    assert updated["evidence_id"] == evidence.id
+    assert payload["summary"]["status_counts"] == {"DONE": 1, "PENDING": 3}
+    assert "synthetic_locations_batch" not in json.dumps(payload)
+
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "load_plan.cutover_checklist_item.update")
+        .one()
+    )
+    assert audit.target_id == item["id"]
+    assert "synthetic_locations_batch" not in audit.metadata_json
+
+    event = (
+        db_session.query(DomainEvent)
+        .filter(DomainEvent.event_type == "load_plan.cutover_checklist_item.updated")
+        .one()
+    )
+    assert event.aggregate_id == item["id"]
+    assert "synthetic_locations_batch" not in event.payload_json
+
+
+def test_update_cutover_checklist_item_rejects_invalid_status_and_method(
+    client,
+    admin_header,
+    db_session,
+):
+    package = create_registered_locations_package(db_session)
+    created = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    item = created["items"][0]
+
+    invalid_status = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+        json={"status": "APPROVED"},
+        headers=admin_header,
+    )
+    invalid_method = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+        json={"method": "DIRECT_OTM"},
+        headers=admin_header,
+    )
+
+    assert invalid_status.status_code == 400
+    assert "status" in invalid_status.json()["message"].lower()
+    assert invalid_method.status_code == 400
+    assert "method" in invalid_method.json()["message"].lower()

@@ -10,6 +10,7 @@ from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
     CsvutilBuild,
     CutoverChecklist,
+    CutoverChecklistItem,
     LoadPlanCutoverHandoff,
     LoadPlanCutoverReadiness,
     LoadPlanPackage,
@@ -31,6 +32,7 @@ from otm_workbench.modules.load_plan.cutover_checklist import (
     create_checklist_from_package,
     list_seeded_templates,
     serialize_checklist,
+    update_checklist_item,
 )
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
@@ -103,6 +105,12 @@ class CutoverReadinessGenerateRequest(BaseModel):
 
 class CutoverHandoffRequest(BaseModel):
     package_id: str
+
+
+class CutoverChecklistItemUpdateRequest(BaseModel):
+    status: str | None = None
+    method: str | None = None
+    evidence_id: str | None = None
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -209,6 +217,32 @@ def get_cutover_checklist(
     checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
     if checklist is None:
         raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    return serialize_checklist(db, checklist)
+
+
+@router.patch("/cutover-checklists/items/{item_id}")
+def patch_cutover_checklist_item(
+    item_id: str,
+    payload: CutoverChecklistItemUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    item = db.query(CutoverChecklistItem).filter(CutoverChecklistItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist item not found.")
+    try:
+        checklist = update_checklist_item(
+            db,
+            item=item,
+            status=payload.status,
+            method=payload.method,
+            evidence_id=payload.evidence_id,
+            updated_by=user.email,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_checklist(db, checklist)
 
 
