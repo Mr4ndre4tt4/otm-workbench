@@ -182,6 +182,64 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
     assert event.status == "PENDING"
 
 
+def test_csvutil_build_accepts_parameter_set(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={
+            "package_id": package["id"],
+            "parameter_set": {
+                "mode": "INSERT",
+                "delimiter": "PIPE",
+                "encoding": "UTF-8",
+                "date_format": "YYYY-MM-DD HH24:MI:SS",
+            },
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    ctl = db_session.query(Artifact).filter(Artifact.id == payload["ctl_artifact_id"]).one()
+    cl = db_session.query(Artifact).filter(Artifact.id == payload["cl_artifact_id"]).one()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.csvutil.build").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.csvutil.built").one()
+
+    ctl_text = Path(ctl.file_path).read_text(encoding="utf-8")
+    cl_text = Path(cl.file_path).read_text(encoding="utf-8")
+    manifest_json = json.loads(manifest.manifest_json)
+    evidence_summary = json.loads(evidence.summary_json)
+
+    assert "# csvutil_mode=INSERT" in ctl_text
+    assert "# delimiter=PIPE" in ctl_text
+    assert "# encoding=UTF-8" in ctl_text
+    assert "# date_format=YYYY-MM-DD HH24:MI:SS" in ctl_text
+    assert "SET MODE INSERT" in cl_text
+    assert "SET DELIMITER PIPE" in cl_text
+    assert payload["summary"]["parameter_set"]["mode"] == "INSERT"
+    assert payload["summary"]["parameter_set"]["delimiter"] == "PIPE"
+    assert manifest_json["parameter_set"] == payload["summary"]["parameter_set"]
+    assert evidence_summary["parameter_set"]["delimiter"] == "PIPE"
+    assert json.loads(audit.metadata_json)["parameter_set"]["mode"] == "INSERT"
+    assert json.loads(event.payload_json)["parameter_set"]["date_format"] == "YYYY-MM-DD HH24:MI:SS"
+
+
+def test_csvutil_build_rejects_invalid_parameter_set(client, admin_header):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+
+    response = client.post(
+        "/api/v1/modules/load-plan/csvutil/build",
+        json={"package_id": package["id"], "parameter_set": {"mode": "DELETE"}},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "mode" in response.json()["message"].lower()
+
+
 def test_csvutil_build_list_and_detail(client, admin_header):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
     created = client.post(
@@ -318,6 +376,39 @@ def test_csvutil_build_from_cutover_checklist_uses_done_csvutil_items(
     assert json.loads(event.payload_json)["checklist_id"] == checklist["id"]
     assert "OTM1.ACC_COST_001" not in manifest.manifest_json
     assert "OTM1.ACC_COST_001" not in evidence_row.summary_json
+
+
+def test_csvutil_build_from_cutover_checklist_accepts_parameter_set(
+    client,
+    admin_header,
+    db_session,
+):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+    table_item = next(item for item in checklist["items"] if item["item_code"] == "TABLE_READY")
+    evidence = create_client_safe_evidence(db_session, checklist["id"], table_item["table_name"])
+    updated = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{table_item['id']}",
+        json={"status": "DONE", "method": "CSVUTIL", "evidence_id": evidence.id},
+        headers=admin_header,
+    )
+    assert updated.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/{checklist['id']}",
+        json={"parameter_set": {"mode": "INSERT", "delimiter": "COMMA", "encoding": "UTF-8"}},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    assert payload["summary"]["checklist_id"] == checklist["id"]
+    assert payload["summary"]["parameter_set"]["delimiter"] == "COMMA"
+    assert json.loads(manifest.manifest_json)["parameter_set"]["mode"] == "INSERT"
 
 
 def test_csvutil_build_from_cutover_checklist_rejects_without_done_csvutil_items(
