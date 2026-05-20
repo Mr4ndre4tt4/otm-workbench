@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import Asset, AssetClassification, AuditLog, DomainEvent, User
+from otm_workbench.models import Asset, AssetClassification, AssetVersion, AuditLog, DomainEvent, User
 from otm_workbench.modules.assets.classifications import seed_asset_classifications
+from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 
 
 CLASSIFICATION_FIELDS = {
@@ -43,9 +45,27 @@ def serialize_asset(asset: Asset) -> dict[str, object]:
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
         "tags": parse_tags(asset.tags_json),
+        "current_version_id": asset.current_version_id,
         "created_by": asset.created_by,
         "created_at": asset.created_at.isoformat() if asset.created_at else None,
         "updated_at": asset.updated_at.isoformat() if asset.updated_at else None,
+    }
+
+
+def serialize_asset_version(version: AssetVersion) -> dict[str, object]:
+    return {
+        "id": version.id,
+        "asset_id": version.asset_id,
+        "version_number": version.version_number,
+        "status": version.status,
+        "file_name": version.file_name,
+        "content_type": version.content_type,
+        "storage_path": version.storage_path,
+        "sha256": version.sha256,
+        "size_bytes": version.size_bytes,
+        "uploaded_by": version.uploaded_by,
+        "created_at": version.created_at.isoformat() if version.created_at else None,
+        "updated_at": version.updated_at.isoformat() if version.updated_at else None,
     }
 
 
@@ -133,3 +153,80 @@ def create_draft_asset(
     db.commit()
     db.refresh(asset)
     return asset
+
+
+def next_version_number(db: Session, asset_id: str) -> int:
+    latest = (
+        db.query(AssetVersion)
+        .filter(AssetVersion.asset_id == asset_id)
+        .order_by(AssetVersion.version_number.desc())
+        .first()
+    )
+    return 1 if latest is None else latest.version_number + 1
+
+
+def upload_asset_version(
+    db: Session,
+    *,
+    asset: Asset,
+    artifact_root: Path,
+    file_name: str,
+    content_type: str,
+    content: bytes,
+    uploaded_by: str,
+) -> AssetVersion:
+    version_number = next_version_number(db, asset.id)
+    storage_dir = artifact_root / "assets" / asset.id / "versions" / f"{version_number:04d}_{utc_timestamp()}"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    storage_path = storage_dir / file_name
+    storage_path.write_bytes(content)
+    digest, size = file_sha256(storage_path)
+
+    db.query(AssetVersion).filter(AssetVersion.asset_id == asset.id).update({"status": "SUPERSEDED"})
+    version = AssetVersion(
+        asset_id=asset.id,
+        version_number=version_number,
+        status="CURRENT",
+        file_name=file_name,
+        content_type=content_type,
+        storage_path=str(storage_path),
+        sha256=digest,
+        size_bytes=size,
+        uploaded_by=uploaded_by,
+    )
+    db.add(version)
+    db.flush()
+    asset.current_version_id = version.id
+
+    audit_payload = {
+        "asset_id": asset.id,
+        "asset_version_id": version.id,
+        "version_number": version.version_number,
+        "file_name": version.file_name,
+        "content_type": version.content_type,
+        "sha256": version.sha256,
+        "size_bytes": version.size_bytes,
+    }
+    db.add(
+        AuditLog(
+            actor_user_id=uploaded_by,
+            action="assets.asset_version.upload",
+            target_type="asset_version",
+            target_id=version.id,
+            metadata_json=json.dumps(audit_payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="assets.asset_version.uploaded",
+            source_module="assets",
+            project_id=asset.project_id,
+            aggregate_type="asset_version",
+            aggregate_id=version.id,
+            payload_json=json.dumps(audit_payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    db.refresh(version)
+    return version

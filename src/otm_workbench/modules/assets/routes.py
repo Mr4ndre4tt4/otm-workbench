@@ -1,11 +1,19 @@
-from fastapi import APIRouter, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import Asset, User
-from otm_workbench.modules.assets.assets import create_draft_asset, serialize_asset
+from otm_workbench.models import Asset, AssetVersion, User
+from otm_workbench.modules.assets.assets import (
+    create_draft_asset,
+    serialize_asset,
+    serialize_asset_version,
+    upload_asset_version,
+)
 from otm_workbench.modules.assets.classifications import grouped_asset_classifications
 
 
@@ -83,3 +91,45 @@ def get_asset(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return serialize_asset(asset)
+
+
+@router.post("/assets/{asset_id}/versions")
+def upload_asset_file_version(
+    asset_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    content = file.file.read()
+    version = upload_asset_version(
+        db,
+        asset=asset,
+        artifact_root=Path(get_settings().artifact_root),
+        file_name=file.filename or "asset.bin",
+        content_type=file.content_type or "application/octet-stream",
+        content=content,
+        uploaded_by=user.email,
+    )
+    return serialize_asset_version(version)
+
+
+@router.get("/assets/{asset_id}/versions")
+def list_asset_versions(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    versions = (
+        db.query(AssetVersion)
+        .filter(AssetVersion.asset_id == asset_id)
+        .order_by(AssetVersion.version_number.desc())
+        .all()
+    )
+    items = [serialize_asset_version(version) for version in versions]
+    return PageResponse(items=items, total=len(items))

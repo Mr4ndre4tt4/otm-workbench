@@ -260,7 +260,23 @@ class Asset(Base, TimestampMixin):
     macro_object_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     otm_table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     tags_json: Mapped[str] = mapped_column(Text, default="[]")
+    current_version_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class AssetVersion(Base, TimestampMixin):
+    __tablename__ = "asset_versions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), index=True)
+    version_number: Mapped[int] = mapped_column(Integer, index=True)
+    status: Mapped[str] = mapped_column(String, default="CURRENT", index=True)
+    file_name: Mapped[str] = mapped_column(String)
+    content_type: Mapped[str] = mapped_column(String)
+    storage_path: Mapped[str] = mapped_column(String)
+    sha256: Mapped[str] = mapped_column(String, index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
 class MasterDataTemplate(Base, TimestampMixin):
