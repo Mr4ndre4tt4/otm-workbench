@@ -11,6 +11,7 @@ from otm_workbench.models import (
     LoadPlanPackage,
     LoadPlanSequenceSnapshot,
 )
+from tests.test_load_plan_cutover_checklist import create_client_safe_evidence
 from tests.test_load_plan_readiness_export import prepare_registered_load_plan_package
 
 
@@ -69,6 +70,35 @@ def archive_readiness_export(client, admin_header):
     )
     assert response.status_code == 200
     return response.json()
+
+
+def create_cutover_checklist_for_package(client, admin_header, package_id):
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}",
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def mark_cutover_checklist_ready(client, admin_header, db_session, checklist):
+    latest = checklist
+    for item in checklist["items"]:
+        evidence = create_client_safe_evidence(db_session, checklist["id"], item["table_name"])
+        response = client.patch(
+            f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+            json={"status": "DONE", "evidence_id": evidence.id},
+            headers=admin_header,
+        )
+        assert response.status_code == 200
+        latest = response.json()
+    readiness = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+    assert readiness.status_code == 200
+    assert readiness.json()["status"] == "READY"
+    return latest, readiness.json()
 
 
 def test_load_plan_cutover_handoffs_table_exists_after_metadata_reset():
@@ -147,6 +177,78 @@ def test_cutover_handoff_eligibility_reports_missing_archive(client, admin_heade
 
     assert response.status_code == 200
     assert response.json()["blockers"][0]["code"] == "EVIDENCE_ARCHIVE_MISSING"
+
+
+def test_cutover_handoff_eligibility_requires_ready_checklist_when_present(
+    client,
+    admin_header,
+    db_session,
+):
+    package, readiness = create_ready_readiness(client, admin_header, db_session)
+    export_ready_readiness(client, admin_header, readiness)
+    archive_readiness_export(client, admin_header)
+    checklist = create_cutover_checklist_for_package(client, admin_header, package["id"])
+
+    response = client.get(
+        "/api/v1/modules/load-plan/cutover-handoff/eligibility",
+        params={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["eligible"] is False
+    assert payload["checklist_id"] == checklist["id"]
+    assert payload["checklist_readiness_status"] is None
+    assert payload["blockers"][0]["code"] == "CUTOVER_CHECKLIST_READINESS_MISSING"
+
+
+def test_cutover_handoff_commit_includes_ready_checklist_context(
+    client,
+    admin_header,
+    db_session,
+):
+    package, readiness = create_ready_readiness(client, admin_header, db_session)
+    export_ready_readiness(client, admin_header, readiness)
+    archive_readiness_export(client, admin_header)
+    checklist = create_cutover_checklist_for_package(client, admin_header, package["id"])
+    _updated_checklist, checklist_readiness = mark_cutover_checklist_ready(
+        client,
+        admin_header,
+        db_session,
+        checklist,
+    )
+
+    eligibility = client.get(
+        "/api/v1/modules/load-plan/cutover-handoff/eligibility",
+        params={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    assert eligibility.status_code == 200
+    assert eligibility.json()["eligible"] is True
+    assert eligibility.json()["checklist_id"] == checklist["id"]
+    assert eligibility.json()["checklist_readiness_status"] == "READY"
+    assert eligibility.json()["checklist_readiness_evidence_id"] == checklist_readiness["evidence_id"]
+
+    response = client.post(
+        "/api/v1/modules/load-plan/cutover-handoff",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["checklist_id"] == checklist["id"]
+    assert payload["summary"]["checklist_readiness_status"] == "READY"
+    assert payload["summary"]["checklist_readiness_evidence_id"] == checklist_readiness["evidence_id"]
+
+    handoff = db_session.query(LoadPlanCutoverHandoff).filter_by(id=payload["id"]).one()
+    evidence = db_session.query(Evidence).filter_by(id=handoff.evidence_id).one()
+    audit = db_session.query(AuditLog).filter_by(action="load_plan.cutover_handoff.commit").one()
+    event = db_session.query(DomainEvent).filter_by(event_type="load_plan.cutover_handoff.committed").one()
+    assert json.loads(evidence.summary_json)["checklist_id"] == checklist["id"]
+    assert json.loads(audit.metadata_json)["checklist_id"] == checklist["id"]
+    assert json.loads(event.payload_json)["checklist_id"] == checklist["id"]
 
 
 def test_cutover_handoff_commit_creates_records_and_transitions_package(
