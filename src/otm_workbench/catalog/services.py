@@ -282,6 +282,22 @@ MACRO_OBJECT_SEED = [
         ],
         "dependencies": [],
     },
+    {
+        "code": "LOCATION",
+        "name": "Location",
+        "category": "MASTER_DATA",
+        "description": "Location master data and address lines.",
+        "default_load_order": 200,
+        "default_method": "CSV",
+        "method_options": ["CSV"],
+        "allow_cutover": True,
+        "allow_csvutil": True,
+        "tables": [
+            {"table_name": "LOCATION", "relationship_role": "PRIMARY", "is_primary_table": True},
+            {"table_name": "LOCATION_ADDRESS", "relationship_role": "ADDRESS", "is_primary_table": False},
+        ],
+        "dependencies": [],
+    },
 ]
 
 

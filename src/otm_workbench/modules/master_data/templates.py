@@ -246,9 +246,121 @@ ITEMS_PACKAGING_STANDARD_TEMPLATE = {
     "description": "Synthetic starter template for item and packaged item master data.",
 }
 
+LOCATIONS_BASIC_TEMPLATE = {
+    "code": "LOCATIONS_BASIC",
+    "name": "Locations Basic",
+    "version": 1,
+    "status": "PUBLISHED",
+    "catalog_macro_object_code": "LOCATION",
+    "data_category": "MASTER_DATA",
+    "target_tables": ["LOCATION", "LOCATION_ADDRESS"],
+    "sheets": [
+        {
+            "code": "LOCATIONS",
+            "name": "Locations",
+            "target_table": "LOCATION",
+            "fields": [
+                {
+                    "name": "location_gid",
+                    "label": "Location GID",
+                    "target_column": "LOCATION_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "location_xid",
+                    "label": "Location XID",
+                    "target_column": "LOCATION_XID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "location_name",
+                    "label": "Location Name",
+                    "target_column": "LOCATION_NAME",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "city",
+                    "label": "City",
+                    "target_column": "CITY",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "province_code",
+                    "label": "Province Code",
+                    "target_column": "PROVINCE_CODE",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "postal_code",
+                    "label": "Postal Code",
+                    "target_column": "POSTAL_CODE",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "country_code3_gid",
+                    "label": "Country Code3 GID",
+                    "target_column": "COUNTRY_CODE3_GID",
+                    "required": False,
+                    "data_type": "string",
+                },
+                {
+                    "name": "lat",
+                    "label": "Latitude",
+                    "target_column": "LAT",
+                    "required": False,
+                    "data_type": "number",
+                },
+                {
+                    "name": "lon",
+                    "label": "Longitude",
+                    "target_column": "LON",
+                    "required": False,
+                    "data_type": "number",
+                },
+            ],
+        },
+        {
+            "code": "LOCATION_ADDRESSES",
+            "name": "Location Addresses",
+            "target_table": "LOCATION_ADDRESS",
+            "fields": [
+                {
+                    "name": "location_gid",
+                    "label": "Location GID",
+                    "target_column": "LOCATION_GID",
+                    "required": True,
+                    "data_type": "string",
+                },
+                {
+                    "name": "line_sequence",
+                    "label": "Line Sequence",
+                    "target_column": "LINE_SEQUENCE",
+                    "required": True,
+                    "data_type": "number",
+                },
+                {
+                    "name": "address_line",
+                    "label": "Address Line",
+                    "target_column": "ADDRESS_LINE",
+                    "required": False,
+                    "data_type": "string",
+                },
+            ],
+        },
+    ],
+    "description": "Synthetic starter template for location master data and address lines.",
+}
+
 MASTER_DATA_TEMPLATE_SEEDS = [
     REGIONS_BASIC_TEMPLATE,
     ITEMS_PACKAGING_STANDARD_TEMPLATE,
+    LOCATIONS_BASIC_TEMPLATE,
 ]
 
 MASTER_DATA_RELATIONSHIP_RULES = {
@@ -272,6 +384,14 @@ MASTER_DATA_RELATIONSHIP_RULES = {
             "parent_field_name": "packaged_item_gid",
             "child_sheet_code": "TI_HI",
             "child_field_name": "packaged_item_gid",
+        },
+    ],
+    "LOCATIONS_BASIC": [
+        {
+            "parent_sheet_code": "LOCATIONS",
+            "parent_field_name": "location_gid",
+            "child_sheet_code": "LOCATION_ADDRESSES",
+            "child_field_name": "location_gid",
         },
     ],
 }
