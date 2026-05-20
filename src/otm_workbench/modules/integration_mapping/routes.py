@@ -10,6 +10,7 @@ from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
     IntegrationEndpoint,
+    IntegrationJoinRule,
     IntegrationLoopDefinition,
     IntegrationMapping,
     IntegrationPayloadArtifact,
@@ -33,6 +34,10 @@ from otm_workbench.modules.integration_mapping.mappings import (
 from otm_workbench.modules.integration_mapping.loops import (
     create_integration_loop_definition,
     serialize_integration_loop_definition,
+)
+from otm_workbench.modules.integration_mapping.joins import (
+    create_integration_join_rule,
+    serialize_integration_join_rule,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.schema_documents import (
@@ -113,6 +118,16 @@ class IntegrationLoopDefinitionCreateRequest(BaseModel):
     target_schema_document_id: str
     source_collection_path: str
     target_collection_path: str
+    name: str
+    description: str = ""
+    sequence_index: int = 0
+
+
+class IntegrationJoinRuleCreateRequest(BaseModel):
+    source_schema_document_id: str
+    left_path: str
+    right_path: str
+    operator: str = "EQ"
     name: str
     description: str = ""
     sequence_index: int = 0
@@ -499,3 +514,67 @@ def get_loop_definition(
     if loop is None:
         raise api_error(404, "INTEGRATION_LOOP_NOT_FOUND", "Integration loop definition not found.")
     return serialize_integration_loop_definition(loop)
+
+
+@router.post("/definitions/{definition_id}/joins")
+def create_join_rule(
+    definition_id: str,
+    payload: IntegrationJoinRuleCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        join_rule = create_integration_join_rule(db, definition=definition, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if str(exc) == "source_schema_document_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_SCHEMA_DOCUMENT_INVALID",
+                "Join schema document must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) == "operator_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_OPERATOR_INVALID",
+                "Join operator must be one of the controlled Integration Mapping operators.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_JOIN_PATH_INVALID",
+            "Join left_path and right_path must exist in the source schema document.",
+        ) from exc
+    return serialize_integration_join_rule(join_rule)
+
+
+@router.get("/definitions/{definition_id}/joins")
+def list_join_rules(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    join_rules = (
+        db.query(IntegrationJoinRule)
+        .filter(IntegrationJoinRule.definition_id == definition.id)
+        .order_by(IntegrationJoinRule.sequence_index, IntegrationJoinRule.created_at)
+        .all()
+    )
+    items = [serialize_integration_join_rule(join_rule) for join_rule in join_rules]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/joins/{join_rule_id}")
+def get_join_rule(
+    join_rule_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    join_rule = db.get(IntegrationJoinRule, join_rule_id)
+    if join_rule is None:
+        raise api_error(404, "INTEGRATION_JOIN_NOT_FOUND", "Integration join rule not found.")
+    return serialize_integration_join_rule(join_rule)
