@@ -1,5 +1,7 @@
 import json
+from io import BytesIO
 
+from openpyxl import Workbook
 from sqlalchemy import inspect
 
 from otm_workbench.database import engine
@@ -52,6 +54,86 @@ def prepare_approved_exported_rate_batch(client, admin_header):
     )
     assert approval.status_code == 200
     return batch, export.json(), approval.json()
+
+
+def prepare_exported_master_data_locations_batch(client, admin_header):
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(
+        [
+            "Location GID",
+            "Location XID",
+            "Location Name",
+            "City",
+            "Province Code",
+            "Postal Code",
+            "Country Code3 GID",
+            "Latitude",
+            "Longitude",
+        ]
+    )
+    locations.append(
+        [
+            "OTM1.LOC_SYN_001",
+            "LOC_SYN_001",
+            "Synthetic Location",
+            "Sao Paulo",
+            "SP",
+            "01000-000",
+            "BRA",
+            -23.55,
+            -46.63,
+        ]
+    )
+    addresses = workbook.create_sheet("LOCATION_ADDRESSES")
+    addresses.append(["Location GID", "Line Sequence", "Address Line"])
+    addresses.append(["OTM1.LOC_SYN_001", 1, "Synthetic Address Line"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch = batch_response.json()
+    assert batch["status"] == "PARSED"
+
+    relationship = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/validate-relationships",
+        headers=admin_header,
+    )
+    assert relationship.status_code == 200
+    mapped = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/map",
+        headers=admin_header,
+    )
+    assert mapped.status_code == 200
+    output = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-output",
+        headers=admin_header,
+    )
+    assert output.status_code == 200
+    csv = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-csv",
+        headers=admin_header,
+    )
+    assert csv.status_code == 200
+    export = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/export-csv-package",
+        headers=admin_header,
+    )
+    assert export.status_code == 200
+    return batch, export.json()
 
 
 def test_load_plan_packages_table_exists_after_metadata_reset():
@@ -171,10 +253,6 @@ def test_load_plan_package_list_filters_by_catalog_macro_object(client, admin_he
     assert matched.json()["items"][0]["id"] == created["id"]
     assert unmatched.json()["total"] == 0
     assert unmatched.json()["items"] == []
-    assert unmatched.json()["code"] == "UNSUPPORTED_CATALOG_MACRO_OBJECT"
-    assert unmatched.json()["message"] == "Catalog macro-object is outside the Load Plan package scope."
-    assert unmatched.json()["details"] == {"catalog_macro_object_code": "LOCATION"}
-    assert unmatched.json()["catalog_macro_object_code"] == "LOCATION"
 
 
 def test_load_plan_summary_counts_packages(client, admin_header):
@@ -260,3 +338,117 @@ def test_register_rates_package_is_idempotent(client, admin_header, db_session):
     assert db_session.query(Evidence).filter(Evidence.evidence_type == "load_plan_package_intake").count() == 1
     assert db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_rates").count() == 1
     assert db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").count() == 1
+
+
+def test_register_master_data_package_creates_load_plan_package(client, admin_header, db_session):
+    batch, export = prepare_exported_master_data_locations_batch(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    package = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload["id"]).one()
+    assert payload["source_module"] == "master_data"
+    assert payload["source_entity_type"] == "master_data_batch"
+    assert payload["source_entity_id"] == batch["batch_id"]
+    assert payload["package_type"] == "master_data_csv_zip"
+    assert payload["status"] == "REGISTERED"
+    assert payload["artifact_id"] == export["artifact_id"]
+    assert payload["manifest_id"] == export["manifest_id"]
+    assert payload["approval_evidence_id"] is None
+    assert payload["load_sequence"] == [
+        {
+            "position": 1,
+            "table_name": "LOCATION",
+            "row_count": 1,
+            "requirement_level": "REQUIRED",
+        },
+        {
+            "position": 2,
+            "table_name": "LOCATION_ADDRESS",
+            "row_count": 1,
+            "requirement_level": "REQUIRED",
+        },
+    ]
+    assert payload["summary"]["catalog_macro_object_code"] == "LOCATION"
+    assert payload["summary"]["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/LOCATION/load-plan"
+    assert payload["summary"]["template_code"] == "LOCATIONS_BASIC"
+    assert package.created_by == "admin@example.com"
+    assert package.registered_at is not None
+
+
+def test_register_master_data_package_creates_client_safe_evidence_audit_and_event(
+    client,
+    admin_header,
+    db_session,
+):
+    batch, export = prepare_exported_master_data_locations_batch(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_master_data").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").one()
+    audit_metadata = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
+
+    assert evidence.source_module == "load_plan"
+    assert evidence.evidence_type == "load_plan_package_intake"
+    assert evidence.client_safe is True
+    assert evidence.artifact_id == export["artifact_id"]
+    assert evidence.manifest_id == export["manifest_id"]
+    assert "OTM1.LOC_SYN_001" not in evidence.summary_json
+    assert audit_metadata["catalog_macro_object_code"] == "LOCATION"
+    assert event_payload["catalog_macro_object_code"] == "LOCATION"
+    assert event_payload["package_type"] == "master_data_csv_zip"
+    assert audit.target_id == payload["id"]
+    assert event.aggregate_id == payload["id"]
+    assert event.status == "PENDING"
+
+
+def test_register_master_data_package_is_idempotent(client, admin_header, db_session):
+    batch, export = prepare_exported_master_data_locations_batch(client, admin_header)
+
+    first = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    )
+    second = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["id"] == second.json()["id"]
+    assert first.json()["evidence_id"] == second.json()["evidence_id"]
+    assert db_session.query(LoadPlanPackage).count() == 1
+    assert db_session.query(Evidence).filter(Evidence.evidence_type == "load_plan_package_intake").count() == 1
+    assert db_session.query(AuditLog).filter(AuditLog.action == "load_plan.package.register_from_master_data").count() == 1
+    assert db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.package.registered").count() == 1
+
+
+def test_load_plan_package_list_filters_master_data_catalog_macro_object(client, admin_header):
+    batch, export = prepare_exported_master_data_locations_batch(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    ).json()
+
+    matched = client.get(
+        "/api/v1/modules/load-plan/packages",
+        params={"catalog_macro_object_code": "LOCATION"},
+        headers=admin_header,
+    )
+
+    assert matched.status_code == 200
+    assert matched.json()["total"] == 1
+    assert matched.json()["items"][0]["id"] == created["id"]
