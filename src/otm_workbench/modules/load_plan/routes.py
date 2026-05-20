@@ -22,7 +22,11 @@ from otm_workbench.models import (
     RateBatch,
     User,
 )
-from otm_workbench.modules.load_plan.csvutil import generate_csvutil_build, serialize_csvutil_build
+from otm_workbench.modules.load_plan.csvutil import (
+    generate_csvutil_build,
+    generate_csvutil_build_from_checklist,
+    serialize_csvutil_build,
+)
 from otm_workbench.modules.load_plan.cutover_handoff import (
     commit_cutover_handoff,
     cutover_handoff_eligibility,
@@ -544,6 +548,31 @@ def build_csvutil_artifacts(
     try:
         build = generate_csvutil_build(
             db,
+            package=package,
+            artifact_root=Path(get_settings().artifact_root),
+            built_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_csvutil_build(build)
+
+
+@router.post("/csvutil/build/from-cutover-checklist/{checklist_id}")
+def build_csvutil_artifacts_from_cutover_checklist(
+    checklist_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    try:
+        build = generate_csvutil_build_from_checklist(
+            db,
+            checklist=checklist,
             package=package,
             artifact_root=Path(get_settings().artifact_root),
             built_by=user.email,

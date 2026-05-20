@@ -7,6 +7,8 @@ from otm_workbench.models import (
     Artifact,
     AuditLog,
     CsvutilBuild,
+    CutoverChecklist,
+    CutoverChecklistItem,
     DomainEvent,
     Evidence,
     LoadPlanPackage,
@@ -109,14 +111,17 @@ def create_artifact(
     return artifact
 
 
-def generate_csvutil_build(
+def generate_csvutil_build_with_sequence(
     db: Session,
     *,
     package: LoadPlanPackage,
     artifact_root: Path,
     built_by: str,
+    load_sequence: list[dict[str, object]],
+    source_entity_type: str = "load_plan_package",
+    source_entity_id: str | None = None,
+    checklist_id: str | None = None,
 ) -> CsvutilBuild:
-    load_sequence = ensure_buildable_package(package)
     timestamp = utc_timestamp()
     build_dir = artifact_root / "load_plan" / package.id / "csvutil" / timestamp
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -147,8 +152,8 @@ def generate_csvutil_build(
         "schema_version": "load-plan-csvutil-build-manifest/v1",
         "manifest_type": "csvutil_build",
         "source_module": "load_plan",
-        "source_entity_type": "load_plan_package",
-        "source_entity_id": package.id,
+        "source_entity_type": source_entity_type,
+        "source_entity_id": source_entity_id or package.id,
         "package": {
             "id": package.id,
             "source_module": package.source_module,
@@ -161,6 +166,8 @@ def generate_csvutil_build(
         "built_at": built_at,
         "built_by": built_by,
     }
+    if checklist_id:
+        manifest_payload["checklist_id"] = checklist_id
     manifest = Manifest(
         project_id=package.project_id,
         source_module="load_plan",
@@ -172,9 +179,11 @@ def generate_csvutil_build(
 
     summary = {
         "package_id": package.id,
+        "source_entity_type": source_entity_type,
+        "source_entity_id": source_entity_id or package.id,
         "source_module": package.source_module,
-        "source_entity_type": package.source_entity_type,
-        "source_entity_id": package.source_entity_id,
+        "source_package_entity_type": package.source_entity_type,
+        "source_package_entity_id": package.source_entity_id,
         "package_type": package.package_type,
         "table_count": len(load_sequence),
         "row_count": sum(int(item.get("row_count", 0)) for item in load_sequence),
@@ -182,6 +191,9 @@ def generate_csvutil_build(
         "cl_artifact_type": "csvutil_cl",
         **catalog_context,
     }
+    if checklist_id:
+        summary["checklist_id"] = checklist_id
+        summary["selected_item_count"] = len(load_sequence)
     build = CsvutilBuild(
         project_id=package.project_id,
         environment_id=package.environment_id,
@@ -202,6 +214,8 @@ def generate_csvutil_build(
         "source_entity_type": "csvutil_build",
         "source_entity_id": build.id,
         "package_id": package.id,
+        "csvutil_source_entity_type": source_entity_type,
+        "csvutil_source_entity_id": source_entity_id or package.id,
         "source_package_type": package.package_type,
         "table_count": summary["table_count"],
         "row_count": summary["row_count"],
@@ -211,6 +225,8 @@ def generate_csvutil_build(
         "status": "BUILT",
         **catalog_context,
     }
+    if checklist_id:
+        evidence_summary["checklist_id"] = checklist_id
     evidence = Evidence(
         project_id=package.project_id,
         source_module="load_plan",
@@ -234,10 +250,13 @@ def generate_csvutil_build(
             metadata_json=json.dumps(
                 {
                     "package_id": package.id,
+                    "source_entity_type": source_entity_type,
+                    "source_entity_id": source_entity_id or package.id,
                     "ctl_artifact_id": ctl_artifact.id,
                     "cl_artifact_id": cl_artifact.id,
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
+                    **({"checklist_id": checklist_id} if checklist_id else {}),
                     **catalog_context,
                 },
                 sort_keys=True,
@@ -251,10 +270,88 @@ def generate_csvutil_build(
             project_id=package.project_id,
             aggregate_type="csvutil_build",
             aggregate_id=build.id,
-            payload_json=json.dumps({"package_id": package.id, "status": "BUILT", **catalog_context}, sort_keys=True),
+            payload_json=json.dumps(
+                {
+                    "package_id": package.id,
+                    "status": "BUILT",
+                    "source_entity_type": source_entity_type,
+                    "source_entity_id": source_entity_id or package.id,
+                    **({"checklist_id": checklist_id} if checklist_id else {}),
+                    **catalog_context,
+                },
+                sort_keys=True,
+            ),
             status="PENDING",
         )
     )
     db.commit()
     db.refresh(build)
     return build
+
+
+def generate_csvutil_build(
+    db: Session,
+    *,
+    package: LoadPlanPackage,
+    artifact_root: Path,
+    built_by: str,
+) -> CsvutilBuild:
+    load_sequence = ensure_buildable_package(package)
+    return generate_csvutil_build_with_sequence(
+        db,
+        package=package,
+        artifact_root=artifact_root,
+        built_by=built_by,
+        load_sequence=load_sequence,
+    )
+
+
+def checklist_csvutil_sequence(db: Session, checklist: CutoverChecklist) -> list[dict[str, object]]:
+    items = (
+        db.query(CutoverChecklistItem)
+        .filter(CutoverChecklistItem.checklist_id == checklist.id)
+        .filter(CutoverChecklistItem.item_code == "TABLE_READY")
+        .filter(CutoverChecklistItem.status == "DONE")
+        .filter(CutoverChecklistItem.method == "CSVUTIL")
+        .order_by(CutoverChecklistItem.sort_order, CutoverChecklistItem.created_at)
+        .all()
+    )
+    sequence: list[dict[str, object]] = []
+    for index, item in enumerate(items, start=1):
+        details = parse_json_object(item.details_json)
+        if not item.table_name:
+            continue
+        sequence.append(
+            {
+                "position": index,
+                "table_name": item.table_name,
+                "row_count": int(details.get("row_count") or 0),
+                "requirement_level": details.get("requirement_level") or "REQUIRED",
+                "checklist_item_id": item.id,
+            }
+        )
+    return sequence
+
+
+def generate_csvutil_build_from_checklist(
+    db: Session,
+    *,
+    checklist: CutoverChecklist,
+    package: LoadPlanPackage,
+    artifact_root: Path,
+    built_by: str,
+) -> CsvutilBuild:
+    ensure_buildable_package(package)
+    load_sequence = checklist_csvutil_sequence(db, checklist)
+    if not load_sequence:
+        raise ValueError("Cutover checklist has no eligible DONE CSVUTIL items.")
+    return generate_csvutil_build_with_sequence(
+        db,
+        package=package,
+        artifact_root=artifact_root,
+        built_by=built_by,
+        load_sequence=load_sequence,
+        source_entity_type="cutover_checklist",
+        source_entity_id=checklist.id,
+        checklist_id=checklist.id,
+    )
