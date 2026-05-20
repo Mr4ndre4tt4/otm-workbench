@@ -9,6 +9,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
     CsvutilBuild,
+    CutoverChecklist,
     LoadPlanCutoverHandoff,
     LoadPlanCutoverReadiness,
     LoadPlanPackage,
@@ -25,6 +26,11 @@ from otm_workbench.modules.load_plan.cutover_handoff import (
     commit_cutover_handoff,
     cutover_handoff_eligibility,
     serialize_cutover_handoff,
+)
+from otm_workbench.modules.load_plan.cutover_checklist import (
+    create_checklist_from_package,
+    list_seeded_templates,
+    serialize_checklist,
 )
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
@@ -170,6 +176,40 @@ def get_load_plan_summary(
     user: User = Depends(require_user),
 ):
     return load_plan_package_summary(db)
+
+
+@router.get("/cutover-checklists/templates")
+def list_cutover_checklist_templates(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    items = list_seeded_templates(db)
+    return PageResponse(items=items, total=len(items))
+
+
+@router.post("/cutover-checklists/from-package/{package_id}")
+def create_cutover_checklist_from_package(
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    checklist = create_checklist_from_package(db, package=package, created_by=user.email)
+    return serialize_checklist(db, checklist)
+
+
+@router.get("/cutover-checklists/{checklist_id}")
+def get_cutover_checklist(
+    checklist_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    return serialize_checklist(db, checklist)
 
 
 @router.post("/sequence/snapshots")
