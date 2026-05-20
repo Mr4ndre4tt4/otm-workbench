@@ -98,6 +98,13 @@ class ModuleResponse(BaseModel):
     display_name: str
     route_base: str
     status: str
+    group_key: str
+    group_label: str
+    icon_key: str
+    sort_order: int
+    surface_type: str
+    description: str
+    is_primary: bool
 
 
 class NavigationItem(BaseModel):
@@ -105,6 +112,13 @@ class NavigationItem(BaseModel):
     label: str
     path: str
     status: str
+    group_key: str
+    group_label: str
+    icon_key: str
+    sort_order: int
+    surface_type: str
+    description: str
+    is_primary: bool
 
 
 def allowed_domains_for_context(domain_name: str | None, can_view_all_domains: bool) -> list[str]:
@@ -392,6 +406,13 @@ def list_modules(
             display_name=item.display_name,
             route_base=item.route_base,
             status=item.status,
+            group_key=item.group_key,
+            group_label=item.group_label,
+            icon_key=item.icon_key,
+            sort_order=item.sort_order,
+            surface_type=item.surface_type,
+            description=item.description,
+            is_primary=item.is_primary,
         )
         for item in modules
     ]

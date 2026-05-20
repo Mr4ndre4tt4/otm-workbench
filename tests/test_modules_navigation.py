@@ -5,8 +5,34 @@ def test_modules_endpoint_returns_registered_master_data(client, admin_header):
     response = client.get("/api/v1/platform/modules", headers=admin_header)
 
     assert response.status_code == 200
-    assert response.json()["items"][0]["id"] == "master_data"
-    assert response.json()["items"][0]["status"] == "ACTIVE"
+    master_data = next(item for item in response.json()["items"] if item["id"] == "master_data")
+    assert master_data["id"] == "master_data"
+    assert master_data["status"] == "ACTIVE"
+    assert master_data["group_key"] == "build"
+    assert master_data["group_label"] == "Build"
+    assert master_data["icon_key"] == "database"
+    assert master_data["sort_order"] == 210
+    assert master_data["surface_type"] == "module"
+    assert master_data["description"] == "Create and validate reusable OTM master data load templates."
+    assert master_data["is_primary"] is True
+
+
+def test_navigation_returns_backend_owned_group_icon_and_order_metadata(client, admin_header):
+    response = client.get("/api/v1/platform/navigation", headers=admin_header)
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    home = next(item for item in items if item["id"] == "home")
+    rates = next(item for item in items if item["id"] == "rates")
+    assert home["group_key"] == "cockpit"
+    assert home["group_label"] == "Cockpit"
+    assert home["icon_key"] == "layout-dashboard"
+    assert home["sort_order"] == 100
+    assert home["surface_type"] == "workspace"
+    assert home["description"] == "Project cockpit and operational overview."
+    assert home["is_primary"] is True
+    assert rates["group_key"] == "build"
+    assert rates["sort_order"] == 220
 
 
 def test_navigation_hides_dev_only_when_flag_is_disabled(client, admin_header):

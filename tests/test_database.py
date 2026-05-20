@@ -13,10 +13,14 @@ def test_database_session_executes_sql():
 
 def test_metadata_contains_foundation_tables():
     table_names = set(Base.metadata.tables)
+    module_columns = set(Base.metadata.tables["modules"].columns.keys())
 
     assert "users" in table_names
     assert "workspaces" in table_names
     assert "modules" in table_names
+    assert "group_key" in module_columns
+    assert "icon_key" in module_columns
+    assert "sort_order" in module_columns
 
 
 def test_coordinate_quality_tables_exist(db_session):

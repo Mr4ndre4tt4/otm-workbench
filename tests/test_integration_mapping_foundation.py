@@ -29,9 +29,9 @@ def test_navigation_returns_integration_mapping_for_admin(client, admin_header):
     assert response.status_code == 200
     items = response.json()["items"]
     integration_mapping = next(item for item in items if item["id"] == "integration_mapping")
-    assert integration_mapping == {
-        "id": "integration_mapping",
-        "label": "Integration Mapping Studio",
-        "path": "/integration-mapping",
-        "status": "ACTIVE",
-    }
+    assert integration_mapping["label"] == "Integration Mapping Studio"
+    assert integration_mapping["path"] == "/integration-mapping"
+    assert integration_mapping["status"] == "ACTIVE"
+    assert integration_mapping["group_key"] == "build"
+    assert integration_mapping["icon_key"] == "git-branch"
+    assert integration_mapping["sort_order"] == 250
