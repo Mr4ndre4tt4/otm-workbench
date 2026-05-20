@@ -19,15 +19,52 @@ from otm_workbench.modules.load_plan.packages import parse_json_list, parse_json
 from otm_workbench.modules.rates.exports import file_sha256, iso_now, utc_timestamp
 
 
+DEFAULT_PARAMETER_SET = {
+    "mode": "INSERT",
+    "delimiter": "COMMA",
+    "encoding": "UTF-8",
+    "date_format": "YYYY-MM-DD HH24:MI:SS",
+}
+ALLOWED_CSVUTIL_MODES = {"INSERT", "UPDATE", "INSERT_UPDATE"}
+ALLOWED_DELIMITERS = {"COMMA", "PIPE", "SEMICOLON", "TAB"}
+ALLOWED_ENCODINGS = {"UTF-8"}
+
+
+def normalize_parameter_set(parameter_set: dict[str, object] | None = None) -> dict[str, str]:
+    normalized = dict(DEFAULT_PARAMETER_SET)
+    if parameter_set:
+        for key, value in parameter_set.items():
+            if key not in DEFAULT_PARAMETER_SET:
+                raise ValueError(f"Unsupported CSVUTIL parameter: {key}.")
+            normalized[key] = str(value).strip().upper() if key != "date_format" else str(value).strip()
+    if normalized["mode"] not in ALLOWED_CSVUTIL_MODES:
+        raise ValueError("Invalid CSVUTIL mode.")
+    if normalized["delimiter"] not in ALLOWED_DELIMITERS:
+        raise ValueError("Invalid CSVUTIL delimiter.")
+    if normalized["encoding"] not in ALLOWED_ENCODINGS:
+        raise ValueError("Invalid CSVUTIL encoding.")
+    if not normalized["date_format"]:
+        raise ValueError("Invalid CSVUTIL date_format.")
+    return normalized
+
+
 def csv_relative_name(index: int, table_name: str) -> str:
     return f"csv/{index:03d}_{table_name}.csv"
 
 
-def build_ctl_text(package: LoadPlanPackage, load_sequence: list[dict[str, object]]) -> str:
+def build_ctl_text(
+    package: LoadPlanPackage,
+    load_sequence: list[dict[str, object]],
+    parameter_set: dict[str, str],
+) -> str:
     lines = [
         "# OTM Workbench CSVUTIL CTL",
         f"# package_id={package.id}",
         f"# source_module={package.source_module}",
+        f"# csvutil_mode={parameter_set['mode']}",
+        f"# delimiter={parameter_set['delimiter']}",
+        f"# encoding={parameter_set['encoding']}",
+        f"# date_format={parameter_set['date_format']}",
     ]
     for index, item in enumerate(load_sequence, start=1):
         table_name = str(item["table_name"])
@@ -35,10 +72,18 @@ def build_ctl_text(package: LoadPlanPackage, load_sequence: list[dict[str, objec
     return "\n".join(lines) + "\n"
 
 
-def build_cl_text(package: LoadPlanPackage, load_sequence: list[dict[str, object]]) -> str:
+def build_cl_text(
+    package: LoadPlanPackage,
+    load_sequence: list[dict[str, object]],
+    parameter_set: dict[str, str],
+) -> str:
     lines = [
         "# OTM Workbench CSVUTIL CL",
         f"# package_id={package.id}",
+        f"SET MODE {parameter_set['mode']}",
+        f"SET DELIMITER {parameter_set['delimiter']}",
+        f"SET ENCODING {parameter_set['encoding']}",
+        f"SET DATE_FORMAT {parameter_set['date_format']}",
     ]
     for index, item in enumerate(load_sequence, start=1):
         table_name = str(item["table_name"])
@@ -121,14 +166,16 @@ def generate_csvutil_build_with_sequence(
     source_entity_type: str = "load_plan_package",
     source_entity_id: str | None = None,
     checklist_id: str | None = None,
+    parameter_set: dict[str, object] | None = None,
 ) -> CsvutilBuild:
+    normalized_parameter_set = normalize_parameter_set(parameter_set)
     timestamp = utc_timestamp()
     build_dir = artifact_root / "load_plan" / package.id / "csvutil" / timestamp
     build_dir.mkdir(parents=True, exist_ok=True)
     ctl_path = build_dir / f"csvutil_{package.id}.ctl"
     cl_path = build_dir / f"csvutil_{package.id}.cl"
-    ctl_path.write_text(build_ctl_text(package, load_sequence), encoding="utf-8")
-    cl_path.write_text(build_cl_text(package, load_sequence), encoding="utf-8")
+    ctl_path.write_text(build_ctl_text(package, load_sequence, normalized_parameter_set), encoding="utf-8")
+    cl_path.write_text(build_cl_text(package, load_sequence, normalized_parameter_set), encoding="utf-8")
 
     ctl_artifact = create_artifact(db, package=package, artifact_type="csvutil_ctl", path=ctl_path)
     cl_artifact = create_artifact(db, package=package, artifact_type="csvutil_cl", path=cl_path)
@@ -163,6 +210,7 @@ def generate_csvutil_build_with_sequence(
         },
         "files": files,
         "load_sequence": load_sequence,
+        "parameter_set": normalized_parameter_set,
         "built_at": built_at,
         "built_by": built_by,
     }
@@ -189,6 +237,7 @@ def generate_csvutil_build_with_sequence(
         "row_count": sum(int(item.get("row_count", 0)) for item in load_sequence),
         "ctl_artifact_type": "csvutil_ctl",
         "cl_artifact_type": "csvutil_cl",
+        "parameter_set": normalized_parameter_set,
         **catalog_context,
     }
     if checklist_id:
@@ -223,6 +272,7 @@ def generate_csvutil_build_with_sequence(
         "cl_artifact_id": cl_artifact.id,
         "manifest_id": manifest.id,
         "status": "BUILT",
+        "parameter_set": normalized_parameter_set,
         **catalog_context,
     }
     if checklist_id:
@@ -256,6 +306,7 @@ def generate_csvutil_build_with_sequence(
                     "cl_artifact_id": cl_artifact.id,
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
+                    "parameter_set": normalized_parameter_set,
                     **({"checklist_id": checklist_id} if checklist_id else {}),
                     **catalog_context,
                 },
@@ -276,6 +327,7 @@ def generate_csvutil_build_with_sequence(
                     "status": "BUILT",
                     "source_entity_type": source_entity_type,
                     "source_entity_id": source_entity_id or package.id,
+                    "parameter_set": normalized_parameter_set,
                     **({"checklist_id": checklist_id} if checklist_id else {}),
                     **catalog_context,
                 },
@@ -295,6 +347,7 @@ def generate_csvutil_build(
     package: LoadPlanPackage,
     artifact_root: Path,
     built_by: str,
+    parameter_set: dict[str, object] | None = None,
 ) -> CsvutilBuild:
     load_sequence = ensure_buildable_package(package)
     return generate_csvutil_build_with_sequence(
@@ -303,6 +356,7 @@ def generate_csvutil_build(
         artifact_root=artifact_root,
         built_by=built_by,
         load_sequence=load_sequence,
+        parameter_set=parameter_set,
     )
 
 
@@ -340,6 +394,7 @@ def generate_csvutil_build_from_checklist(
     package: LoadPlanPackage,
     artifact_root: Path,
     built_by: str,
+    parameter_set: dict[str, object] | None = None,
 ) -> CsvutilBuild:
     ensure_buildable_package(package)
     load_sequence = checklist_csvutil_sequence(db, checklist)
@@ -354,4 +409,5 @@ def generate_csvutil_build_from_checklist(
         source_entity_type="cutover_checklist",
         source_entity_id=checklist.id,
         checklist_id=checklist.id,
+        parameter_set=parameter_set,
     )
