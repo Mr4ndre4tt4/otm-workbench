@@ -305,6 +305,145 @@ def build_rate_batch_available_actions(db: Session, batch: RateBatch) -> list[di
     ]
 
 
+def module_action(
+    *,
+    key: str,
+    label: str,
+    method: str,
+    href: str,
+    variant: str,
+    icon_key: str,
+    requires_confirmation: bool,
+    disabled: bool,
+    disabled_reason: str | None,
+    permission: str,
+    result_hint: str,
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": method,
+        "href": href,
+        "variant": variant,
+        "icon_key": icon_key,
+        "requires_confirmation": requires_confirmation,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "permission": permission,
+        "result_hint": result_hint,
+    }
+
+
+def serialize_rate_batch_summary_item(db: Session, batch: RateBatch) -> dict[str, object]:
+    readiness = get_rate_batch_readiness(db, batch)
+    return {
+        "id": batch.id,
+        "code": batch.scenario_code,
+        "display_name": batch.name,
+        "status": batch.status,
+        "project_id": batch.project_id,
+        "profile_id": batch.profile_id,
+        "environment_id": batch.environment_id,
+        "domain_name": batch.domain_name,
+        "summary": {
+            "ready_for_approval": readiness.ready_for_approval,
+            "ready_for_export": readiness.ready_for_export,
+            "table_count": readiness.table_count,
+            "row_count": readiness.row_count,
+            "issue_summary": readiness.issue_summary,
+        },
+        "badges": readiness.blockers,
+        "available_actions": build_rate_batch_available_actions(db, batch),
+    }
+
+
+def rates_summary_payload(db: Session) -> dict[str, object]:
+    batches = db.query(RateBatch).order_by(RateBatch.created_at.desc()).all()
+    readiness_by_batch = {batch.id: get_rate_batch_readiness(db, batch) for batch in batches}
+    total = len(batches)
+    ready_for_approval = sum(
+        1 for readiness in readiness_by_batch.values() if readiness.ready_for_approval
+    )
+    ready_for_export = sum(1 for readiness in readiness_by_batch.values() if readiness.ready_for_export)
+    blocked = sum(1 for readiness in readiness_by_batch.values() if readiness.blockers)
+    open_blockers = []
+    for batch in batches:
+        readiness = readiness_by_batch[batch.id]
+        if not readiness.blockers:
+            continue
+        reason = ";".join(readiness.blockers)
+        open_blockers.append(
+            {
+                "object_id": batch.id,
+                "object_type": "rate_batch",
+                "severity": "warning",
+                "codes": readiness.blockers,
+                "message": f"Rate batch is not ready: {reason}",
+            }
+        )
+    recent_artifacts = [
+        serialize_artifact(artifact)
+        for artifact in db.query(Artifact)
+        .filter(Artifact.source_module == "rates")
+        .order_by(Artifact.created_at.desc())
+        .limit(5)
+        .all()
+    ]
+    return {
+        "module_id": "rates",
+        "status": "ok",
+        "title": "Rates Studio",
+        "description": "Prepare, validate, approve and export OTM rates packages.",
+        "primary_object": "rate_batch",
+        "counts": [
+            {"key": "total", "label": "Total", "value": total, "severity": "neutral"},
+            {
+                "key": "ready_for_approval",
+                "label": "Ready for approval",
+                "value": ready_for_approval,
+                "severity": "success",
+            },
+            {
+                "key": "ready_for_export",
+                "label": "Ready for export",
+                "value": ready_for_export,
+                "severity": "success",
+            },
+            {"key": "blocked", "label": "Blocked", "value": blocked, "severity": "warning"},
+        ],
+        "recent_objects": [
+            serialize_rate_batch_summary_item(db, batch)
+            for batch in batches[:5]
+        ],
+        "open_blockers": open_blockers[:5],
+        "recent_jobs": [],
+        "recent_artifacts": recent_artifacts,
+        "available_actions": [
+            module_action(
+                key="create_batch",
+                label="Create rate batch",
+                method="POST",
+                href="/api/v1/modules/rates/batches",
+                variant="primary",
+                icon_key="plus",
+                requires_confirmation=False,
+                disabled=False,
+                disabled_reason=None,
+                permission="rates.batch.create",
+                result_hint="refresh_list",
+            )
+        ],
+    }
+
+
+@router.get("/summary")
+def get_rates_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return rates_summary_payload(db)
+
+
 @router.get("/templates")
 def list_rates_templates(
     catalog_macro_object_code: str | None = None,
