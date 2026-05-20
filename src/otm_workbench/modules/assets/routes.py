@@ -10,10 +10,12 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import Asset, AssetVersion, User
 from otm_workbench.modules.assets.assets import (
+    archive_asset,
     create_draft_asset,
     record_asset_download,
     serialize_asset,
     serialize_asset_version,
+    update_asset_metadata,
     upload_asset_version,
 )
 from otm_workbench.modules.assets.classifications import grouped_asset_classifications
@@ -34,6 +36,19 @@ class AssetCreateRequest(BaseModel):
     macro_object_code: str | None = None
     otm_table_name: str | None = None
     tags: list[str] = []
+
+
+class AssetUpdateRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    category: str | None = None
+    visibility: str | None = None
+    scope_type: str | None = None
+    sensitivity: str | None = None
+    module_id: str | None = None
+    macro_object_code: str | None = None
+    otm_table_name: str | None = None
+    tags: list[str] | None = None
 
 
 @router.get("/health")
@@ -93,6 +108,40 @@ def get_asset(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return serialize_asset(asset)
+
+
+@router.patch("/assets/{asset_id}")
+def patch_asset(
+    asset_id: str,
+    payload: AssetUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    try:
+        updated = update_asset_metadata(
+            db,
+            asset=asset,
+            payload=payload.model_dump(exclude_unset=True),
+            updated_by=user.email,
+        )
+    except ValueError as exc:
+        raise api_error(400, "ASSET_METADATA_INVALID", str(exc)) from exc
+    return serialize_asset(updated)
+
+
+@router.post("/assets/{asset_id}/archive")
+def archive_asset_endpoint(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    return serialize_asset(archive_asset(db, asset=asset, archived_by=user.email))
 
 
 @router.get("/assets/{asset_id}/download")
