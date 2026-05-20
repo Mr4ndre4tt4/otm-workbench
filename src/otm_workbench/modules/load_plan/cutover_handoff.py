@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.models import (
     AuditLog,
+    CutoverChecklist,
     DomainEvent,
     Evidence,
     LoadPlanCutoverHandoff,
@@ -94,12 +95,74 @@ def archive_evidence_for_export(db: Session, export: LoadPlanReadinessExport) ->
     )
 
 
+def latest_cutover_checklist(db: Session, package_id: str) -> CutoverChecklist | None:
+    return (
+        db.query(CutoverChecklist)
+        .filter(CutoverChecklist.package_id == package_id)
+        .order_by(CutoverChecklist.created_at.desc())
+        .first()
+    )
+
+
+def latest_checklist_readiness_evidence(db: Session, checklist_id: str) -> Evidence | None:
+    return (
+        db.query(Evidence)
+        .filter(Evidence.source_module == "load_plan")
+        .filter(Evidence.evidence_type == "cutover_checklist_readiness")
+        .filter(Evidence.client_safe.is_(True))
+        .filter(Evidence.summary_json.contains(checklist_id))
+        .order_by(Evidence.created_at.desc())
+        .first()
+    )
+
+
+def checklist_readiness_context(db: Session, package_id: str) -> dict[str, object]:
+    checklist = latest_cutover_checklist(db, package_id)
+    if checklist is None:
+        return {
+            "checklist_id": None,
+            "checklist_readiness_status": None,
+            "checklist_readiness_evidence_id": None,
+            "blocker": None,
+        }
+    evidence = latest_checklist_readiness_evidence(db, checklist.id)
+    if evidence is None:
+        return {
+            "checklist_id": checklist.id,
+            "checklist_readiness_status": None,
+            "checklist_readiness_evidence_id": None,
+            "blocker": handoff_blocker(
+                "CUTOVER_CHECKLIST_READINESS_MISSING",
+                "Generate Cutover Checklist readiness first.",
+            ),
+        }
+    summary = parse_json_object(evidence.summary_json)
+    status = summary.get("status")
+    if status != READY_READINESS_STATUS:
+        return {
+            "checklist_id": checklist.id,
+            "checklist_readiness_status": status,
+            "checklist_readiness_evidence_id": evidence.id,
+            "blocker": handoff_blocker(
+                "CUTOVER_CHECKLIST_NOT_READY",
+                "Latest Cutover Checklist readiness is not READY.",
+            ),
+        }
+    return {
+        "checklist_id": checklist.id,
+        "checklist_readiness_status": status,
+        "checklist_readiness_evidence_id": evidence.id,
+        "blocker": None,
+    }
+
+
 def cutover_handoff_eligibility(db: Session, package: LoadPlanPackage) -> dict[str, object]:
     readiness = latest_readiness(db, package.id)
     blockers: list[dict[str, object]] = []
     readiness_export = None
     archive_evidence = None
     catalog_context = catalog_context_for_package(package)
+    checklist_context = checklist_readiness_context(db, package.id)
 
     if readiness is None:
         blockers.append(handoff_blocker("CUTOVER_READINESS_MISSING", "Generate cutover readiness first."))
@@ -115,6 +178,8 @@ def cutover_handoff_eligibility(db: Session, package: LoadPlanPackage) -> dict[s
                 blockers.append(
                     handoff_blocker("EVIDENCE_ARCHIVE_MISSING", "Archive readiness export evidence first.")
                 )
+    if checklist_context["blocker"] is not None:
+        blockers.append(checklist_context["blocker"])
 
     eligible = not blockers
     return {
@@ -126,6 +191,9 @@ def cutover_handoff_eligibility(db: Session, package: LoadPlanPackage) -> dict[s
         "readiness_export_id": readiness_export.id if readiness_export else None,
         "readiness_export_evidence_id": readiness_export.evidence_id if readiness_export else None,
         "archive_evidence_id": archive_evidence.id if archive_evidence else None,
+        "checklist_id": checklist_context["checklist_id"],
+        "checklist_readiness_status": checklist_context["checklist_readiness_status"],
+        "checklist_readiness_evidence_id": checklist_context["checklist_readiness_evidence_id"],
         "blockers": blockers,
         "next_actions": ["commit_cutover_handoff"] if eligible else [item["code"] for item in blockers],
         **catalog_context,
@@ -153,6 +221,9 @@ def commit_cutover_handoff(
         "readiness_status": eligibility["readiness_status"],
         "readiness_export_id": eligibility["readiness_export_id"],
         "archive_evidence_id": eligibility["archive_evidence_id"],
+        "checklist_id": eligibility["checklist_id"],
+        "checklist_readiness_status": eligibility["checklist_readiness_status"],
+        "checklist_readiness_evidence_id": eligibility["checklist_readiness_evidence_id"],
         "status": READY_FOR_CUTOVER_STATUS,
         **catalog_context,
     }
@@ -202,6 +273,9 @@ def commit_cutover_handoff(
                     "readiness_id": handoff.readiness_id,
                     "readiness_export_id": handoff.readiness_export_id,
                     "archive_evidence_id": handoff.archive_evidence_id,
+                    "checklist_id": eligibility["checklist_id"],
+                    "checklist_readiness_status": eligibility["checklist_readiness_status"],
+                    "checklist_readiness_evidence_id": eligibility["checklist_readiness_evidence_id"],
                     "evidence_id": evidence.id,
                     "status": READY_FOR_CUTOVER_STATUS,
                     **catalog_context,
@@ -218,7 +292,14 @@ def commit_cutover_handoff(
             aggregate_type="load_plan_cutover_handoff",
             aggregate_id=handoff.id,
             payload_json=json.dumps(
-                {"package_id": package.id, "status": READY_FOR_CUTOVER_STATUS, **catalog_context},
+                {
+                    "package_id": package.id,
+                    "status": READY_FOR_CUTOVER_STATUS,
+                    "checklist_id": eligibility["checklist_id"],
+                    "checklist_readiness_status": eligibility["checklist_readiness_status"],
+                    "checklist_readiness_evidence_id": eligibility["checklist_readiness_evidence_id"],
+                    **catalog_context,
+                },
                 sort_keys=True,
             ),
             status="PENDING",
