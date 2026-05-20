@@ -371,6 +371,7 @@ Artifacts + Evidence
 12. ZIP + MANIFEST.json. [INICIADO com pacote CSV ZIP e manifest.json]
 13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template e pacote CSV ZIP]
 14. Seed de Items & Packaging Standard. [ENTREGUE MVP0 inicial com ITEM, PACKAGED_ITEM e TI_HI validados no Data Dictionary]
+15. Seed de Locations Basic. [ENTREGUE MVP0 inicial com LOCATION e LOCATION_ADDRESS validados no Data Dictionary, preparando Coordinate Quality]
 ```
 
 ---

@@ -26,7 +26,7 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total"] == 2
+    assert payload["total"] == 3
     templates_by_code = {template["code"]: template for template in payload["items"]}
     template = templates_by_code["REGIONS_BASIC"]
     assert template["code"] == "REGIONS_BASIC"
@@ -40,6 +40,10 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
     assert items_template["name"] == "Items & Packaging Standard"
     assert items_template["catalog_macro_object_code"] == "ITEM"
     assert items_template["target_tables"] == ["ITEM", "SHIP_UNIT_SPEC", "PACKAGED_ITEM", "TI_HI"]
+    locations_template = templates_by_code["LOCATIONS_BASIC"]
+    assert locations_template["name"] == "Locations Basic"
+    assert locations_template["catalog_macro_object_code"] == "LOCATION"
+    assert locations_template["target_tables"] == ["LOCATION", "LOCATION_ADDRESS"]
 
 
 def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_header):
@@ -152,6 +156,52 @@ def test_master_data_items_packaging_template_detail_and_validation(client, admi
         "field_count": 18,
         "validated_table_count": 3,
         "validated_column_count": 18,
+    }
+
+
+def test_master_data_locations_template_detail_and_validation(client, admin_header):
+    detail = client.get(
+        "/api/v1/modules/master-data/templates/LOCATIONS_BASIC",
+        headers=admin_header,
+    )
+
+    assert detail.status_code == 200
+    payload = detail.json()
+    assert payload["code"] == "LOCATIONS_BASIC"
+    assert [sheet["code"] for sheet in payload["sheets"]] == ["LOCATIONS", "LOCATION_ADDRESSES"]
+    assert payload["sheets"][0]["target_table"] == "LOCATION"
+    assert [field["target_column"] for field in payload["sheets"][0]["fields"]] == [
+        "LOCATION_GID",
+        "LOCATION_XID",
+        "LOCATION_NAME",
+        "CITY",
+        "PROVINCE_CODE",
+        "POSTAL_CODE",
+        "COUNTRY_CODE3_GID",
+        "LAT",
+        "LON",
+    ]
+    assert payload["sheets"][1]["target_table"] == "LOCATION_ADDRESS"
+    assert [field["target_column"] for field in payload["sheets"][1]["fields"]] == [
+        "LOCATION_GID",
+        "LINE_SEQUENCE",
+        "ADDRESS_LINE",
+    ]
+
+    validation = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_BASIC/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    validation_payload = validation.json()
+    assert validation_payload["valid"] is True
+    assert validation_payload["issues"] == []
+    assert validation_payload["summary"] == {
+        "sheet_count": 2,
+        "field_count": 12,
+        "validated_table_count": 2,
+        "validated_column_count": 12,
     }
 
 
