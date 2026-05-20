@@ -507,7 +507,7 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 6. Modelo central de asset + asset_versions + asset_files. [INICIADO com asset e asset_versions OTM-24/OTM-25]
 7. Criar asset em DRAFT via API. [ENTREGUE primeira fatia backend OTM-24]
 8. Upload da primeira versao com SHA256 e size_bytes. [ENTREGUE primeira fatia backend OTM-25]
-9. Download da versao atual com audit quando sensivel.
+9. Download da versao atual com audit quando sensivel. [ENTREGUE primeira fatia backend OTM-26]
 10. Criar nova versao sem apagar a anterior.
 11. Editar metadata basica e arquivar/deprecar asset.
 12. Links genericos para MODULE, MACRO_OBJECT, OTM_TABLE, RATE_BATCH, ARTIFACT e EVIDENCE.
