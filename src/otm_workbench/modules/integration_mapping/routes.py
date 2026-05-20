@@ -24,6 +24,10 @@ from otm_workbench.modules.integration_mapping.definitions import (
     create_integration_definition,
     serialize_integration_definition,
 )
+from otm_workbench.modules.integration_mapping.audit_events import (
+    definition_metadata,
+    record_definition_audit_event,
+)
 from otm_workbench.modules.integration_mapping.payload_artifacts import (
     import_payload_artifact,
     serialize_payload_artifact,
@@ -187,6 +191,15 @@ def create_definition(
             "INTEGRATION_DEFINITION_CODE_EXISTS",
             "Integration definition code already exists.",
         ) from exc
+    record_definition_audit_event(
+        db,
+        definition=definition,
+        user=user,
+        action="integration_mapping.definition.create",
+        event_type="integration_mapping.definition.created",
+        metadata=definition_metadata(definition),
+    )
+    db.commit()
     return serialize_integration_definition(definition)
 
 
@@ -221,7 +234,20 @@ def validate_definition(
     definition = db.get(IntegrationDefinition, definition_id)
     if definition is None:
         raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
-    return validate_integration_definition(db, definition)
+    validation = validate_integration_definition(db, definition)
+    record_definition_audit_event(
+        db,
+        definition=definition,
+        user=user,
+        action="integration_mapping.definition.validate",
+        event_type="integration_mapping.definition.validated",
+        metadata=definition_metadata(
+            definition,
+            {"is_valid": validation["is_valid"], "issue_count": validation["issue_count"]},
+        ),
+    )
+    db.commit()
+    return validation
 
 
 @router.post("/definitions/{definition_id}/preview")
@@ -241,13 +267,31 @@ def preview_definition(
             "Integration Mapping definition must pass validation before preview.",
             {"issue_count": validation["issue_count"], "issues": validation["issues"]},
         )
-    return build_integration_preview(
+    payload = build_integration_preview(
         db,
         definition=definition,
         validation=validation,
         artifact_root=get_settings().artifact_root,
         created_by=user.email,
     )
+    record_definition_audit_event(
+        db,
+        definition=definition,
+        user=user,
+        action="integration_mapping.definition.preview",
+        event_type="integration_mapping.definition.previewed",
+        metadata=definition_metadata(
+            definition,
+            {
+                "artifact_id": payload["artifact_id"],
+                "job_id": payload["job_id"],
+                "is_valid": validation["is_valid"],
+                "issue_count": validation["issue_count"],
+            },
+        ),
+    )
+    db.commit()
+    return payload
 
 
 @router.post("/definitions/{definition_id}/generate-spec")
@@ -267,13 +311,31 @@ def generate_definition_spec(
             "Integration Mapping definition must pass validation before spec generation.",
             {"issue_count": validation["issue_count"], "issues": validation["issues"]},
         )
-    return generate_integration_markdown_spec(
+    payload = generate_integration_markdown_spec(
         db,
         definition=definition,
         validation=validation,
         artifact_root=get_settings().artifact_root,
         created_by=user.email,
     )
+    record_definition_audit_event(
+        db,
+        definition=definition,
+        user=user,
+        action="integration_mapping.definition.generate_spec",
+        event_type="integration_mapping.definition.spec_generated",
+        metadata=definition_metadata(
+            definition,
+            {
+                "artifact_id": payload["artifact_id"],
+                "job_id": payload["job_id"],
+                "is_valid": validation["is_valid"],
+                "issue_count": validation["issue_count"],
+            },
+        ),
+    )
+    db.commit()
+    return payload
 
 
 @router.post("/systems")
