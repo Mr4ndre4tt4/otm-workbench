@@ -155,6 +155,133 @@ def create_draft_asset(
     return asset
 
 
+def normalize_tags(raw_tags: object) -> list[str]:
+    if not raw_tags:
+        return []
+    if not isinstance(raw_tags, list):
+        raise ValueError("Asset tags must be a list.")
+    return [str(tag).strip().upper() for tag in raw_tags if str(tag).strip()]
+
+
+def record_asset_change(
+    db: Session,
+    *,
+    asset: Asset,
+    action: str,
+    event_type: str,
+    actor: str,
+    extra: dict[str, object] | None = None,
+) -> None:
+    payload = {
+        "asset_id": asset.id,
+        "status": asset.status,
+        "asset_type": asset.asset_type,
+        "category": asset.category,
+        "visibility": asset.visibility,
+        "scope_type": asset.scope_type,
+        "sensitivity": asset.sensitivity,
+        "module_id": asset.module_id,
+        "macro_object_code": asset.macro_object_code,
+        "otm_table_name": asset.otm_table_name,
+        **(extra or {}),
+    }
+    db.add(
+        AuditLog(
+            actor_user_id=actor,
+            action=action,
+            target_type="asset",
+            target_id=asset.id,
+            metadata_json=json.dumps(payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type=event_type,
+            source_module="assets",
+            project_id=asset.project_id,
+            aggregate_type="asset",
+            aggregate_id=asset.id,
+            payload_json=json.dumps(payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+
+
+def update_asset_metadata(
+    db: Session,
+    *,
+    asset: Asset,
+    payload: dict[str, object],
+    updated_by: str,
+) -> Asset:
+    allowed_fields = {
+        "name",
+        "description",
+        "category",
+        "visibility",
+        "scope_type",
+        "sensitivity",
+        "module_id",
+        "macro_object_code",
+        "otm_table_name",
+        "tags",
+    }
+    changed_fields: list[str] = []
+    for field_name, value in payload.items():
+        if field_name not in allowed_fields or value is None:
+            continue
+        if field_name in {"category", "visibility", "scope_type", "sensitivity"}:
+            classification_field = "category" if field_name == "category" else field_name
+            classification_type = CLASSIFICATION_FIELDS[classification_field]
+            normalized_value = str(value).strip().upper()
+            ensure_classification(db, classification_type, normalized_value)
+            if getattr(asset, field_name) != normalized_value:
+                setattr(asset, field_name, normalized_value)
+                changed_fields.append(field_name)
+        elif field_name == "tags":
+            tags = normalize_tags(value)
+            tags_json = json.dumps(tags, sort_keys=True)
+            if asset.tags_json != tags_json:
+                asset.tags_json = tags_json
+                changed_fields.append(field_name)
+        elif field_name in {"macro_object_code", "otm_table_name"}:
+            normalized_value = str(value).strip().upper() or None
+            if getattr(asset, field_name) != normalized_value:
+                setattr(asset, field_name, normalized_value)
+                changed_fields.append(field_name)
+        else:
+            normalized_value = str(value).strip() or None
+            if getattr(asset, field_name) != normalized_value:
+                setattr(asset, field_name, normalized_value)
+                changed_fields.append(field_name)
+
+    record_asset_change(
+        db,
+        asset=asset,
+        action="assets.asset.update",
+        event_type="assets.asset.updated",
+        actor=updated_by,
+        extra={"changed_fields": sorted(changed_fields)},
+    )
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def archive_asset(db: Session, *, asset: Asset, archived_by: str) -> Asset:
+    asset.status = "ARCHIVED"
+    record_asset_change(
+        db,
+        asset=asset,
+        action="assets.asset.archive",
+        event_type="assets.asset.archived",
+        actor=archived_by,
+    )
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
 def next_version_number(db: Session, asset_id: str) -> int:
     latest = (
         db.query(AssetVersion)

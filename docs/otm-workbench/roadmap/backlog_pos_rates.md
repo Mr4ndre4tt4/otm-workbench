@@ -509,7 +509,7 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 8. Upload da primeira versao com SHA256 e size_bytes. [ENTREGUE primeira fatia backend OTM-25]
 9. Download da versao atual com audit quando sensivel. [ENTREGUE primeira fatia backend OTM-26]
 10. Criar nova versao sem apagar a anterior.
-11. Editar metadata basica e arquivar/deprecar asset.
+11. Editar metadata basica e arquivar/deprecar asset. [ENTREGUE primeira fatia backend OTM-27]
 12. Links genericos para MODULE, MACRO_OBJECT, OTM_TABLE, RATE_BATCH, ARTIFACT e EVIDENCE.
 13. Busca/filtros simples por tipo, categoria, tag, status, escopo, modulo, macro-objeto e tabela OTM.
 14. Scanner simples de possiveis segredos e bloqueio de GLOBAL quando houver risco.

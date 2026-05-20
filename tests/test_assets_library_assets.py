@@ -91,3 +91,81 @@ def test_list_and_detail_assets_with_filters(client, admin_header):
     assert listed.json()["items"][0]["id"] == created["id"]
     assert detail.status_code == 200
     assert detail.json()["id"] == created["id"]
+
+
+def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={
+            "name": "Synthetic Updated Mapping Spec",
+            "category": "TESTING",
+            "sensitivity": "PUBLIC",
+            "tags": ["UPDATED", "SYNTHETIC"],
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "assets.asset.update").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "assets.asset.updated").one()
+    assert payload["name"] == "Synthetic Updated Mapping Spec"
+    assert payload["category"] == "TESTING"
+    assert payload["sensitivity"] == "PUBLIC"
+    assert payload["tags"] == ["UPDATED", "SYNTHETIC"]
+    assert json.loads(audit.metadata_json)["asset_id"] == created["id"]
+    assert json.loads(event.payload_json)["changed_fields"] == [
+        "category",
+        "name",
+        "sensitivity",
+        "tags",
+    ]
+
+    combined = "\n".join([json.dumps(payload, sort_keys=True), audit.metadata_json, event.payload_json])
+    assert "customer" not in combined.lower()
+    assert "cliente" not in combined.lower()
+
+
+def test_update_asset_metadata_rejects_unknown_classification(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"category": "UNKNOWN"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "classification" in response.json()["message"].lower()
+
+
+def test_archive_asset_preserves_record_and_records_audit_event(client, admin_header, db_session):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    response = client.post(
+        f"/api/v1/modules/assets/assets/{created['id']}/archive",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "assets.asset.archive").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "assets.asset.archived").one()
+    assert payload["id"] == created["id"]
+    assert payload["status"] == "ARCHIVED"
+    assert json.loads(audit.metadata_json)["asset_id"] == created["id"]
+    assert json.loads(event.payload_json)["status"] == "ARCHIVED"
