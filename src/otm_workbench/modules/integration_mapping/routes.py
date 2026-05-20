@@ -60,6 +60,7 @@ from otm_workbench.modules.integration_mapping.transform_types import (
     list_active_transform_types,
     serialize_transform_type,
 )
+from otm_workbench.modules.integration_mapping.validation import validate_integration_definition
 
 
 router = APIRouter(prefix="/api/v1/modules/integration-mapping", tags=["integration-mapping"])
@@ -207,6 +208,18 @@ def get_definition(
     if definition is None:
         raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
     return serialize_integration_definition(definition)
+
+
+@router.post("/definitions/{definition_id}/validate")
+def validate_definition(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    return validate_integration_definition(db, definition)
 
 
 @router.post("/systems")

@@ -1,0 +1,138 @@
+from otm_workbench.models import (
+    IntegrationJoinRule,
+    IntegrationLookupDefinition,
+    IntegrationLoopDefinition,
+    IntegrationMapping,
+)
+from tests.test_integration_mapping_joins import join_payload
+from tests.test_integration_mapping_lookups import lookup_payload
+from tests.test_integration_mapping_loops import loop_payload
+from tests.test_integration_mapping_mappings import create_source_and_target_documents, mapping_payload
+
+
+def create_full_valid_definition(client, admin_header):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(source, target),
+        headers=admin_header,
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json=loop_payload(source, target),
+        headers=admin_header,
+    )
+    join = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/joins",
+        json=join_payload(source),
+        headers=admin_header,
+    )
+    lookup = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/lookups",
+        json=lookup_payload(source, target),
+        headers=admin_header,
+    )
+    assert mapping.status_code == 200
+    assert loop.status_code == 200
+    assert join.status_code == 200
+    assert lookup.status_code == 200
+    return definition, source, target
+
+
+def test_validate_integration_definition_returns_no_issues_for_valid_metadata(client, admin_header):
+    definition, _source, _target = create_full_valid_definition(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["definition_id"] == definition["id"]
+    assert payload["is_valid"] is True
+    assert payload["issue_count"] == 0
+    assert payload["issues"] == []
+
+
+def test_validate_integration_definition_reports_structural_issues(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    rows = [
+        IntegrationMapping(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            source_path="/Transmission/Missing",
+            target_path="$.header.shipmentId",
+            transform_type="DIRECT",
+            description="Invalid synthetic mapping.",
+            sequence_index=1,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+        IntegrationLoopDefinition(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            source_collection_path="/Transmission/Shipment/ShipmentStop",
+            target_collection_path="$.missing[]",
+            name="Invalid synthetic loop",
+            description="Invalid synthetic loop.",
+            sequence_index=2,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+        IntegrationJoinRule(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            left_path="/Transmission/Shipment/ShipmentGid",
+            right_path="/Transmission/Missing",
+            operator="EQ",
+            name="Invalid synthetic join",
+            description="Invalid synthetic join.",
+            sequence_index=3,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+        IntegrationLookupDefinition(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            input_path="/Transmission/Shipment/ShipmentGid",
+            output_path="$.missing",
+            lookup_type="MOCK",
+            name="Invalid synthetic lookup",
+            description="Invalid synthetic lookup.",
+            mock_response_json='{"shipmentId":"DEMO-SHIPMENT"}',
+            sequence_index=4,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+    ]
+    db_session.add_all(rows)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    assert payload["issue_count"] == 4
+    issues = {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+    assert ("mapping", "source_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
+    assert ("loop", "target_collection_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
+    assert ("join", "right_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
+    assert ("lookup", "output_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
+
+
+def test_validate_integration_definition_rejects_missing_definition(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/integration-mapping/definitions/missing-definition/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "INTEGRATION_DEFINITION_NOT_FOUND"
