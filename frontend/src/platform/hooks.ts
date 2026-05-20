@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPost, apiPut } from "./api";
 import type {
   ActiveContextResponse,
   ActiveContextUpdate,
@@ -65,4 +65,8 @@ export function useUserPreferences(token: string | null) {
     queryFn: () => apiGet<UserPreferences>("/api/v1/platform/user-preferences", { token }),
     enabled: Boolean(token)
   });
+}
+
+export function updateUserPreferences(token: string, payload: UserPreferences) {
+  return apiPut<UserPreferences>("/api/v1/platform/user-preferences", payload, { token });
 }

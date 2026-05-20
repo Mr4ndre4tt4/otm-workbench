@@ -500,6 +500,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTEXT_SWITCHER.md
 - Local GUI + FastAPI integration validation
   documented in GUI_LOCAL_INTEGRATION_VALIDATION.md
+- Backend-owned theme preferences
+  documented in GUI_THEME_PREFERENCES.md
 ```
 
 ## 12. Implementation Order

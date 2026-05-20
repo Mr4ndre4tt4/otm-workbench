@@ -83,6 +83,17 @@ class ActiveContext(Base, TimestampMixin):
     can_view_all_domains: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class UserPreference(Base, TimestampMixin):
+    __tablename__ = "user_preferences"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    theme_mode: Mapped[str] = mapped_column(String, default="light")
+    follow_system_theme: Mapped[bool] = mapped_column(Boolean, default=False)
+    density: Mapped[str] = mapped_column(String, default="comfortable")
+    sidebar_mode: Mapped[str] = mapped_column(String, default="expanded")
+
+
 class Role(Base, TimestampMixin):
     __tablename__ = "roles"
 

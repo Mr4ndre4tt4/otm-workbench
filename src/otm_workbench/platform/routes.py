@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -20,8 +22,10 @@ from otm_workbench.models import (
     Role,
     RoleCapability,
     User,
+    UserPreference,
     UserProjectRole,
     Workspace,
+    utcnow,
 )
 from otm_workbench.platform.audit import write_audit
 from otm_workbench.platform.jobs import (
@@ -88,6 +92,13 @@ class ActiveContextUpdate(BaseModel):
     can_view_all_domains: bool = False
 
 
+class UserPreferencesPayload(BaseModel):
+    theme_mode: Literal["light", "dark", "system"] = "light"
+    follow_system_theme: bool = False
+    density: Literal["comfortable", "compact"] = "comfortable"
+    sidebar_mode: Literal["expanded", "collapsed"] = "expanded"
+
+
 class IdNameResponse(BaseModel):
     id: str
     name: str
@@ -127,6 +138,25 @@ def serialize_active_context(context: ActiveContext | None, user: User) -> dict[
         "domain_name": domain_name,
         "allowed_domains": allowed_domains_for_context(domain_name, can_view_all_domains),
         "can_view_all_domains": can_view_all_domains,
+    }
+
+
+def default_user_preferences(user: User) -> UserPreference:
+    return UserPreference(
+        user_id=user.id,
+        theme_mode="light",
+        follow_system_theme=False,
+        density="comfortable",
+        sidebar_mode="expanded",
+    )
+
+
+def serialize_user_preferences(preferences: UserPreference) -> dict[str, object]:
+    return {
+        "theme_mode": preferences.theme_mode,
+        "follow_system_theme": preferences.follow_system_theme,
+        "density": preferences.density,
+        "sidebar_mode": preferences.sidebar_mode,
     }
 
 
@@ -572,6 +602,41 @@ def get_active_context_capabilities(
     user: User = Depends(require_user),
 ):
     return effective_capabilities_payload(db, user)
+
+
+@router.get("/user-preferences")
+def get_user_preferences(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    preferences = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    if preferences is None:
+        preferences = default_user_preferences(user)
+        db.add(preferences)
+        db.commit()
+        db.refresh(preferences)
+    return serialize_user_preferences(preferences)
+
+
+@router.put("/user-preferences")
+def update_user_preferences(
+    payload: UserPreferencesPayload,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    preferences = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    if preferences is None:
+        preferences = default_user_preferences(user)
+        db.add(preferences)
+    preferences.theme_mode = payload.theme_mode
+    preferences.follow_system_theme = payload.follow_system_theme
+    preferences.density = payload.density
+    preferences.sidebar_mode = payload.sidebar_mode
+    preferences.updated_at = utcnow()
+    db.commit()
+    db.refresh(preferences)
+    write_audit(db, user, "user_preferences.update", "user_preference", preferences.id)
+    return serialize_user_preferences(preferences)
 
 
 @router.post("/active-context")

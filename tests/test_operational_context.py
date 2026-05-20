@@ -264,3 +264,38 @@ def test_active_context_capabilities_return_admin_wildcard(client, admin_header)
     assert payload["is_admin"] is True
     assert payload["roles"] == ["ADMIN"]
     assert payload["capabilities"] == ["*"]
+
+
+def test_user_preferences_default_to_light_mode(client, auth_header):
+    response = client.get("/api/v1/platform/user-preferences", headers=auth_header)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "theme_mode": "light",
+        "follow_system_theme": False,
+        "density": "comfortable",
+        "sidebar_mode": "expanded",
+    }
+
+
+def test_user_preferences_can_be_updated_and_read(client, auth_header):
+    updated = client.put(
+        "/api/v1/platform/user-preferences",
+        json={
+            "theme_mode": "system",
+            "follow_system_theme": True,
+            "density": "compact",
+            "sidebar_mode": "collapsed",
+        },
+        headers=auth_header,
+    )
+    current = client.get("/api/v1/platform/user-preferences", headers=auth_header)
+
+    assert updated.status_code == 200
+    assert current.status_code == 200
+    assert current.json() == {
+        "theme_mode": "system",
+        "follow_system_theme": True,
+        "density": "compact",
+        "sidebar_mode": "collapsed",
+    }

@@ -14,9 +14,14 @@ export function Button({ children, className = "", variant = "secondary", ...pro
   );
 }
 
-export function IconButton({ children, label }: PropsWithChildren<{ label: string }>) {
+export function IconButton({
+  children,
+  className = "",
+  label,
+  ...props
+}: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement> & { label: string }>) {
   return (
-    <button className="icon-button" aria-label={label} title={label} type="button">
+    <button className={`icon-button ${className}`.trim()} aria-label={label} title={label} type="button" {...props}>
       {children}
     </button>
   );

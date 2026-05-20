@@ -1,4 +1,4 @@
-import { Activity, AlertCircle, Archive, CheckCircle2, ChevronRight, Moon, Sun } from "lucide-react";
+import { Activity, AlertCircle, Archive, CheckCircle2, ChevronRight, Monitor, Moon, Sun } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -6,6 +6,7 @@ import { ApiError } from "../platform/api";
 import {
   login,
   updateActiveContext,
+  updateUserPreferences,
   useCockpitSummary,
   useEnvironments,
   useNavigation,
@@ -16,6 +17,7 @@ import {
 import { useAuth } from "../platform/useAuth";
 import { Button, IconButton, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem } from "../platform/types";
+import type { UserPreferences } from "../platform/types";
 
 function navIcon(moduleId: string) {
   if (moduleId === "home") return <Activity aria-hidden="true" />;
@@ -332,6 +334,73 @@ function ContextSwitcher({ token }: { token: string }) {
   );
 }
 
+function ThemeControls({
+  preferences,
+  token
+}: {
+  preferences: UserPreferences | undefined;
+  token: string | null;
+}) {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const currentMode = preferences?.theme_mode ?? "light";
+
+  async function applyTheme(themeMode: UserPreferences["theme_mode"]) {
+    if (!token) return;
+    setError(null);
+    const nextPreferences: UserPreferences = {
+      theme_mode: themeMode,
+      follow_system_theme: themeMode === "system",
+      density: preferences?.density ?? "comfortable",
+      sidebar_mode: preferences?.sidebar_mode ?? "expanded"
+    };
+    try {
+      await updateUserPreferences(token, nextPreferences);
+      queryClient.setQueryData(["platform", "user-preferences"], nextPreferences);
+      await queryClient.invalidateQueries({ queryKey: ["platform", "user-preferences"] });
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(caught.message);
+      } else {
+        setError("Unable to update theme preference.");
+      }
+    }
+  }
+
+  return (
+    <div className="theme-controls" aria-label="Theme preference">
+      <IconButton
+        aria-pressed={currentMode === "light"}
+        className={currentMode === "light" ? "icon-button-active" : ""}
+        disabled={!token}
+        label="Use light mode"
+        onClick={() => void applyTheme("light")}
+      >
+        <Sun aria-hidden="true" />
+      </IconButton>
+      <IconButton
+        aria-pressed={currentMode === "dark"}
+        className={currentMode === "dark" ? "icon-button-active" : ""}
+        disabled={!token}
+        label="Use dark mode"
+        onClick={() => void applyTheme("dark")}
+      >
+        <Moon aria-hidden="true" />
+      </IconButton>
+      <IconButton
+        aria-pressed={currentMode === "system"}
+        className={currentMode === "system" ? "icon-button-active" : ""}
+        disabled={!token}
+        label="Follow system theme"
+        onClick={() => void applyTheme("system")}
+      >
+        <Monitor aria-hidden="true" />
+      </IconButton>
+      {error ? <span className="theme-error">{error}</span> : null}
+    </div>
+  );
+}
+
 export function App() {
   const auth = useAuth();
   const navigation = useNavigation(auth.token);
@@ -358,12 +427,7 @@ export function App() {
             {auth.isAuthenticated ? (
               <Button onClick={auth.signOut}>Sign out</Button>
             ) : null}
-            <IconButton label="Light mode">
-              <Sun aria-hidden="true" />
-            </IconButton>
-            <IconButton label="Dark mode">
-              <Moon aria-hidden="true" />
-            </IconButton>
+            <ThemeControls preferences={preferences.data} token={auth.token} />
           </div>
         </div>
         {auth.token ? <CockpitContent token={auth.token} /> : <LoginPanel />}
