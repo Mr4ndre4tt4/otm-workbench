@@ -18,6 +18,9 @@ from otm_workbench.modules.load_plan.packages import parse_json_list, parse_json
 DEFAULT_TEMPLATE_CODE = "MVP0_STANDARD_CUTOVER"
 ALLOWED_ITEM_STATUSES = {"PENDING", "DONE", "BLOCKED", "SKIPPED"}
 ALLOWED_ITEM_METHODS = {"CSVUTIL", "REVIEW", "MANUAL", "SYSTEM"}
+READY_STATUS = "READY"
+BLOCKED_STATUS = "BLOCKED"
+NEEDS_REVIEW_STATUS = "NEEDS_REVIEW"
 
 DEFAULT_TEMPLATE_ITEMS = [
     {
@@ -313,6 +316,155 @@ def update_checklist_item(
     db.commit()
     db.refresh(checklist)
     return checklist
+
+
+def readiness_blocker(item: CutoverChecklistItem, code: str, severity: str, message: str) -> dict[str, object]:
+    return {
+        "code": code,
+        "severity": severity,
+        "item_id": item.id,
+        "item_code": item.item_code,
+        "table_name": item.table_name,
+        "message": message,
+        "details": {
+            "status": item.status,
+            "method": item.method,
+            "evidence_required": item.evidence_required,
+        },
+    }
+
+
+def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dict[str, object]:
+    items = (
+        db.query(CutoverChecklistItem)
+        .filter(CutoverChecklistItem.checklist_id == checklist.id)
+        .order_by(CutoverChecklistItem.sort_order, CutoverChecklistItem.created_at)
+        .all()
+    )
+    blockers: list[dict[str, object]] = []
+    for item in items:
+        if item.status == "BLOCKED":
+            blockers.append(
+                readiness_blocker(item, "ITEM_BLOCKED", "ERROR", "Checklist item is marked as BLOCKED.")
+            )
+        elif item.status == "PENDING" and item.evidence_required:
+            blockers.append(
+                readiness_blocker(
+                    item,
+                    "REQUIRED_ITEM_PENDING",
+                    "ERROR",
+                    "Required checklist item is still PENDING.",
+                )
+            )
+        elif item.status == "DONE" and item.evidence_required and not item.evidence_id:
+            blockers.append(
+                readiness_blocker(
+                    item,
+                    "DONE_ITEM_MISSING_EVIDENCE",
+                    "ERROR",
+                    "Required checklist item is DONE but has no evidence linked.",
+                )
+            )
+        elif item.status == "SKIPPED":
+            blockers.append(
+                readiness_blocker(item, "ITEM_SKIPPED", "WARNING", "Checklist item was skipped and needs review.")
+            )
+
+    status_counts = checklist_status_counts(db, checklist.id)
+    error_count = sum(1 for blocker in blockers if blocker["severity"] == "ERROR")
+    warning_count = sum(1 for blocker in blockers if blocker["severity"] == "WARNING")
+    status = READY_STATUS
+    if error_count:
+        status = BLOCKED_STATUS
+    elif warning_count:
+        status = NEEDS_REVIEW_STATUS
+
+    summary = parse_json_object(checklist.summary_json)
+    readiness_summary = {
+        "ready": status == READY_STATUS,
+        "item_count": len(items),
+        "done_count": status_counts.get("DONE", 0),
+        "pending_count": status_counts.get("PENDING", 0),
+        "blocked_count": status_counts.get("BLOCKED", 0),
+        "skipped_count": status_counts.get("SKIPPED", 0),
+        "missing_evidence_count": sum(
+            1 for item in items if item.status == "DONE" and item.evidence_required and not item.evidence_id
+        ),
+        "blocker_count": len(blockers),
+        "error_count": error_count,
+        "warning_count": warning_count,
+        "status_counts": status_counts,
+    }
+    for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
+        if summary.get(key):
+            readiness_summary[key] = summary[key]
+
+    return {
+        "checklist_id": checklist.id,
+        "package_id": checklist.package_id,
+        "status": status,
+        "summary": readiness_summary,
+        "blockers": blockers,
+    }
+
+
+def generate_checklist_readiness(
+    db: Session,
+    *,
+    checklist: CutoverChecklist,
+    generated_by: str,
+) -> dict[str, object]:
+    payload = checklist_readiness_payload(db, checklist)
+    summary = payload["summary"]
+    evidence_summary = {
+        "source_entity_type": "cutover_checklist",
+        "source_entity_id": checklist.id,
+        "package_id": checklist.package_id,
+        "status": payload["status"],
+        "item_count": summary["item_count"],
+        "blocker_count": summary["blocker_count"],
+        "error_count": summary["error_count"],
+        "warning_count": summary["warning_count"],
+    }
+    for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
+        if summary.get(key):
+            evidence_summary[key] = summary[key]
+    evidence = Evidence(
+        project_id=checklist.project_id,
+        source_module="load_plan",
+        evidence_type="cutover_checklist_readiness",
+        summary_json=json.dumps(evidence_summary, sort_keys=True),
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+    payload["evidence_id"] = evidence.id
+
+    audit_payload = dict(evidence_summary)
+    audit_payload["evidence_id"] = evidence.id
+    db.add(
+        AuditLog(
+            actor_user_id=generated_by,
+            action="load_plan.cutover_checklist.readiness",
+            target_type="cutover_checklist",
+            target_id=checklist.id,
+            metadata_json=json.dumps(audit_payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="load_plan.cutover_checklist.readiness.generated",
+            source_module="load_plan",
+            project_id=checklist.project_id,
+            aggregate_type="cutover_checklist",
+            aggregate_id=checklist.id,
+            payload_json=json.dumps(audit_payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    return payload
 
 
 def create_checklist_from_package(

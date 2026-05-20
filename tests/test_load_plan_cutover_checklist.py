@@ -271,3 +271,146 @@ def test_update_cutover_checklist_item_rejects_invalid_status_and_method(
     assert "status" in invalid_status.json()["message"].lower()
     assert invalid_method.status_code == 400
     assert "method" in invalid_method.json()["message"].lower()
+
+
+def create_client_safe_evidence(db_session, checklist_id: str, table_name: str | None = None) -> Evidence:
+    evidence = Evidence(
+        source_module="load_plan",
+        evidence_type="cutover_table_readiness",
+        summary_json=json.dumps(
+            {
+                "source_entity_type": "cutover_checklist_item",
+                "checklist_id": checklist_id,
+                "table_name": table_name,
+            },
+            sort_keys=True,
+        ),
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db_session.add(evidence)
+    db_session.commit()
+    return evidence
+
+
+def mark_all_checklist_items_done(client, admin_header, db_session, checklist: dict[str, object]) -> dict[str, object]:
+    latest = checklist
+    for item in checklist["items"]:
+        evidence = create_client_safe_evidence(db_session, str(checklist["id"]), item["table_name"])
+        response = client.patch(
+            f"/api/v1/modules/load-plan/cutover-checklists/items/{item['id']}",
+            json={"status": "DONE", "evidence_id": evidence.id},
+            headers=admin_header,
+        )
+        assert response.status_code == 200
+        latest = response.json()
+    return latest
+
+
+def test_cutover_checklist_readiness_reports_blockers(client, admin_header, db_session):
+    package = create_registered_locations_package(db_session)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["checklist_id"] == checklist["id"]
+    assert payload["package_id"] == package.id
+    assert payload["status"] == "BLOCKED"
+    assert payload["summary"]["pending_count"] == 4
+    assert payload["summary"]["blocked_count"] == 0
+    assert payload["summary"]["done_count"] == 0
+    assert payload["summary"]["ready"] is False
+    assert {blocker["code"] for blocker in payload["blockers"]} == {"REQUIRED_ITEM_PENDING"}
+    assert len(payload["blockers"]) == 4
+    assert "synthetic_locations_batch" not in json.dumps(payload)
+
+    evidence = (
+        db_session.query(Evidence)
+        .filter(Evidence.evidence_type == "cutover_checklist_readiness")
+        .one()
+    )
+    assert evidence.client_safe is True
+    assert "synthetic_locations_batch" not in evidence.summary_json
+
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "load_plan.cutover_checklist.readiness")
+        .one()
+    )
+    assert audit.target_id == checklist["id"]
+    assert "synthetic_locations_batch" not in audit.metadata_json
+
+    event = (
+        db_session.query(DomainEvent)
+        .filter(DomainEvent.event_type == "load_plan.cutover_checklist.readiness.generated")
+        .one()
+    )
+    assert event.aggregate_id == checklist["id"]
+    assert "synthetic_locations_batch" not in event.payload_json
+
+
+def test_cutover_checklist_readiness_is_ready_when_required_items_done(
+    client,
+    admin_header,
+    db_session,
+):
+    package = create_registered_locations_package(db_session)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    mark_all_checklist_items_done(client, admin_header, db_session, checklist)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "READY"
+    assert payload["blockers"] == []
+    assert payload["summary"]["ready"] is True
+    assert payload["summary"]["done_count"] == 4
+    assert payload["summary"]["pending_count"] == 0
+    assert payload["summary"]["missing_evidence_count"] == 0
+
+
+def test_cutover_checklist_readiness_reports_skipped_items_as_review(
+    client,
+    admin_header,
+    db_session,
+):
+    package = create_registered_locations_package(db_session)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    latest = mark_all_checklist_items_done(client, admin_header, db_session, checklist)
+    skipped = next(item for item in latest["items"] if item["table_name"] == "LOCATION")
+    skipped_response = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{skipped['id']}",
+        json={"status": "SKIPPED"},
+        headers=admin_header,
+    )
+    assert skipped_response.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "NEEDS_REVIEW"
+    assert payload["summary"]["ready"] is False
+    assert payload["summary"]["skipped_count"] == 1
+    assert [blocker["code"] for blocker in payload["blockers"]] == ["ITEM_SKIPPED"]
