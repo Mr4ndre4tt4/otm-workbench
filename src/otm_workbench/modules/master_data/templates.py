@@ -474,11 +474,15 @@ def parse_master_data_template_workbook(
             field_name_row == expected_field_names
             and target_column_row == expected_target_columns
         ) else 2
-        for row in worksheet.iter_rows(min_row=data_start_row, values_only=True):
+        for row_number, row in enumerate(
+            worksheet.iter_rows(min_row=data_start_row, values_only=True),
+            start=data_start_row,
+        ):
             values = list(row[: len(fields)])
             if all(value is None for value in values):
                 continue
             parsed_row = {field["name"]: values[index] for index, field in enumerate(fields)}
+            parsed_row["_row_number"] = row_number
             sheet_rows.append(parsed_row)
 
         parsed_rows[sheet["code"]] = sheet_rows
@@ -556,7 +560,7 @@ def validate_master_data_batch_relationships(
                     "severity": "ERROR",
                     "sheet_code": rule["child_sheet_code"],
                     "field_name": rule["child_field_name"],
-                    "row_number": row_index,
+                    "row_number": child_row.get("_row_number", row_index),
                     "message": "Child row references a parent key that does not exist in the same batch.",
                     "parent_sheet_code": rule["parent_sheet_code"],
                     "parent_field_name": rule["parent_field_name"],
