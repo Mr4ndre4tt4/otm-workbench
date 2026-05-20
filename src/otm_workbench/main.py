@@ -10,6 +10,7 @@ from otm_workbench.catalog.routes import router as catalog_router
 from otm_workbench.database import session_scope
 from otm_workbench.evidence_hub.routes import router as evidence_hub_router
 from otm_workbench.modules.assets.routes import router as assets_router
+from otm_workbench.modules.integration_mapping.routes import router as integration_mapping_router
 from otm_workbench.modules.load_plan.routes import router as load_plan_router
 from otm_workbench.modules.master_data.routes import router as master_data_router
 from otm_workbench.modules.order_release_generator.routes import router as order_release_generator_router
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(load_plan_router)
     app.include_router(assets_router)
     app.include_router(order_release_generator_router)
+    app.include_router(integration_mapping_router)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):

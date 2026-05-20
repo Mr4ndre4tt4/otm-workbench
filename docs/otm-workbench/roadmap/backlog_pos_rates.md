@@ -627,8 +627,8 @@ Padroes tecnicos confirmados pelos apoios:
 ### Primeiro recorte MVP0 recomendado
 
 ```text
-1. Skeleton backend do modulo integration_mapping.
-2. Module registry + health endpoint.
+1. Skeleton backend do modulo integration_mapping. [ENTREGUE primeira fatia backend OTM-39]
+2. Module registry + health endpoint. [ENTREGUE primeira fatia backend OTM-39]
 3. Modelo/API de Integration Definition com status DRAFT.
 4. Modelo/API de systems/endpoints sem credenciais reais.
 5. Upload/import de payload XML/JSON como artifact interno.
