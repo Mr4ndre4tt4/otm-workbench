@@ -620,6 +620,68 @@ class LoadPlanPackage(Base, TimestampMixin):
     registered_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class CutoverChecklistTemplate(Base, TimestampMixin):
+    __tablename__ = "cutover_checklist_templates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String, default="PUBLISHED", index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    system_seeded: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class CutoverChecklistTemplateItem(Base, TimestampMixin):
+    __tablename__ = "cutover_checklist_template_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    template_id: Mapped[str] = mapped_column(ForeignKey("cutover_checklist_templates.id"), index=True)
+    item_code: Mapped[str] = mapped_column(String, index=True)
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    default_method: Mapped[str] = mapped_column(String, default="REVIEW")
+    applies_to_package_type: Mapped[str] = mapped_column(String, default="*")
+    required_evidence_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class CutoverChecklist(Base, TimestampMixin):
+    __tablename__ = "cutover_checklists"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    template_id: Mapped[str] = mapped_column(ForeignKey("cutover_checklist_templates.id"), index=True)
+    package_id: Mapped[str] = mapped_column(ForeignKey("load_plan_packages.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    package_type: Mapped[str] = mapped_column(String, index=True)
+    catalog_macro_object_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class CutoverChecklistItem(Base, TimestampMixin):
+    __tablename__ = "cutover_checklist_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    checklist_id: Mapped[str] = mapped_column(ForeignKey("cutover_checklists.id"), index=True)
+    package_id: Mapped[str] = mapped_column(ForeignKey("load_plan_packages.id"), index=True)
+    template_item_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    item_code: Mapped[str] = mapped_column(String, index=True)
+    title: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="PENDING", index=True)
+    method: Mapped[str] = mapped_column(String, default="REVIEW", index=True)
+    table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    evidence_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    evidence_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    details_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
 class CsvutilBuild(Base, TimestampMixin):
     __tablename__ = "csvutil_builds"
 

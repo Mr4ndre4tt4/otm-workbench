@@ -424,6 +424,17 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 15. Readiness endpoint com blockers claros.
 ```
 
+### Status de implementacao
+
+```text
+1. Checklist templates. [INICIADO com seed MVP0_STANDARD_CUTOVER persistido em DB]
+2. Template items base. [INICIADO com PACKAGE_REGISTERED, SEQUENCE_REVIEW e TABLE_READY]
+3. Checklist instance a partir de LoadPlanPackage. [ENTREGUE primeira fatia backend OTM-14]
+4. Itens por pacote/sequencia. [INICIADO com TABLE_READY gerado por tabela tecnica]
+5. Evidence/Audit/DomainEvent client-safe. [ENTREGUE para criacao de checklist]
+6. CSVUTIL real, parametros, overrides, readiness final e UI. [PENDENTE]
+```
+
 ---
 
 ## 7. Assets Library
