@@ -41,6 +41,10 @@ from otm_workbench.modules.integration_mapping.systems import (
     serialize_integration_endpoint,
     serialize_integration_system,
 )
+from otm_workbench.modules.integration_mapping.transform_types import (
+    list_active_transform_types,
+    serialize_transform_type,
+)
 
 
 router = APIRouter(prefix="/api/v1/modules/integration-mapping", tags=["integration-mapping"])
@@ -106,6 +110,16 @@ def integration_mapping_health(user: User = Depends(require_user)):
         "module": "integration_mapping",
         "mode": "specification_first",
     }
+
+
+@router.get("/transform-types")
+def list_transform_types(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    transform_types = list_active_transform_types(db)
+    items = [serialize_transform_type(transform_type) for transform_type in transform_types]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.post("/definitions")
@@ -368,6 +382,12 @@ def create_mapping(
                 400,
                 "INTEGRATION_MAPPING_SCHEMA_DOCUMENT_INVALID",
                 "Mapping schema documents must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) == "transform_type_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_MAPPING_TRANSFORM_TYPE_INVALID",
+                "Mapping transform_type must be active in the Integration Mapping catalog.",
             ) from exc
         raise api_error(
             400,

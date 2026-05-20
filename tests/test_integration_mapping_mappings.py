@@ -74,6 +74,21 @@ def test_integration_mappings_table_exists_after_metadata_reset(db_session):
     table_names = inspect(db_session.bind).get_table_names()
 
     assert "integration_mappings" in table_names
+    assert "integration_transform_types" in table_names
+
+
+def test_list_integration_transform_types_seeds_controlled_catalog(client, admin_header):
+    response = client.get("/api/v1/modules/integration-mapping/transform-types", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] >= 4
+    codes = [item["code"] for item in payload["items"]]
+    assert codes[:4] == ["DIRECT", "CONSTANT", "CONCAT", "DATE_FORMAT"]
+    direct = payload["items"][0]
+    assert direct["name"] == "Direct copy"
+    assert direct["requires_expression"] is False
+    assert direct["status"] == "ACTIVE"
 
 
 def test_create_integration_mapping_validates_schema_paths(client, admin_header, db_session):
@@ -132,6 +147,19 @@ def test_create_integration_mapping_rejects_unknown_source_path(client, admin_he
 
     assert response.status_code == 400
     assert response.json()["code"] == "INTEGRATION_MAPPING_PATH_INVALID"
+
+
+def test_create_integration_mapping_rejects_unknown_transform_type(client, admin_header):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(source, target, transform_type="PYTHON_SCRIPT"),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "INTEGRATION_MAPPING_TRANSFORM_TYPE_INVALID"
 
 
 def test_create_integration_mapping_rejects_missing_definition(client, admin_header):
