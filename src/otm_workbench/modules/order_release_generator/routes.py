@@ -13,6 +13,7 @@ from otm_workbench.modules.order_release_generator.templates import (
     seed_order_release_templates,
     serialize_order_release_template,
 )
+from otm_workbench.modules.order_release_generator.xml_preview import build_order_release_xml
 
 
 router = APIRouter(prefix="/api/v1/modules/order-release-generator", tags=["order-release-generator"])
@@ -85,3 +86,23 @@ def get_batch(
         .all()
     )
     return serialize_order_release_batch(batch, rows)
+
+
+@router.post("/batches/{batch_id}/preview-xml")
+def preview_batch_xml(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.get(OrderReleaseBatch, batch_id)
+    if batch is None:
+        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    if batch.status != "VALID":
+        raise api_error(409, "ORDER_RELEASE_BATCH_INVALID", "Order Release batch must be valid before XML preview.")
+    rows = (
+        db.query(OrderReleaseBatchRow)
+        .filter(OrderReleaseBatchRow.batch_id == batch.id)
+        .order_by(OrderReleaseBatchRow.row_number)
+        .all()
+    )
+    return build_order_release_xml(batch, rows)
