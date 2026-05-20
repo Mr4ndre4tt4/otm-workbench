@@ -1,4 +1,10 @@
+import json
+import zipfile
+
 from otm_workbench.models import (
+    Artifact,
+    Evidence,
+    Manifest,
     MasterDataCoordinateQualityBatch,
     MasterDataCoordinateQualityResult,
 )
@@ -146,3 +152,59 @@ def test_coordinate_quality_create_batch_endpoint_persists_results(client, admin
     )
     assert list_response.status_code == 200
     assert list_response.json()["items"][0]["status"] == "CORRECTED"
+
+
+def test_coordinate_quality_export_creates_client_safe_evidence(client, admin_header, db_session):
+    batch_response = client.post(
+        "/api/v1/modules/master-data/coordinate-quality/batches",
+        headers=admin_header,
+        json={
+            "records": [
+                {
+                    "location_gid": "SYN.LOC_005",
+                    "location_name": "Synthetic Export DC",
+                    "address_line": "Rua Tres 300",
+                    "city": "Sao Paulo",
+                    "province_code": "SP",
+                    "postal_code": "01000-000",
+                    "country_code3_gid": "BRA",
+                    "lat": None,
+                    "lon": None,
+                }
+            ],
+            "fake_candidates": {
+                "SYN.LOC_005": {"lat": -23.55, "lon": -46.63, "source": "fake:inline"}
+            },
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(
+        f"/api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["file_name"].endswith(".zip")
+
+    artifact = db_session.query(Artifact).filter(Artifact.id == payload["artifact_id"]).one()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    assert artifact.source_module == "master_data"
+    assert artifact.artifact_type == "coordinate_quality_export_zip"
+    assert artifact.sensitivity_level == "client_safe"
+    assert evidence.evidence_type == "coordinate_quality_export"
+    assert evidence.client_safe is True
+
+    with zipfile.ZipFile(artifact.file_path) as archive:
+        names = sorted(archive.namelist())
+        assert names == ["manifest.json", "results.json"]
+        manifest_payload = json.loads(archive.read("manifest.json").decode("utf-8"))
+        results_payload = json.loads(archive.read("results.json").decode("utf-8"))
+
+    assert manifest_payload["manifest_type"] == "coordinate_quality_export"
+    assert manifest_payload["source_entity_id"] == batch_id
+    assert results_payload["summary"]["total_count"] == 1
+    assert json.loads(manifest.manifest_json)["manifest_type"] == "coordinate_quality_export"

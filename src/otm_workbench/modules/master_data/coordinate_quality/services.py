@@ -1,10 +1,17 @@
 import json
+import zipfile
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
 from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    Evidence,
+    Manifest,
     MasterDataCoordinateQualityBatch,
     MasterDataCoordinateQualityResult,
 )
@@ -17,6 +24,7 @@ from otm_workbench.modules.master_data.coordinate_quality.schemas import (
     CoordinateQualityResult,
     CoordinateQualityStatus,
 )
+from otm_workbench.platform.services import file_sha256
 
 
 def create_coordinate_quality_batch(
@@ -164,6 +172,110 @@ def list_coordinate_quality_results(db: Session, batch_id: str) -> PageResponse:
         for row in rows
     ]
     return PageResponse(items=items, total=len(items))
+
+
+def export_coordinate_quality_batch(
+    db: Session,
+    batch: MasterDataCoordinateQualityBatch,
+    artifact_root: Path,
+    generated_by: str,
+) -> dict[str, object]:
+    results_page = list_coordinate_quality_results(db, batch.id)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    export_dir = artifact_root / "master_data" / "coordinate_quality" / batch.id / timestamp
+    export_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = export_dir / f"coordinate_quality_batch_{batch.id}.zip"
+
+    results_payload = {
+        "batch_id": batch.id,
+        "summary": json.loads(batch.summary_json),
+        "results": results_page.items,
+    }
+    manifest_payload = {
+        "schema_version": "coordinate-quality-export-manifest/v1",
+        "manifest_type": "coordinate_quality_export",
+        "source_module": "master_data",
+        "source_entity_type": "coordinate_quality_batch",
+        "source_entity_id": batch.id,
+        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+        "generated_by": generated_by,
+        "result_count": results_page.total,
+    }
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps(manifest_payload, indent=2, sort_keys=True))
+        archive.writestr("results.json", json.dumps(results_payload, indent=2, sort_keys=True))
+
+    digest, size = file_sha256(str(zip_path))
+    artifact = Artifact(
+        source_module="master_data",
+        artifact_type="coordinate_quality_export_zip",
+        file_path=str(zip_path),
+        file_name=zip_path.name,
+        content_type="application/zip",
+        sha256=digest,
+        size_bytes=size,
+        sensitivity_level="client_safe",
+    )
+    db.add(artifact)
+    db.flush()
+
+    manifest = Manifest(
+        source_module="master_data",
+        status="CREATED",
+        manifest_json=json.dumps(manifest_payload, indent=2, sort_keys=True),
+    )
+    db.add(manifest)
+    db.flush()
+
+    evidence = Evidence(
+        source_module="master_data",
+        evidence_type="coordinate_quality_export",
+        summary_json=json.dumps(
+            {
+                "source_entity_type": "coordinate_quality_batch",
+                "source_entity_id": batch.id,
+                "result_count": results_page.total,
+                "artifact_type": "coordinate_quality_export_zip",
+            },
+            sort_keys=True,
+        ),
+        artifact_id=artifact.id,
+        manifest_id=manifest.id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.flush()
+
+    db.add(
+        AuditLog(
+            actor_user_id=generated_by,
+            action="master_data.coordinate_quality.export",
+            target_type="coordinate_quality_batch",
+            target_id=batch.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "manifest_id": manifest.id,
+                    "evidence_id": evidence.id,
+                    "result_count": results_page.total,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+
+    return {
+        "batch_id": batch.id,
+        "artifact_id": artifact.id,
+        "manifest_id": manifest.id,
+        "evidence_id": evidence.id,
+        "file_name": artifact.file_name,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+    }
 
 
 def _count_results(results: Sequence[CoordinateQualityResult]) -> dict[str, int]:

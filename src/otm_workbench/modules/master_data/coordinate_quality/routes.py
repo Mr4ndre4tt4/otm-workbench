@@ -1,14 +1,17 @@
 from typing import Any
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from otm_workbench.config import get_settings
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import MasterDataCoordinateQualityBatch, User
 from otm_workbench.modules.master_data.coordinate_quality.services import (
     build_fake_provider,
     create_coordinate_quality_batch,
+    export_coordinate_quality_batch,
     list_coordinate_quality_results,
     preview_coordinate_quality,
     serialize_coordinate_quality_batch,
@@ -88,3 +91,24 @@ def get_coordinate_quality_results(
     if batch is None:
         raise api_error(404, "COORDINATE_QUALITY_BATCH_NOT_FOUND", "Coordinate Quality batch not found.")
     return list_coordinate_quality_results(db, batch_id)
+
+
+@router.post("/batches/{batch_id}/export")
+def export_coordinate_quality_batch_endpoint(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = (
+        db.query(MasterDataCoordinateQualityBatch)
+        .filter(MasterDataCoordinateQualityBatch.id == batch_id)
+        .first()
+    )
+    if batch is None:
+        raise api_error(404, "COORDINATE_QUALITY_BATCH_NOT_FOUND", "Coordinate Quality batch not found.")
+    return export_coordinate_quality_batch(
+        db,
+        batch,
+        Path(get_settings().artifact_root),
+        user.id,
+    )
