@@ -491,7 +491,7 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 ### Primeiro recorte MVP0 recomendado
 
 ```text
-1. Skeleton backend do modulo assets.
+1. Skeleton backend do modulo assets. [ENTREGUE primeira fatia backend OTM-23]
 2. Modelos DB-first para asset classifications:
    - asset_types;
    - asset_categories;
@@ -500,9 +500,9 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
    - asset_scope_types;
    - asset_statuses;
    - asset_sensitivity_levels;
-   - asset_link_types.
-3. Seeds iniciais system-protected.
-4. APIs de listagem de classificacoes.
+   - asset_link_types. [INICIADO com tabela generica asset_classifications OTM-23]
+3. Seeds iniciais system-protected. [ENTREGUE primeira fatia backend OTM-23]
+4. APIs de listagem de classificacoes. [ENTREGUE primeira fatia backend OTM-23]
 5. APIs ADMIN/DBA/MASTER para criar tipo e categoria.
 6. Modelo central de asset + asset_versions + asset_files.
 7. Criar asset em DRAFT via API.

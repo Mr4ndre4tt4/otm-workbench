@@ -228,6 +228,19 @@ class Evidence(Base, TimestampMixin):
     sensitivity_level: Mapped[str] = mapped_column(String, default="client_safe")
 
 
+class AssetClassification(Base, TimestampMixin):
+    __tablename__ = "asset_classifications"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    classification_type: Mapped[str] = mapped_column(String, index=True)
+    code: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    system_protected: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
