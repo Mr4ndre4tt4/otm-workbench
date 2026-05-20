@@ -388,6 +388,31 @@ class IntegrationPayloadArtifact(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationSchemaDocument(Base, TimestampMixin):
+    __tablename__ = "integration_schema_documents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    payload_artifact_id: Mapped[str] = mapped_column(ForeignKey("integration_payload_artifacts.id"), index=True)
+    payload_format: Mapped[str] = mapped_column(String, index=True)
+    root_name: Mapped[str] = mapped_column(String)
+    node_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String, default="PARSED", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class IntegrationSchemaNode(Base, TimestampMixin):
+    __tablename__ = "integration_schema_nodes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    parent_path: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    path: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    node_type: Mapped[str] = mapped_column(String, index=True)
+    sequence_index: Mapped[int] = mapped_column(Integer, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

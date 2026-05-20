@@ -6,7 +6,16 @@ from sqlalchemy.orm import Session
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.config import get_settings
-from otm_workbench.models import Artifact, IntegrationDefinition, IntegrationEndpoint, IntegrationPayloadArtifact, IntegrationSystem, User
+from otm_workbench.models import (
+    Artifact,
+    IntegrationDefinition,
+    IntegrationEndpoint,
+    IntegrationPayloadArtifact,
+    IntegrationSchemaDocument,
+    IntegrationSchemaNode,
+    IntegrationSystem,
+    User,
+)
 from otm_workbench.modules.integration_mapping.definitions import (
     create_integration_definition,
     serialize_integration_definition,
@@ -16,6 +25,11 @@ from otm_workbench.modules.integration_mapping.payload_artifacts import (
     serialize_payload_artifact,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
+from otm_workbench.modules.integration_mapping.schema_documents import (
+    create_schema_document,
+    serialize_schema_document,
+    serialize_schema_node,
+)
 from otm_workbench.modules.integration_mapping.systems import (
     create_integration_endpoint,
     create_integration_system,
@@ -261,3 +275,61 @@ def parse_payload_artifact_schema(
         "payload_format": payload_artifact.payload_format,
         "tree": tree,
     }
+
+
+@router.post("/payload-artifacts/{payload_artifact_id}/schema-documents")
+def create_payload_schema_document(
+    payload_artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    payload_artifact = db.get(IntegrationPayloadArtifact, payload_artifact_id)
+    if payload_artifact is None:
+        raise api_error(
+            404,
+            "INTEGRATION_PAYLOAD_ARTIFACT_NOT_FOUND",
+            "Integration payload artifact not found.",
+        )
+    artifact = db.get(Artifact, payload_artifact.artifact_id)
+    if artifact is None:
+        raise api_error(404, "ARTIFACT_NOT_FOUND", "Artifact not found.")
+    document = create_schema_document(db, payload_artifact=payload_artifact, artifact=artifact, user=user)
+    return serialize_schema_document(document)
+
+
+@router.get("/definitions/{definition_id}/schema-documents")
+def list_schema_documents(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    documents = (
+        db.query(IntegrationSchemaDocument)
+        .filter(IntegrationSchemaDocument.definition_id == definition.id)
+        .order_by(IntegrationSchemaDocument.created_at.desc())
+        .all()
+    )
+    items = [serialize_schema_document(document) for document in documents]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/schema-documents/{schema_document_id}/nodes")
+def list_schema_nodes(
+    schema_document_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    document = db.get(IntegrationSchemaDocument, schema_document_id)
+    if document is None:
+        raise api_error(404, "INTEGRATION_SCHEMA_DOCUMENT_NOT_FOUND", "Integration schema document not found.")
+    nodes = (
+        db.query(IntegrationSchemaNode)
+        .filter(IntegrationSchemaNode.schema_document_id == document.id)
+        .order_by(IntegrationSchemaNode.sequence_index)
+        .all()
+    )
+    items = [serialize_schema_node(node) for node in nodes]
+    return PageResponse(items=items, total=len(items))
