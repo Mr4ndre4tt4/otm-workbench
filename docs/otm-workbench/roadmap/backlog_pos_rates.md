@@ -630,7 +630,7 @@ Padroes tecnicos confirmados pelos apoios:
 1. Skeleton backend do modulo integration_mapping. [ENTREGUE primeira fatia backend OTM-39]
 2. Module registry + health endpoint. [ENTREGUE primeira fatia backend OTM-39]
 3. Modelo/API de Integration Definition com status DRAFT. [ENTREGUE primeira fatia backend OTM-40]
-4. Modelo/API de systems/endpoints sem credenciais reais.
+4. Modelo/API de systems/endpoints sem credenciais reais. [ENTREGUE primeira fatia backend OTM-41]
 5. Upload/import de payload XML/JSON como artifact interno.
 6. Parser simples XML/JSON para schema tree.
 7. Persistencia de schema documents e schema nodes.
