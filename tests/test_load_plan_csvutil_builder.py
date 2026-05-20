@@ -5,6 +5,7 @@ from sqlalchemy import inspect
 
 from otm_workbench.database import engine
 from otm_workbench.models import Artifact, AuditLog, CsvutilBuild, DomainEvent, Evidence, LoadPlanPackage, Manifest
+from tests.test_load_plan_cutover_checklist import create_client_safe_evidence
 
 
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
@@ -267,3 +268,72 @@ def test_csvutil_rebuild_creates_separate_build_history(client, admin_header, db
     assert first.json()["id"] != second.json()["id"]
     assert db_session.query(CsvutilBuild).count() == 2
     assert db_session.query(Evidence).filter(Evidence.evidence_type == "csvutil_build").count() == 2
+
+
+def test_csvutil_build_from_cutover_checklist_uses_done_csvutil_items(
+    client,
+    admin_header,
+    db_session,
+):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+    table_item = next(item for item in checklist["items"] if item["item_code"] == "TABLE_READY")
+    evidence = create_client_safe_evidence(db_session, checklist["id"], table_item["table_name"])
+    updated = client.patch(
+        f"/api/v1/modules/load-plan/cutover-checklists/items/{table_item['id']}",
+        json={"status": "DONE", "method": "CSVUTIL", "evidence_id": evidence.id},
+        headers=admin_header,
+    )
+    assert updated.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/{checklist['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    manifest_json = json.loads(manifest.manifest_json)
+    evidence_row = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "load_plan.csvutil.build").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "load_plan.csvutil.built").one()
+
+    assert payload["package_id"] == package["id"]
+    assert payload["summary"]["source_entity_type"] == "cutover_checklist"
+    assert payload["summary"]["source_entity_id"] == checklist["id"]
+    assert payload["summary"]["checklist_id"] == checklist["id"]
+    assert payload["summary"]["table_count"] == 1
+    assert payload["summary"]["selected_item_count"] == 1
+    assert manifest_json["source_entity_type"] == "cutover_checklist"
+    assert manifest_json["source_entity_id"] == checklist["id"]
+    assert manifest_json["package"]["id"] == package["id"]
+    assert manifest_json["load_sequence"][0]["table_name"] == "ACCESSORIAL_COST"
+    assert evidence_row.client_safe is True
+    assert json.loads(evidence_row.summary_json)["checklist_id"] == checklist["id"]
+    assert json.loads(audit.metadata_json)["checklist_id"] == checklist["id"]
+    assert json.loads(event.payload_json)["checklist_id"] == checklist["id"]
+    assert "OTM1.ACC_COST_001" not in manifest.manifest_json
+    assert "OTM1.ACC_COST_001" not in evidence_row.summary_json
+
+
+def test_csvutil_build_from_cutover_checklist_rejects_without_done_csvutil_items(
+    client,
+    admin_header,
+):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/{checklist['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert "eligible" in response.json()["message"].lower()

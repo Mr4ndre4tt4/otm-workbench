@@ -434,7 +434,8 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 5. Evidence/Audit/DomainEvent client-safe. [ENTREGUE para criacao de checklist]
 6. Atualizacao de item com status, metodo e evidencia. [ENTREGUE primeira fatia backend OTM-15]
 7. Readiness de Cutover Checklist por itens persistidos. [ENTREGUE primeira fatia backend OTM-16]
-8. CSVUTIL real, parametros, overrides, readiness final integrada ao handoff e UI. [PENDENTE]
+8. CSVUTIL a partir de itens selecionados do Cutover Checklist. [ENTREGUE primeira fatia backend OTM-17]
+9. CSVUTIL real, parametros avancados, overrides, readiness final integrada ao handoff e UI. [PENDENTE]
 ```
 
 ---
