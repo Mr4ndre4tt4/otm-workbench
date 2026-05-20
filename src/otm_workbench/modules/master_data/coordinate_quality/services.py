@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 
 from sqlalchemy.orm import Session
 
+from otm_workbench.contracts import PageResponse
 from otm_workbench.models import (
     MasterDataCoordinateQualityBatch,
     MasterDataCoordinateQualityResult,
@@ -89,6 +90,80 @@ def create_coordinate_quality_batch(
         "summary": summary,
         "issues": issues,
     }
+
+
+def build_fake_provider(fake_candidates: Mapping[str, Mapping[str, object]] | None) -> GeocoderProvider:
+    from otm_workbench.modules.master_data.coordinate_quality.providers import FakeGeocoderProvider
+    from otm_workbench.modules.master_data.coordinate_quality.schemas import CoordinateCandidate
+
+    candidates = {
+        location_gid: CoordinateCandidate(
+            lat=float(candidate["lat"]),
+            lon=float(candidate["lon"]),
+            source=str(candidate.get("source") or "fake:inline"),
+        )
+        for location_gid, candidate in (fake_candidates or {}).items()
+    }
+    return FakeGeocoderProvider(candidates)
+
+
+def preview_coordinate_quality(
+    records_payload: Sequence[Mapping[str, object]],
+    provider: GeocoderProvider,
+) -> dict[str, object]:
+    input_payloads = [dict(payload) for payload in records_payload]
+    records = [normalize_location_record(payload) for payload in input_payloads]
+    results = [process_location_record(record, provider) for record in records]
+    return {
+        "summary": _count_results(results),
+        "results": [result.to_dict() for result in results],
+    }
+
+
+def serialize_coordinate_quality_batch(batch: MasterDataCoordinateQualityBatch) -> dict[str, object]:
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "provider_mode": batch.provider_mode,
+        "summary": json.loads(batch.summary_json),
+        "issues": json.loads(batch.issues_json),
+        "created_at": batch.created_at.isoformat() if batch.created_at else None,
+        "updated_at": batch.updated_at.isoformat() if batch.updated_at else None,
+    }
+
+
+def list_coordinate_quality_results(db: Session, batch_id: str) -> PageResponse:
+    rows = (
+        db.query(MasterDataCoordinateQualityResult)
+        .filter(MasterDataCoordinateQualityResult.batch_id == batch_id)
+        .order_by(MasterDataCoordinateQualityResult.created_at, MasterDataCoordinateQualityResult.location_gid)
+        .all()
+    )
+    items = [
+        {
+            "id": row.id,
+            "batch_id": row.batch_id,
+            "location_gid": row.location_gid,
+            "location_name": row.location_name,
+            "address": json.loads(row.address_json),
+            "country_code3_gid": row.country_code3_gid,
+            "province_code": row.province_code,
+            "postal_code": row.postal_code,
+            "lat_orig": row.lat_orig,
+            "lon_orig": row.lon_orig,
+            "lat_new": row.lat_new,
+            "lon_new": row.lon_new,
+            "status": row.status,
+            "source": row.source,
+            "diff_lat": row.diff_lat,
+            "diff_lon": row.diff_lon,
+            "orig_valid_uf": row.orig_valid_uf,
+            "new_valid_uf": row.new_valid_uf,
+            "issue": json.loads(row.issue_json),
+        }
+        for row in rows
+    ]
+    return PageResponse(items=items, total=len(items))
 
 
 def _count_results(results: Sequence[CoordinateQualityResult]) -> dict[str, int]:

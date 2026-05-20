@@ -7,6 +7,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import MasterDataBatch, MasterDataTemplate, User
+from otm_workbench.modules.master_data.coordinate_quality.routes import router as coordinate_quality_router
 from otm_workbench.modules.master_data.templates import (
     build_master_data_csv_files,
     build_master_data_template_workbook,
@@ -21,6 +22,7 @@ from otm_workbench.modules.master_data.templates import (
 )
 
 router = APIRouter(prefix="/api/v1/modules/master-data", tags=["master-data"])
+router.include_router(coordinate_quality_router)
 
 
 def dictionary_root() -> Path:
