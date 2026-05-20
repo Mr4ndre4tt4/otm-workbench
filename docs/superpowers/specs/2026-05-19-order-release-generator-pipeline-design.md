@@ -407,7 +407,7 @@ content_type = application/xml
 8. Persistir XML como artifact.
 9. Criar evidence client-safe.
 10. Integrar preview/generate com Jobs. [ENTREGUE primeira fatia backend OTM-37]
-11. Documentar que submit OTM fica bloqueado no MVP0 sem capability/conexao.
+11. Documentar que submit OTM fica bloqueado no MVP0 sem capability/conexao. [ENTREGUE primeira fatia backend OTM-38]
 ```
 
 ## Fora do primeiro recorte

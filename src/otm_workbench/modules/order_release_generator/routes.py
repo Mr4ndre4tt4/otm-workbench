@@ -164,3 +164,24 @@ def generate_batch_xml_artifact(
         message="Order Release XML artifact generated.",
     )
     return {**payload, "job_id": job.id}
+
+
+@router.post("/batches/{batch_id}/submit-otm")
+def submit_batch_to_otm(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.get(OrderReleaseBatch, batch_id)
+    if batch is None:
+        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    raise api_error(
+        409,
+        "ORDER_RELEASE_OTM_SUBMIT_DISABLED",
+        "Direct OTM submission is disabled in MVP0.",
+        {
+            "batch_id": batch.id,
+            "required_capability": "order_release_generator.submit_otm",
+            "reason": "MVP0 has no governed OTM connection/capability for direct submit.",
+        },
+    )
