@@ -12,6 +12,7 @@ from otm_workbench.models import (
     IntegrationEndpoint,
     IntegrationJoinRule,
     IntegrationLoopDefinition,
+    IntegrationLookupDefinition,
     IntegrationMapping,
     IntegrationPayloadArtifact,
     IntegrationSchemaDocument,
@@ -38,6 +39,10 @@ from otm_workbench.modules.integration_mapping.loops import (
 from otm_workbench.modules.integration_mapping.joins import (
     create_integration_join_rule,
     serialize_integration_join_rule,
+)
+from otm_workbench.modules.integration_mapping.lookups import (
+    create_integration_lookup_definition,
+    serialize_integration_lookup_definition,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.schema_documents import (
@@ -130,6 +135,18 @@ class IntegrationJoinRuleCreateRequest(BaseModel):
     operator: str = "EQ"
     name: str
     description: str = ""
+    sequence_index: int = 0
+
+
+class IntegrationLookupDefinitionCreateRequest(BaseModel):
+    source_schema_document_id: str
+    target_schema_document_id: str
+    input_path: str
+    output_path: str
+    lookup_type: str = "MOCK"
+    name: str
+    description: str = ""
+    mock_response_json: str = ""
     sequence_index: int = 0
 
 
@@ -578,3 +595,74 @@ def get_join_rule(
     if join_rule is None:
         raise api_error(404, "INTEGRATION_JOIN_NOT_FOUND", "Integration join rule not found.")
     return serialize_integration_join_rule(join_rule)
+
+
+@router.post("/definitions/{definition_id}/lookups")
+def create_lookup_definition(
+    definition_id: str,
+    payload: IntegrationLookupDefinitionCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        lookup = create_integration_lookup_definition(
+            db,
+            definition=definition,
+            payload=payload.model_dump(),
+            user=user,
+        )
+    except ValueError as exc:
+        if str(exc) == "lookup_type_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_LOOKUP_TYPE_INVALID",
+                "Lookup type must be MOCK for Integration Mapping MVP0.",
+            ) from exc
+        if "schema_document_invalid" in str(exc):
+            raise api_error(
+                400,
+                "INTEGRATION_LOOKUP_SCHEMA_DOCUMENT_INVALID",
+                "Lookup schema documents must belong to the Integration Definition.",
+            ) from exc
+        if "secret" in str(exc).lower() or "credential" in str(exc).lower():
+            raise api_error(400, "INTEGRATION_SECRET_RISK", str(exc)) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_LOOKUP_PATH_INVALID",
+            "Lookup input_path and output_path must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_lookup_definition(lookup)
+
+
+@router.get("/definitions/{definition_id}/lookups")
+def list_lookup_definitions(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    lookups = (
+        db.query(IntegrationLookupDefinition)
+        .filter(IntegrationLookupDefinition.definition_id == definition.id)
+        .order_by(IntegrationLookupDefinition.sequence_index, IntegrationLookupDefinition.created_at)
+        .all()
+    )
+    items = [serialize_integration_lookup_definition(lookup) for lookup in lookups]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/lookups/{lookup_id}")
+def get_lookup_definition(
+    lookup_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    lookup = db.get(IntegrationLookupDefinition, lookup_id)
+    if lookup is None:
+        raise api_error(404, "INTEGRATION_LOOKUP_NOT_FOUND", "Integration lookup definition not found.")
+    return serialize_integration_lookup_definition(lookup)
