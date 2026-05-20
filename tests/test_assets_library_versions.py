@@ -97,6 +97,25 @@ def test_upload_asset_version_rejects_missing_asset(client, admin_header):
     assert response.status_code == 404
 
 
+def test_upload_global_asset_version_rejects_secret_like_content(client, admin_header):
+    asset = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(scope_type="GLOBAL", sensitivity="PUBLIC"),
+        headers=admin_header,
+    ).json()
+
+    response = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/versions",
+        files={"file": ("synthetic.env", b"API_KEY=abcd1234abcd1234abcd1234", "text/plain")},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SECRET_RISK"
+    assert "abcd1234" not in payload["message"]
+
+
 def test_download_current_asset_version_returns_file_and_audits_sensitive_asset(
     client,
     admin_header,

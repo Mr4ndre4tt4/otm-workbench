@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.models import Asset, AssetClassification, AssetLink, AssetVersion, AuditLog, DomainEvent, User
 from otm_workbench.modules.assets.classifications import seed_asset_classifications
+from otm_workbench.modules.assets.secret_risk import (
+    assert_global_asset_without_secret_risk,
+    assert_global_content_without_secret_risk,
+)
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 
 
@@ -114,6 +118,7 @@ def create_draft_asset(
     }
     for field_name, classification_type in CLASSIFICATION_FIELDS.items():
         ensure_classification(db, classification_type, normalized[field_name])
+    assert_global_asset_without_secret_risk(normalized["scope_type"], payload)
 
     raw_tags = payload.get("tags") or []
     tags = [str(tag).strip().upper() for tag in raw_tags if str(tag).strip()]
@@ -243,6 +248,18 @@ def update_asset_metadata(
         "otm_table_name",
         "tags",
     }
+    candidate_payload = {
+        "name": asset.name,
+        "description": asset.description,
+        "scope_type": asset.scope_type,
+        "module_id": asset.module_id,
+        "macro_object_code": asset.macro_object_code,
+        "otm_table_name": asset.otm_table_name,
+        "tags": parse_tags(asset.tags_json),
+        **payload,
+    }
+    assert_global_asset_without_secret_risk(str(candidate_payload.get("scope_type") or ""), candidate_payload)
+
     changed_fields: list[str] = []
     for field_name, value in payload.items():
         if field_name not in allowed_fields or value is None:
@@ -319,6 +336,7 @@ def upload_asset_version(
     content: bytes,
     uploaded_by: str,
 ) -> AssetVersion:
+    assert_global_content_without_secret_risk(asset.scope_type, content)
     version_number = next_version_number(db, asset.id)
     storage_dir = artifact_root / "assets" / asset.id / "versions" / f"{version_number:04d}_{utc_timestamp()}"
     storage_dir.mkdir(parents=True, exist_ok=True)

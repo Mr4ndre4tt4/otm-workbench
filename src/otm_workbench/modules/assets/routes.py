@@ -83,6 +83,8 @@ def create_asset(
     try:
         asset = create_draft_asset(db, payload=payload.model_dump(), user=user)
     except ValueError as exc:
+        if "secret-like" in str(exc):
+            raise api_error(400, "ASSET_SECRET_RISK", str(exc)) from exc
         raise api_error(400, "ASSET_CLASSIFICATION_INVALID", str(exc)) from exc
     return serialize_asset(asset)
 
@@ -152,6 +154,8 @@ def patch_asset(
             updated_by=user.email,
         )
     except ValueError as exc:
+        if "secret-like" in str(exc):
+            raise api_error(400, "ASSET_SECRET_RISK", str(exc)) from exc
         raise api_error(400, "ASSET_METADATA_INVALID", str(exc)) from exc
     return serialize_asset(updated)
 
@@ -254,15 +258,20 @@ def upload_asset_file_version(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     content = file.file.read()
-    version = upload_asset_version(
-        db,
-        asset=asset,
-        artifact_root=Path(get_settings().artifact_root),
-        file_name=file.filename or "asset.bin",
-        content_type=file.content_type or "application/octet-stream",
-        content=content,
-        uploaded_by=user.email,
-    )
+    try:
+        version = upload_asset_version(
+            db,
+            asset=asset,
+            artifact_root=Path(get_settings().artifact_root),
+            file_name=file.filename or "asset.bin",
+            content_type=file.content_type or "application/octet-stream",
+            content=content,
+            uploaded_by=user.email,
+        )
+    except ValueError as exc:
+        if "secret-like" in str(exc):
+            raise api_error(400, "ASSET_SECRET_RISK", str(exc)) from exc
+        raise
     return serialize_asset_version(version)
 
 
