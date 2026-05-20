@@ -15,6 +15,7 @@ from otm_workbench.modules.integration_mapping.payload_artifacts import (
     import_payload_artifact,
     serialize_payload_artifact,
 )
+from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.systems import (
     create_integration_endpoint,
     create_integration_system,
@@ -228,3 +229,35 @@ def list_payload_artifacts(
     )
     items = [serialize_payload_artifact(payload_artifact, artifact) for payload_artifact, artifact in rows]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/payload-artifacts/{payload_artifact_id}/parse-schema-tree")
+def parse_payload_artifact_schema(
+    payload_artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    payload_artifact = db.get(IntegrationPayloadArtifact, payload_artifact_id)
+    if payload_artifact is None:
+        raise api_error(
+            404,
+            "INTEGRATION_PAYLOAD_ARTIFACT_NOT_FOUND",
+            "Integration payload artifact not found.",
+        )
+    artifact = db.get(Artifact, payload_artifact.artifact_id)
+    if artifact is None:
+        raise api_error(404, "ARTIFACT_NOT_FOUND", "Artifact not found.")
+    try:
+        tree = parse_payload_artifact_schema_tree(artifact.file_path, payload_artifact.payload_format)
+    except ValueError as exc:
+        raise api_error(
+            400,
+            "INTEGRATION_PAYLOAD_FORMAT_UNSUPPORTED",
+            "Integration payload format must be XML or JSON.",
+        ) from exc
+    return {
+        "payload_artifact_id": payload_artifact.id,
+        "definition_id": payload_artifact.definition_id,
+        "payload_format": payload_artifact.payload_format,
+        "tree": tree,
+    }
