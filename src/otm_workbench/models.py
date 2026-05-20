@@ -294,6 +294,53 @@ class MasterDataCsvFile(Base, TimestampMixin):
     content: Mapped[str] = mapped_column(Text, default="")
 
 
+class MasterDataCoordinateQualityBatch(Base, TimestampMixin):
+    __tablename__ = "master_data_coordinate_quality_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    source_type: Mapped[str] = mapped_column(String, default="api")
+    source_batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="PROCESSED", index=True)
+    geocoder_base_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    provider_mode: Mapped[str] = mapped_column(String, default="fake")
+    total_count: Mapped[int] = mapped_column(Integer, default=0)
+    processed_count: Mapped[int] = mapped_column(Integer, default=0)
+    ok_count: Mapped[int] = mapped_column(Integer, default=0)
+    corrected_count: Mapped[int] = mapped_column(Integer, default=0)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
+    divergent_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    input_json: Mapped[str] = mapped_column(Text, default="[]")
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    issues_json: Mapped[str] = mapped_column(Text, default="[]")
+
+
+class MasterDataCoordinateQualityResult(Base, TimestampMixin):
+    __tablename__ = "master_data_coordinate_quality_results"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(
+        ForeignKey("master_data_coordinate_quality_batches.id"), index=True
+    )
+    location_gid: Mapped[str] = mapped_column(String, index=True)
+    location_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    address_json: Mapped[str] = mapped_column(Text, default="{}")
+    country_code3_gid: Mapped[str | None] = mapped_column(String, nullable=True)
+    province_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    lat_orig: Mapped[str | None] = mapped_column(String, nullable=True)
+    lon_orig: Mapped[str | None] = mapped_column(String, nullable=True)
+    lat_new: Mapped[str | None] = mapped_column(String, nullable=True)
+    lon_new: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, index=True)
+    source: Mapped[str | None] = mapped_column(String, nullable=True)
+    diff_lat: Mapped[str | None] = mapped_column(String, nullable=True)
+    diff_lon: Mapped[str | None] = mapped_column(String, nullable=True)
+    orig_valid_uf: Mapped[bool] = mapped_column(Boolean, default=False)
+    new_valid_uf: Mapped[bool] = mapped_column(Boolean, default=False)
+    issue_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
 class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 
