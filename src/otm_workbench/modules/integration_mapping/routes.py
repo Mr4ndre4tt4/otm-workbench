@@ -29,6 +29,7 @@ from otm_workbench.modules.integration_mapping.payload_artifacts import (
     serialize_payload_artifact,
 )
 from otm_workbench.modules.integration_mapping.preview import build_integration_preview
+from otm_workbench.modules.integration_mapping.spec_generator import generate_integration_markdown_spec
 from otm_workbench.modules.integration_mapping.mappings import (
     create_integration_mapping,
     serialize_integration_mapping,
@@ -241,6 +242,32 @@ def preview_definition(
             {"issue_count": validation["issue_count"], "issues": validation["issues"]},
         )
     return build_integration_preview(
+        db,
+        definition=definition,
+        validation=validation,
+        artifact_root=get_settings().artifact_root,
+        created_by=user.email,
+    )
+
+
+@router.post("/definitions/{definition_id}/generate-spec")
+def generate_definition_spec(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    validation = validate_integration_definition(db, definition)
+    if not validation["is_valid"]:
+        raise api_error(
+            409,
+            "INTEGRATION_SPEC_VALIDATION_FAILED",
+            "Integration Mapping definition must pass validation before spec generation.",
+            {"issue_count": validation["issue_count"], "issues": validation["issues"]},
+        )
+    return generate_integration_markdown_spec(
         db,
         definition=definition,
         validation=validation,
