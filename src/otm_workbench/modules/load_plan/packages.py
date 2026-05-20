@@ -7,6 +7,9 @@ from otm_workbench.models import (
     DomainEvent,
     Evidence,
     LoadPlanPackage,
+    MasterDataBatch,
+    MasterDataCsvFile,
+    MasterDataTemplate,
     RateBatch,
     RateBatchTable,
     utcnow,
@@ -63,6 +66,17 @@ def existing_rates_package(db: Session, batch_id: str) -> LoadPlanPackage | None
     )
 
 
+def existing_master_data_package(db: Session, batch_id: str) -> LoadPlanPackage | None:
+    return (
+        db.query(LoadPlanPackage)
+        .filter(LoadPlanPackage.source_module == "master_data")
+        .filter(LoadPlanPackage.source_entity_type == "master_data_batch")
+        .filter(LoadPlanPackage.source_entity_id == batch_id)
+        .order_by(LoadPlanPackage.created_at.desc())
+        .first()
+    )
+
+
 def latest_rates_export_evidence(db: Session, batch_id: str) -> Evidence | None:
     export_evidence = list_batch_export_evidence(db, batch_id)
     if not export_evidence:
@@ -71,6 +85,23 @@ def latest_rates_export_evidence(db: Session, batch_id: str) -> Evidence | None:
     if not latest.artifact_id or not latest.manifest_id:
         return None
     return latest
+
+
+def latest_master_data_export_evidence(db: Session, batch_id: str) -> Evidence | None:
+    export_evidence = (
+        db.query(Evidence)
+        .filter(Evidence.source_module == "master_data")
+        .filter(Evidence.evidence_type == "master_data_csv_export")
+        .order_by(Evidence.created_at.desc())
+        .all()
+    )
+    for evidence in export_evidence:
+        if not evidence.artifact_id or not evidence.manifest_id:
+            continue
+        summary = parse_json_object(evidence.summary_json)
+        if summary.get("source_entity_type") == "master_data_batch" and summary.get("source_entity_id") == batch_id:
+            return evidence
+    return None
 
 
 def load_sequence_for_batch(db: Session, batch_id: str) -> list[dict[str, object]]:
@@ -89,6 +120,32 @@ def load_sequence_for_batch(db: Session, batch_id: str) -> list[dict[str, object
         }
         for table in tables
     ]
+
+
+def load_sequence_for_master_data_batch(db: Session, batch_id: str) -> list[dict[str, object]]:
+    csv_files = (
+        db.query(MasterDataCsvFile)
+        .filter(MasterDataCsvFile.batch_id == batch_id)
+        .order_by(MasterDataCsvFile.file_name)
+        .all()
+    )
+    return [
+        {
+            "position": index,
+            "table_name": csv_file.table_name,
+            "row_count": csv_file.row_count,
+            "requirement_level": "REQUIRED",
+        }
+        for index, csv_file in enumerate(csv_files, start=1)
+    ]
+
+
+def catalog_context_for_master_data_template(template: MasterDataTemplate) -> dict[str, object]:
+    macro_object_code = template.catalog_macro_object_code
+    return {
+        "catalog_macro_object_code": macro_object_code,
+        "catalog_load_plan_path": f"/api/v1/catalog/macro-objects/{macro_object_code}/load-plan",
+    }
 
 
 def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) -> LoadPlanPackage:
@@ -209,6 +266,129 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
                     "source_module": "rates",
                     "source_entity_id": batch.id,
                     "package_type": "rates_csv_zip",
+                    "status": "REGISTERED",
+                    **catalog_context,
+                },
+                sort_keys=True,
+            ),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    db.refresh(package)
+    return package
+
+
+def register_master_data_package(db: Session, *, batch: MasterDataBatch, created_by: str) -> LoadPlanPackage:
+    existing = existing_master_data_package(db, batch.id)
+    if existing:
+        return existing
+    if batch.status != "EXPORTED":
+        raise ValueError("Master Data batch must be exported before Load Plan package intake.")
+
+    export_evidence = latest_master_data_export_evidence(db, batch.id)
+    if export_evidence is None:
+        raise ValueError("Master Data batch must have a CSV export artifact before Load Plan package intake.")
+
+    template = (
+        db.query(MasterDataTemplate)
+        .filter(MasterDataTemplate.code == batch.template_code)
+        .first()
+    )
+    if template is None:
+        raise ValueError("Master Data template is required before Load Plan package intake.")
+
+    load_sequence = load_sequence_for_master_data_batch(db, batch.id)
+    table_count = len(load_sequence)
+    row_count = sum(int(item["row_count"]) for item in load_sequence)
+    if table_count == 0 or row_count == 0:
+        raise ValueError("Master Data batch must have CSV files before Load Plan package intake.")
+
+    catalog_context = catalog_context_for_master_data_template(template)
+    summary = {
+        "source_module": "master_data",
+        "source_batch_id": batch.id,
+        "template_code": batch.template_code,
+        **catalog_context,
+        "source_status": batch.status,
+        "package_type": "master_data_csv_zip",
+        "table_count": table_count,
+        "row_count": row_count,
+        "has_export_artifact": True,
+        "has_approval_evidence": False,
+    }
+    package = LoadPlanPackage(
+        source_module="master_data",
+        source_entity_type="master_data_batch",
+        source_entity_id=batch.id,
+        package_type="master_data_csv_zip",
+        status="REGISTERED",
+        artifact_id=export_evidence.artifact_id,
+        manifest_id=export_evidence.manifest_id,
+        load_sequence_json=json.dumps(load_sequence, sort_keys=True),
+        summary_json=json.dumps(summary, sort_keys=True),
+        created_by=created_by,
+        registered_at=utcnow(),
+    )
+    db.add(package)
+    db.flush()
+
+    evidence_summary = {
+        "source_entity_type": "load_plan_package",
+        "source_entity_id": package.id,
+        "upstream_source_module": "master_data",
+        "upstream_entity_type": "master_data_batch",
+        "upstream_entity_id": batch.id,
+        **catalog_context,
+        "package_type": "master_data_csv_zip",
+        "artifact_id": export_evidence.artifact_id,
+        "manifest_id": export_evidence.manifest_id,
+        "table_count": table_count,
+        "row_count": row_count,
+    }
+    intake_evidence = Evidence(
+        source_module="load_plan",
+        evidence_type="load_plan_package_intake",
+        summary_json=json.dumps(evidence_summary, sort_keys=True),
+        artifact_id=export_evidence.artifact_id,
+        manifest_id=export_evidence.manifest_id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(intake_evidence)
+    db.flush()
+
+    package.evidence_id = intake_evidence.id
+    db.add(
+        AuditLog(
+            actor_user_id=created_by,
+            action="load_plan.package.register_from_master_data",
+            target_type="load_plan_package",
+            target_id=package.id,
+            metadata_json=json.dumps(
+                {
+                    "source_module": "master_data",
+                    "source_entity_id": batch.id,
+                    "artifact_id": export_evidence.artifact_id,
+                    "manifest_id": export_evidence.manifest_id,
+                    "evidence_id": intake_evidence.id,
+                    **catalog_context,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="load_plan.package.registered",
+            source_module="load_plan",
+            aggregate_type="load_plan_package",
+            aggregate_id=package.id,
+            payload_json=json.dumps(
+                {
+                    "source_module": "master_data",
+                    "source_entity_id": batch.id,
+                    "package_type": "master_data_csv_zip",
                     "status": "REGISTERED",
                     **catalog_context,
                 },

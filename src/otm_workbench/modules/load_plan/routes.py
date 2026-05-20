@@ -16,6 +16,7 @@ from otm_workbench.models import (
     LoadPlanReviewItem,
     LoadPlanSequenceSnapshot,
     LoadPlanZipAnalysis,
+    MasterDataBatch,
     RateBatch,
     User,
 )
@@ -27,6 +28,7 @@ from otm_workbench.modules.load_plan.cutover_handoff import (
 )
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
+    register_master_data_package,
     register_rates_package,
     serialize_load_plan_package,
 )
@@ -54,7 +56,7 @@ from otm_workbench.modules.load_plan.sequence import (
 from otm_workbench.modules.load_plan.zip_analysis import generate_zip_analysis, serialize_zip_analysis
 
 router = APIRouter(prefix="/api/v1/modules/load-plan", tags=["load-plan"])
-SUPPORTED_CATALOG_MACRO_OBJECTS = {"RATE_RECORD"}
+SUPPORTED_CATALOG_MACRO_OBJECTS = {"ITEM", "LOCATION", "RATE_RECORD", "REGION"}
 UNSUPPORTED_CATALOG_CODE = "UNSUPPORTED_CATALOG_MACRO_OBJECT"
 UNSUPPORTED_CATALOG_MESSAGE = "Catalog macro-object is outside the Load Plan package scope."
 
@@ -108,6 +110,22 @@ def register_load_plan_package_from_rates(
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     try:
         package = register_rates_package(db, batch=batch, created_by=user.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_load_plan_package(package)
+
+
+@router.post("/packages/from-master-data/{batch_id}")
+def register_load_plan_package_from_master_data(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Master Data batch not found.")
+    try:
+        package = register_master_data_package(db, batch=batch, created_by=user.email)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_load_plan_package(package)
