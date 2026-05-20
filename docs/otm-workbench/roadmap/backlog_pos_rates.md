@@ -708,10 +708,10 @@ transformacoes e refnums sem editar codigo.
 ### Primeiro recorte recomendado
 
 ```text
-1. Registrar modulo order-release-generator.
-2. Criar health endpoint.
-3. Persistir templates versionados.
-4. Criar seed sintetico TL Order Release.
+1. Registrar modulo order-release-generator. [ENTREGUE primeira fatia backend OTM-32]
+2. Criar health endpoint. [ENTREGUE primeira fatia backend OTM-32]
+3. Persistir templates versionados. [ENTREGUE primeira fatia backend OTM-32]
+4. Criar seed sintetico TL Order Release. [ENTREGUE primeira fatia backend OTM-32]
 5. Criar batch e rows normalizados.
 6. Validar colunas obrigatorias e agrupamento por release_gid.
 7. Gerar preview XML com fixture sintetica.
