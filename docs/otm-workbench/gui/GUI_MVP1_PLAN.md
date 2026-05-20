@@ -487,6 +487,13 @@ Before implementing full GUI screens, confirm or add contracts for:
 
 Do not solve these by frontend guesses.
 
+Delivered follow-up contracts:
+
+```text
+- GET /api/v1/platform/project-cockpit/summary
+  documented in GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md
+```
+
 ## 12. Implementation Order
 
 Recommended order:

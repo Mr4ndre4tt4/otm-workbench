@@ -156,6 +156,186 @@ def project_setup_status_payload(db: Session, project_id: str, user: User) -> di
     }
 
 
+def available_action(
+    *,
+    key: str,
+    label: str,
+    method: str,
+    href: str,
+    icon_key: str,
+    disabled: bool = False,
+    disabled_reason: str | None = None,
+    variant: str = "secondary",
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": method,
+        "href": href,
+        "variant": variant,
+        "icon_key": icon_key,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "requires_confirmation": False,
+    }
+
+
+def module_summary_payload(db: Session, user: User) -> dict[str, object]:
+    items = navigation_items(db, user)
+    counts_by_status: dict[str, int] = {}
+    for item in items:
+        status = item["status"]
+        counts_by_status[status] = counts_by_status.get(status, 0) + 1
+    return {
+        "total": len(items),
+        "counts_by_status": counts_by_status,
+        "items": items,
+    }
+
+
+def serialize_cockpit_job(job: Job) -> dict[str, object]:
+    return {
+        "id": job.id,
+        "job_type": job.job_type,
+        "source_module": job.source_module,
+        "project_id": job.project_id,
+        "profile_id": job.profile_id,
+        "environment_id": job.environment_id,
+        "domain_name": job.domain_name,
+        "status": job.status,
+        "progress": job.progress,
+        "message": job.message,
+        "input_present": bool(parse_json_object(job.input_json)),
+        "result_present": bool(parse_json_object(job.result_json)),
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+    }
+
+
+def serialize_cockpit_artifact(artifact: Artifact) -> dict[str, object]:
+    return {
+        "id": artifact.id,
+        "project_id": artifact.project_id,
+        "source_module": artifact.source_module,
+        "artifact_type": artifact.artifact_type,
+        "file_name": artifact.file_name,
+        "content_type": artifact.content_type,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "sensitivity_level": artifact.sensitivity_level,
+        "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
+    }
+
+
+def client_safe_evidence_summary(evidence: Evidence) -> dict[str, object]:
+    summary = parse_json_object(evidence.summary_json)
+    safe_keys = {
+        "status",
+        "readiness_status",
+        "decision_status",
+        "package_type",
+        "artifact_type",
+        "source_module",
+        "error_count",
+        "warning_count",
+        "blocker_count",
+        "row_count",
+        "table_count",
+        "file_count",
+    }
+    return {key: value for key, value in summary.items() if key in safe_keys}
+
+
+def serialize_cockpit_evidence(evidence: Evidence) -> dict[str, object]:
+    return {
+        "id": evidence.id,
+        "project_id": evidence.project_id,
+        "source_module": evidence.source_module,
+        "evidence_type": evidence.evidence_type,
+        "status": evidence.status,
+        "summary": client_safe_evidence_summary(evidence),
+        "artifact_id": evidence.artifact_id,
+        "manifest_id": evidence.manifest_id,
+        "client_safe": evidence.client_safe,
+        "sensitivity_level": evidence.sensitivity_level,
+        "created_at": evidence.created_at.isoformat() if evidence.created_at else None,
+    }
+
+
+def filter_by_active_project(query, model, project_id: str | None):
+    if project_id:
+        return query.filter(model.project_id == project_id)
+    return query
+
+
+def project_cockpit_summary_payload(db: Session, user: User) -> dict[str, object]:
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    active_context_payload = serialize_active_context(active_context, user)
+    project_id = active_context.project_id if active_context else None
+    setup_status = project_setup_status_payload(db, project_id, user) if project_id else None
+    recent_jobs = []
+    recent_artifacts = []
+    recent_evidence = []
+    if project_id:
+        recent_jobs = (
+            filter_by_active_project(db.query(Job), Job, project_id).order_by(Job.created_at.desc()).limit(5).all()
+        )
+        recent_artifacts = (
+            filter_by_active_project(db.query(Artifact), Artifact, project_id)
+            .order_by(Artifact.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        recent_evidence = (
+            filter_by_active_project(db.query(Evidence).filter(Evidence.client_safe.is_(True)), Evidence, project_id)
+            .order_by(Evidence.created_at.desc())
+            .limit(5)
+            .all()
+        )
+    status = "ready" if setup_status and setup_status["status"] == "READY" else "needs_context"
+    return {
+        "module_id": "home",
+        "title": "Project Cockpit",
+        "status": status,
+        "description": "Project-level operational overview for the active OTM workbench context.",
+        "active_context": active_context_payload,
+        "setup_status": setup_status,
+        "counts": {
+            "recent_jobs": len(recent_jobs),
+            "recent_artifacts": len(recent_artifacts),
+            "recent_evidence": len(recent_evidence),
+        },
+        "module_summary": module_summary_payload(db, user),
+        "recent_jobs": [serialize_cockpit_job(job) for job in recent_jobs],
+        "recent_artifacts": [serialize_cockpit_artifact(artifact) for artifact in recent_artifacts],
+        "recent_evidence": [serialize_cockpit_evidence(evidence) for evidence in recent_evidence],
+        "available_actions": [
+            available_action(
+                key="set_active_context",
+                label="Set active context",
+                method="POST",
+                href="/api/v1/platform/active-context",
+                icon_key="context",
+                variant="primary",
+            ),
+            available_action(
+                key="view_jobs",
+                label="View jobs",
+                method="GET",
+                href="/api/v1/platform/jobs",
+                icon_key="activity",
+            ),
+            available_action(
+                key="view_evidence",
+                label="View evidence",
+                method="GET",
+                href="/api/v1/evidence-hub/evidence",
+                icon_key="evidence",
+            ),
+        ],
+    }
+
+
 def effective_capabilities_payload(db: Session, user: User) -> dict[str, object]:
     active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
     project_id = active_context.project_id if active_context else None
@@ -378,6 +558,14 @@ def set_active_context(
     db.refresh(context)
     write_audit(db, user, "active_context.update", "active_context", context.id)
     return serialize_active_context(context, user)
+
+
+@router.get("/project-cockpit/summary")
+def get_project_cockpit_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return project_cockpit_summary_payload(db, user)
 
 
 @router.get("/modules", response_model=PageResponse[ModuleResponse])
