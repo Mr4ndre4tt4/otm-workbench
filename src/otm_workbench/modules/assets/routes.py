@@ -92,6 +92,11 @@ def list_assets(
     asset_type: str | None = None,
     category: str | None = None,
     status: str | None = None,
+    scope_type: str | None = None,
+    tag: str | None = None,
+    module_id: str | None = None,
+    macro_object_code: str | None = None,
+    otm_table_name: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -102,6 +107,16 @@ def list_assets(
         query = query.filter(Asset.category == category.strip().upper())
     if status:
         query = query.filter(Asset.status == status.strip().upper())
+    if scope_type:
+        query = query.filter(Asset.scope_type == scope_type.strip().upper())
+    if tag:
+        query = query.filter(Asset.tags_json.contains(f'"{tag.strip().upper()}"'))
+    if module_id:
+        query = query.filter(Asset.module_id == module_id.strip())
+    if macro_object_code:
+        query = query.filter(Asset.macro_object_code == macro_object_code.strip().upper())
+    if otm_table_name:
+        query = query.filter(Asset.otm_table_name == otm_table_name.strip().upper())
     assets = query.order_by(Asset.created_at.desc()).all()
     items = [serialize_asset(asset) for asset in assets]
     return PageResponse(items=items, total=len(items))
