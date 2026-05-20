@@ -306,6 +306,32 @@ class OrderReleaseTemplate(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class OrderReleaseBatch(Base, TimestampMixin):
+    __tablename__ = "order_release_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    template_id: Mapped[str] = mapped_column(ForeignKey("order_release_templates.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="PARSED", index=True)
+    file_name: Mapped[str] = mapped_column(String)
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    release_count: Mapped[int] = mapped_column(Integer, default=0)
+    issue_count: Mapped[int] = mapped_column(Integer, default=0)
+    summary_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class OrderReleaseBatchRow(Base, TimestampMixin):
+    __tablename__ = "order_release_batch_rows"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("order_release_batches.id"), index=True)
+    row_number: Mapped[int] = mapped_column(Integer, index=True)
+    release_gid: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="VALID", index=True)
+    normalized_json: Mapped[str] = mapped_column(Text, default="{}")
+    issues_json: Mapped[str] = mapped_column(Text, default="[]")
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
