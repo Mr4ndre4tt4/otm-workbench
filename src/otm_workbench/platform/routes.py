@@ -93,6 +93,25 @@ class IdNameResponse(BaseModel):
     name: str
 
 
+class ProjectSelectorResponse(BaseModel):
+    id: str
+    name: str
+    workspace_id: str
+
+
+class ProfileSelectorResponse(BaseModel):
+    id: str
+    name: str
+    project_id: str
+
+
+class EnvironmentSelectorResponse(BaseModel):
+    id: str
+    name: str
+    project_id: str
+    environment_type: str
+
+
 class ModuleResponse(BaseModel):
     id: str
     display_name: str
@@ -296,6 +315,22 @@ def create_project(
     return IdNameResponse(id=project.id, name=project.name)
 
 
+@router.get("/projects", response_model=PageResponse[ProjectSelectorResponse])
+def list_projects(
+    workspace_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[ProjectSelectorResponse]:
+    query = db.query(Project).order_by(Project.name)
+    if workspace_id:
+        query = query.filter(Project.workspace_id == workspace_id)
+    items = [
+        ProjectSelectorResponse(id=item.id, name=item.name, workspace_id=item.workspace_id)
+        for item in query.all()
+    ]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.get("/projects/{project_id}/setup-status")
 def get_project_setup_status(
     project_id: str,
@@ -318,6 +353,22 @@ def create_profile(
     return IdNameResponse(id=profile.id, name=profile.name)
 
 
+@router.get("/profiles", response_model=PageResponse[ProfileSelectorResponse])
+def list_profiles(
+    project_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[ProfileSelectorResponse]:
+    query = db.query(Profile).order_by(Profile.name)
+    if project_id:
+        query = query.filter(Profile.project_id == project_id)
+    items = [
+        ProfileSelectorResponse(id=item.id, name=item.name, project_id=item.project_id)
+        for item in query.all()
+    ]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.post("/environments", response_model=IdNameResponse)
 def create_environment(
     payload: EnvironmentCreate,
@@ -333,6 +384,27 @@ def create_environment(
     db.commit()
     db.refresh(environment)
     return IdNameResponse(id=environment.id, name=environment.name)
+
+
+@router.get("/environments", response_model=PageResponse[EnvironmentSelectorResponse])
+def list_environments(
+    project_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[EnvironmentSelectorResponse]:
+    query = db.query(Environment).order_by(Environment.name)
+    if project_id:
+        query = query.filter(Environment.project_id == project_id)
+    items = [
+        EnvironmentSelectorResponse(
+            id=item.id,
+            name=item.name,
+            project_id=item.project_id,
+            environment_type=item.environment_type,
+        )
+        for item in query.all()
+    ]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/active-context")

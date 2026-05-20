@@ -37,6 +37,80 @@ def test_workspace_list_requires_authentication(client):
     assert response.status_code == 401
 
 
+def test_context_selector_lists_projects_profiles_and_environments(client, admin_header):
+    workspace_a = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local A"},
+        headers=admin_header,
+    ).json()
+    workspace_b = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local B"},
+        headers=admin_header,
+    ).json()
+    project_a = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace_a["id"], "name": "Synthetic Rollout A"},
+        headers=admin_header,
+    ).json()
+    project_b = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace_b["id"], "name": "Synthetic Rollout B"},
+        headers=admin_header,
+    ).json()
+    profile = client.post(
+        "/api/v1/platform/profiles",
+        json={"project_id": project_a["id"], "name": "Default"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project_a["id"], "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+
+    projects = client.get(
+        f"/api/v1/platform/projects?workspace_id={workspace_a['id']}",
+        headers=admin_header,
+    )
+    profiles = client.get(
+        f"/api/v1/platform/profiles?project_id={project_a['id']}",
+        headers=admin_header,
+    )
+    environments = client.get(
+        f"/api/v1/platform/environments?project_id={project_a['id']}",
+        headers=admin_header,
+    )
+
+    assert projects.status_code == 200
+    assert profiles.status_code == 200
+    assert environments.status_code == 200
+    assert projects.json()["total"] == 1
+    assert projects.json()["items"][0] == {
+        "id": project_a["id"],
+        "name": "Synthetic Rollout A",
+        "workspace_id": workspace_a["id"],
+    }
+    assert project_b["id"] not in [item["id"] for item in projects.json()["items"]]
+    assert profiles.json()["items"] == [
+        {"id": profile["id"], "name": "Default", "project_id": project_a["id"]}
+    ]
+    assert environments.json()["items"] == [
+        {
+            "id": environment["id"],
+            "name": "DEV",
+            "project_id": project_a["id"],
+            "environment_type": "DEV",
+        }
+    ]
+
+
+def test_context_selector_lists_require_authentication(client):
+    assert client.get("/api/v1/platform/projects").status_code == 401
+    assert client.get("/api/v1/platform/profiles").status_code == 401
+    assert client.get("/api/v1/platform/environments").status_code == 401
+
+
 def test_active_context_defaults_to_public_domain_without_selection(client, admin_header):
     response = client.get("/api/v1/platform/active-context", headers=admin_header)
 
