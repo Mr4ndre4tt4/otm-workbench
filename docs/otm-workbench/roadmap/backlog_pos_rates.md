@@ -716,7 +716,7 @@ transformacoes e refnums sem editar codigo.
 6. Validar colunas obrigatorias e agrupamento por release_gid. [ENTREGUE primeira fatia backend OTM-33]
 7. Gerar preview XML com fixture sintetica. [ENTREGUE primeira fatia backend OTM-34]
 8. Persistir XML/db.xml como artifact. [ENTREGUE primeira fatia backend OTM-35]
-9. Criar evidence client-safe.
+9. Criar evidence client-safe. [ENTREGUE primeira fatia backend OTM-36]
 10. Integrar preview/generate com Jobs.
 11. Deixar submit OTM bloqueado/guarded no MVP0 sem capability/conexao.
 ```
