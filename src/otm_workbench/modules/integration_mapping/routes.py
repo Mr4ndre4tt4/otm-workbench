@@ -10,6 +10,7 @@ from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
     IntegrationEndpoint,
+    IntegrationLoopDefinition,
     IntegrationMapping,
     IntegrationPayloadArtifact,
     IntegrationSchemaDocument,
@@ -28,6 +29,10 @@ from otm_workbench.modules.integration_mapping.payload_artifacts import (
 from otm_workbench.modules.integration_mapping.mappings import (
     create_integration_mapping,
     serialize_integration_mapping,
+)
+from otm_workbench.modules.integration_mapping.loops import (
+    create_integration_loop_definition,
+    serialize_integration_loop_definition,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.schema_documents import (
@@ -99,6 +104,16 @@ class IntegrationMappingCreateRequest(BaseModel):
     source_path: str
     target_path: str
     transform_type: str = "DIRECT"
+    description: str = ""
+    sequence_index: int = 0
+
+
+class IntegrationLoopDefinitionCreateRequest(BaseModel):
+    source_schema_document_id: str
+    target_schema_document_id: str
+    source_collection_path: str
+    target_collection_path: str
+    name: str
     description: str = ""
     sequence_index: int = 0
 
@@ -426,3 +441,61 @@ def get_mapping(
     if mapping is None:
         raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
     return serialize_integration_mapping(mapping)
+
+
+@router.post("/definitions/{definition_id}/loops")
+def create_loop_definition(
+    definition_id: str,
+    payload: IntegrationLoopDefinitionCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        loop = create_integration_loop_definition(db, definition=definition, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if "schema_document_invalid" in str(exc):
+            raise api_error(
+                400,
+                "INTEGRATION_LOOP_SCHEMA_DOCUMENT_INVALID",
+                "Loop schema documents must belong to the Integration Definition.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_LOOP_PATH_INVALID",
+            "Loop source_collection_path and target_collection_path must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_loop_definition(loop)
+
+
+@router.get("/definitions/{definition_id}/loops")
+def list_loop_definitions(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    loops = (
+        db.query(IntegrationLoopDefinition)
+        .filter(IntegrationLoopDefinition.definition_id == definition.id)
+        .order_by(IntegrationLoopDefinition.sequence_index, IntegrationLoopDefinition.created_at)
+        .all()
+    )
+    items = [serialize_integration_loop_definition(loop) for loop in loops]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/loops/{loop_id}")
+def get_loop_definition(
+    loop_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    loop = db.get(IntegrationLoopDefinition, loop_id)
+    if loop is None:
+        raise api_error(404, "INTEGRATION_LOOP_NOT_FOUND", "Integration loop definition not found.")
+    return serialize_integration_loop_definition(loop)
