@@ -279,6 +279,17 @@ class AssetVersion(Base, TimestampMixin):
     uploaded_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class AssetLink(Base, TimestampMixin):
+    __tablename__ = "asset_links"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), index=True)
+    link_type: Mapped[str] = mapped_column(String, index=True)
+    target_id: Mapped[str] = mapped_column(String, index=True)
+    target_label: Mapped[str] = mapped_column(String, default="")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

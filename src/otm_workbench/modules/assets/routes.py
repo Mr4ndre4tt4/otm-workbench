@@ -8,17 +8,20 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import Asset, AssetVersion, User
+from otm_workbench.models import Asset, AssetLink, AssetVersion, User
 from otm_workbench.modules.assets.assets import (
     archive_asset,
+    create_asset_link,
     create_draft_asset,
     record_asset_download,
     serialize_asset,
+    serialize_asset_link,
     serialize_asset_version,
     update_asset_metadata,
     upload_asset_version,
 )
 from otm_workbench.modules.assets.classifications import grouped_asset_classifications
+from otm_workbench.modules.rates.dictionary import load_table_definition
 
 
 router = APIRouter(prefix="/api/v1/modules/assets", tags=["assets"])
@@ -49,6 +52,12 @@ class AssetUpdateRequest(BaseModel):
     macro_object_code: str | None = None
     otm_table_name: str | None = None
     tags: list[str] | None = None
+
+
+class AssetLinkCreateRequest(BaseModel):
+    link_type: str
+    target_id: str
+    target_label: str = ""
 
 
 @router.get("/health")
@@ -142,6 +151,56 @@ def archive_asset_endpoint(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return serialize_asset(archive_asset(db, asset=asset, archived_by=user.email))
+
+
+@router.post("/assets/{asset_id}/links")
+def create_asset_link_endpoint(
+    asset_id: str,
+    payload: AssetLinkCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    link_type = payload.link_type.strip().upper()
+    target_id = payload.target_id.strip()
+    if link_type == "OTM_TABLE":
+        try:
+            load_table_definition(Path(get_settings().otm_data_dictionary_root), target_id)
+        except FileNotFoundError as exc:
+            raise api_error(400, "ASSET_LINK_INVALID_TABLE", "OTM table not found in Data Dictionary.") from exc
+    try:
+        link = create_asset_link(
+            db,
+            asset=asset,
+            link_type=payload.link_type,
+            target_id=target_id,
+            target_label=payload.target_label,
+            created_by=user.email,
+        )
+    except ValueError as exc:
+        raise api_error(400, "ASSET_LINK_INVALID", str(exc)) from exc
+    return serialize_asset_link(link)
+
+
+@router.get("/assets/{asset_id}/links")
+def list_asset_links(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    links = (
+        db.query(AssetLink)
+        .filter(AssetLink.asset_id == asset_id)
+        .order_by(AssetLink.created_at.desc())
+        .all()
+    )
+    items = [serialize_asset_link(link) for link in links]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/assets/{asset_id}/download")
