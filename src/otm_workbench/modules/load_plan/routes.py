@@ -39,6 +39,7 @@ from otm_workbench.modules.load_plan.cutover_checklist import (
     serialize_checklist,
     update_checklist_item,
 )
+from otm_workbench.modules.load_plan.cutover_package import generate_cutover_package_export
 from otm_workbench.modules.load_plan.packages import (
     load_plan_package_summary,
     register_master_data_package,
@@ -268,6 +269,30 @@ def generate_cutover_checklist_readiness(
     if checklist is None:
         raise HTTPException(status_code=404, detail="Cutover checklist not found.")
     return generate_checklist_readiness(db, checklist=checklist, generated_by=user.email)
+
+
+@router.post("/cutover-checklists/{checklist_id}/export-package")
+def export_cutover_checklist_package(
+    checklist_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    try:
+        return generate_cutover_package_export(
+            db,
+            checklist=checklist,
+            package=package,
+            artifact_root=Path(get_settings().artifact_root),
+            exported_by=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/sequence/snapshots")
