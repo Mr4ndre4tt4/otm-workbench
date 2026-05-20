@@ -504,8 +504,8 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 3. Seeds iniciais system-protected. [ENTREGUE primeira fatia backend OTM-23]
 4. APIs de listagem de classificacoes. [ENTREGUE primeira fatia backend OTM-23]
 5. APIs ADMIN/DBA/MASTER para criar tipo e categoria.
-6. Modelo central de asset + asset_versions + asset_files.
-7. Criar asset em DRAFT via API.
+6. Modelo central de asset + asset_versions + asset_files. [INICIADO com modelo central asset OTM-24]
+7. Criar asset em DRAFT via API. [ENTREGUE primeira fatia backend OTM-24]
 8. Upload da primeira versao com SHA256 e size_bytes.
 9. Download da versao atual com audit quando sensivel.
 10. Criar nova versao sem apagar a anterior.
