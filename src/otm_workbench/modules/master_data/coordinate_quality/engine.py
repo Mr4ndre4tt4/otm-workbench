@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from otm_workbench.modules.master_data.coordinate_quality.schemas import (
     CoordinateCandidate,
@@ -6,6 +7,9 @@ from otm_workbench.modules.master_data.coordinate_quality.schemas import (
     CoordinateQualityResult,
     CoordinateQualityStatus,
 )
+
+if TYPE_CHECKING:
+    from otm_workbench.modules.master_data.coordinate_quality.providers import GeocoderProvider
 
 DEFAULT_DIFF_THRESHOLD_DEGREES = 0.5
 
@@ -131,6 +135,13 @@ def classify_coordinate_quality(
             "severity": "INFO" if status == CoordinateQualityStatus.OK else "WARNING",
         },
     )
+
+
+def process_location_record(
+    record: CoordinateQualityRecord,
+    provider: "GeocoderProvider",
+) -> CoordinateQualityResult:
+    return classify_coordinate_quality(record, provider.geocode(record))
 
 
 def _diff(original: float | None, candidate: float | None) -> float | None:

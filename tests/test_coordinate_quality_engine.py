@@ -1,8 +1,10 @@
 from otm_workbench.modules.master_data.coordinate_quality.engine import (
     classify_coordinate_quality,
     normalize_location_record,
+    process_location_record,
     validate_coords,
 )
+from otm_workbench.modules.master_data.coordinate_quality.providers import FakeGeocoderProvider
 from otm_workbench.modules.master_data.coordinate_quality.schemas import (
     CoordinateCandidate,
     CoordinateQualityRecord,
@@ -162,3 +164,25 @@ def test_normalize_location_record_accepts_location_template_payload():
     assert record.country_code3_gid == "BRA"
     assert record.lat == -23.55
     assert record.lon == -46.63
+
+
+def test_process_location_record_uses_fake_provider_candidate():
+    provider = FakeGeocoderProvider(
+        {"SYN.LOC_008": CoordinateCandidate(lat=-23.55, lon=-46.63, source="fake:fixture")}
+    )
+    record = CoordinateQualityRecord(
+        location_gid="SYN.LOC_008",
+        location_name="Synthetic Provider DC",
+        address_line="Rua Teste 123",
+        city="Sao Paulo",
+        province_code="SP",
+        postal_code="01000-000",
+        country_code3_gid="BRA",
+        lat=None,
+        lon=None,
+    )
+
+    result = process_location_record(record, provider)
+
+    assert result.status == CoordinateQualityStatus.NULL_FILLED
+    assert result.source == "fake:fixture"

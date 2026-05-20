@@ -1,7 +1,12 @@
 from otm_workbench.modules.master_data.coordinate_quality.engine import (
     classify_coordinate_quality,
     normalize_location_record,
+    process_location_record,
     validate_coords,
+)
+from otm_workbench.modules.master_data.coordinate_quality.providers import (
+    FakeGeocoderProvider,
+    GeocoderProvider,
 )
 from otm_workbench.modules.master_data.coordinate_quality.schemas import (
     CoordinateCandidate,
@@ -15,7 +20,10 @@ __all__ = [
     "CoordinateQualityRecord",
     "CoordinateQualityResult",
     "CoordinateQualityStatus",
+    "FakeGeocoderProvider",
+    "GeocoderProvider",
     "classify_coordinate_quality",
     "normalize_location_record",
+    "process_location_record",
     "validate_coords",
 ]
