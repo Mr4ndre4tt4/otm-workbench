@@ -633,7 +633,7 @@ Padroes tecnicos confirmados pelos apoios:
 4. Modelo/API de systems/endpoints sem credenciais reais. [ENTREGUE primeira fatia backend OTM-41]
 5. Upload/import de payload XML/JSON como artifact interno. [ENTREGUE primeira fatia backend OTM-42]
 6. Parser simples XML/JSON para schema tree. [ENTREGUE primeira fatia backend OTM-43]
-7. Persistencia de schema documents e schema nodes.
+7. Persistencia de schema documents e schema nodes. [ENTREGUE primeira fatia backend OTM-44]
 8. Mapping CRUD tabular.
 9. Transformation type catalog com seeds controlados.
 10. Loop definition simples para colecoes.
