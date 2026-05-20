@@ -67,6 +67,23 @@ def test_create_draft_asset_rejects_unknown_classification(client, admin_header)
     assert "classification" in response.json()["message"].lower()
 
 
+def test_create_global_asset_rejects_secret_like_metadata(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            scope_type="GLOBAL",
+            description="Synthetic example with password=ChangeMe123!",
+        ),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SECRET_RISK"
+    assert "secret" in payload["message"].lower()
+    assert "ChangeMe123" not in payload["message"]
+
+
 def test_list_and_detail_assets_with_filters(client, admin_header):
     created = client.post(
         "/api/v1/modules/assets/assets",
@@ -213,6 +230,25 @@ def test_update_asset_metadata_rejects_unknown_classification(client, admin_head
 
     assert response.status_code == 400
     assert "classification" in response.json()["message"].lower()
+
+
+def test_update_global_asset_rejects_secret_like_metadata(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(scope_type="PROJECT", description="Synthetic safe metadata."),
+        headers=admin_header,
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"scope_type": "GLOBAL", "description": "Synthetic token=abcd1234abcd1234abcd1234"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SECRET_RISK"
+    assert "abcd1234" not in payload["message"]
 
 
 def test_archive_asset_preserves_record_and_records_audit_event(client, admin_header, db_session):
