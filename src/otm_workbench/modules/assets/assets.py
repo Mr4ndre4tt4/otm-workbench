@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import Asset, AssetClassification, AssetVersion, AuditLog, DomainEvent, User
+from otm_workbench.models import Asset, AssetClassification, AssetLink, AssetVersion, AuditLog, DomainEvent, User
 from otm_workbench.modules.assets.classifications import seed_asset_classifications
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 
@@ -69,6 +69,19 @@ def serialize_asset_version(version: AssetVersion) -> dict[str, object]:
     }
 
 
+def serialize_asset_link(link: AssetLink) -> dict[str, object]:
+    return {
+        "id": link.id,
+        "asset_id": link.asset_id,
+        "link_type": link.link_type,
+        "target_id": link.target_id,
+        "target_label": link.target_label,
+        "created_by": link.created_by,
+        "created_at": link.created_at.isoformat() if link.created_at else None,
+        "updated_at": link.updated_at.isoformat() if link.updated_at else None,
+    }
+
+
 def ensure_classification(db: Session, classification_type: str, code: str) -> None:
     seed_asset_classifications(db)
     classification = (
@@ -80,6 +93,10 @@ def ensure_classification(db: Session, classification_type: str, code: str) -> N
     )
     if classification is None:
         raise ValueError(f"Unknown asset classification: {classification_type}/{code}.")
+
+
+def ensure_link_type(db: Session, link_type: str) -> None:
+    ensure_classification(db, "asset_link_type", link_type)
 
 
 def create_draft_asset(
@@ -397,3 +414,56 @@ def record_asset_download(
         )
     )
     db.commit()
+
+
+def create_asset_link(
+    db: Session,
+    *,
+    asset: Asset,
+    link_type: str,
+    target_id: str,
+    target_label: str,
+    created_by: str,
+) -> AssetLink:
+    normalized_link_type = link_type.strip().upper()
+    normalized_target_id = target_id.strip().upper() if normalized_link_type in {"OTM_TABLE", "MACRO_OBJECT"} else target_id.strip()
+    ensure_link_type(db, normalized_link_type)
+    link = AssetLink(
+        asset_id=asset.id,
+        link_type=normalized_link_type,
+        target_id=normalized_target_id,
+        target_label=target_label.strip(),
+        created_by=created_by,
+    )
+    db.add(link)
+    db.flush()
+    audit_payload = {
+        "asset_id": asset.id,
+        "asset_link_id": link.id,
+        "link_type": link.link_type,
+        "target_id": link.target_id,
+        "target_label": link.target_label,
+    }
+    db.add(
+        AuditLog(
+            actor_user_id=created_by,
+            action="assets.asset_link.create",
+            target_type="asset_link",
+            target_id=link.id,
+            metadata_json=json.dumps(audit_payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="assets.asset_link.created",
+            source_module="assets",
+            project_id=asset.project_id,
+            aggregate_type="asset_link",
+            aggregate_id=link.id,
+            payload_json=json.dumps(audit_payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+    db.commit()
+    db.refresh(link)
+    return link
