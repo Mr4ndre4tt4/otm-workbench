@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import OrderReleaseTemplate, User
+from otm_workbench.dependencies import api_error, get_db, require_user
+from otm_workbench.models import OrderReleaseBatch, OrderReleaseBatchRow, OrderReleaseTemplate, User
+from otm_workbench.modules.order_release_generator.batches import (
+    create_order_release_batch,
+    serialize_order_release_batch,
+)
 from otm_workbench.modules.order_release_generator.templates import (
     seed_order_release_templates,
     serialize_order_release_template,
@@ -11,6 +16,12 @@ from otm_workbench.modules.order_release_generator.templates import (
 
 
 router = APIRouter(prefix="/api/v1/modules/order-release-generator", tags=["order-release-generator"])
+
+
+class OrderReleaseBatchCreateRequest(BaseModel):
+    template_id: str
+    file_name: str
+    rows: list[dict[str, object]]
 
 
 @router.get("/health")
@@ -31,3 +42,46 @@ def list_order_release_templates(
     )
     items = [serialize_order_release_template(template) for template in templates]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/batches")
+def create_batch(
+    payload: OrderReleaseBatchCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    template = db.get(OrderReleaseTemplate, payload.template_id)
+    if template is None:
+        raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
+    batch = create_order_release_batch(
+        db,
+        template=template,
+        file_name=payload.file_name,
+        rows=payload.rows,
+        created_by=user.email,
+    )
+    rows = (
+        db.query(OrderReleaseBatchRow)
+        .filter(OrderReleaseBatchRow.batch_id == batch.id)
+        .order_by(OrderReleaseBatchRow.row_number)
+        .all()
+    )
+    return serialize_order_release_batch(batch, rows)
+
+
+@router.get("/batches/{batch_id}")
+def get_batch(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = db.get(OrderReleaseBatch, batch_id)
+    if batch is None:
+        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    rows = (
+        db.query(OrderReleaseBatchRow)
+        .filter(OrderReleaseBatchRow.batch_id == batch.id)
+        .order_by(OrderReleaseBatchRow.row_number)
+        .all()
+    )
+    return serialize_order_release_batch(batch, rows)

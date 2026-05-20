@@ -712,8 +712,8 @@ transformacoes e refnums sem editar codigo.
 2. Criar health endpoint. [ENTREGUE primeira fatia backend OTM-32]
 3. Persistir templates versionados. [ENTREGUE primeira fatia backend OTM-32]
 4. Criar seed sintetico TL Order Release. [ENTREGUE primeira fatia backend OTM-32]
-5. Criar batch e rows normalizados.
-6. Validar colunas obrigatorias e agrupamento por release_gid.
+5. Criar batch e rows normalizados. [ENTREGUE primeira fatia backend OTM-33]
+6. Validar colunas obrigatorias e agrupamento por release_gid. [ENTREGUE primeira fatia backend OTM-33]
 7. Gerar preview XML com fixture sintetica.
 8. Persistir XML/db.xml como artifact.
 9. Criar evidence client-safe.
