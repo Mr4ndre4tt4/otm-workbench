@@ -437,7 +437,8 @@ Data Dictionary/Catalog Core = validacao de tabelas, campos, relacionamentos e b
 8. CSVUTIL a partir de itens selecionados do Cutover Checklist. [ENTREGUE primeira fatia backend OTM-17]
 9. Gate de Cutover Handoff por readiness do Cutover Checklist. [ENTREGUE primeira fatia backend OTM-18]
 10. Parameter set controlado para build CSVUTIL. [ENTREGUE primeira fatia backend OTM-19]
-11. CSVUTIL real, overrides por tabela, Go/No-Go completo e UI. [PENDENTE]
+11. Overrides controlados por tabela para CSVUTIL via Cutover Checklist. [ENTREGUE primeira fatia backend OTM-20]
+12. CSVUTIL real, overrides SQL avancados, Go/No-Go completo e UI. [PENDENTE]
 ```
 
 ---
