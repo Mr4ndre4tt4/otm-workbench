@@ -733,12 +733,13 @@ transformacoes e refnums sem editar codigo.
 4. Migrar Rates para consumir Catalog Core onde reduzir duplicacao.
 5. Endurecer Project / Profile / Admin Foundation para active context, capabilities e domain access.
 6. Implementar Dados Mestres / Template Factory MVP0.
-7. Integrar load packages de Dados Mestres no Load Plan existente.
-8. Implementar Cutover Checklist & CSVUTIL Builder.
-9. Implementar Assets Library MVP0, se a fila ainda exigir biblioteca governada de arquivos reutilizaveis.
-10. Implementar Order Release Generator Pipeline MVP0 se a fila pedir geracao governada de XML/db.xml para testes OTM.
-11. Implementar Integration Mapping Studio MVP0, se a fila pedir especificacao/mapping de integracoes.
-12. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets, Order Release Generator e Integrations.
+7. Implementar Coordinate Quality MVP0 dentro de Dados Mestres para validacao Lat/Lon de Locations, sem UI/exe e sem dependencia obrigatoria de geocoder externo.
+8. Integrar load packages de Dados Mestres no Load Plan existente.
+9. Implementar Cutover Checklist & CSVUTIL Builder.
+10. Implementar Assets Library MVP0, se a fila ainda exigir biblioteca governada de arquivos reutilizaveis.
+11. Implementar Order Release Generator Pipeline MVP0 se a fila pedir geracao governada de XML/db.xml para testes OTM.
+12. Implementar Integration Mapping Studio MVP0, se a fila pedir especificacao/mapping de integracoes.
+13. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets, Order Release Generator e Integrations.
 ```
 
 ---
