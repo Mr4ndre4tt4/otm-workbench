@@ -429,6 +429,19 @@ class IntegrationMapping(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationTransformType(Base, TimestampMixin):
+    __tablename__ = "integration_transform_types"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    requires_expression: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    system_seeded: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

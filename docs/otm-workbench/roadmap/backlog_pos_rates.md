@@ -635,7 +635,7 @@ Padroes tecnicos confirmados pelos apoios:
 6. Parser simples XML/JSON para schema tree. [ENTREGUE primeira fatia backend OTM-43]
 7. Persistencia de schema documents e schema nodes. [ENTREGUE primeira fatia backend OTM-44]
 8. Mapping CRUD tabular. [ENTREGUE primeira fatia backend OTM-45]
-9. Transformation type catalog com seeds controlados.
+9. Transformation type catalog com seeds controlados. [ENTREGUE primeira fatia backend OTM-46]
 10. Loop definition simples para colecoes.
 11. Join rule simples para relacionar estruturas do payload origem.
 12. Lookup definition com mocks, sem chamada real obrigatoria.

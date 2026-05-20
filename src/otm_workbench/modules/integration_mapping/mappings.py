@@ -7,6 +7,10 @@ from otm_workbench.models import (
     IntegrationSchemaNode,
     User,
 )
+from otm_workbench.modules.integration_mapping.transform_types import (
+    normalize_transform_type_code,
+    transform_type_is_active,
+)
 
 
 def schema_document_belongs_to_definition(document: IntegrationSchemaDocument | None, definition_id: str) -> bool:
@@ -47,6 +51,9 @@ def create_integration_mapping(
         raise ValueError("source_path_invalid")
     if not schema_path_exists(db, schema_document_id=target_schema_document_id, path=target_path):
         raise ValueError("target_path_invalid")
+    transform_type = normalize_transform_type_code(payload.get("transform_type"))
+    if not transform_type_is_active(db, transform_type):
+        raise ValueError("transform_type_invalid")
 
     mapping = IntegrationMapping(
         definition_id=definition.id,
@@ -54,7 +61,7 @@ def create_integration_mapping(
         target_schema_document_id=target_schema_document_id,
         source_path=source_path,
         target_path=target_path,
-        transform_type=str(payload.get("transform_type") or "DIRECT").strip().upper(),
+        transform_type=transform_type,
         description=str(payload.get("description") or "").strip(),
         sequence_index=int(payload.get("sequence_index") or 0),
         status="ACTIVE",
