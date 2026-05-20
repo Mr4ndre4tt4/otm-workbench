@@ -332,6 +332,21 @@ class OrderReleaseBatchRow(Base, TimestampMixin):
     issues_json: Mapped[str] = mapped_column(Text, default="[]")
 
 
+class IntegrationDefinition(Base, TimestampMixin):
+    __tablename__ = "integration_definitions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    source_system: Mapped[str] = mapped_column(String, index=True)
+    target_system: Mapped[str] = mapped_column(String, index=True)
+    source_format: Mapped[str] = mapped_column(String, index=True)
+    target_format: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
