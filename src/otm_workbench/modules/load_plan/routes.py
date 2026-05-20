@@ -32,6 +32,7 @@ from otm_workbench.modules.load_plan.cutover_handoff import (
     cutover_handoff_eligibility,
     serialize_cutover_handoff,
 )
+from otm_workbench.modules.load_plan.cutover_go_no_go import decide_cutover_go_no_go
 from otm_workbench.modules.load_plan.cutover_checklist import (
     create_checklist_from_package,
     generate_checklist_readiness,
@@ -124,6 +125,10 @@ class CutoverChecklistItemUpdateRequest(BaseModel):
     status: str | None = None
     method: str | None = None
     evidence_id: str | None = None
+
+
+class CutoverGoNoGoRequest(BaseModel):
+    decision_note: str = ""
 
 
 @router.post("/packages/from-rates/{batch_id}")
@@ -293,6 +298,23 @@ def export_cutover_checklist_package(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/cutover-checklists/{checklist_id}/go-no-go")
+def decide_cutover_checklist_go_no_go(
+    checklist_id: str,
+    payload: CutoverGoNoGoRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    _ = payload
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    return decide_cutover_go_no_go(db, checklist=checklist, package=package, decided_by=user.email)
 
 
 @router.post("/sequence/snapshots")
