@@ -230,3 +230,43 @@ def upload_asset_version(
     db.commit()
     db.refresh(version)
     return version
+
+
+def record_asset_download(
+    db: Session,
+    *,
+    asset: Asset,
+    version: AssetVersion,
+    downloaded_by: str,
+) -> None:
+    audit_payload = {
+        "asset_id": asset.id,
+        "asset_version_id": version.id,
+        "version_number": version.version_number,
+        "file_name": version.file_name,
+        "content_type": version.content_type,
+        "sha256": version.sha256,
+        "size_bytes": version.size_bytes,
+        "sensitivity": asset.sensitivity,
+    }
+    db.add(
+        AuditLog(
+            actor_user_id=downloaded_by,
+            action="assets.asset.download",
+            target_type="asset",
+            target_id=asset.id,
+            metadata_json=json.dumps(audit_payload, sort_keys=True),
+        )
+    )
+    db.add(
+        DomainEvent(
+            event_type="assets.asset.downloaded",
+            source_module="assets",
+            project_id=asset.project_id,
+            aggregate_type="asset",
+            aggregate_id=asset.id,
+            payload_json=json.dumps(audit_payload, sort_keys=True),
+            status="PENDING",
+        )
+    )
+    db.commit()

@@ -95,3 +95,55 @@ def test_upload_asset_version_rejects_missing_asset(client, admin_header):
     )
 
     assert response.status_code == 404
+
+
+def test_download_current_asset_version_returns_file_and_audits_sensitive_asset(
+    client,
+    admin_header,
+    db_session,
+):
+    asset = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(sensitivity="SECRET"),
+        headers=admin_header,
+    ).json()
+    content = b"synthetic sensitive support payload\n"
+    upload = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/versions",
+        files={"file": ("sensitive.txt", content, "text/plain")},
+        headers=admin_header,
+    ).json()
+
+    response = client.get(
+        f"/api/v1/modules/assets/assets/{asset['id']}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.content == content
+    assert response.headers["content-type"].startswith("text/plain")
+    audit = db_session.query(AuditLog).filter(AuditLog.action == "assets.asset.download").one()
+    event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "assets.asset.downloaded").one()
+    audit_payload = json.loads(audit.metadata_json)
+    event_payload = json.loads(event.payload_json)
+    assert audit_payload["asset_id"] == asset["id"]
+    assert audit_payload["asset_version_id"] == upload["id"]
+    assert audit_payload["sensitivity"] == "SECRET"
+    assert event_payload["asset_id"] == asset["id"]
+
+    combined = "\n".join([audit.metadata_json, event.payload_json])
+    assert "synthetic sensitive support payload" not in combined
+    assert "customer" not in combined.lower()
+    assert "cliente" not in combined.lower()
+
+
+def test_download_current_asset_version_rejects_asset_without_version(client, admin_header):
+    asset = create_asset(client, admin_header)
+
+    response = client.get(
+        f"/api/v1/modules/assets/assets/{asset['id']}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    assert "version" in response.json()["message"].lower()

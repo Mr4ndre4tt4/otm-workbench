@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import Asset, AssetVersion, User
 from otm_workbench.modules.assets.assets import (
     create_draft_asset,
+    record_asset_download,
     serialize_asset,
     serialize_asset_version,
     upload_asset_version,
@@ -91,6 +93,31 @@ def get_asset(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return serialize_asset(asset)
+
+
+@router.get("/assets/{asset_id}/download")
+def download_current_asset_version(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    if not asset.current_version_id:
+        raise api_error(409, "ASSET_VERSION_MISSING", "Asset has no current version to download.")
+    version = db.query(AssetVersion).filter(AssetVersion.id == asset.current_version_id).first()
+    if version is None:
+        raise api_error(409, "ASSET_VERSION_MISSING", "Asset current version was not found.")
+    storage_path = Path(version.storage_path)
+    if not storage_path.exists():
+        raise api_error(409, "ASSET_FILE_MISSING", "Asset current version file was not found.")
+    record_asset_download(db, asset=asset, version=version, downloaded_by=user.email)
+    return FileResponse(
+        path=storage_path,
+        media_type=version.content_type,
+        filename=version.file_name,
+    )
 
 
 @router.post("/assets/{asset_id}/versions")
