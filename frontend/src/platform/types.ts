@@ -19,6 +19,26 @@ export type LoginResponse = {
   token_type: "bearer";
 };
 
+export type IdName = {
+  id: string;
+  name: string;
+};
+
+export type IdNameResponse = PageResponse<IdName>;
+
+export type ActiveContextUpdate = {
+  project_id: string | null;
+  profile_id: string | null;
+  environment_id: string | null;
+  domain_name: string | null;
+  can_view_all_domains: boolean;
+};
+
+export type ActiveContextResponse = ActiveContextUpdate & {
+  user_id?: string;
+  allowed_domains: string[];
+};
+
 export type AvailableAction = {
   key: string;
   label: string;

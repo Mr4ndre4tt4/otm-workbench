@@ -476,6 +476,20 @@ def create_project(
     return IdNameResponse(id=project.id, name=project.name)
 
 
+@router.get("/projects", response_model=PageResponse[IdNameResponse])
+def list_projects(
+    workspace_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[IdNameResponse]:
+    query = db.query(Project)
+    if workspace_id:
+        query = query.filter(Project.workspace_id == workspace_id)
+    projects = query.order_by(Project.name).all()
+    items = [IdNameResponse(id=item.id, name=item.name) for item in projects]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.get("/projects/{project_id}/setup-status")
 def get_project_setup_status(
     project_id: str,
@@ -498,6 +512,20 @@ def create_profile(
     return IdNameResponse(id=profile.id, name=profile.name)
 
 
+@router.get("/profiles", response_model=PageResponse[IdNameResponse])
+def list_profiles(
+    project_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[IdNameResponse]:
+    query = db.query(Profile)
+    if project_id:
+        query = query.filter(Profile.project_id == project_id)
+    profiles = query.order_by(Profile.name).all()
+    items = [IdNameResponse(id=item.id, name=item.name) for item in profiles]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.post("/environments", response_model=IdNameResponse)
 def create_environment(
     payload: EnvironmentCreate,
@@ -513,6 +541,20 @@ def create_environment(
     db.commit()
     db.refresh(environment)
     return IdNameResponse(id=environment.id, name=environment.name)
+
+
+@router.get("/environments", response_model=PageResponse[IdNameResponse])
+def list_environments(
+    project_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+) -> PageResponse[IdNameResponse]:
+    query = db.query(Environment)
+    if project_id:
+        query = query.filter(Environment.project_id == project_id)
+    environments = query.order_by(Environment.name).all()
+    items = [IdNameResponse(id=item.id, name=item.name) for item in environments]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/active-context")

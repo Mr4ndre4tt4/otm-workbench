@@ -496,6 +496,8 @@ Delivered follow-up contracts:
   documented in GUI_SHELL_SCAFFOLD.md
 - Initial GUI auth/session flow
   documented in GUI_AUTH_SESSION_FLOW.md
+- Initial authenticated context switcher
+  documented in GUI_CONTEXT_SWITCHER.md
 ```
 
 ## 12. Implementation Order

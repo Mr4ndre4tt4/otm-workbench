@@ -37,6 +37,52 @@ def test_workspace_list_requires_authentication(client):
     assert response.status_code == 401
 
 
+def test_active_context_selector_lists_projects_profiles_and_environments(client, admin_header):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Local"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rollout"},
+        headers=admin_header,
+    ).json()
+    profile = client.post(
+        "/api/v1/platform/profiles",
+        json={"project_id": project["id"], "name": "Default"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+
+    projects = client.get(
+        "/api/v1/platform/projects",
+        params={"workspace_id": workspace["id"]},
+        headers=admin_header,
+    )
+    profiles = client.get(
+        "/api/v1/platform/profiles",
+        params={"project_id": project["id"]},
+        headers=admin_header,
+    )
+    environments = client.get(
+        "/api/v1/platform/environments",
+        params={"project_id": project["id"]},
+        headers=admin_header,
+    )
+
+    assert projects.status_code == 200
+    assert projects.json()["items"] == [{"id": project["id"], "name": "Synthetic Rollout"}]
+    assert profiles.status_code == 200
+    assert profiles.json()["items"] == [{"id": profile["id"], "name": "Default"}]
+    assert environments.status_code == 200
+    assert environments.json()["items"] == [{"id": environment["id"], "name": "DEV"}]
+
+
 def test_active_context_defaults_to_public_domain_without_selection(client, admin_header):
     response = client.get("/api/v1/platform/active-context", headers=admin_header)
 

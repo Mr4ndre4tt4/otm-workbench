@@ -198,6 +198,7 @@ h2 {
 }
 
 .context-summary,
+.context-switcher,
 .readiness,
 .metrics-grid,
 .activity-layout {
@@ -363,6 +364,42 @@ h2 {
   font-weight: 700;
 }
 
+.form-success {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.context-switcher {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.context-switcher label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.context-switcher select,
+.context-switcher input {
+  min-height: 38px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+}
+
 .status-active,
 .status-ready,
 .status-succeeded,
@@ -399,7 +436,8 @@ h2 {
   .page-header,
   .activity-layout,
   .metrics-grid,
-  .login-panel {
+  .login-panel,
+  .context-switcher {
     grid-template-columns: 1fr;
   }
 
