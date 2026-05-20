@@ -375,6 +375,19 @@ class IntegrationEndpoint(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationPayloadArtifact(Base, TimestampMixin):
+    __tablename__ = "integration_payload_artifacts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    artifact_id: Mapped[str] = mapped_column(ForeignKey("artifacts.id"), index=True)
+    payload_role: Mapped[str] = mapped_column(String, index=True)
+    payload_format: Mapped[str] = mapped_column(String, index=True)
+    file_name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

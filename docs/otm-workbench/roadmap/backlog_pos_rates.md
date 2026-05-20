@@ -631,7 +631,7 @@ Padroes tecnicos confirmados pelos apoios:
 2. Module registry + health endpoint. [ENTREGUE primeira fatia backend OTM-39]
 3. Modelo/API de Integration Definition com status DRAFT. [ENTREGUE primeira fatia backend OTM-40]
 4. Modelo/API de systems/endpoints sem credenciais reais. [ENTREGUE primeira fatia backend OTM-41]
-5. Upload/import de payload XML/JSON como artifact interno.
+5. Upload/import de payload XML/JSON como artifact interno. [ENTREGUE primeira fatia backend OTM-42]
 6. Parser simples XML/JSON para schema tree.
 7. Persistencia de schema documents e schema nodes.
 8. Mapping CRUD tabular.
