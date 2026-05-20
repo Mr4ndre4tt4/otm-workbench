@@ -511,7 +511,7 @@ e Project/Profile/Admin estarem estabilizados, porque depende diretamente de:
 10. Criar nova versao sem apagar a anterior.
 11. Editar metadata basica e arquivar/deprecar asset. [ENTREGUE primeira fatia backend OTM-27]
 12. Links genericos para MODULE, MACRO_OBJECT, OTM_TABLE, RATE_BATCH, ARTIFACT e EVIDENCE. [INICIADO com MODULE, MACRO_OBJECT, OTM_TABLE, ARTIFACT e EVIDENCE OTM-28]
-13. Busca/filtros simples por tipo, categoria, tag, status, escopo, modulo, macro-objeto e tabela OTM.
+13. Busca/filtros simples por tipo, categoria, tag, status, escopo, modulo, macro-objeto e tabela OTM. [ENTREGUE primeira fatia backend OTM-29]
 14. Scanner simples de possiveis segredos e bloqueio de GLOBAL quando houver risco.
 15. Testes de permissao, versionamento, filtros, download auditado e scanner.
 ```

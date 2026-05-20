@@ -93,6 +93,72 @@ def test_list_and_detail_assets_with_filters(client, admin_header):
     assert detail.json()["id"] == created["id"]
 
 
+def test_list_assets_filters_by_scope_tag_and_module(client, admin_header):
+    matching = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Mapping Payload",
+            scope_type="MODULE",
+            module_id="integration_mapping",
+            tags=["PAYLOAD", "SYNTHETIC"],
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Master Data Template",
+            scope_type="PROJECT",
+            module_id="master_data",
+            tags=["TEMPLATE"],
+        ),
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"scope_type": "module", "tag": "payload", "module_id": "integration_mapping"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["id"] == matching["id"]
+
+
+def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header):
+    matching = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Rate Table Notes",
+            macro_object_code="RATE_GEO",
+            otm_table_name="RATE_GEO_COST",
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Order Release Notes",
+            macro_object_code="ORDER_RELEASE",
+            otm_table_name="ORDER_RELEASE",
+        ),
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"macro_object_code": "rate_geo", "otm_table_name": "rate_geo_cost"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["id"] == matching["id"]
+
+
 def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):
     created = client.post(
         "/api/v1/modules/assets/assets",
