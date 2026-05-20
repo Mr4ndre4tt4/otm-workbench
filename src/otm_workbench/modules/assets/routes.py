@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import api_error, get_db, require_user
+from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.models import Asset, AssetLink, AssetVersion, User
 from otm_workbench.modules.assets.assets import (
     archive_asset,
@@ -78,7 +78,7 @@ def list_asset_classifications(
 def create_asset(
     payload: AssetCreateRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     try:
         asset = create_draft_asset(db, payload=payload.model_dump(), user=user)
@@ -141,7 +141,7 @@ def patch_asset(
     asset_id: str,
     payload: AssetUpdateRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
@@ -164,7 +164,7 @@ def patch_asset(
 def archive_asset_endpoint(
     asset_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
@@ -177,7 +177,7 @@ def create_asset_link_endpoint(
     asset_id: str,
     payload: AssetLinkCreateRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
@@ -252,7 +252,7 @@ def upload_asset_file_version(
     asset_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
