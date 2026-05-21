@@ -55,20 +55,29 @@ Fixtures must not:
 ```text
 frontend/src/test/fixtures/gui.ts
 frontend/src/test/fixtures/gui.test.ts
+frontend/src/ui/components.test.tsx
+frontend/tests/guiSyntheticFixturesUsage.test.ts
 ```
 
-## 5. Gallery Link
+## 5. Current Consumers
+
+`frontend/src/ui/components.test.tsx` is the first shared UI kit consumer. It
+uses the synthetic metrics, module objects, detail rows, artifact rows, and
+blocker rows instead of local one-off examples.
+
+## 6. Gallery Link
 
 `GUI_COMPONENT_GALLERY_PLAN.md` expects synthetic contract-shaped data. These
 fixtures are the starting point for that gallery, whether the first
 implementation is an internal route or Storybook.
 
-## 6. Guardrails
+## 7. Guardrails
 
 ```text
 frontend/src/test/fixtures/gui.test.ts
 frontend/tests/guiSyntheticFixturesContract.test.ts
+frontend/tests/guiSyntheticFixturesUsage.test.ts
 ```
 
 The tests verify the fixture shape and keep the fixture contract linked from
-the gallery plan and implementation checklist.
+the gallery plan, implementation checklist, and shared UI kit tests.

@@ -9,6 +9,7 @@ import {
   DetailList,
   FeedbackMessage,
   IconButton,
+  MetricGrid,
   ModuleObjectList,
   ModuleWorkspaceLayout,
   ModuleWorkspaceSide,
@@ -16,6 +17,13 @@ import {
   SelectedObjectPanel,
   StatePanel
 } from "./components";
+import {
+  syntheticArtifactItems,
+  syntheticBlockers,
+  syntheticDetailRows,
+  syntheticMetricItems,
+  syntheticModuleObjects
+} from "../test/fixtures/gui";
 
 describe("Button patterns", () => {
   it("renders command buttons through the shared Button component", () => {
@@ -63,26 +71,27 @@ describe("FeedbackMessage", () => {
   });
 });
 
+describe("MetricGrid", () => {
+  it("renders shared metric cards from synthetic backend-shaped fixtures", () => {
+    render(<MetricGrid ariaLabel="Synthetic metrics" items={syntheticMetricItems} />);
+
+    expect(screen.getByLabelText("Synthetic metrics")).toBeInTheDocument();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("EMPTY")).toBeInTheDocument();
+  });
+});
+
 describe("DetailList", () => {
   it("renders detail rows with metadata and status", () => {
-    render(
-      <DetailList
-        ariaLabel="Selected batch tables"
-        items={[
-          {
-            id: "table_1",
-            meta: ["1 row"],
-            status: "VALID",
-            title: "ACCESSORIAL_COST"
-          }
-        ]}
-      />
-    );
+    render(<DetailList ariaLabel="Selected batch fields" items={syntheticDetailRows} />);
 
-    expect(screen.getByLabelText("Selected batch tables")).toBeInTheDocument();
-    expect(screen.getByText("ACCESSORIAL_COST")).toBeInTheDocument();
-    expect(screen.getByText("1 row")).toBeInTheDocument();
-    expect(screen.getByText("VALID")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected batch fields")).toBeInTheDocument();
+    expect(screen.getByText("SYNTHETIC_REQUIRED_FIELD")).toBeInTheDocument();
+    expect(screen.getByText("Required")).toBeInTheDocument();
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
   });
 
   it("renders an empty state for missing detail rows", () => {
@@ -98,36 +107,21 @@ describe("ArtifactList", () => {
       <ArtifactList
         items={[
           {
-            action: <Button>Download</Button>,
-            id: "artifact_1",
-            meta: ["text/csv", "128 bytes"],
-            subtitle: "CSV export",
-            title: "rates.csv"
+            ...syntheticArtifactItems[0],
+            action: <Button>Download</Button>
           }
         ]}
       />
     );
 
-    expect(screen.getByText("rates.csv")).toBeInTheDocument();
+    expect(screen.getByText("synthetic_export.csv")).toBeInTheDocument();
     expect(screen.getByText("CSV export")).toBeInTheDocument();
     expect(screen.getByText("text/csv")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
   });
 
   it("renders artifact status when no action is provided", () => {
-    render(
-      <ArtifactList
-        items={[
-          {
-            id: "evidence_1",
-            meta: ["Artifact linked", "Client safe"],
-            status: "ACTIVE",
-            subtitle: "Internal",
-            title: "Validation evidence"
-          }
-        ]}
-      />
-    );
+    render(<ArtifactList items={[syntheticArtifactItems[1]]} />);
 
     expect(screen.getByText("ACTIVE")).toBeInTheDocument();
   });
@@ -138,33 +132,25 @@ describe("ModuleObjectList", () => {
     const selected: string[] = [];
     render(
       <ModuleObjectList
-        ariaLabel="Rate batches"
-        items={[
-          {
-            id: "batch_1",
-            meta: ["1 table", "12 rows", "0 issues"],
-            status: "READY",
-            subtitle: "ACCESSORIAL_ONLY",
-            title: "Synthetic ready batch"
-          }
-        ]}
+        ariaLabel="Synthetic objects"
+        items={syntheticModuleObjects}
         onSelect={(id) => selected.push(id)}
-        selectedId="batch_1"
+        selectedId={syntheticModuleObjects[0].id}
       />
     );
 
-    const row = screen.getByRole("button", { name: /Synthetic ready batch/ });
-    expect(screen.getByLabelText("Rate batches")).toBeInTheDocument();
+    const row = screen.getByRole("button", { name: /Synthetic ready object/ });
+    expect(screen.getByLabelText("Synthetic objects")).toBeInTheDocument();
     expect(row).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("ACCESSORIAL_ONLY")).toBeInTheDocument();
-    expect(screen.getByText("1 table")).toBeInTheDocument();
-    expect(screen.getByText("12 rows")).toBeInTheDocument();
-    expect(screen.getByText("0 issues")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic scenario")).toBeInTheDocument();
+    expect(screen.getByText("3 table(s)")).toBeInTheDocument();
+    expect(screen.getByText("42 row(s)")).toBeInTheDocument();
+    expect(screen.getByText("0 issue(s)")).toBeInTheDocument();
     expect(screen.getByText("READY")).toBeInTheDocument();
 
     row.click();
 
-    expect(selected).toEqual(["batch_1"]);
+    expect(selected).toEqual([syntheticModuleObjects[0].id]);
   });
 
   it("renders an empty state without caller-owned list markup", () => {
@@ -184,18 +170,12 @@ describe("ModuleObjectList", () => {
 
 describe("BlockerPanel", () => {
   it("renders blockers with backend codes and messages", () => {
-    render(
-      <BlockerPanel
-        emptyText="No blockers."
-        items={[{ codes: ["RATE_GEO_MISSING"], id: "blocker_1", message: "Missing geography reference." }]}
-        title="Open blockers"
-      />
-    );
+    render(<BlockerPanel emptyText="No blockers." items={syntheticBlockers} title="Open blockers" />);
 
     expect(screen.getByRole("heading", { name: "Open blockers" })).toBeInTheDocument();
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
-    expect(screen.getByText("RATE_GEO_MISSING")).toBeInTheDocument();
-    expect(screen.getByText("Missing geography reference.")).toBeInTheDocument();
+    expect(screen.getByText("SYNTHETIC_BLOCKER")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic blocker message for layout and status checks.")).toBeInTheDocument();
   });
 
   it("renders a ready empty state when no blockers exist", () => {
@@ -236,32 +216,34 @@ describe("ModuleWorkspaceLayout", () => {
 
 describe("SelectedObjectPanel", () => {
   it("renders object identity, metadata, actions, and detail content", () => {
+    const selectedObject = syntheticModuleObjects[0];
+
     render(
       <SelectedObjectPanel
         actions={<Button>Approve</Button>}
-        ariaLabel="Selected rate batch"
+        ariaLabel="Selected synthetic object"
         emptyText="Select an object."
         fields={[
-          { label: "Domain", value: "OTM1" },
-          { label: "Tables", value: 2 }
+          { label: "Status", value: selectedObject.status },
+          { label: "Rows", value: "42" }
         ]}
-        status="READY"
-        subtitle="ACCESSORIAL_ONLY"
-        title="Synthetic ready batch"
+        status={selectedObject.status}
+        subtitle={selectedObject.subtitle}
+        title={selectedObject.title}
       >
-        <div>ACCESSORIAL_COST</div>
+        <DetailList ariaLabel="Selected synthetic details" items={syntheticDetailRows} />
       </SelectedObjectPanel>
     );
 
     expect(screen.getByRole("heading", { name: "Selected object" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Selected rate batch")).toBeInTheDocument();
-    expect(screen.getByText("READY")).toBeInTheDocument();
-    expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
-    expect(screen.getByText("ACCESSORIAL_ONLY")).toBeInTheDocument();
-    expect(screen.getByText("Domain")).toBeInTheDocument();
-    expect(screen.getByText("OTM1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected synthetic object")).toBeInTheDocument();
+    expect(screen.getAllByText("READY")).toHaveLength(2);
+    expect(screen.getByText("Synthetic ready object")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic scenario")).toBeInTheDocument();
+    expect(screen.getByText("Rows")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
-    expect(screen.getByText("ACCESSORIAL_COST")).toBeInTheDocument();
+    expect(screen.getByText("SYNTHETIC_REQUIRED_FIELD")).toBeInTheDocument();
   });
 
   it("renders loading and empty states without caller-owned panel markup", () => {

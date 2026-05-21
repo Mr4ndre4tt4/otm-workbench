@@ -104,6 +104,12 @@ Initial fixture source:
 frontend/src/test/fixtures/gui.ts
 ```
 
+Current shared UI kit consumer:
+
+```text
+frontend/src/ui/components.test.tsx
+```
+
 Fixtures must:
 
 ```text
