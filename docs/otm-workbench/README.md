@@ -5,6 +5,7 @@ Este diretório contém a documentação base do `otm-workbench`.
 ## Estrutura
 
 - `foundation/`: documentos de arquitetura, contratos, governança, QA, segurança, roadmap e convenções recebidos como fundação do projeto.
+- `governance/`: regras leves de visibilidade, Linear, delivery board e cadência de acompanhamento.
 - `../superpowers/specs/`: specs consolidadas para execução assistida por Codex.
 
 ## Ordem Recomendada
@@ -24,6 +25,7 @@ Para iniciar o desenvolvimento:
 3. [Segurança, permissões e governança](foundation/seguranca_permissoes_governanca_otm_workbench.md)
 4. [Guia de desenvolvimento modular](foundation/guia_desenvolvimento_modular_otm_workbench.md)
 5. [Plano MVP e roadmap de execução](foundation/plano_mvp_roadmap_execucao_otm_workbench.md)
+6. [Linear delivery governance](governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md)
 
 Para frontend e experiência do usuário:
 
