@@ -588,6 +588,8 @@ Delivered follow-up contracts:
   documented in GUI_OPERATIONAL_PANEL_PATTERN_CONTRACT.md
 - GUI page header pattern contract
   documented in GUI_PAGE_HEADER_PATTERN_CONTRACT.md
+- GUI status chip pattern contract
+  documented in GUI_STATUS_CHIP_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order
