@@ -168,6 +168,7 @@ Reusable:
 - StatusChip
 - ActionBar
 - StatePanel
+- FeedbackMessage
 
 Domain-specific:
 - SchemaTree

@@ -47,6 +47,15 @@ export function StatePanel({ children, tone = "default" }: StatePanelProps) {
   );
 }
 
+type FeedbackMessageProps = {
+  children: ReactNode;
+  tone: "error" | "success";
+};
+
+export function FeedbackMessage({ children, tone }: FeedbackMessageProps) {
+  return <p className={tone === "success" ? "form-success" : "form-error"}>{children}</p>;
+}
+
 type ActivityRowProps = {
   status?: string;
   subtitle: string;

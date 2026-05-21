@@ -5,6 +5,7 @@ import {
   ActivityRow,
   Button,
   DetailList,
+  FeedbackMessage,
   IconButton,
   ModuleObjectList,
   ModuleWorkspaceLayout,
@@ -45,6 +46,18 @@ describe("StatePanel", () => {
 
     expect(screen.getByText("Rates Studio summary is unavailable.")).toBeInTheDocument();
     expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+});
+
+describe("FeedbackMessage", () => {
+  it("renders shared success and error feedback styles", () => {
+    const { rerender } = render(<FeedbackMessage tone="success">Context updated.</FeedbackMessage>);
+
+    expect(screen.getByText("Context updated.")).toHaveClass("form-success");
+
+    rerender(<FeedbackMessage tone="error">Unable to sign in.</FeedbackMessage>);
+
+    expect(screen.getByText("Unable to sign in.")).toHaveClass("form-error");
   });
 });
 

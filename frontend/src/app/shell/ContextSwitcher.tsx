@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "../../platform/api";
 import { updateActiveContext, useEnvironments, useProfiles, useProjects } from "../../platform/hooks";
-import { Button } from "../../ui/components";
+import { Button, FeedbackMessage } from "../../ui/components";
 
 export function ContextSwitcher({ token }: { token: string }) {
   const queryClient = useQueryClient();
@@ -99,8 +99,8 @@ export function ContextSwitcher({ token }: { token: string }) {
       <Button disabled={isSubmitting || !projectId} type="submit" variant="primary">
         {isSubmitting ? "Applying..." : "Apply context"}
       </Button>
-      {message ? <p className="form-success">{message}</p> : null}
-      {error ? <p className="form-error">{error}</p> : null}
+      {message ? <FeedbackMessage tone="success">{message}</FeedbackMessage> : null}
+      {error ? <FeedbackMessage tone="error">{error}</FeedbackMessage> : null}
     </form>
   );
 }

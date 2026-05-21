@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { ApiError } from "../../platform/api";
 import { login } from "../../platform/hooks";
 import { useAuth } from "../../platform/useAuth";
-import { Button } from "../../ui/components";
+import { Button, FeedbackMessage } from "../../ui/components";
 
 export function LoginPanel() {
   const auth = useAuth();
@@ -60,7 +60,7 @@ export function LoginPanel() {
             value={password}
           />
         </label>
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? <FeedbackMessage tone="error">{error}</FeedbackMessage> : null}
         <Button disabled={isSubmitting} type="submit" variant="primary">
           {isSubmitting ? "Signing in..." : "Sign in"}
         </Button>

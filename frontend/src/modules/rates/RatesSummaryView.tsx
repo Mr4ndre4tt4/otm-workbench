@@ -15,6 +15,7 @@ import { ActionBar, PageHeader } from "../../app/shell";
 import {
   Button,
   DetailList,
+  FeedbackMessage,
   MetricGrid,
   ModuleObjectList,
   ModuleWorkspaceLayout,
@@ -158,8 +159,8 @@ export function RatesSummaryView({ token }: { token: string }) {
             subtitle={batchDetail.data?.scenario_code}
             title={batchDetail.data?.name}
           >
-            {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
-            {actionError ? <p className="form-error">{actionError}</p> : null}
+            {actionMessage ? <FeedbackMessage tone="success">{actionMessage}</FeedbackMessage> : null}
+            {actionError ? <FeedbackMessage tone="error">{actionError}</FeedbackMessage> : null}
             <DetailList
               ariaLabel="Selected batch tables"
               emptyText="No tables have been staged for this batch."
