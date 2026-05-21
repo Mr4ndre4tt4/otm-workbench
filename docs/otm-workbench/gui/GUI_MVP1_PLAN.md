@@ -566,6 +566,8 @@ Delivered follow-up contracts:
   documented in GUI_BROWSER_QA_ATTEMPT.md
 - GUI CSS entrypoint contract
   documented in GUI_CSS_ENTRYPOINT_CONTRACT.md
+- GUI CSS layer ownership contract
+  documented in GUI_CSS_LAYER_OWNERSHIP_CONTRACT.md
 ```
 
 ## 12. Implementation Order

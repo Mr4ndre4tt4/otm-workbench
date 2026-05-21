@@ -311,6 +311,20 @@ frontend/tests/cssArchitecture.test.ts
 The test locks `frontend/src/styles.css` as an import-only entrypoint and checks
 that all imported CSS ownership layers exist.
 
+## CSS Layer Ownership Contract
+
+The CSS layer ownership contract was completed in
+`GUI_CSS_LAYER_OWNERSHIP_CONTRACT.md`.
+
+Delivered:
+
+```text
+frontend/tests/cssLayerOwnership.test.ts
+```
+
+The test protects component, density, sidebar, and responsive layer boundaries
+so future modules do not mix CSS responsibilities casually.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
