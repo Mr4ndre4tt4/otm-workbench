@@ -56,6 +56,25 @@
 }
 
 .metric,
+.module-row,
+.activity-row,
+.table-list-item,
+.artifact-list-item,
+.blocker-item,
+.detail-stack,
+.detail-field,
+.panel-header,
+.status-chip,
+.action-bar,
+.context-summary,
+.readiness,
+.empty-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.metric,
 .panel,
 .module-template-main,
 .module-template-side,

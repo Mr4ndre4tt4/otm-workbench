@@ -624,6 +624,8 @@ Delivered follow-up contracts:
   documented in GUI_EXCEPTIONS_REGISTER.md
 - GUI implementation checklist
   documented in GUI_IMPLEMENTATION_CHECKLIST.md
+- GUI long label responsive contract
+  documented in GUI_LONG_LABEL_RESPONSIVE_CONTRACT.md
 - GUI component gallery plan
   documented in GUI_COMPONENT_GALLERY_PLAN.md
 - GUI synthetic fixtures contract
