@@ -540,6 +540,8 @@ Delivered follow-up contracts:
   documented in GUI_INTEGRATION_MAPPING_VIEW.md
 - GUI frontend architecture and design governance
   documented in GUI_FRONTEND_ARCHITECTURE.md
+- GUI frontend architecture cleanup
+  documented in GUI_FRONTEND_ARCHITECTURE_CLEANUP.md
 ```
 
 ## 12. Implementation Order
