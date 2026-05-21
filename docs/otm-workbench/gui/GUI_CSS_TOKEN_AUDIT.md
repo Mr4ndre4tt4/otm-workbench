@@ -247,6 +247,20 @@ The file owns reusable primitive styles for buttons, icon buttons, status chips,
 and shared form/preference messages. Shell layout and module-specific styles
 remain in `frontend/src/styles.css`.
 
+## Shell Style Extraction
+
+The shell style extraction was completed in `GUI_SHELL_STYLE_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/app/shell/shell.css
+```
+
+Base shell, sidebar navigation, topbar, preference/action layout, page header,
+and section label styles now live with shell components. Preference and
+responsive override files load after the base shell stylesheet.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

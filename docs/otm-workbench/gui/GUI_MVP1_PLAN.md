@@ -556,6 +556,8 @@ Delivered follow-up contracts:
   documented in GUI_SHELL_QA_CONTRACTS.md
 - GUI shared component style extraction
   documented in GUI_SHARED_COMPONENT_STYLE_EXTRACTION.md
+- GUI shell style extraction
+  documented in GUI_SHELL_STYLE_EXTRACTION.md
 ```
 
 ## 12. Implementation Order
