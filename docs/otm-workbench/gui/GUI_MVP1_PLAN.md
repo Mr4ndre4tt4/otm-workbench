@@ -598,6 +598,8 @@ Delivered follow-up contracts:
   documented in GUI_READINESS_PANEL_PATTERN_CONTRACT.md
 - GUI context summary pattern contract
   documented in GUI_CONTEXT_SUMMARY_PATTERN_CONTRACT.md
+- GUI context switcher pattern contract
+  documented in GUI_CONTEXT_SWITCHER_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order
