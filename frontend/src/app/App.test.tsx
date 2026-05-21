@@ -573,6 +573,57 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_1/artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              batch_id: "batch_1",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              items: [
+                {
+                  id: "artifact_1",
+                  artifact_type: "rates_csv_export",
+                  file_name: "rates_export.zip",
+                  content_type: "application/zip",
+                  sha256: "abc123",
+                  size_bytes: 1234,
+                  sensitivity_level: "client_safe"
+                }
+              ],
+              total: 1
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_1/evidence")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              batch_id: "batch_1",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              items: [
+                {
+                  id: "evidence_1",
+                  evidence_type: "rates_export",
+                  status: "CREATED",
+                  summary_json: "{}",
+                  artifact_id: "artifact_1",
+                  manifest_id: "manifest_1",
+                  client_safe: true,
+                  sensitivity_level: "client_safe"
+                }
+              ],
+              total: 1
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
       if (url.endsWith("/api/v1/modules/rates/batches/batch_2/validate")) {
         expect(init?.method).toBe("POST");
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -622,6 +673,36 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_2/artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              batch_id: "batch_2",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              items: [],
+              total: 0
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_2/evidence")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              batch_id: "batch_2",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              items: [],
+              total: 0
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -635,6 +716,8 @@ describe("App shell", () => {
     expect(screen.getByLabelText("Rates summary metrics")).toBeInTheDocument();
     expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
     expect(await screen.findByText("ACCESSORIAL_COST")).toBeInTheDocument();
+    expect(await screen.findByText("rates_export.zip")).toBeInTheDocument();
+    expect(screen.getByText("rates_export")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(screen.getByText("Ready for approval")).toBeInTheDocument();
     expect(screen.getByText("Rate batch is not ready: NO_ROWS")).toBeInTheDocument();

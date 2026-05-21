@@ -117,6 +117,43 @@ export type RateBatchDetail = {
   available_actions: AvailableAction[];
 };
 
+export type RateArtifact = {
+  id: string;
+  artifact_type: string;
+  file_name: string;
+  content_type: string;
+  sha256: string;
+  size_bytes: number;
+  sensitivity_level: string;
+};
+
+export type RateEvidence = {
+  id: string;
+  evidence_type: string;
+  status: string;
+  summary_json: string;
+  artifact_id: string | null;
+  manifest_id: string | null;
+  client_safe: boolean;
+  sensitivity_level: string;
+};
+
+export type RateBatchArtifactsResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  items: RateArtifact[];
+  total: number;
+};
+
+export type RateBatchEvidenceResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  items: RateEvidence[];
+  total: number;
+};
+
 export type RatesSummary = {
   module_id: "rates";
   status: string;

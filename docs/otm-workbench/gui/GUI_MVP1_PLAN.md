@@ -510,6 +510,8 @@ Delivered follow-up contracts:
   documented in GUI_RATES_BATCH_DETAIL_PANEL.md
 - Rates Studio action execution
   documented in GUI_RATES_ACTION_EXECUTION.md
+- Rates Studio artifacts and evidence panels
+  documented in GUI_RATES_ARTIFACTS_EVIDENCE.md
 ```
 
 ## 12. Implementation Order

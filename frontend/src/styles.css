@@ -506,6 +506,26 @@ h2 {
   padding-top: 8px;
 }
 
+.artifact-list {
+  display: grid;
+  gap: 8px;
+}
+
+.artifact-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 100px auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.artifact-list-item span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+}
+
 .blockers-panel {
   margin-top: 12px;
 }
@@ -680,6 +700,7 @@ h2 {
   .login-panel,
   .module-template,
   .module-row,
+  .artifact-list-item,
   .context-switcher {
     grid-template-columns: 1fr;
   }

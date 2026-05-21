@@ -8,7 +8,9 @@ import type {
   IdNameResponse,
   LoginResponse,
   NavigationResponse,
+  RateBatchArtifactsResponse,
   RateBatchDetail,
+  RateBatchEvidenceResponse,
   RatesSummary,
   UserPreferences
 } from "./types";
@@ -77,6 +79,22 @@ export function useRateBatchDetail(token: string | null, batchId: string | null)
   return useQuery({
     queryKey: ["modules", "rates", "batches", batchId],
     queryFn: () => apiGet<RateBatchDetail>(`/api/v1/modules/rates/batches/${batchId}`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useRateBatchArtifacts(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "batches", batchId, "artifacts"],
+    queryFn: () => apiGet<RateBatchArtifactsResponse>(`/api/v1/modules/rates/batches/${batchId}/artifacts`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useRateBatchEvidence(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "batches", batchId, "evidence"],
+    queryFn: () => apiGet<RateBatchEvidenceResponse>(`/api/v1/modules/rates/batches/${batchId}/evidence`, { token }),
     enabled: Boolean(token && batchId)
   });
 }
