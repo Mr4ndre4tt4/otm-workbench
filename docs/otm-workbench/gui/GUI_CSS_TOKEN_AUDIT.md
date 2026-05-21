@@ -297,6 +297,20 @@ The local Vite server responded with HTTP 200 at `http://127.0.0.1:5173/`, but
 the in-app browser runner was blocked by the Windows process creation
 environment. No browser screenshot evidence is claimed for the CSS split yet.
 
+## CSS Entrypoint Contract
+
+The CSS entrypoint contract was completed in
+`GUI_CSS_ENTRYPOINT_CONTRACT.md`.
+
+Delivered:
+
+```text
+frontend/tests/cssArchitecture.test.ts
+```
+
+The test locks `frontend/src/styles.css` as an import-only entrypoint and checks
+that all imported CSS ownership layers exist.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
