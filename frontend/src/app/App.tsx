@@ -155,6 +155,7 @@ function CockpitContent({ token }: { token: string }) {
 
       <section className="activity-layout">
         <OperationalPanel
+          ariaLabel="Recent jobs"
           emptyText="No recent jobs for the active project."
           hasItems={data.recent_jobs.length > 0}
           status={data.counts.recent_jobs ? "ACTIVE" : "EMPTY"}
@@ -170,6 +171,7 @@ function CockpitContent({ token }: { token: string }) {
         </OperationalPanel>
 
         <OperationalPanel
+          ariaLabel="Recent evidence"
           emptyText="No client-safe evidence for the active project."
           hasItems={data.recent_evidence.length > 0}
           status={data.counts.recent_evidence ? "ACTIVE" : "EMPTY"}

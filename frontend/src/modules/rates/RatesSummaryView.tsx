@@ -211,6 +211,7 @@ export function RatesSummaryView({ token }: { token: string }) {
 
       <section className="activity-layout">
         <OperationalPanel
+          ariaLabel="Rate batch export artifacts"
           emptyText="No export artifacts registered for this batch."
           hasItems={(batchArtifacts.data?.items.length ?? 0) > 0}
           isLoading={batchArtifacts.isLoading && Boolean(effectiveBatchId)}
@@ -243,6 +244,7 @@ export function RatesSummaryView({ token }: { token: string }) {
         </OperationalPanel>
 
         <OperationalPanel
+          ariaLabel="Rate batch evidence"
           emptyText="No evidence registered for this batch."
           hasItems={(batchEvidence.data?.items.length ?? 0) > 0}
           isLoading={batchEvidence.isLoading && Boolean(effectiveBatchId)}

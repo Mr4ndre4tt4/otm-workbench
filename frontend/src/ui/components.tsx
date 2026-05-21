@@ -158,6 +158,7 @@ export function DetailList({ ariaLabel, emptyText = "No detail rows available.",
 }
 
 type OperationalPanelProps = PropsWithChildren<{
+  ariaLabel: string;
   className?: string;
   emptyText: string;
   hasItems: boolean;
@@ -168,6 +169,7 @@ type OperationalPanelProps = PropsWithChildren<{
 }>;
 
 export function OperationalPanel({
+  ariaLabel,
   children,
   className = "",
   emptyText,
@@ -178,7 +180,7 @@ export function OperationalPanel({
   title
 }: OperationalPanelProps) {
   return (
-    <div className={`panel ${className}`.trim()}>
+    <div className={`panel ${className}`.trim()} aria-label={ariaLabel}>
       <div className="panel-header">
         <h2>{title}</h2>
         <StatusChip status={status} />

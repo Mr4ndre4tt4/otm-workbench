@@ -584,6 +584,8 @@ Delivered follow-up contracts:
   documented in GUI_DETAIL_LIST_PATTERN_CONTRACT.md
 - GUI metric grid pattern contract
   documented in GUI_METRIC_GRID_PATTERN_CONTRACT.md
+- GUI operational panel pattern contract
+  documented in GUI_OPERATIONAL_PANEL_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order

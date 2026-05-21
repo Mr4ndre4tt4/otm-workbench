@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, DetailList, ModuleObjectList, SelectedObjectPanel, StatePanel } from "./components";
+import { Button, DetailList, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatePanel } from "./components";
 
 describe("StatePanel", () => {
   it("renders shared loading and error states", () => {
@@ -141,5 +141,48 @@ describe("SelectedObjectPanel", () => {
     rerender(<SelectedObjectPanel ariaLabel="Selected object" emptyText="Select an object." status="PENDING" />);
 
     expect(screen.getByText("Select an object.")).toBeInTheDocument();
+  });
+});
+
+describe("OperationalPanel", () => {
+  it("renders accessible operational content and status", () => {
+    render(
+      <OperationalPanel ariaLabel="Recent jobs" emptyText="No recent jobs." hasItems status="ACTIVE" title="Recent jobs">
+        <div>load_package.build</div>
+      </OperationalPanel>
+    );
+
+    expect(screen.getByLabelText("Recent jobs")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent jobs" })).toBeInTheDocument();
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("load_package.build")).toBeInTheDocument();
+  });
+
+  it("renders loading and empty states without caller-owned panel markup", () => {
+    const { rerender } = render(
+      <OperationalPanel
+        ariaLabel="Rate batch evidence"
+        emptyText="No evidence registered."
+        hasItems={false}
+        isLoading
+        loadingText="Loading evidence..."
+        status="EMPTY"
+        title="Evidence"
+      />
+    );
+
+    expect(screen.getByText("Loading evidence...")).toBeInTheDocument();
+
+    rerender(
+      <OperationalPanel
+        ariaLabel="Rate batch evidence"
+        emptyText="No evidence registered."
+        hasItems={false}
+        status="EMPTY"
+        title="Evidence"
+      />
+    );
+
+    expect(screen.getByText("No evidence registered.")).toBeInTheDocument();
   });
 });
