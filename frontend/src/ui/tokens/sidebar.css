@@ -1,0 +1,23 @@
+.app-shell[data-sidebar="collapsed"] {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.app-shell[data-sidebar="collapsed"] .sidebar {
+  padding: 20px 10px;
+}
+
+.app-shell[data-sidebar="collapsed"] .brand-lockup {
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+.app-shell[data-sidebar="collapsed"] .brand-text,
+.app-shell[data-sidebar="collapsed"] .nav-label {
+  display: none;
+}
+
+.app-shell[data-sidebar="collapsed"] .nav-item {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 8px;
+}

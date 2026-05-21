@@ -548,6 +548,8 @@ Delivered follow-up contracts:
   documented in GUI_THEME_TOKEN_EXTRACTION.md
 - GUI density token extraction
   documented in GUI_DENSITY_TOKEN_EXTRACTION.md
+- GUI sidebar token extraction
+  documented in GUI_SIDEBAR_TOKEN_EXTRACTION.md
 ```
 
 ## 12. Implementation Order

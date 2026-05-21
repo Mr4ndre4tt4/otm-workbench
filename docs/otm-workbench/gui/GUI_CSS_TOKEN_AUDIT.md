@@ -194,6 +194,18 @@ frontend/src/ui/tokens/density.css
 
 The moved compact-density blocks were kept unchanged.
 
+The third extraction was completed in `GUI_SIDEBAR_TOKEN_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/tokens/sidebar.css
+```
+
+Only base collapsed-sidebar blocks were moved. Responsive sidebar overrides
+remain in `styles.css` to preserve CSS order until a dedicated responsive
+layout extraction is planned.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
