@@ -86,3 +86,5 @@ Run this matrix when browser automation is stable:
   note.
 - Until browser automation is stable, continue to keep lint, tests, build, and
   contract tests green for GUI changes.
+- `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md` records the current Browser plugin
+  failure mode and the external Chrome fallback.
