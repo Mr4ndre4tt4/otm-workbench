@@ -75,11 +75,13 @@ export function DetailList({ ariaLabel, emptyText = "No detail rows available.",
     <div className="table-list" aria-label={ariaLabel}>
       {items.map((item) => (
         <div className="table-list-item" key={item.id}>
-          <strong>{item.title}</strong>
-          {item.meta.map((value, index) => (
-            <span key={`${item.id}-${index}`}>{value}</span>
-          ))}
-          {item.status ? <StatusChip status={item.status} /> : null}
+          <strong className="table-list-main">{item.title}</strong>
+          <div className="table-list-meta">
+            {item.meta.map((value, index) => (
+              <span key={`${item.id}-${index}`}>{value}</span>
+            ))}
+          </div>
+          <div className="table-list-status">{item.status ? <StatusChip status={item.status} /> : null}</div>
         </div>
       ))}
     </div>

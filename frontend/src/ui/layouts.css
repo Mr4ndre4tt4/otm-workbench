@@ -236,11 +236,35 @@
 
 .table-list-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 80px auto;
+  grid-template-areas:
+    "main status"
+    "meta status";
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   border-top: 1px solid var(--border);
   padding-top: 8px;
+}
+
+.table-list-main {
+  grid-area: main;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.table-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: meta;
+  gap: 4px 16px;
+  min-width: 0;
+}
+
+.table-list-status {
+  display: flex;
+  grid-area: status;
+  justify-content: flex-end;
+  min-width: max-content;
 }
 
 .artifact-list {

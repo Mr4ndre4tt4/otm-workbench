@@ -50,7 +50,16 @@
   }
 
   .table-list-item {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main"
+      "meta"
+      "status";
+    grid-template-columns: 1fr;
+  }
+
+  .table-list-status {
+    justify-content: flex-start;
+    min-width: 0;
   }
 
   .artifact-list-action {

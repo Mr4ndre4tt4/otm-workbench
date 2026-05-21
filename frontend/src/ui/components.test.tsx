@@ -86,12 +86,15 @@ describe("MetricGrid", () => {
 
 describe("DetailList", () => {
   it("renders detail rows with metadata and status", () => {
-    render(<DetailList ariaLabel="Selected batch fields" items={syntheticDetailRows} />);
+    const { container } = render(<DetailList ariaLabel="Selected batch fields" items={syntheticDetailRows} />);
 
     expect(screen.getByLabelText("Selected batch fields")).toBeInTheDocument();
     expect(screen.getByText("SYNTHETIC_REQUIRED_FIELD")).toBeInTheDocument();
     expect(screen.getByText("Required")).toBeInTheDocument();
     expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(container.querySelector(".table-list-main")).toBeInTheDocument();
+    expect(container.querySelector(".table-list-meta")).toBeInTheDocument();
+    expect(container.querySelector(".table-list-status")).toBeInTheDocument();
   });
 
   it("renders an empty state for missing detail rows", () => {
