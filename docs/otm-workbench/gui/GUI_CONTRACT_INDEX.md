@@ -69,7 +69,13 @@ GUI_STATUS_CHIP_PATTERN_CONTRACT.md
 GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md
 ```
 
-## 6. Rule For New Contracts
+## 6. Visual QA Evidence
+
+```text
+GUI_BROWSER_VISUAL_QA_OTM77.md
+```
+
+## 7. Rule For New Contracts
 
 When adding a new GUI contract:
 
@@ -81,7 +87,7 @@ When adding a new GUI contract:
 5. Keep backend ownership explicit in the contract.
 ```
 
-## 7. Backend Ownership Reminder
+## 8. Backend Ownership Reminder
 
 The GUI contracts protect rendering consistency only.
 

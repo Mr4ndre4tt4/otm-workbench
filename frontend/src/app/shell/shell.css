@@ -2,6 +2,8 @@
   display: grid;
   min-height: 100vh;
   grid-template-columns: 280px minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
 }
 
 .sidebar {
