@@ -152,7 +152,7 @@ The next cleanup slices should stay incremental:
 1. Split platform/types.ts by domain while preserving a public barrel.
 2. Add module README files only when module-local widgets start to grow.
 3. Introduce token files for theme/status/density after the current CSS is audited.
-4. Add an internal component gallery or Storybook after shared UI patterns stabilize.
+4. Add an internal component gallery or Storybook using `GUI_COMPONENT_GALLERY_PLAN.md` after shared UI patterns stabilize.
 ```
 
 Do not start a broad visual redesign as part of these cleanup slices.
