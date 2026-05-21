@@ -494,6 +494,8 @@ Delivered follow-up contracts:
   documented in GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md
 - Initial browser-first React/Vite shell
   documented in GUI_SHELL_SCAFFOLD.md
+- Workbench shell pattern contract
+  documented in GUI_WORKBENCH_SHELL_PATTERN_CONTRACT.md
 - Initial GUI auth/session flow
   documented in GUI_AUTH_SESSION_FLOW.md
 - Login panel pattern contract

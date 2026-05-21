@@ -57,7 +57,8 @@ describe("React architecture boundaries", () => {
       "PageHeader",
       "PreferenceControls",
       "ReadinessPanel",
-      "SidebarNav"
+      "SidebarNav",
+      "WorkbenchShell"
     ];
 
     for (const componentName of expectedExports) {

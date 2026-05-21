@@ -6,8 +6,15 @@
 
 ## 1. Purpose
 
-`App.tsx` should remain the top-level shell orchestrator. It owns the app frame,
-auth gate, sidebar, topbar, and backend-owned preference attributes.
+`App.tsx` should remain the top-level data and auth orchestrator. It wires the
+auth gate, backend navigation query, backend preference query, current path, and
+route content.
+
+The reusable visual app frame lives in:
+
+```text
+frontend/src/app/shell/WorkbenchShell.tsx
+```
 
 Route selection, Project Cockpit rendering, concrete module view dispatch, and
 fallback route states belong in:
@@ -26,8 +33,8 @@ This keeps the app root stable as new modules are added.
 - AuthProvider-derived shell gate usage
 - backend navigation query wiring
 - backend user preference query wiring
-- shell frame attributes: theme, density, sidebar mode
-- sidebar and topbar composition
+- current route path
+- authenticated route versus login selection
 ```
 
 `WorkbenchRoute.tsx` may own:

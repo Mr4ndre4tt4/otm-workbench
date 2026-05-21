@@ -79,6 +79,10 @@ All three checks passed after dependency installation.
 
 ## Next Step
 
-The next GUI slice should add a real authenticated API session path and a
-contract-safe fallback state for unauthenticated local development, then run
-browser visual verification against the local FastAPI backend.
+The shell frame is now centralized in
+`frontend/src/app/shell/WorkbenchShell.tsx`, keeping brand, sidebar, topbar,
+sign out placement, preference controls, and route content slot out of
+module-specific views.
+
+Future shell changes should update `GUI_WORKBENCH_SHELL_PATTERN_CONTRACT.md`
+and its tests before expanding visual behavior.
