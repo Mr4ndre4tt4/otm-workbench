@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, DetailList, IconButton, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatePanel } from "./components";
+import {
+  ActivityRow,
+  Button,
+  DetailList,
+  IconButton,
+  ModuleObjectList,
+  OperationalPanel,
+  SelectedObjectPanel,
+  StatePanel
+} from "./components";
 
 describe("Button patterns", () => {
   it("renders command buttons through the shared Button component", () => {
@@ -204,5 +213,15 @@ describe("OperationalPanel", () => {
     );
 
     expect(screen.getByText("No evidence registered.")).toBeInTheDocument();
+  });
+});
+
+describe("ActivityRow", () => {
+  it("renders activity identity, source, and backend status", () => {
+    render(<ActivityRow status="SUCCEEDED" subtitle="rates" title="load_package.build" />);
+
+    expect(screen.getByText("load_package.build")).toBeInTheDocument();
+    expect(screen.getByText("rates")).toBeInTheDocument();
+    expect(screen.getByText("SUCCEEDED")).toBeInTheDocument();
   });
 });

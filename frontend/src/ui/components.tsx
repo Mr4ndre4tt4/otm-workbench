@@ -47,6 +47,22 @@ export function StatePanel({ children, tone = "default" }: StatePanelProps) {
   );
 }
 
+type ActivityRowProps = {
+  status?: string;
+  subtitle: string;
+  title: string;
+};
+
+export function ActivityRow({ status, subtitle, title }: ActivityRowProps) {
+  return (
+    <div className="activity-row">
+      <strong>{title}</strong>
+      <span>{subtitle}</span>
+      {status ? <StatusChip status={status} /> : null}
+    </div>
+  );
+}
+
 export type MetricItem = {
   key: string;
   label: string;

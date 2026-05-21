@@ -592,6 +592,8 @@ Delivered follow-up contracts:
   documented in GUI_STATUS_CHIP_PATTERN_CONTRACT.md
 - GUI button pattern contract
   documented in GUI_BUTTON_PATTERN_CONTRACT.md
+- GUI activity row pattern contract
+  documented in GUI_ACTIVITY_ROW_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order

@@ -19,7 +19,7 @@ import {
 import { booleanStatus } from "../modules/moduleStatus";
 import { login, useCockpitSummary, useNavigation, useUserPreferences } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, MetricGrid, OperationalPanel, StatePanel, StatusChip } from "../ui/components";
+import { ActivityRow, Button, MetricGrid, OperationalPanel, StatePanel, StatusChip } from "../ui/components";
 import type { NavigationItem } from "../platform/types";
 
 function LoginPanel() {
@@ -162,11 +162,7 @@ function CockpitContent({ token }: { token: string }) {
           title="Recent jobs"
         >
           {data.recent_jobs.map((job) => (
-            <div className="activity-row" key={job.id}>
-              <strong>{job.job_type}</strong>
-              <span>{job.source_module}</span>
-              <StatusChip status={job.status} />
-            </div>
+            <ActivityRow key={job.id} status={job.status} subtitle={job.source_module} title={job.job_type} />
           ))}
         </OperationalPanel>
 
@@ -178,11 +174,12 @@ function CockpitContent({ token }: { token: string }) {
           title="Recent evidence"
         >
           {data.recent_evidence.map((evidence) => (
-            <div className="activity-row" key={evidence.id}>
-              <strong>{evidence.evidence_type}</strong>
-              <span>{evidence.source_module}</span>
-              <StatusChip status={evidence.status} />
-            </div>
+            <ActivityRow
+              key={evidence.id}
+              status={evidence.status}
+              subtitle={evidence.source_module}
+              title={evidence.evidence_type}
+            />
           ))}
         </OperationalPanel>
       </section>
