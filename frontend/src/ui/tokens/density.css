@@ -1,0 +1,34 @@
+.app-shell[data-density="compact"] {
+  --shadow: 0 8px 22px rgba(28, 42, 64, 0.06);
+}
+
+.app-shell[data-density="compact"] .main-area {
+  padding: 18px 22px 28px;
+}
+
+.app-shell[data-density="compact"] .readiness {
+  padding: 10px 12px;
+}
+
+.app-shell[data-density="compact"] .metric,
+.app-shell[data-density="compact"] .panel,
+.app-shell[data-density="compact"] .module-template-main,
+.app-shell[data-density="compact"] .module-template-side {
+  padding: 12px;
+}
+
+.app-shell[data-density="compact"] .panel {
+  min-height: 180px;
+}
+
+.app-shell[data-density="compact"] .activity-row {
+  padding: 8px 0;
+}
+
+.app-shell[data-density="compact"] .module-row {
+  padding: 8px 0;
+}
+
+.app-shell[data-density="compact"] .context-switcher {
+  padding: 10px;
+}

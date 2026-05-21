@@ -1,4 +1,5 @@
 @import "./ui/tokens/theme.css";
+@import "./ui/tokens/density.css";
 
 * {
   box-sizing: border-box;
@@ -25,10 +26,6 @@ textarea {
 
 .app-shell[data-sidebar="collapsed"] {
   grid-template-columns: 76px minmax(0, 1fr);
-}
-
-.app-shell[data-density="compact"] {
-  --shadow: 0 8px 22px rgba(28, 42, 64, 0.06);
 }
 
 .sidebar {
@@ -119,10 +116,6 @@ textarea {
 .main-area {
   min-width: 0;
   padding: 22px 28px 36px;
-}
-
-.app-shell[data-density="compact"] .main-area {
-  padding: 18px 22px 28px;
 }
 
 .topbar {
@@ -266,10 +259,6 @@ h2 {
   box-shadow: var(--shadow);
 }
 
-.app-shell[data-density="compact"] .readiness {
-  padding: 10px 12px;
-}
-
 .readiness-ready svg {
   color: var(--success);
 }
@@ -304,13 +293,6 @@ h2 {
 
 .metric {
   padding: 16px;
-}
-
-.app-shell[data-density="compact"] .metric,
-.app-shell[data-density="compact"] .panel,
-.app-shell[data-density="compact"] .module-template-main,
-.app-shell[data-density="compact"] .module-template-side {
-  padding: 12px;
 }
 
 .metric span,
@@ -359,10 +341,6 @@ h2 {
 .panel {
   min-height: 220px;
   padding: 16px;
-}
-
-.app-shell[data-density="compact"] .panel {
-  min-height: 180px;
 }
 
 .panel-header {
@@ -493,14 +471,6 @@ h2 {
   padding: 10px;
 }
 
-.app-shell[data-density="compact"] .activity-row {
-  padding: 8px 0;
-}
-
-.app-shell[data-density="compact"] .module-row {
-  padding: 8px 0;
-}
-
 .state-panel {
   display: flex;
   align-items: center;
@@ -573,10 +543,6 @@ h2 {
   background: var(--surface);
   padding: 14px;
   box-shadow: var(--shadow);
-}
-
-.app-shell[data-density="compact"] .context-switcher {
-  padding: 10px;
 }
 
 .context-switcher label {

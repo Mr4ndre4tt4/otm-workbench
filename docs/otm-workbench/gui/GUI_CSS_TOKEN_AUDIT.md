@@ -184,6 +184,16 @@ frontend/src/ui/tokens/theme.css
 
 The moved theme blocks were kept unchanged.
 
+The second extraction was completed in `GUI_DENSITY_TOKEN_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/tokens/density.css
+```
+
+The moved compact-density blocks were kept unchanged.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
