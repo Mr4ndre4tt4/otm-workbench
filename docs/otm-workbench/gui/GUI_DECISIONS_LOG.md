@@ -100,6 +100,20 @@ Tests or guardrails: React boundary contract and frontend architecture documenta
 Supersedes: None.
 ```
 
+### GUI-DEC-006
+
+```text
+ID: GUI-DEC-006
+Status: Accepted
+Date: 2026-05-21
+Decision: Keep Lucide as the MVP1 implementation icon family while evaluating Iconly only as a system-wide Figma/design pilot.
+Reason: Lucide is already integrated in React, fits the operational workbench tone, works with currentColor across light/dark tokens, and avoids a premature product-wide icon migration before license and coverage review.
+Frontend impact: App and module code continue using Lucide through shared components and shell patterns. No module may mix in a different icon family without an approved exception.
+Backend ownership: Backend may provide icon_key metadata later, but the frontend maps those keys through governed shared components.
+Tests or guardrails: GUI_DESIGN_SYSTEM_HANDOFF.md, GUI_CONTRACT_INDEX.md, GUI_EXCEPTIONS_REGISTER.md, Button/IconButton pattern tests.
+Supersedes: None.
+```
+
 ## 4. Change Rule
 
 Do not silently replace accepted GUI decisions. Add a new decision with
