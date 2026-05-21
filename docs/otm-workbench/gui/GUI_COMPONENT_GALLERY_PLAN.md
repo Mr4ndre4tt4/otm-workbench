@@ -1,6 +1,6 @@
 # GUI Component Gallery Plan
 
-**Status:** planned  
+**Status:** in progress
 **Branch:** `codex/gui-component-gallery-plan`  
 **Scope:** component gallery or Storybook-equivalent plan for shared GUI patterns.
 
@@ -33,6 +33,16 @@ when frontend tooling work is worth the extra dependency and maintenance cost.
 
 Use an authenticated development/admin-only route served by the existing Vite
 app.
+
+Current implementation route:
+
+```text
+/__gui/component-gallery
+```
+
+The route is rendered by `frontend/src/app/routes/ComponentGalleryRoute.tsx`
+and is intentionally not sourced from backend navigation. It remains an
+internal synthetic workbench for shared pattern review.
 
 Best for:
 
@@ -108,6 +118,7 @@ Current shared UI kit consumer:
 
 ```text
 frontend/src/ui/components.test.tsx
+frontend/src/app/routes/ComponentGalleryRoute.tsx
 ```
 
 Fixtures must:

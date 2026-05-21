@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 
+import { ComponentGalleryRoute } from "./ComponentGalleryRoute";
 import { MODULE_DESCRIPTIONS } from "./moduleDescriptions";
 import { isNavigationItemActive } from "./routeUtils";
 import { ContextSummary, ContextSwitcher, PageHeader, ReadinessPanel } from "../shell";
@@ -161,6 +162,9 @@ function UnknownRoute() {
 export function WorkbenchRoute({ items, token }: { items: NavigationItem[]; token: string }) {
   const location = useLocation();
   const currentPath = location.pathname;
+  if (currentPath === "/__gui/component-gallery") {
+    return <ComponentGalleryRoute />;
+  }
   if (currentPath === "/" || currentPath === "/home") {
     return <CockpitContent token={token} />;
   }

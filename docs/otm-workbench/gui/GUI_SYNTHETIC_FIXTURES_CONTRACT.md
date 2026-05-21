@@ -55,6 +55,7 @@ Fixtures must not:
 ```text
 frontend/src/test/fixtures/gui.ts
 frontend/src/test/fixtures/gui.test.ts
+frontend/src/app/routes/ComponentGalleryRoute.tsx
 frontend/src/ui/components.test.tsx
 frontend/tests/guiSyntheticFixturesUsage.test.ts
 ```
@@ -64,6 +65,10 @@ frontend/tests/guiSyntheticFixturesUsage.test.ts
 `frontend/src/ui/components.test.tsx` is the first shared UI kit consumer. It
 uses the synthetic metrics, module objects, detail rows, artifact rows, and
 blocker rows instead of local one-off examples.
+
+`frontend/src/app/routes/ComponentGalleryRoute.tsx` is the first internal
+runtime consumer. It renders the same synthetic contract-shaped examples under
+`/__gui/component-gallery`, outside backend-owned production navigation.
 
 ## 6. Gallery Link
 
@@ -75,6 +80,7 @@ implementation is an internal route or Storybook.
 
 ```text
 frontend/src/test/fixtures/gui.test.ts
+frontend/tests/componentGalleryRouteContract.test.ts
 frontend/tests/guiSyntheticFixturesContract.test.ts
 frontend/tests/guiSyntheticFixturesUsage.test.ts
 ```

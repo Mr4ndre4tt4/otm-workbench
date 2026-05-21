@@ -353,7 +353,9 @@ Recommended next architecture sequence:
 5. Introduce token files for theme, status, density, and layout.
 6. Add component-level tests for shared UI patterns.
 7. Add Storybook or an internal component gallery using
-   `GUI_COMPONENT_GALLERY_PLAN.md` after tokens stabilize.
+   `GUI_COMPONENT_GALLERY_PLAN.md` after tokens stabilize. The first internal
+   route is `/__gui/component-gallery` and remains outside backend-owned
+   production navigation.
 8. Add desktop adapter skeletons only when the first desktop use case appears.
 ```
 
