@@ -568,6 +568,8 @@ Delivered follow-up contracts:
   documented in GUI_CSS_ENTRYPOINT_CONTRACT.md
 - GUI CSS layer ownership contract
   documented in GUI_CSS_LAYER_OWNERSHIP_CONTRACT.md
+- GUI React boundary contract
+  documented in GUI_REACT_BOUNDARY_CONTRACT.md
 ```
 
 ## 12. Implementation Order

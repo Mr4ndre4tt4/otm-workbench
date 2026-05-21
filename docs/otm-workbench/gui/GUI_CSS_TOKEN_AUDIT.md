@@ -325,6 +325,20 @@ frontend/tests/cssLayerOwnership.test.ts
 The test protects component, density, sidebar, and responsive layer boundaries
 so future modules do not mix CSS responsibilities casually.
 
+## React Boundary Contract
+
+The React boundary contract was completed in
+`GUI_REACT_BOUNDARY_CONTRACT.md`.
+
+Delivered:
+
+```text
+frontend/tests/reactBoundary.test.ts
+```
+
+The test protects App/module/shell barrel boundaries so new GUI modules keep
+the same ownership model.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
