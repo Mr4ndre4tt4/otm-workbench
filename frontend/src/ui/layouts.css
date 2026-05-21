@@ -215,9 +215,18 @@
 }
 
 .detail-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: block;
+}
+
+.detail-actions .action-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 8px;
+  width: 100%;
+}
+
+.detail-actions .button {
+  width: 100%;
 }
 
 .table-list {
@@ -241,11 +250,38 @@
 
 .artifact-list-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 100px auto;
+  grid-template-areas:
+    "main action"
+    "meta action";
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   border-top: 1px solid var(--border);
   padding: 10px 0;
+}
+
+.artifact-list-item strong {
+  overflow-wrap: anywhere;
+}
+
+.artifact-list-main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.artifact-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: meta;
+  gap: 4px 16px;
+  min-width: 0;
+}
+
+.artifact-list-action {
+  display: flex;
+  grid-area: action;
+  justify-content: flex-end;
+  min-width: max-content;
 }
 
 .artifact-list-item span {

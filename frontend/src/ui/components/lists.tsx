@@ -104,14 +104,16 @@ export function ArtifactList({ items }: ArtifactListProps) {
     <div className="artifact-list">
       {items.map((item) => (
         <div className="artifact-list-item" key={item.id}>
-          <div>
+          <div className="artifact-list-main">
             <strong>{item.title}</strong>
             <span>{item.subtitle}</span>
           </div>
-          {item.meta.map((value, index) => (
-            <span key={`${item.id}-${index}`}>{value}</span>
-          ))}
-          {item.action ?? (item.status ? <StatusChip status={item.status} /> : null)}
+          <div className="artifact-list-meta">
+            {item.meta.map((value, index) => (
+              <span key={`${item.id}-${index}`}>{value}</span>
+            ))}
+          </div>
+          <div className="artifact-list-action">{item.action ?? (item.status ? <StatusChip status={item.status} /> : null)}</div>
         </div>
       ))}
     </div>

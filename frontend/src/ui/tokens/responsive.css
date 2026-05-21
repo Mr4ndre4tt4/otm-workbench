@@ -36,10 +36,30 @@
   .login-panel,
   .module-template,
   .module-row,
-  .artifact-list-item,
   .context-switcher,
   .gallery-selector-preview {
     grid-template-columns: 1fr;
+  }
+
+  .artifact-list-item {
+    grid-template-areas:
+      "main"
+      "meta"
+      "action";
+    grid-template-columns: 1fr;
+  }
+
+  .table-list-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .artifact-list-action {
+    justify-content: stretch;
+    min-width: 0;
+  }
+
+  .artifact-list-action .button {
+    width: 100%;
   }
 
   .page-header {

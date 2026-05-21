@@ -103,7 +103,7 @@ describe("DetailList", () => {
 
 describe("ArtifactList", () => {
   it("renders artifact identity, metadata, and action", () => {
-    render(
+    const { container } = render(
       <ArtifactList
         items={[
           {
@@ -118,6 +118,9 @@ describe("ArtifactList", () => {
     expect(screen.getByText("CSV export")).toBeInTheDocument();
     expect(screen.getByText("text/csv")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+    expect(container.querySelector(".artifact-list-main")).toBeInTheDocument();
+    expect(container.querySelector(".artifact-list-meta")).toBeInTheDocument();
+    expect(container.querySelector(".artifact-list-action")).toBeInTheDocument();
   });
 
   it("renders artifact status when no action is provided", () => {
