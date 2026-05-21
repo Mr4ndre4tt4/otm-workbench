@@ -8,6 +8,7 @@ import type {
   IdNameResponse,
   LoginResponse,
   NavigationResponse,
+  RatesSummary,
   UserPreferences
 } from "./types";
 
@@ -55,6 +56,14 @@ export function useCockpitSummary(token: string | null) {
   return useQuery({
     queryKey: ["platform", "project-cockpit", "summary"],
     queryFn: () => apiGet<CockpitSummary>("/api/v1/platform/project-cockpit/summary", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useRatesSummary(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "summary"],
+    queryFn: () => apiGet<RatesSummary>("/api/v1/modules/rates/summary", { token }),
     enabled: Boolean(token)
   });
 }

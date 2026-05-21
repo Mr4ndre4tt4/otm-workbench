@@ -399,7 +399,7 @@ describe("App shell", () => {
     expect(savedPreferences).toMatchObject({ density: "compact", sidebar_mode: "collapsed" });
   });
 
-  it("renders a reusable module route template from backend navigation", async () => {
+  it("renders Rates Studio from the backend module summary contract", async () => {
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -440,6 +440,72 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/rates/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              module_id: "rates",
+              status: "ok",
+              title: "Rates Studio",
+              description: "Prepare, validate, approve and export OTM rates packages.",
+              primary_object: "rate_batch",
+              counts: [
+                { key: "total", label: "Total", value: 2, severity: "neutral" },
+                { key: "ready_for_approval", label: "Ready for approval", value: 1, severity: "success" },
+                { key: "ready_for_export", label: "Ready for export", value: 0, severity: "success" },
+                { key: "blocked", label: "Blocked", value: 1, severity: "warning" }
+              ],
+              recent_objects: [
+                {
+                  id: "batch_1",
+                  code: "ACCESSORIAL_ONLY",
+                  display_name: "Synthetic ready batch",
+                  status: "EXPORT_PREVIEWED",
+                  project_id: null,
+                  profile_id: null,
+                  environment_id: null,
+                  domain_name: "OTM1",
+                  summary: {
+                    ready_for_approval: true,
+                    ready_for_export: false,
+                    table_count: 1,
+                    row_count: 1,
+                    issue_summary: { errors: 0, warnings: 0 }
+                  },
+                  badges: [],
+                  available_actions: []
+                }
+              ],
+              open_blockers: [
+                {
+                  object_id: "batch_2",
+                  object_type: "rate_batch",
+                  severity: "warning",
+                  codes: ["NO_ROWS"],
+                  message: "Rate batch is not ready: NO_ROWS"
+                }
+              ],
+              recent_jobs: [],
+              recent_artifacts: [],
+              available_actions: [
+                {
+                  key: "create_batch",
+                  label: "Create rate batch",
+                  method: "POST",
+                  href: "/api/v1/modules/rates/batches",
+                  variant: "primary",
+                  icon_key: "plus",
+                  disabled: false,
+                  disabled_reason: null,
+                  requires_confirmation: false
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -450,8 +516,9 @@ describe("App shell", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Rates Studio" });
-    expect(screen.getByText("Module workspace")).toBeInTheDocument();
-    expect(screen.getByLabelText("Rates Studio module template")).toBeInTheDocument();
-    expect(screen.getByText("Available actions from backend")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rates summary metrics")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
+    expect(screen.getByText("Ready for approval")).toBeInTheDocument();
+    expect(screen.getByText("Rate batch is not ready: NO_ROWS")).toBeInTheDocument();
   });
 });

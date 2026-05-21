@@ -51,6 +51,55 @@ export type AvailableAction = {
   requires_confirmation: boolean;
 };
 
+export type ModuleCount = {
+  key: string;
+  label: string;
+  value: number;
+  severity: "neutral" | "success" | "warning" | "danger";
+};
+
+export type ModuleBlocker = {
+  object_id: string;
+  object_type: string;
+  severity: string;
+  codes: string[];
+  message: string;
+};
+
+export type RatesSummaryItem = {
+  id: string;
+  code: string;
+  display_name: string;
+  status: string;
+  project_id: string | null;
+  profile_id: string | null;
+  environment_id: string | null;
+  domain_name: string | null;
+  summary: {
+    ready_for_approval: boolean;
+    ready_for_export: boolean;
+    table_count: number;
+    row_count: number;
+    issue_summary: Record<string, number>;
+  };
+  badges: string[];
+  available_actions: AvailableAction[];
+};
+
+export type RatesSummary = {
+  module_id: "rates";
+  status: string;
+  title: string;
+  description: string;
+  primary_object: "rate_batch";
+  counts: ModuleCount[];
+  recent_objects: RatesSummaryItem[];
+  open_blockers: ModuleBlocker[];
+  recent_jobs: CockpitJob[];
+  recent_artifacts: CockpitArtifact[];
+  available_actions: AvailableAction[];
+};
+
 export type UserPreferences = {
   theme_mode: "light" | "dark" | "system";
   follow_system_theme: boolean;

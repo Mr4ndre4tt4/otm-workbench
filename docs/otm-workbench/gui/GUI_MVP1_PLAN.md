@@ -504,6 +504,8 @@ Delivered follow-up contracts:
   documented in GUI_THEME_PREFERENCES.md
 - Module routing foundation
   documented in GUI_MODULE_ROUTING_FOUNDATION.md
+- Rates Studio summary view
+  documented in GUI_RATES_SUMMARY_VIEW.md
 ```
 
 ## 12. Implementation Order

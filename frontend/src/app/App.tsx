@@ -25,11 +25,12 @@ import {
   useNavigation,
   useProfiles,
   useProjects,
+  useRatesSummary,
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
 import { Button, IconButton, StatusChip } from "../ui/components";
-import type { AvailableAction, NavigationItem } from "../platform/types";
+import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
 function navIcon(moduleId: string) {
@@ -385,6 +386,106 @@ function ContextSwitcher({ token }: { token: string }) {
   );
 }
 
+function severityStatus(severity: string) {
+  if (severity === "success") return "READY";
+  if (severity === "warning") return "BLOCKED";
+  if (severity === "danger") return "ERROR";
+  return "INFO";
+}
+
+function RatesBatchRow({ batch }: { batch: RatesSummaryItem }) {
+  const issueCount = Object.values(batch.summary.issue_summary).reduce((total, value) => total + value, 0);
+  return (
+    <div className="module-row">
+      <div>
+        <strong>{batch.display_name}</strong>
+        <span>{batch.code}</span>
+      </div>
+      <span>{batch.summary.table_count} table(s)</span>
+      <span>{batch.summary.row_count} row(s)</span>
+      <span>{issueCount} issue(s)</span>
+      <StatusChip status={batch.status} />
+    </div>
+  );
+}
+
+function RatesSummaryView({ token }: { token: string }) {
+  const rates = useRatesSummary(token);
+
+  if (rates.isLoading) {
+    return <section className="state-panel">Loading Rates Studio...</section>;
+  }
+
+  if (rates.isError || !rates.data) {
+    return (
+      <section className="state-panel state-panel-error">
+        <AlertCircle aria-hidden="true" />
+        <span>Rates Studio summary is unavailable.</span>
+      </section>
+    );
+  }
+
+  const data = rates.data;
+
+  return (
+    <>
+      <PageHeader
+        actions={data.available_actions}
+        description={data.description}
+        label="Module workspace"
+        title={data.title}
+      />
+
+      <section className="metrics-grid" aria-label="Rates summary metrics">
+        {data.counts.map((count) => (
+          <div className="metric" key={count.key}>
+            <span>{count.label}</span>
+            <strong>{count.value}</strong>
+            <StatusChip status={severityStatus(count.severity)} />
+          </div>
+        ))}
+      </section>
+
+      <section className="module-template" aria-label="Rates Studio workspace">
+        <div className="module-template-main">
+          <div className="panel-header">
+            <h2>Recent rate batches</h2>
+            <StatusChip status={data.recent_objects.length ? "ACTIVE" : "EMPTY"} />
+          </div>
+          {data.recent_objects.length ? (
+            <div className="module-list">
+              {data.recent_objects.map((batch) => (
+                <RatesBatchRow batch={batch} key={batch.id} />
+              ))}
+            </div>
+          ) : (
+            <p className="empty-text">No rate batches available for the current context.</p>
+          )}
+        </div>
+
+        <aside className="module-template-side">
+          <div className="panel-header">
+            <h2>Open blockers</h2>
+            <StatusChip status={data.open_blockers.length ? "BLOCKED" : "READY"} />
+          </div>
+          {data.open_blockers.length ? (
+            <div className="blocker-list">
+              {data.open_blockers.map((blocker) => (
+                <div className="blocker-item" key={`${blocker.object_type}-${blocker.object_id}`}>
+                  <strong>{blocker.codes.join(", ")}</strong>
+                  <span>{blocker.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-text">No open blockers in the current rates summary.</p>
+          )}
+        </aside>
+      </section>
+    </>
+  );
+}
+
 const MODULE_DESCRIPTIONS: Record<string, string> = {
   admin: "Workspace, project, profile, environment, users, roles, capabilities, and feature flag administration.",
   assets: "Shared library for templates, payloads, generated files, specs, and reusable implementation assets.",
@@ -451,6 +552,9 @@ function WorkbenchRoute({ items, token }: { items: NavigationItem[]; token: stri
     return <CockpitContent token={token} />;
   }
   const item = items.find((candidate) => isNavigationItemActive(candidate, currentPath));
+  if (item?.id === "rates") {
+    return <RatesSummaryView token={token} />;
+  }
   return item ? <ModulePlaceholder item={item} /> : <UnknownRoute />;
 }
 

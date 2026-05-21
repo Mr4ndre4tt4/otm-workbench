@@ -431,7 +431,45 @@ h2 {
   padding: 12px 0;
 }
 
+.module-list,
+.blocker-list {
+  display: grid;
+  gap: 8px;
+}
+
+.module-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 90px 90px auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.module-row span,
+.blocker-item span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.module-row strong,
+.module-row span {
+  display: block;
+}
+
+.blocker-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
 .app-shell[data-density="compact"] .activity-row {
+  padding: 8px 0;
+}
+
+.app-shell[data-density="compact"] .module-row {
   padding: 8px 0;
 }
 
@@ -588,6 +626,7 @@ h2 {
   .metrics-grid,
   .login-panel,
   .module-template,
+  .module-row,
   .context-switcher {
     grid-template-columns: 1fr;
   }
