@@ -604,6 +604,8 @@ Delivered follow-up contracts:
   documented in GUI_PREFERENCE_CONTROLS_PATTERN_CONTRACT.md
 - GUI contract index
   documented in GUI_CONTRACT_INDEX.md
+- GUI exceptions register
+  documented in GUI_EXCEPTIONS_REGISTER.md
 ```
 
 ## 12. Implementation Order

@@ -368,6 +368,7 @@ Before adding a new screen, component, or visual variant, answer:
 ```
 
 Exceptions must be documented when a module needs a custom interaction.
+Record approved departures in `GUI_EXCEPTIONS_REGISTER.md` before implementation.
 
 ## 13. Initial Exceptions To Allow
 
