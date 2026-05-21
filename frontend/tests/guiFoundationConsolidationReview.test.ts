@@ -14,7 +14,17 @@ describe("GUI foundation consolidation review", () => {
       "codex/gui-fixtures-ui-kit-tests",
       "codex/gui-internal-component-gallery-shell",
       "codex/gui-gallery-app-route-guardrail",
-      "codex/gui-foundation-consolidation-review"
+      "codex/gui-foundation-consolidation-review",
+      "codex/gui-component-gallery-coverage",
+      "codex/gui-visual-qa-gallery-shell-states",
+      "codex/gui-frontend-ownership-component-split",
+      "codex/gui-module-screen-consistency-audit",
+      "codex/browser-runtime-diagnostic",
+      "codex/gui-design-system-handoff",
+      "codex/gui-module-operational-surfaces",
+      "codex/gui-module-action-surfaces",
+      "codex/gui-long-label-responsive-coverage",
+      "codex/gui-foundation-consolidation-refresh"
     ]) {
       expect(review).toContain(branchName);
     }
@@ -22,6 +32,8 @@ describe("GUI foundation consolidation review", () => {
     expect(review).toContain("Synthetic fixtures and client-data guardrails");
     expect(review).toContain("Internal component gallery route");
     expect(review).toContain("App-level route guardrail");
+    expect(review).toContain("Module screen consistency audit");
+    expect(review).toContain("Long-label responsive guardrail");
   });
 
   it("keeps the consolidation review linked from GUI governance docs", () => {
@@ -35,8 +47,16 @@ describe("GUI foundation consolidation review", () => {
   it("keeps follow-up Linear issues visible for the next GUI workstreams", () => {
     const review = readFileSync(reviewPath, "utf-8");
 
-    for (const issueId of ["OTM-64", "OTM-65", "OTM-66", "OTM-67", "OTM-68"]) {
+    for (const issueId of ["OTM-64", "OTM-65", "OTM-66", "OTM-67", "OTM-68", "OTM-69", "OTM-70", "OTM-71"]) {
       expect(review).toContain(issueId);
     }
+  });
+
+  it("records the current consolidation recommendation and visual QA limitation", () => {
+    const review = readFileSync(reviewPath, "utf-8");
+
+    expect(review).toContain("Prepare a GUI foundation integration PR");
+    expect(review).toContain("no pixel evidence is claimed");
+    expect(review).toContain("Avoid adding new module behavior inside the consolidation PR");
   });
 });

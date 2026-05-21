@@ -1,9 +1,9 @@
 # GUI Foundation Consolidation Review
 
-**Status:** in progress
-**Branch:** `codex/gui-foundation-consolidation-review`
+**Status:** refreshed
+**Branch:** `codex/gui-foundation-consolidation-refresh`
 **Linear:** `OTM-63`
-**Scope:** review and consolidation path for the current GUI foundation branch stack.
+**Scope:** review and consolidation path for the current GUI foundation branch stack through OTM-71.
 
 ## 1. Purpose
 
@@ -35,9 +35,13 @@ The current foundation includes:
 - internal component gallery route at /__gui/component-gallery
 ```
 
-## 3. Recent Branch Stack
+## 3. Current Branch Stack
 
-The most recent foundation branches are:
+The current GUI foundation stack now includes the original foundation branches
+plus the follow-up contracts and guardrails completed after this review first
+landed.
+
+Core foundation branches:
 
 ```text
 codex/gui-synthetic-fixtures-foundation
@@ -47,9 +51,23 @@ codex/gui-gallery-app-route-guardrail
 codex/gui-foundation-consolidation-review
 ```
 
-These should be reviewed in that order if they remain separate PRs. If the
-branch stack is compressed into a single integration PR, preserve the same
-logical sections in the PR description.
+Follow-up GUI branches now stacked above the original review:
+
+```text
+codex/gui-component-gallery-coverage
+codex/gui-visual-qa-gallery-shell-states
+codex/gui-frontend-ownership-component-split
+codex/gui-module-screen-consistency-audit
+codex/browser-runtime-diagnostic
+codex/gui-design-system-handoff
+codex/gui-module-operational-surfaces
+codex/gui-module-action-surfaces
+codex/gui-long-label-responsive-coverage
+codex/gui-foundation-consolidation-refresh
+```
+
+These can still be reviewed as separate PRs, but the recommended path is now a
+single integration review that preserves the logical sections below.
 
 ## 4. Review Order
 
@@ -61,7 +79,15 @@ Recommended review sequence:
 3. Internal component gallery route.
 4. App-level route guardrail proving the gallery is authenticated and outside
    backend-owned production navigation.
-5. This consolidation review.
+5. Component gallery coverage matrix and gallery route checks.
+6. Browser visual QA attempt and browser runtime fallback documentation.
+7. Component ownership split and frontend architecture cleanup.
+8. Module screen consistency audit across backend-backed modules.
+9. Design system/Figma handoff and icon-family governance.
+10. Module operational surfaces contract.
+11. Module action surfaces contract.
+12. Long-label responsive guardrail.
+13. This refreshed consolidation review.
 ```
 
 The merge/review path should not add new visual behavior. It should prove that
@@ -70,13 +96,17 @@ the current behavior is coherent and ready for the next GUI workstream.
 ## 5. Known Risks
 
 ```text
-- Browser visual QA is not fully proven in this Windows environment.
+- Browser visual QA remains blocked in this Codex/browser runtime session. The
+  external Chrome fallback was documented, but no pixel evidence is claimed.
 - frontend/src/ui/components.tsx now acts as the public UI kit barrel after the
   planned ownership split into internal component families.
 - GUI_FRONTEND_ARCHITECTURE.md now reflects accepted/current structure while
   later cleanup docs describe delivered slices.
-- Module screens share patterns, but they still need a consistency audit before
-  richer module-specific GUI work.
+- Module screens share patterns and have consistency, operational surface,
+  action surface, and long-label guardrails, but richer GUI work still needs
+  browser visual QA and accessibility passes.
+- The branch stack is long. Merge/PR review should avoid mixing this foundation
+  consolidation with new module behavior.
 ```
 
 These risks are tracked in Linear:
@@ -87,6 +117,9 @@ OTM-65 GUI visual QA pass - gallery plus shell states
 OTM-66 GUI frontend architecture cleanup - folder ownership and component split
 OTM-67 GUI module screen consistency audit - backend-backed modules
 OTM-68 GUI design system handoff - Figma and icon family evaluation
+OTM-69 GUI module operational surfaces - artifacts evidence jobs blockers
+OTM-70 GUI module action surfaces - backend actions disabled reasons feedback
+OTM-71 GUI module long-label responsive regression coverage
 ```
 
 ## 6. Required Verification
@@ -110,8 +143,26 @@ Also confirm:
 
 ## 7. Recommendation
 
-Proceed with `OTM-63` first, then complete `OTM-64`, then run `OTM-65`.
+Prepare a GUI foundation integration PR that groups the delivered stack into
+review sections instead of treating the current branch chain as unrelated work.
 
-Do not start a larger GUI module expansion or Figma/icon-family effort until
-the foundation stack is reviewed and the component gallery covers the core
-states needed for visual QA.
+Recommended PR sections:
+
+```text
+1. Governance and backend ownership contracts.
+2. Shell, routing, auth, context, preferences, and navigation.
+3. UI kit components, CSS layers, and responsive guardrails.
+4. Backend-backed module screens.
+5. Component gallery and synthetic fixtures.
+6. Module consistency/action/operational contracts.
+7. Visual QA limitations and browser runtime fallback.
+```
+
+After this integration review, the next GUI work should be either:
+
+```text
+- a browser/accessibility QA pass if runtime access is restored; or
+- a narrow first Figma/design-system handoff task using the accepted contracts.
+```
+
+Avoid adding new module behavior inside the consolidation PR.
