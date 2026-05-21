@@ -8,6 +8,8 @@ import type {
   AssetsResponse,
   AssetVersionsResponse,
   CockpitSummary,
+  EvidenceHubResponse,
+  EvidenceItem,
   IdNameResponse,
   LoginResponse,
   NavigationResponse,
@@ -127,6 +129,22 @@ export function useAssetVersions(token: string | null, assetId: string | null) {
     queryKey: ["modules", "assets", "assets", assetId, "versions"],
     queryFn: () => apiGet<AssetVersionsResponse>(`/api/v1/modules/assets/assets/${assetId}/versions`, { token }),
     enabled: Boolean(token && assetId)
+  });
+}
+
+export function useEvidenceHub(token: string | null) {
+  return useQuery({
+    queryKey: ["evidence-hub", "evidence"],
+    queryFn: () => apiGet<EvidenceHubResponse>("/api/v1/evidence-hub/evidence", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useEvidenceDetail(token: string | null, evidenceId: string | null) {
+  return useQuery({
+    queryKey: ["evidence-hub", "evidence", evidenceId],
+    queryFn: () => apiGet<EvidenceItem>(`/api/v1/evidence-hub/evidence/${evidenceId}`, { token }),
+    enabled: Boolean(token && evidenceId)
   });
 }
 

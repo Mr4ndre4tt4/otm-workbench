@@ -195,6 +195,43 @@ export type AssetVersion = {
 export type AssetsResponse = PageResponse<AssetItem>;
 export type AssetVersionsResponse = PageResponse<AssetVersion>;
 
+export type EvidenceArtifactSummary = {
+  id: string;
+  source_module: string;
+  artifact_type: string;
+  file_name: string;
+  content_type: string;
+  sha256: string;
+  size_bytes: number;
+  sensitivity_level: string;
+  created_at: string | null;
+};
+
+export type EvidenceManifestSummary = {
+  id: string;
+  source_module: string;
+  status: string;
+  manifest_type: string | null;
+  schema_version: string | null;
+  created_at: string | null;
+};
+
+export type EvidenceItem = {
+  id: string;
+  project_id: string | null;
+  source_module: string;
+  evidence_type: string;
+  status: string;
+  summary: Record<string, unknown>;
+  artifact: EvidenceArtifactSummary | null;
+  manifest: EvidenceManifestSummary | null;
+  client_safe: boolean;
+  sensitivity_level: string;
+  created_at: string | null;
+};
+
+export type EvidenceHubResponse = PageResponse<EvidenceItem>;
+
 export type RatesSummary = {
   module_id: "rates";
   status: string;

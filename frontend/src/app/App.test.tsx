@@ -909,4 +909,146 @@ describe("App shell", () => {
     expect(screen.getByText("42 bytes")).toBeInTheDocument();
     expect(screen.queryByText(/storage_path/i)).not.toBeInTheDocument();
   });
+
+  it("renders Evidence Hub from backend list and detail contracts", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "evidence", label: "Evidence Hub", path: "/evidence", status: "ACTIVE" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/evidence-hub/evidence")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "evidence_1",
+                  project_id: null,
+                  source_module: "rates",
+                  evidence_type: "rates_csv_export",
+                  status: "CREATED",
+                  summary: { status: "ok", note_present: true },
+                  artifact: {
+                    id: "artifact_1",
+                    source_module: "rates",
+                    artifact_type: "rates_csv_zip",
+                    file_name: "demo.zip",
+                    content_type: "application/zip",
+                    sha256: "abc123",
+                    size_bytes: 1234,
+                    sensitivity_level: "internal",
+                    created_at: "2026-05-21T00:00:00"
+                  },
+                  manifest: {
+                    id: "manifest_1",
+                    source_module: "rates",
+                    status: "CREATED",
+                    manifest_type: "rates_csv_export",
+                    schema_version: "rates-csv-export-manifest/v1",
+                    created_at: "2026-05-21T00:00:00"
+                  },
+                  client_safe: true,
+                  sensitivity_level: "client_safe",
+                  created_at: "2026-05-21T00:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/evidence-hub/evidence/evidence_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "evidence_1",
+              project_id: null,
+              source_module: "rates",
+              evidence_type: "rates_csv_export",
+              status: "CREATED",
+              summary: { status: "ok", note_present: true },
+              artifact: {
+                id: "artifact_1",
+                source_module: "rates",
+                artifact_type: "rates_csv_zip",
+                file_name: "demo.zip",
+                content_type: "application/zip",
+                sha256: "abc123",
+                size_bytes: 1234,
+                sensitivity_level: "internal",
+                created_at: "2026-05-21T00:00:00"
+              },
+              manifest: {
+                id: "manifest_1",
+                source_module: "rates",
+                status: "CREATED",
+                manifest_type: "rates_csv_export",
+                schema_version: "rates-csv-export-manifest/v1",
+                created_at: "2026-05-21T00:00:00"
+              },
+              client_safe: true,
+              sensitivity_level: "client_safe",
+              created_at: "2026-05-21T00:00:00"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/evidence");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Evidence Hub" });
+    expect(await screen.findByText("rates_csv_export")).toBeInTheDocument();
+    expect(screen.getAllByText("rates").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("demo.zip").length).toBeGreaterThan(0);
+    expect(screen.getByText("rates-csv-export-manifest/v1")).toBeInTheDocument();
+    expect(screen.queryByText(/file_path/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/manifest_json/i)).not.toBeInTheDocument();
+  });
 });

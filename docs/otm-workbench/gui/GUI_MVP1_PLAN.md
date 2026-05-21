@@ -526,6 +526,8 @@ Delivered follow-up contracts:
   documented in GUI_DETAIL_LIST.md
 - Assets Library backend-backed view
   documented in GUI_ASSETS_LIBRARY_VIEW.md
+- Evidence Hub backend-backed view
+  documented in GUI_EVIDENCE_HUB_VIEW.md
 ```
 
 ## 12. Implementation Order
