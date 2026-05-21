@@ -1,11 +1,10 @@
-﻿import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { ApiError } from "../platform/api";
 import { MODULE_DESCRIPTIONS } from "./routes/moduleDescriptions";
 import { isNavigationItemActive } from "./routes/routeUtils";
-import { ContextSummary, ContextSwitcher, PageHeader, PreferenceControls, SidebarNav } from "./shell";
+import { ContextSummary, ContextSwitcher, PageHeader, PreferenceControls, ReadinessPanel, SidebarNav } from "./shell";
 import {
   AssetsLibraryView,
   CatalogCoreView,
@@ -111,17 +110,7 @@ function CockpitContent({ token }: { token: string }) {
       <ContextSummary context={data.active_context} />
       <ContextSwitcher token={token} />
 
-      <section className={data.status === "ready" ? "readiness readiness-ready" : "readiness"}>
-        {data.status === "ready" ? <CheckCircle2 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
-        <div>
-          <strong>{data.status === "ready" ? "Project context ready" : "Select an active project context"}</strong>
-          <span>
-            {data.setup_status
-              ? `${data.setup_status.profile_count} profile(s), ${data.setup_status.environment_count} environment(s)`
-              : "The shell is waiting for project, profile, and environment context."}
-          </span>
-        </div>
-      </section>
+      <ReadinessPanel setupStatus={data.setup_status} status={data.status} />
 
       <MetricGrid
         ariaLabel="Project activity"
