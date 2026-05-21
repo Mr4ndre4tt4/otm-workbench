@@ -392,7 +392,7 @@
 
 .gallery-selector-preview {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
   align-items: end;
   border: 1px solid var(--border);
@@ -402,10 +402,38 @@
   box-shadow: var(--shadow);
 }
 
+.gallery-selector-preview .button {
+  width: 100%;
+}
+
 .gallery-state-badge-preview {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.gallery-command-preview {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+
+.gallery-command-preview .button {
+  grid-column: 1 / -1;
+}
+
+.gallery-auth-preview .login-panel {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 16px;
+}
+
+.gallery-auth-preview .login-panel h1 {
+  font-size: 24px;
+}
+
+.gallery-auth-preview .login-panel p {
+  max-width: 42ch;
 }
 
 .context-switcher label,

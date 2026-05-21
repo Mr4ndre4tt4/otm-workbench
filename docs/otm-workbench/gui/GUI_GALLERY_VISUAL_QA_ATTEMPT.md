@@ -88,3 +88,8 @@ Run this matrix when browser automation is stable:
   contract tests green for GUI changes.
 - `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md` records the current Browser plugin
   failure mode and the external Chrome fallback.
+
+## Superseded Follow-up
+
+`GUI_COMPONENT_GALLERY_VISUAL_QA_OTM80.md` now records completed browser-backed
+component gallery evidence using the accepted local Playwright fallback.

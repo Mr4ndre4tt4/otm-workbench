@@ -97,6 +97,7 @@ export function ComponentGalleryRoute() {
 
         <OperationalPanel
           ariaLabel="Gallery login panel"
+          className="gallery-auth-preview"
           emptyText="No login panel preview."
           hasItems
           status="READY"
@@ -117,7 +118,7 @@ export function ComponentGalleryRoute() {
           <div className="detail-stack">
             <ContextSummary
               context={{
-                domain_name: "SYNTHETIC_DOMAIN",
+                domain_name: "SYN_DOMAIN",
                 environment_id: "synthetic_environment",
                 profile_id: "synthetic_profile",
                 project_id: "synthetic_project"
@@ -127,24 +128,24 @@ export function ComponentGalleryRoute() {
               <label>
                 <span>Project</span>
                 <select defaultValue="synthetic_project" disabled>
-                  <option value="synthetic_project">Synthetic Project</option>
+                  <option value="synthetic_project">Project QA</option>
                 </select>
               </label>
               <label>
                 <span>Profile</span>
                 <select defaultValue="synthetic_profile" disabled>
-                  <option value="synthetic_profile">Synthetic Profile</option>
+                  <option value="synthetic_profile">Default</option>
                 </select>
               </label>
               <label>
                 <span>Environment</span>
                 <select defaultValue="synthetic_environment" disabled>
-                  <option value="synthetic_environment">Synthetic Environment</option>
+                  <option value="synthetic_environment">DEV</option>
                 </select>
               </label>
               <label>
                 <span>Domain</span>
-                <input readOnly value="SYNTHETIC_DOMAIN" />
+                <input readOnly value="SYN_DOMAIN" />
               </label>
               <Button disabled variant="primary">
                 Apply context
@@ -262,7 +263,7 @@ export function ComponentGalleryRoute() {
             <FeedbackMessage tone="success">Synthetic success feedback.</FeedbackMessage>
             <FeedbackMessage tone="error">Synthetic error feedback.</FeedbackMessage>
             <StatePanel>Loading synthetic component state...</StatePanel>
-            <div className="detail-actions" aria-label="Gallery icon commands">
+            <div className="detail-actions gallery-command-preview" aria-label="Gallery icon commands">
               <IconButton label="Synthetic icon action">S</IconButton>
               <Button>Secondary command</Button>
               <Button variant="primary">Primary command</Button>
