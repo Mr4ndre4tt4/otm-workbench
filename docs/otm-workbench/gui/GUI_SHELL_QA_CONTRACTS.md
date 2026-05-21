@@ -46,3 +46,8 @@ Run this checklist before major GUI refactors or before accepting new module scr
 The local Vite server responded successfully, but the in-app browser runner was
 blocked by the Windows process creation environment, so no screenshot evidence
 is claimed yet.
+
+## Recurring QA Matrix
+
+`GUI_ACCESSIBILITY_QA_MATRIX.md` is the active recurring baseline for visual,
+keyboard, accessibility, responsive, console, and client-data-safe GUI QA.

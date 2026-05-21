@@ -25,6 +25,8 @@ Confirm the work has:
 - Existing contracts checked in GUI_CONTRACT_INDEX.md.
 - Existing reusable components checked before adding a new component.
 - GUI_EXCEPTIONS_REGISTER.md reviewed for custom interaction needs.
+- GUI_ACCESSIBILITY_QA_MATRIX.md reviewed for the required visual, keyboard,
+  responsive, console, and client-data-safe QA baseline.
 - GUI_DECISIONS_LOG.md reviewed for stack, shell, theme, desktop, and ownership
   decisions.
 - GUI_FOUNDATION_CONSOLIDATION_REVIEW.md checked when the work depends on a
@@ -103,6 +105,8 @@ Before committing:
 ```text
 - Update or add the relevant GUI_*_CONTRACT.md.
 - Add the contract to GUI_CONTRACT_INDEX.md.
+- Update GUI_ACCESSIBILITY_QA_MATRIX.md when the work changes required route,
+  viewport, preference, keyboard, or browser evidence coverage.
 - Update GUI_MVP1_PLAN.md if the work changes delivered scope.
 - Update GUI_DECISIONS_LOG.md only when adding or superseding a decision.
 - Update GUI_EXCEPTIONS_REGISTER.md for approved custom patterns.
