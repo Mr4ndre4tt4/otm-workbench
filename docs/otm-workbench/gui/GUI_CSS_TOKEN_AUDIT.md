@@ -275,6 +275,20 @@ frontend/src/ui/layouts.css
 Shared operational page and module layout styles now live in `layouts.css`.
 `frontend/src/styles.css` is reduced to global reset and base typography.
 
+## Base Style Extraction
+
+The base style extraction was completed in
+`GUI_BASE_STYLE_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/base.css
+```
+
+Global reset and base typography now live in `base.css`. `frontend/src/styles.css`
+is an ordered CSS entrypoint only.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

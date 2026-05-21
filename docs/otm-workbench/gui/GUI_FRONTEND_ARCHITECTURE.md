@@ -110,6 +110,9 @@ frontend/src/
 
   ui/
     tokens/
+    base.css
+    components.css
+    layouts.css
     primitives/
     components/
     layouts/

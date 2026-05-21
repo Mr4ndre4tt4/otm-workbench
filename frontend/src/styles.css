@@ -1,41 +1,8 @@
 @import "./ui/tokens/theme.css";
+@import "./ui/base.css";
 @import "./app/shell/shell.css";
 @import "./ui/components.css";
 @import "./ui/layouts.css";
 @import "./ui/tokens/density.css";
 @import "./ui/tokens/sidebar.css";
 @import "./ui/tokens/responsive.css";
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-h1,
-h2,
-p {
-  margin-top: 0;
-}
-
-h1 {
-  margin-bottom: 8px;
-  font-size: 32px;
-  line-height: 1.15;
-}
-
-h2 {
-  margin-bottom: 0;
-  font-size: 16px;
-}

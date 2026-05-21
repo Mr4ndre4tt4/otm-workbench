@@ -560,6 +560,8 @@ Delivered follow-up contracts:
   documented in GUI_SHELL_STYLE_EXTRACTION.md
 - GUI layout style extraction
   documented in GUI_LAYOUT_STYLE_EXTRACTION.md
+- GUI base style extraction
+  documented in GUI_BASE_STYLE_EXTRACTION.md
 ```
 
 ## 12. Implementation Order
