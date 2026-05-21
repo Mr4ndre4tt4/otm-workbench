@@ -206,6 +206,18 @@ Only base collapsed-sidebar blocks were moved. Responsive sidebar overrides
 remain in `styles.css` to preserve CSS order until a dedicated responsive
 layout extraction is planned.
 
+The responsive layout extraction was completed in
+`GUI_RESPONSIVE_TOKEN_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/tokens/responsive.css
+```
+
+The full `@media (max-width: 900px)` block was moved unchanged and imported
+after theme, density, and sidebar token files.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

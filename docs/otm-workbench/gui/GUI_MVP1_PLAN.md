@@ -550,6 +550,8 @@ Delivered follow-up contracts:
   documented in GUI_DENSITY_TOKEN_EXTRACTION.md
 - GUI sidebar token extraction
   documented in GUI_SIDEBAR_TOKEN_EXTRACTION.md
+- GUI responsive token extraction
+  documented in GUI_RESPONSIVE_TOKEN_EXTRACTION.md
 ```
 
 ## 12. Implementation Order
