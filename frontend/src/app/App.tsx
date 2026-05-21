@@ -1,29 +1,16 @@
-import {
-  Activity,
-  AlertCircle,
-  Archive,
-  CheckCircle2,
-  ChevronRight,
-  Monitor,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Rows3,
-  Sun
-} from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { ApiError } from "../platform/api";
 import { MODULE_DESCRIPTIONS } from "./routes/moduleDescriptions";
 import { isNavigationItemActive } from "./routes/routeUtils";
+import { ContextSummary, ContextSwitcher, PageHeader, PreferenceControls, SidebarNav } from "./shell";
 import {
   downloadBackendArtifact,
   executeBackendAction,
   login,
-  updateActiveContext,
-  updateUserPreferences,
   useAssetDetail,
   useAssets,
   useAssetVersions,
@@ -32,7 +19,6 @@ import {
   useCatalogMacroObjects,
   useCatalogMacroObjectTables,
   useCockpitSummary,
-  useEnvironments,
   useEvidenceDetail,
   useEvidenceHub,
   useIntegrationDefinitionDetail,
@@ -49,8 +35,6 @@ import {
   useNavigation,
   useOrderReleaseTemplates,
   useRateBatchArtifacts,
-  useProfiles,
-  useProjects,
   useRateBatchDetail,
   useRateBatchEvidence,
   useRatesSummary,
@@ -60,7 +44,6 @@ import { useAuth } from "../platform/useAuth";
 import {
   Button,
   DetailList,
-  IconButton,
   MetricGrid,
   ModuleObjectList,
   OperationalPanel,
@@ -79,89 +62,6 @@ import type {
   OrderReleaseTemplate,
   RatesSummaryItem
 } from "../platform/types";
-import type { UserPreferences } from "../platform/types";
-
-function navIcon(moduleId: string) {
-  if (moduleId === "home") return <Activity aria-hidden="true" />;
-  if (moduleId === "evidence") return <Archive aria-hidden="true" />;
-  return <ChevronRight aria-hidden="true" />;
-}
-
-function SidebarNav({
-  currentPath,
-  items,
-  sidebarMode
-}: {
-  currentPath: string;
-  items: NavigationItem[];
-  sidebarMode: UserPreferences["sidebar_mode"];
-}) {
-  return (
-    <nav className="sidebar-nav" aria-label="Workbench modules">
-      {items.map((item) => (
-        <NavLink
-          className={isNavigationItemActive(item, currentPath) ? "nav-item nav-item-active" : "nav-item"}
-          key={item.id}
-          to={item.path}
-        >
-          <span className="nav-icon">{navIcon(item.id)}</span>
-          <span className="nav-label">{item.label}</span>
-          {sidebarMode === "expanded" ? <StatusChip status={item.status} /> : null}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
-function ContextSummary({ context }: { context: Record<string, unknown> }) {
-  const projectId = context.project_id as string | null;
-  const profileId = context.profile_id as string | null;
-  const environmentId = context.environment_id as string | null;
-  const domainName = context.domain_name as string | null;
-  return (
-    <div className="context-summary" aria-label="Active context">
-      <span>{projectId ? "Project selected" : "No project selected"}</span>
-      <span>{profileId ? "Profile selected" : "Profile pending"}</span>
-      <span>{environmentId ? "Environment selected" : "Environment pending"}</span>
-      <span>{domainName ?? "PUBLIC"}</span>
-    </div>
-  );
-}
-
-function ActionBar({ actions }: { actions: AvailableAction[] }) {
-  return (
-    <div className="action-bar">
-      {actions.map((action) => (
-        <Button disabled={action.disabled} key={action.key} variant={action.variant === "primary" ? "primary" : "secondary"}>
-          {action.label}
-        </Button>
-      ))}
-    </div>
-  );
-}
-
-function PageHeader({
-  actions,
-  description,
-  label,
-  title
-}: {
-  actions?: AvailableAction[];
-  description: string;
-  label: string;
-  title: string;
-}) {
-  return (
-    <header className="page-header">
-      <div>
-        <p className="section-label">{label}</p>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
-      {actions ? <ActionBar actions={actions} /> : null}
-    </header>
-  );
-}
 
 function LoginPanel() {
   const auth = useAuth();
@@ -331,106 +231,6 @@ function CockpitContent({ token }: { token: string }) {
         </OperationalPanel>
       </section>
     </>
-  );
-}
-
-function ContextSwitcher({ token }: { token: string }) {
-  const queryClient = useQueryClient();
-  const projects = useProjects(token);
-  const [projectId, setProjectId] = useState<string>("");
-  const [profileId, setProfileId] = useState<string>("");
-  const [environmentId, setEnvironmentId] = useState<string>("");
-  const [domainName, setDomainName] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setSubmitting] = useState(false);
-  const profiles = useProfiles(token, projectId || null);
-  const environments = useEnvironments(token, projectId || null);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(null);
-    setError(null);
-    setSubmitting(true);
-    try {
-      await updateActiveContext(token, {
-        project_id: projectId || null,
-        profile_id: profileId || null,
-        environment_id: environmentId || null,
-        domain_name: domainName || null,
-        can_view_all_domains: false
-      });
-      await queryClient.invalidateQueries({ queryKey: ["platform"] });
-      setMessage("Context updated.");
-    } catch (caught) {
-      if (caught instanceof ApiError) {
-        setError(caught.message);
-      } else {
-        setError("Unable to update context.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form className="context-switcher" onSubmit={handleSubmit}>
-      <label>
-        <span>Project</span>
-        <select
-          disabled={projects.isLoading}
-          onChange={(event) => {
-            setProjectId(event.target.value);
-            setProfileId("");
-            setEnvironmentId("");
-            setMessage(null);
-          }}
-          value={projectId}
-        >
-          <option value="">Select project</option>
-          {(projects.data?.items ?? []).map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Profile</span>
-        <select disabled={!projectId || profiles.isLoading} onChange={(event) => setProfileId(event.target.value)} value={profileId}>
-          <option value="">Select profile</option>
-          {(profiles.data?.items ?? []).map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Environment</span>
-        <select
-          disabled={!projectId || environments.isLoading}
-          onChange={(event) => setEnvironmentId(event.target.value)}
-          value={environmentId}
-        >
-          <option value="">Select environment</option>
-          {(environments.data?.items ?? []).map((environment) => (
-            <option key={environment.id} value={environment.id}>
-              {environment.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Domain</span>
-        <input onChange={(event) => setDomainName(event.target.value)} placeholder="PUBLIC" value={domainName} />
-      </label>
-      <Button disabled={isSubmitting || !projectId} type="submit" variant="primary">
-        {isSubmitting ? "Applying..." : "Apply context"}
-      </Button>
-      {message ? <p className="form-success">{message}</p> : null}
-      {error ? <p className="form-error">{error}</p> : null}
-    </form>
   );
 }
 
@@ -1600,104 +1400,6 @@ function WorkbenchRoute({ items, token }: { items: NavigationItem[]; token: stri
     return <IntegrationMappingView token={token} />;
   }
   return item ? <ModulePlaceholder item={item} /> : <UnknownRoute />;
-}
-
-function PreferenceControls({
-  preferences,
-  token
-}: {
-  preferences: UserPreferences | undefined;
-  token: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-  const currentMode = preferences?.theme_mode ?? "light";
-  const currentDensity = preferences?.density ?? "comfortable";
-  const currentSidebarMode = preferences?.sidebar_mode ?? "expanded";
-
-  async function applyPreferences(nextValues: Partial<UserPreferences>) {
-    if (!token) return;
-    setError(null);
-    const nextPreferences: UserPreferences = {
-      theme_mode: preferences?.theme_mode ?? "light",
-      follow_system_theme: preferences?.follow_system_theme ?? false,
-      density: preferences?.density ?? "comfortable",
-      sidebar_mode: preferences?.sidebar_mode ?? "expanded",
-      ...nextValues
-    };
-    if (nextPreferences.theme_mode === "system") {
-      nextPreferences.follow_system_theme = true;
-    }
-    if (nextPreferences.theme_mode !== "system") {
-      nextPreferences.follow_system_theme = false;
-    }
-    try {
-      await updateUserPreferences(token, nextPreferences);
-      queryClient.setQueryData(["platform", "user-preferences"], nextPreferences);
-      await queryClient.invalidateQueries({ queryKey: ["platform", "user-preferences"] });
-    } catch (caught) {
-      if (caught instanceof ApiError) {
-        setError(caught.message);
-      } else {
-        setError("Unable to update preference.");
-      }
-    }
-  }
-
-  return (
-    <div className="preference-controls" aria-label="Workbench preferences">
-      <IconButton
-        aria-pressed={currentMode === "light"}
-        className={currentMode === "light" ? "icon-button-active" : ""}
-        disabled={!token}
-        label="Use light mode"
-        onClick={() => void applyPreferences({ theme_mode: "light" })}
-      >
-        <Sun aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        aria-pressed={currentMode === "dark"}
-        className={currentMode === "dark" ? "icon-button-active" : ""}
-        disabled={!token}
-        label="Use dark mode"
-        onClick={() => void applyPreferences({ theme_mode: "dark" })}
-      >
-        <Moon aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        aria-pressed={currentMode === "system"}
-        className={currentMode === "system" ? "icon-button-active" : ""}
-        disabled={!token}
-        label="Follow system theme"
-        onClick={() => void applyPreferences({ theme_mode: "system" })}
-      >
-        <Monitor aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        aria-pressed={currentDensity === "compact"}
-        className={currentDensity === "compact" ? "icon-button-active" : ""}
-        disabled={!token}
-        label={currentDensity === "compact" ? "Use comfortable density" : "Use compact density"}
-        onClick={() =>
-          void applyPreferences({ density: currentDensity === "compact" ? "comfortable" : "compact" })
-        }
-      >
-        <Rows3 aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        aria-pressed={currentSidebarMode === "collapsed"}
-        className={currentSidebarMode === "collapsed" ? "icon-button-active" : ""}
-        disabled={!token}
-        label={currentSidebarMode === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
-        onClick={() =>
-          void applyPreferences({ sidebar_mode: currentSidebarMode === "collapsed" ? "expanded" : "collapsed" })
-        }
-      >
-        {currentSidebarMode === "collapsed" ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
-      </IconButton>
-      {error ? <span className="preference-error">{error}</span> : null}
-    </div>
-  );
 }
 
 export function App() {

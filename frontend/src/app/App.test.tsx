@@ -117,7 +117,7 @@ describe("App shell", () => {
   });
 
   it("keeps unknown backend routes behind the module unavailable state", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
         return jsonResponse({ access_token: "token-1", token_type: "bearer" });
