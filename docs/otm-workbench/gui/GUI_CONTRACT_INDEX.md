@@ -1,0 +1,82 @@
+# GUI Contract Index
+
+**Status:** delivered  
+**Branch:** `codex/gui-contract-index`  
+**Scope:** index of GUI architecture, shell, UI kit, and backend-owned contract guardrails.
+
+## 1. Purpose
+
+This index keeps the GUI contract layer discoverable as the frontend grows.
+
+Every new GUI contract document should be added here so future module work can
+reuse the established shell, UI kit, and backend-boundary rules instead of
+creating page-specific patterns.
+
+## 2. Architecture Contracts
+
+```text
+GUI_CSS_ENTRYPOINT_CONTRACT.md
+GUI_CSS_LAYER_OWNERSHIP_CONTRACT.md
+GUI_MODULE_NAVIGATION_CONTRACT.md
+GUI_REACT_BOUNDARY_CONTRACT.md
+GUI_SHELL_QA_CONTRACTS.md
+```
+
+## 3. Shell Contracts
+
+```text
+GUI_CONTEXT_SUMMARY_PATTERN_CONTRACT.md
+GUI_CONTEXT_SWITCHER_PATTERN_CONTRACT.md
+GUI_PAGE_HEADER_PATTERN_CONTRACT.md
+GUI_PREFERENCE_CONTROLS_PATTERN_CONTRACT.md
+GUI_READINESS_PANEL_PATTERN_CONTRACT.md
+```
+
+## 4. UI Kit Pattern Contracts
+
+```text
+GUI_ACTION_PATTERN_CONTRACT.md
+GUI_ACTIVITY_ROW_PATTERN_CONTRACT.md
+GUI_BUTTON_PATTERN_CONTRACT.md
+GUI_DETAIL_LIST_PATTERN_CONTRACT.md
+GUI_METRIC_GRID_PATTERN_CONTRACT.md
+GUI_OBJECT_LIST_PATTERN_CONTRACT.md
+GUI_OPERATIONAL_PANEL_PATTERN_CONTRACT.md
+GUI_SELECTED_OBJECT_PATTERN_CONTRACT.md
+GUI_STATE_PATTERN_CONTRACT.md
+GUI_STATUS_CHIP_PATTERN_CONTRACT.md
+```
+
+## 5. Backend-Facing GUI Contracts
+
+```text
+GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md
+```
+
+## 6. Rule For New Contracts
+
+When adding a new GUI contract:
+
+```text
+1. Add a focused contract document under docs/otm-workbench/gui/.
+2. Add or update a static/component test that enforces the rule.
+3. Add the contract filename to this index.
+4. Update GUI_MVP1_PLAN.md if it is part of the delivered roadmap.
+5. Keep backend ownership explicit in the contract.
+```
+
+## 7. Backend Ownership Reminder
+
+The GUI contracts protect rendering consistency only.
+
+Backend remains source of truth for:
+
+```text
+- navigation and module visibility
+- permissions and capabilities
+- lifecycle and readiness
+- validation and OTM dependency decisions
+- actions and disabled reasons
+- jobs, artifacts, and evidence
+- active context and user preferences
+```

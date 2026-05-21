@@ -411,6 +411,6 @@ architecture cleanup slice:
 - create initial modules/* folders
 - preserve existing UI behavior
 - keep all existing tests green
-- keep CSS entrypoint, CSS layer ownership, React boundary, module navigation, state pattern, action pattern, object list pattern, selected object pattern, detail list pattern, metric grid pattern, operational panel pattern, page header pattern, status chip pattern, button pattern, activity row pattern, readiness panel pattern, context summary pattern, context switcher pattern, and preference controls pattern contracts green
+- keep CSS entrypoint, CSS layer ownership, React boundary, module navigation, state pattern, action pattern, object list pattern, selected object pattern, detail list pattern, metric grid pattern, operational panel pattern, page header pattern, status chip pattern, button pattern, activity row pattern, readiness panel pattern, context summary pattern, context switcher pattern, preference controls pattern, and contract index checks green
 - add docs for the new folder ownership model
 ```

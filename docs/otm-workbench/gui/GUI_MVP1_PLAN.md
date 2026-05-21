@@ -602,6 +602,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTEXT_SWITCHER_PATTERN_CONTRACT.md
 - GUI preference controls pattern contract
   documented in GUI_PREFERENCE_CONTROLS_PATTERN_CONTRACT.md
+- GUI contract index
+  documented in GUI_CONTRACT_INDEX.md
 ```
 
 ## 12. Implementation Order
