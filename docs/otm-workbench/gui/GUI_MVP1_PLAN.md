@@ -538,6 +538,8 @@ Delivered follow-up contracts:
   documented in GUI_ORDER_RELEASE_GENERATOR_VIEW.md
 - Integration Mapping Studio backend-backed view
   documented in GUI_INTEGRATION_MAPPING_VIEW.md
+- GUI frontend architecture and design governance
+  documented in GUI_FRONTEND_ARCHITECTURE.md
 ```
 
 ## 12. Implementation Order
