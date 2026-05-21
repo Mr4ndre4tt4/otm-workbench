@@ -195,3 +195,9 @@ When browser automation is available, verify:
 
 If browser automation is blocked by the Windows sandbox, record the blocked
 attempt in the relevant GUI QA note.
+
+Current gallery-specific browser QA status:
+
+```text
+GUI_GALLERY_VISUAL_QA_ATTEMPT.md
+```
