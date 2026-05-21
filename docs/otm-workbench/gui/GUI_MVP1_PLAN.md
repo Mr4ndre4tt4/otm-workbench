@@ -496,6 +496,8 @@ Delivered follow-up contracts:
   documented in GUI_SHELL_SCAFFOLD.md
 - Initial GUI auth/session flow
   documented in GUI_AUTH_SESSION_FLOW.md
+- Login panel pattern contract
+  documented in GUI_LOGIN_PANEL_PATTERN_CONTRACT.md
 - Initial authenticated context switcher
   documented in GUI_CONTEXT_SWITCHER.md
 - Local GUI + FastAPI integration validation

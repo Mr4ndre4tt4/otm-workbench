@@ -11,6 +11,8 @@ FastAPI session token instead of calling platform endpoints anonymously.
 ## Implemented
 
 - Login panel rendered before protected contracts are called.
+- Login panel markup and submit behavior centralized in
+  `frontend/src/app/shell/LoginPanel.tsx`.
 - Login submits to `POST /api/v1/platform/session/login`.
 - Successful login stores the bearer token through a platform session storage
   adapter.
@@ -41,6 +43,7 @@ frontend/src/platform/sessionStorage.ts
 frontend/src/platform/api.ts
 frontend/src/platform/hooks.ts
 frontend/src/app/App.tsx
+frontend/src/app/shell/LoginPanel.tsx
 ```
 
 ## Verification
