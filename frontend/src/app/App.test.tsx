@@ -1051,4 +1051,175 @@ describe("App shell", () => {
     expect(screen.queryByText(/file_path/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/manifest_json/i)).not.toBeInTheDocument();
   });
+
+  it("renders Load Plan from backend summary, package list, and package detail contracts", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "load_plan", label: "Load Plan", path: "/load-plan", status: "ACTIVE" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              registered_packages: 1,
+              by_source_module: { rates: 1 },
+              by_status: { REGISTERED: 1 },
+              by_catalog_macro_object: {
+                RATE_RECORD: {
+                  package_count: 1,
+                  catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+                }
+              },
+              next_actions: ["build_csvutil"]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "package_1",
+                  project_id: "project_1",
+                  environment_id: "environment_1",
+                  profile_id: "profile_1",
+                  source_module: "rates",
+                  source_entity_type: "rate_batch",
+                  source_entity_id: "batch_1",
+                  package_type: "rates_csv_zip",
+                  status: "REGISTERED",
+                  artifact_id: "artifact_1",
+                  manifest_id: "manifest_1",
+                  evidence_id: "evidence_1",
+                  approval_evidence_id: "approval_1",
+                  load_sequence: [
+                    {
+                      position: 1,
+                      table_name: "RATE_GEO",
+                      row_count: 3,
+                      requirement_level: "REQUIRED"
+                    }
+                  ],
+                  summary: {
+                    source_module: "rates",
+                    package_type: "rates_csv_zip",
+                    catalog_macro_object_code: "RATE_RECORD",
+                    catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+                    table_count: 1,
+                    row_count: 3,
+                    has_export_artifact: true,
+                    has_approval_evidence: true
+                  },
+                  created_by: "synthetic.user@example.test",
+                  registered_at: "2026-05-21T01:00:00Z"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages/package_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "package_1",
+              project_id: "project_1",
+              environment_id: "environment_1",
+              profile_id: "profile_1",
+              source_module: "rates",
+              source_entity_type: "rate_batch",
+              source_entity_id: "batch_1",
+              package_type: "rates_csv_zip",
+              status: "REGISTERED",
+              artifact_id: "artifact_1",
+              manifest_id: "manifest_1",
+              evidence_id: "evidence_1",
+              approval_evidence_id: "approval_1",
+              load_sequence: [
+                {
+                  position: 1,
+                  table_name: "RATE_GEO",
+                  row_count: 3,
+                  requirement_level: "REQUIRED"
+                }
+              ],
+              summary: {
+                source_module: "rates",
+                package_type: "rates_csv_zip",
+                catalog_macro_object_code: "RATE_RECORD",
+                catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+                table_count: 1,
+                row_count: 3,
+                has_export_artifact: true,
+                has_approval_evidence: true
+              },
+              created_by: "synthetic.user@example.test",
+              registered_at: "2026-05-21T01:00:00Z"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/load-plan");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Load Plan" });
+    expect(await screen.findByText("rates_csv_zip")).toBeInTheDocument();
+    expect(screen.getAllByText("RATE_RECORD").length).toBeGreaterThan(0);
+    expect(screen.getByText("RATE_GEO")).toBeInTheDocument();
+    expect(screen.getByText("3 rows")).toBeInTheDocument();
+    expect(screen.queryByText(/build csvutil/i)).not.toBeInTheDocument();
+  });
 });
