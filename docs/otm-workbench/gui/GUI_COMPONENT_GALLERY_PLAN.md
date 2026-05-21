@@ -98,6 +98,12 @@ Constraints:
 
 ## 5. Fixture Rules
 
+Initial fixture source:
+
+```text
+frontend/src/test/fixtures/gui.ts
+```
+
 Fixtures must:
 
 ```text

@@ -379,6 +379,8 @@ Exceptions must be documented when a module needs a custom interaction.
 Record approved departures in `GUI_EXCEPTIONS_REGISTER.md` before implementation.
 Use `GUI_IMPLEMENTATION_CHECKLIST.md` as the required pre-flight and review
 gate for new GUI screens, modules, visual patterns, and shell behavior.
+Use `frontend/src/test/fixtures/gui.ts` for shared synthetic examples before
+creating new one-off GUI fixtures.
 
 ## 13. Initial Exceptions To Allow
 

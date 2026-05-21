@@ -28,6 +28,8 @@ Confirm the work has:
 - GUI_DECISIONS_LOG.md reviewed for stack, shell, theme, desktop, and ownership
   decisions.
 - Linear updated or planned for the delivery slice.
+- Shared synthetic examples checked in `frontend/src/test/fixtures/gui.ts`
+  before adding one-off fixtures.
 ```
 
 ## 3. Component And Layout Rules
