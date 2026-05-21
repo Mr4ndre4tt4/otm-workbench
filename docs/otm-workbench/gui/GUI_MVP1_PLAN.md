@@ -570,6 +570,8 @@ Delivered follow-up contracts:
   documented in GUI_CSS_LAYER_OWNERSHIP_CONTRACT.md
 - GUI React boundary contract
   documented in GUI_REACT_BOUNDARY_CONTRACT.md
+- GUI module navigation contract
+  documented in GUI_MODULE_NAVIGATION_CONTRACT.md
 ```
 
 ## 12. Implementation Order
