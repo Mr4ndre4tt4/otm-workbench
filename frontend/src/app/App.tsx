@@ -34,7 +34,7 @@ import {
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, IconButton, StatusChip } from "../ui/components";
+import { Button, IconButton, OperationalPanel, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
@@ -251,41 +251,35 @@ function CockpitContent({ token }: { token: string }) {
       </section>
 
       <section className="activity-layout">
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Recent jobs</h2>
-            <StatusChip status={data.counts.recent_jobs ? "ACTIVE" : "EMPTY"} />
-          </div>
-          {data.recent_jobs.length ? (
-            data.recent_jobs.map((job) => (
-              <div className="activity-row" key={job.id}>
-                <strong>{job.job_type}</strong>
-                <span>{job.source_module}</span>
-                <StatusChip status={job.status} />
-              </div>
-            ))
-          ) : (
-            <p className="empty-text">No recent jobs for the active project.</p>
-          )}
-        </div>
+        <OperationalPanel
+          emptyText="No recent jobs for the active project."
+          hasItems={data.recent_jobs.length > 0}
+          status={data.counts.recent_jobs ? "ACTIVE" : "EMPTY"}
+          title="Recent jobs"
+        >
+          {data.recent_jobs.map((job) => (
+            <div className="activity-row" key={job.id}>
+              <strong>{job.job_type}</strong>
+              <span>{job.source_module}</span>
+              <StatusChip status={job.status} />
+            </div>
+          ))}
+        </OperationalPanel>
 
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Recent evidence</h2>
-            <StatusChip status={data.counts.recent_evidence ? "ACTIVE" : "EMPTY"} />
-          </div>
-          {data.recent_evidence.length ? (
-            data.recent_evidence.map((evidence) => (
-              <div className="activity-row" key={evidence.id}>
-                <strong>{evidence.evidence_type}</strong>
-                <span>{evidence.source_module}</span>
-                <StatusChip status={evidence.status} />
-              </div>
-            ))
-          ) : (
-            <p className="empty-text">No client-safe evidence for the active project.</p>
-          )}
-        </div>
+        <OperationalPanel
+          emptyText="No client-safe evidence for the active project."
+          hasItems={data.recent_evidence.length > 0}
+          status={data.counts.recent_evidence ? "ACTIVE" : "EMPTY"}
+          title="Recent evidence"
+        >
+          {data.recent_evidence.map((evidence) => (
+            <div className="activity-row" key={evidence.id}>
+              <strong>{evidence.evidence_type}</strong>
+              <span>{evidence.source_module}</span>
+              <StatusChip status={evidence.status} />
+            </div>
+          ))}
+        </OperationalPanel>
       </section>
     </>
   );
@@ -621,66 +615,60 @@ function RatesSummaryView({ token }: { token: string }) {
       </section>
 
       <section className="activity-layout">
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Batch artifacts</h2>
-            <StatusChip status={batchArtifacts.data?.total ? "ACTIVE" : "EMPTY"} />
-          </div>
-          {batchArtifacts.isLoading && effectiveBatchId ? (
-            <p className="empty-text">Loading artifacts...</p>
-          ) : batchArtifacts.data?.items.length ? (
-            <div className="artifact-list">
-              {batchArtifacts.data.items.map((artifact) => (
-                <div className="artifact-list-item" key={artifact.id}>
-                  <div>
-                    <strong>{artifact.file_name}</strong>
-                    <span>{artifact.artifact_type}</span>
-                  </div>
-                  <span>{artifact.content_type}</span>
-                  <span>{artifact.size_bytes} bytes</span>
-                  {artifact.download_url ? (
-                    <Button
-                      disabled={downloadingArtifactId === artifact.id}
-                      onClick={() => void downloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
-                    >
-                      {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
-                    </Button>
-                  ) : (
-                    <StatusChip status={artifact.sensitivity_level} />
-                  )}
+        <OperationalPanel
+          emptyText="No export artifacts registered for this batch."
+          hasItems={(batchArtifacts.data?.items.length ?? 0) > 0}
+          isLoading={batchArtifacts.isLoading && Boolean(effectiveBatchId)}
+          loadingText="Loading artifacts..."
+          status={batchArtifacts.data?.total ? "ACTIVE" : "EMPTY"}
+          title="Batch artifacts"
+        >
+          <div className="artifact-list">
+            {(batchArtifacts.data?.items ?? []).map((artifact) => (
+              <div className="artifact-list-item" key={artifact.id}>
+                <div>
+                  <strong>{artifact.file_name}</strong>
+                  <span>{artifact.artifact_type}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-text">No export artifacts registered for this batch.</p>
-          )}
-        </div>
+                <span>{artifact.content_type}</span>
+                <span>{artifact.size_bytes} bytes</span>
+                {artifact.download_url ? (
+                  <Button
+                    disabled={downloadingArtifactId === artifact.id}
+                    onClick={() => void downloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
+                  >
+                    {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                  </Button>
+                ) : (
+                  <StatusChip status={artifact.sensitivity_level} />
+                )}
+              </div>
+            ))}
+          </div>
+        </OperationalPanel>
 
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Batch evidence</h2>
-            <StatusChip status={batchEvidence.data?.total ? "ACTIVE" : "EMPTY"} />
-          </div>
-          {batchEvidence.isLoading && effectiveBatchId ? (
-            <p className="empty-text">Loading evidence...</p>
-          ) : batchEvidence.data?.items.length ? (
-            <div className="artifact-list">
-              {batchEvidence.data.items.map((evidence) => (
-                <div className="artifact-list-item" key={evidence.id}>
-                  <div>
-                    <strong>{evidence.evidence_type}</strong>
-                    <span>{evidence.sensitivity_level}</span>
-                  </div>
-                  <span>{evidence.artifact_id ? "Artifact linked" : "No artifact"}</span>
-                  <span>{evidence.client_safe ? "Client safe" : "Internal"}</span>
-                  <StatusChip status={evidence.status} />
+        <OperationalPanel
+          emptyText="No evidence registered for this batch."
+          hasItems={(batchEvidence.data?.items.length ?? 0) > 0}
+          isLoading={batchEvidence.isLoading && Boolean(effectiveBatchId)}
+          loadingText="Loading evidence..."
+          status={batchEvidence.data?.total ? "ACTIVE" : "EMPTY"}
+          title="Batch evidence"
+        >
+          <div className="artifact-list">
+            {(batchEvidence.data?.items ?? []).map((evidence) => (
+              <div className="artifact-list-item" key={evidence.id}>
+                <div>
+                  <strong>{evidence.evidence_type}</strong>
+                  <span>{evidence.sensitivity_level}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-text">No evidence registered for this batch.</p>
-          )}
-        </div>
+                <span>{evidence.artifact_id ? "Artifact linked" : "No artifact"}</span>
+                <span>{evidence.client_safe ? "Client safe" : "Internal"}</span>
+                <StatusChip status={evidence.status} />
+              </div>
+            ))}
+          </div>
+        </OperationalPanel>
       </section>
     </>
   );

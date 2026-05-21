@@ -31,3 +31,40 @@ export function StatusChip({ status }: { status: string }) {
   const normalized = status.toLowerCase();
   return <span className={`status-chip status-${normalized}`}>{status.replaceAll("_", " ")}</span>;
 }
+
+type OperationalPanelProps = PropsWithChildren<{
+  className?: string;
+  emptyText: string;
+  hasItems: boolean;
+  isLoading?: boolean;
+  loadingText?: string;
+  status: string;
+  title: string;
+}>;
+
+export function OperationalPanel({
+  children,
+  className = "",
+  emptyText,
+  hasItems,
+  isLoading = false,
+  loadingText = "Loading...",
+  status,
+  title
+}: OperationalPanelProps) {
+  return (
+    <div className={`panel ${className}`.trim()}>
+      <div className="panel-header">
+        <h2>{title}</h2>
+        <StatusChip status={status} />
+      </div>
+      {isLoading ? (
+        <p className="empty-text">{loadingText}</p>
+      ) : hasItems ? (
+        children
+      ) : (
+        <p className="empty-text">{emptyText}</p>
+      )}
+    </div>
+  );
+}
