@@ -1409,4 +1409,107 @@ describe("App shell", () => {
     expect(screen.getByText("LOCATION")).toBeInTheDocument();
     expect(screen.queryByText(/validate table/i)).not.toBeInTheDocument();
   });
+
+  it("renders Master Data from backend template list and detail contracts", async () => {
+    const template = {
+      id: "template_1",
+      code: "REGION_TEMPLATE",
+      name: "Region Template",
+      version: "1.0",
+      status: "ACTIVE",
+      catalog_macro_object_code: "REGION",
+      data_category: "MASTER_DATA",
+      target_tables: ["REGION"],
+      sheets: [
+        {
+          code: "REGION",
+          name: "Region",
+          target_table: "REGION",
+          fields: [
+            {
+              name: "region_gid",
+              label: "Region GID",
+              target_column: "REGION_GID",
+              required: true
+            }
+          ]
+        }
+      ],
+      description: "Synthetic master data template for region setup.",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [template], total: 1, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGION_TEMPLATE")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify(template), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Data Factory" });
+    expect(await screen.findByText("REGION_TEMPLATE")).toBeInTheDocument();
+    expect(screen.getAllByText("REGION").length).toBeGreaterThan(0);
+    expect(screen.getByText("Region GID")).toBeInTheDocument();
+    expect(screen.queryByText(/build workbook/i)).not.toBeInTheDocument();
+  });
 });

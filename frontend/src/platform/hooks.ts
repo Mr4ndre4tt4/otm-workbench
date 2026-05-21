@@ -19,6 +19,8 @@ import type {
   LoadPlanPackagesResponse,
   LoadPlanSummary,
   LoginResponse,
+  MasterDataTemplate,
+  MasterDataTemplatesResponse,
   NavigationResponse,
   RateBatchArtifactsResponse,
   RateBatchDetail,
@@ -208,6 +210,22 @@ export function useCatalogMacroObjectLoadPlan(token: string | null, macroObjectC
     queryKey: ["catalog", "macro-objects", macroObjectCode, "load-plan"],
     queryFn: () => apiGet<CatalogMacroObjectLoadPlan>(`/api/v1/catalog/macro-objects/${macroObjectCode}/load-plan`, { token }),
     enabled: Boolean(token && macroObjectCode)
+  });
+}
+
+export function useMasterDataTemplates(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "templates"],
+    queryFn: () => apiGet<MasterDataTemplatesResponse>("/api/v1/modules/master-data/templates", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useMasterDataTemplateDetail(token: string | null, templateCode: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "templates", templateCode],
+    queryFn: () => apiGet<MasterDataTemplate>(`/api/v1/modules/master-data/templates/${templateCode}`, { token }),
+    enabled: Boolean(token && templateCode)
   });
 }
 
