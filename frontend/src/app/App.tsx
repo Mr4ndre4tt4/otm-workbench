@@ -17,6 +17,7 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import { ApiError } from "../platform/api";
 import {
+  downloadBackendArtifact,
   executeBackendAction,
   login,
   updateActiveContext,
@@ -433,6 +434,7 @@ function RatesSummaryView({ token }: { token: string }) {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [runningActionKey, setRunningActionKey] = useState<string | null>(null);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const recentObjects = rates.data?.recent_objects ?? [];
   const effectiveBatchId = selectedBatchId ?? recentObjects[0]?.id ?? null;
   const batchDetail = useRateBatchDetail(token, effectiveBatchId);
@@ -476,6 +478,30 @@ function RatesSummaryView({ token }: { token: string }) {
       }
     } finally {
       setRunningActionKey(null);
+    }
+  }
+
+  async function downloadArtifact(artifactId: string, href: string, fallbackName: string) {
+    setActionMessage(null);
+    setActionError(null);
+    setDownloadingArtifactId(artifactId);
+    try {
+      const result = await downloadBackendArtifact(token, href);
+      const objectUrl = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = result.filename ?? fallbackName;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      setActionMessage(`Download started: ${result.filename ?? fallbackName}.`);
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setActionError(caught.message);
+      } else {
+        setActionError("Download failed.");
+      }
+    } finally {
+      setDownloadingArtifactId(null);
     }
   }
 
@@ -612,7 +638,16 @@ function RatesSummaryView({ token }: { token: string }) {
                   </div>
                   <span>{artifact.content_type}</span>
                   <span>{artifact.size_bytes} bytes</span>
-                  <StatusChip status={artifact.sensitivity_level} />
+                  {artifact.download_url ? (
+                    <Button
+                      disabled={downloadingArtifactId === artifact.id}
+                      onClick={() => void downloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
+                    >
+                      {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                    </Button>
+                  ) : (
+                    <StatusChip status={artifact.sensitivity_level} />
+                  )}
                 </div>
               ))}
             </div>

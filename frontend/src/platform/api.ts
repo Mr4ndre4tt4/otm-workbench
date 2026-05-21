@@ -76,3 +76,33 @@ export async function apiPut<T>(
   });
   return parseResponse<T>(response);
 }
+
+export type DownloadResponse = {
+  blob: Blob;
+  filename: string | null;
+};
+
+function filenameFromDisposition(disposition: string | null) {
+  if (!disposition) return null;
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  return match?.[1] ?? null;
+}
+
+export async function apiDownload(path: string, options: RequestOptions = {}): Promise<DownloadResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: headersFor(options)
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new ApiError(
+      payload.message ?? "Download failed.",
+      payload.code ?? "HTTP_ERROR",
+      response.status,
+      payload.details ?? {}
+    );
+  }
+  return {
+    blob: await response.blob(),
+    filename: filenameFromDisposition(response.headers.get("Content-Disposition"))
+  };
+}

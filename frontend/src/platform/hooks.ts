@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet, apiPost, apiPut } from "./api";
+import { apiDownload, apiGet, apiPost, apiPut } from "./api";
 import type {
   ActiveContextResponse,
   ActiveContextUpdate,
@@ -57,6 +57,10 @@ export function updateActiveContext(token: string, payload: ActiveContextUpdate)
 
 export function executeBackendAction<T = Record<string, unknown>>(token: string, href: string) {
   return apiPost<T>(href, {}, { token });
+}
+
+export function downloadBackendArtifact(token: string, href: string) {
+  return apiDownload(href, { token });
 }
 
 export function useCockpitSummary(token: string | null) {

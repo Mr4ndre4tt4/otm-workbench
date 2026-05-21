@@ -166,6 +166,7 @@ def test_batch_artifacts_and_evidence_endpoints_return_export_records(client, ad
     assert artifacts.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert artifacts.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert artifacts.json()["items"][0]["id"] == export["artifact_id"]
+    assert artifacts.json()["items"][0]["download_url"].endswith(f"/artifacts/{export['artifact_id']}/download")
     assert evidence.json()["batch_id"] == batch["id"]
     assert evidence.json()["catalog_macro_object_code"] == "RATE_RECORD"
     assert evidence.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"

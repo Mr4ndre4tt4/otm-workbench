@@ -125,6 +125,7 @@ export type RateArtifact = {
   sha256: string;
   size_bytes: number;
   sensitivity_level: string;
+  download_url?: string;
 };
 
 export type RateEvidence = {

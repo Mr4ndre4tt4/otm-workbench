@@ -512,6 +512,8 @@ Delivered follow-up contracts:
   documented in GUI_RATES_ACTION_EXECUTION.md
 - Rates Studio artifacts and evidence panels
   documented in GUI_RATES_ARTIFACTS_EVIDENCE.md
+- Rates Studio artifact download affordance
+  documented in GUI_RATES_ARTIFACT_DOWNLOAD.md
 ```
 
 ## 12. Implementation Order

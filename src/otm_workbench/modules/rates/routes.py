@@ -730,7 +730,11 @@ def list_rates_batch_artifacts(
     if batch is None:
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     artifacts = list_batch_export_artifacts(db, batch.id)
-    items = [serialize_artifact(artifact) for artifact in artifacts]
+    items = []
+    for artifact in artifacts:
+        item = serialize_artifact(artifact)
+        item["download_url"] = f"/api/v1/modules/rates/batches/{batch.id}/artifacts/{artifact.id}/download"
+        items.append(item)
     scenario = get_rate_scenario(batch.scenario_code)
     return {
         "batch_id": batch.id,

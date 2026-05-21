@@ -400,6 +400,10 @@ describe("App shell", () => {
   });
 
   it("renders Rates Studio from the backend module summary contract", async () => {
+    const createObjectURL = vi.fn(() => "blob:rates-export");
+    const revokeObjectURL = vi.fn();
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -589,13 +593,26 @@ describe("App shell", () => {
                   content_type: "application/zip",
                   sha256: "abc123",
                   size_bytes: 1234,
-                  sensitivity_level: "client_safe"
+                  sensitivity_level: "client_safe",
+                  download_url: "/api/v1/modules/rates/batches/batch_1/artifacts/artifact_1/download"
                 }
               ],
               total: 1
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_1/artifacts/artifact_1/download")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(new Blob(["synthetic zip"], { type: "application/zip" }), {
+            status: 200,
+            headers: {
+              "Content-Disposition": 'attachment; filename="rates_export.zip"',
+              "Content-Type": "application/zip"
+            }
+          })
         );
       }
       if (url.endsWith("/api/v1/modules/rates/batches/batch_1/evidence")) {
@@ -718,6 +735,11 @@ describe("App shell", () => {
     expect(await screen.findByText("ACCESSORIAL_COST")).toBeInTheDocument();
     expect(await screen.findByText("rates_export.zip")).toBeInTheDocument();
     expect(screen.getByText("rates_export")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(await screen.findByText("Download started: rates_export.zip.")).toBeInTheDocument();
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:rates-export");
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(screen.getByText("Ready for approval")).toBeInTheDocument();
     expect(screen.getByText("Rate batch is not ready: NO_ROWS")).toBeInTheDocument();
