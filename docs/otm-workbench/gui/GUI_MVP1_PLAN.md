@@ -542,6 +542,8 @@ Delivered follow-up contracts:
   documented in GUI_FRONTEND_ARCHITECTURE.md
 - GUI frontend architecture cleanup
   documented in GUI_FRONTEND_ARCHITECTURE_CLEANUP.md
+- GUI CSS token audit
+  documented in GUI_CSS_TOKEN_AUDIT.md
 ```
 
 ## 12. Implementation Order
