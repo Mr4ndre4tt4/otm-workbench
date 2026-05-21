@@ -289,6 +289,14 @@ frontend/src/ui/base.css
 Global reset and base typography now live in `base.css`. `frontend/src/styles.css`
 is an ordered CSS entrypoint only.
 
+## Browser QA Attempt
+
+The browser QA attempt was recorded in `GUI_BROWSER_QA_ATTEMPT.md`.
+
+The local Vite server responded with HTTP 200 at `http://127.0.0.1:5173/`, but
+the in-app browser runner was blocked by the Windows process creation
+environment. No browser screenshot evidence is claimed for the CSS split yet.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

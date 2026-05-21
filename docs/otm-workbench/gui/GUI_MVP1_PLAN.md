@@ -562,6 +562,8 @@ Delivered follow-up contracts:
   documented in GUI_LAYOUT_STYLE_EXTRACTION.md
 - GUI base style extraction
   documented in GUI_BASE_STYLE_EXTRACTION.md
+- GUI browser QA attempt
+  documented in GUI_BROWSER_QA_ATTEMPT.md
 ```
 
 ## 12. Implementation Order

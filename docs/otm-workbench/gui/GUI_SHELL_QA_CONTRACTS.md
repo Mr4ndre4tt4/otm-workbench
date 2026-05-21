@@ -39,3 +39,10 @@ Run this checklist before major GUI refactors or before accepting new module scr
 
 - Add browser-backed visual snapshots when the local browser sandbox is stable.
 - Split larger component CSS only after the shell QA contract remains green.
+
+## Browser QA Attempt
+
+`GUI_BROWSER_QA_ATTEMPT.md` records the first post-CSS-split browser QA attempt.
+The local Vite server responded successfully, but the in-app browser runner was
+blocked by the Windows process creation environment, so no screenshot evidence
+is claimed yet.
