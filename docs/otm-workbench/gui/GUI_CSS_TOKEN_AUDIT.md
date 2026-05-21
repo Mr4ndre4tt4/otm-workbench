@@ -261,6 +261,20 @@ Base shell, sidebar navigation, topbar, preference/action layout, page header,
 and section label styles now live with shell components. Preference and
 responsive override files load after the base shell stylesheet.
 
+## Layout Style Extraction
+
+The layout style extraction was completed in
+`GUI_LAYOUT_STYLE_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/layouts.css
+```
+
+Shared operational page and module layout styles now live in `layouts.css`.
+`frontend/src/styles.css` is reduced to global reset and base typography.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

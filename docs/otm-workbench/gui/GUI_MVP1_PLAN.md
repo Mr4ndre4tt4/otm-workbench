@@ -558,6 +558,8 @@ Delivered follow-up contracts:
   documented in GUI_SHARED_COMPONENT_STYLE_EXTRACTION.md
 - GUI shell style extraction
   documented in GUI_SHELL_STYLE_EXTRACTION.md
+- GUI layout style extraction
+  documented in GUI_LAYOUT_STYLE_EXTRACTION.md
 ```
 
 ## 12. Implementation Order
