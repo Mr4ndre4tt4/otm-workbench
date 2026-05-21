@@ -596,6 +596,8 @@ Delivered follow-up contracts:
   documented in GUI_ACTIVITY_ROW_PATTERN_CONTRACT.md
 - GUI readiness panel pattern contract
   documented in GUI_READINESS_PANEL_PATTERN_CONTRACT.md
+- GUI context summary pattern contract
+  documented in GUI_CONTEXT_SUMMARY_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order
