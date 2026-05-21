@@ -598,6 +598,8 @@ Delivered follow-up contracts:
   documented in GUI_METRIC_GRID_PATTERN_CONTRACT.md
 - GUI operational panel pattern contract
   documented in GUI_OPERATIONAL_PANEL_PATTERN_CONTRACT.md
+- GUI module operational surfaces contract
+  documented in GUI_MODULE_OPERATIONAL_SURFACES_CONTRACT.md
 - GUI page header pattern contract
   documented in GUI_PAGE_HEADER_PATTERN_CONTRACT.md
 - GUI status chip pattern contract
