@@ -11,7 +11,7 @@ import {
   useRatesSummary
 } from "../../platform/hooks";
 import type { AvailableAction, RatesSummaryItem } from "../../platform/types";
-import { PageHeader } from "../../app/shell";
+import { ActionBar, PageHeader } from "../../app/shell";
 import {
   Button,
   DetailList,
@@ -149,18 +149,13 @@ export function RatesSummaryView({ token }: { token: string }) {
 
         <SelectedObjectPanel
           actions={
-            batchDetail.data
-              ? batchDetail.data.available_actions.map((action) => (
-                  <Button
-                    disabled={action.disabled}
-                    key={action.key}
-                    onClick={() => void runBatchAction(action)}
-                    variant={action.variant === "primary" ? "primary" : "secondary"}
-                  >
-                    {runningActionKey === action.key ? "Running..." : action.label}
-                  </Button>
-                ))
-              : null
+            batchDetail.data ? (
+              <ActionBar
+                actions={batchDetail.data.available_actions}
+                onAction={(action) => void runBatchAction(action)}
+                runningActionKey={runningActionKey}
+              />
+            ) : null
           }
           emptyText="Select a rate batch to inspect backend-owned details."
           fields={
