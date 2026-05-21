@@ -56,6 +56,7 @@ Fixtures must not:
 frontend/src/test/fixtures/gui.ts
 frontend/src/test/fixtures/gui.test.ts
 frontend/src/app/routes/ComponentGalleryRoute.tsx
+frontend/src/app/AppComponentGalleryRoute.test.tsx
 frontend/src/ui/components.test.tsx
 frontend/tests/guiSyntheticFixturesUsage.test.ts
 ```
@@ -69,6 +70,10 @@ blocker rows instead of local one-off examples.
 `frontend/src/app/routes/ComponentGalleryRoute.tsx` is the first internal
 runtime consumer. It renders the same synthetic contract-shaped examples under
 `/__gui/component-gallery`, outside backend-owned production navigation.
+
+`frontend/src/app/AppComponentGalleryRoute.test.tsx` covers the authenticated
+app route path and confirms the component gallery is not introduced as a
+backend navigation item.
 
 ## 6. Gallery Link
 

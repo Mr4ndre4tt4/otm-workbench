@@ -44,6 +44,11 @@ The route is rendered by `frontend/src/app/routes/ComponentGalleryRoute.tsx`
 and is intentionally not sourced from backend navigation. It remains an
 internal synthetic workbench for shared pattern review.
 
+The authenticated app flow is covered by
+`frontend/src/app/AppComponentGalleryRoute.test.tsx`, which verifies that
+`/__gui/component-gallery` renders after login while the sidebar keeps only
+backend-provided navigation items.
+
 Best for:
 
 ```text
@@ -119,6 +124,7 @@ Current shared UI kit consumer:
 ```text
 frontend/src/ui/components.test.tsx
 frontend/src/app/routes/ComponentGalleryRoute.tsx
+frontend/src/app/AppComponentGalleryRoute.test.tsx
 ```
 
 Fixtures must:
