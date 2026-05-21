@@ -1222,4 +1222,191 @@ describe("App shell", () => {
     expect(screen.getByText("3 rows")).toBeInTheDocument();
     expect(screen.queryByText(/build csvutil/i)).not.toBeInTheDocument();
   });
+
+  it("renders Catalog Core from backend macro object, table, and load plan contracts", async () => {
+    const macroObject = {
+      id: "macro_1",
+      code: "RATE_RECORD",
+      name: "Rate Record",
+      category: "RATES",
+      description: "Synthetic catalog macro object for rate packages.",
+      default_load_order: 40,
+      default_method: "CSVUTIL",
+      method_options: ["CSVUTIL"],
+      allow_cutover: true,
+      allow_csvutil: true,
+      evidence_required_default: true,
+      summary: {
+        table_count: 1,
+        dependency_count: 1,
+        validated_table_count: 1,
+        all_tables_validated: true,
+        csvutil_table_count: 1,
+        cutover_table_count: 1
+      }
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [macroObject], total: 1, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ...macroObject,
+              tables: [
+                {
+                  id: "macro_table_1",
+                  table_name: "RATE_GEO",
+                  relationship_role: "PRIMARY",
+                  is_primary_table: true,
+                  is_required: true,
+                  data_category: "REFERENCE",
+                  validated_by_datadict: true,
+                  allow_csvutil: true,
+                  allow_cutover: true
+                }
+              ],
+              dependencies: [
+                {
+                  id: "dependency_1",
+                  depends_on_code: "LOCATION",
+                  depends_on_name: "Location",
+                  dependency_type: "REFERENCE",
+                  is_required: true,
+                  notes: "Synthetic dependency"
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/tables")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "macro_table_1",
+                  table_name: "RATE_GEO",
+                  relationship_role: "PRIMARY",
+                  is_primary_table: true,
+                  is_required: true,
+                  data_category: "REFERENCE",
+                  validated_by_datadict: true,
+                  allow_csvutil: true,
+                  allow_cutover: true
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/load-plan")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              macro_object_code: "RATE_RECORD",
+              items: [
+                {
+                  macro_object_code: "LOCATION",
+                  macro_object_name: "Location",
+                  dependency_role: "DEPENDENCY",
+                  dependency_type: "REFERENCE",
+                  is_required: true,
+                  tables: ["LOCATION"],
+                  table_count: 1,
+                  all_tables_validated: true
+                },
+                {
+                  macro_object_code: "RATE_RECORD",
+                  macro_object_name: "Rate Record",
+                  dependency_role: "TARGET",
+                  dependency_type: "TARGET",
+                  is_required: true,
+                  tables: ["RATE_GEO"],
+                  table_count: 1,
+                  all_tables_validated: true
+                }
+              ],
+              summary: {
+                step_count: 2,
+                dependency_count: 1,
+                target_table_count: 1,
+                all_target_tables_validated: true
+              }
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/catalog");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "OTM Catalog Core" });
+    expect(await screen.findByText("RATE_RECORD")).toBeInTheDocument();
+    expect(screen.getAllByText("Rate Record").length).toBeGreaterThan(0);
+    expect(screen.getByText("RATE_GEO")).toBeInTheDocument();
+    expect(screen.getByText("LOCATION")).toBeInTheDocument();
+    expect(screen.queryByText(/validate table/i)).not.toBeInTheDocument();
+  });
 });

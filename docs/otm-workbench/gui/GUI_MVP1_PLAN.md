@@ -530,6 +530,8 @@ Delivered follow-up contracts:
   documented in GUI_EVIDENCE_HUB_VIEW.md
 - Load Plan backend-backed view
   documented in GUI_LOAD_PLAN_VIEW.md
+- Catalog Core backend-backed view
+  documented in GUI_CATALOG_CORE_VIEW.md
 ```
 
 ## 12. Implementation Order
