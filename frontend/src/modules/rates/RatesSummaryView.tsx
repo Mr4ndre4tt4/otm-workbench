@@ -1,4 +1,3 @@
-﻿import { AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,6 +19,7 @@ import {
   ModuleObjectList,
   OperationalPanel,
   SelectedObjectPanel,
+  StatePanel,
   StatusChip
 } from "../../ui/components";
 
@@ -50,16 +50,11 @@ export function RatesSummaryView({ token }: { token: string }) {
   const batchEvidence = useRateBatchEvidence(token, effectiveBatchId);
 
   if (rates.isLoading) {
-    return <section className="state-panel">Loading Rates Studio...</section>;
+    return <StatePanel>Loading Rates Studio...</StatePanel>;
   }
 
   if (rates.isError || !rates.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Rates Studio summary is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Rates Studio summary is unavailable.</StatePanel>;
   }
 
   const data = rates.data;

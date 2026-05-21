@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useEvidenceDetail, useEvidenceHub } from '../../platform/hooks';
 import type { EvidenceItem } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function evidenceMeta(evidence: EvidenceItem) {
@@ -26,16 +25,11 @@ export function EvidenceHubView({ token }: { token: string }) {
   const manifestCount = evidenceItems.filter((item) => item.manifest).length;
 
   if (evidence.isLoading) {
-    return <section className="state-panel">Loading Evidence Hub...</section>;
+    return <StatePanel>Loading Evidence Hub...</StatePanel>;
   }
 
   if (evidence.isError || !evidence.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Evidence Hub is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Evidence Hub is unavailable.</StatePanel>;
   }
 
   return (

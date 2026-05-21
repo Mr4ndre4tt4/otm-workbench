@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useAssetDetail, useAssets, useAssetVersions } from '../../platform/hooks';
 import type { AssetItem } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function assetMeta(asset: AssetItem) {
@@ -24,16 +23,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const internalCount = assetItems.filter((asset) => asset.sensitivity === "INTERNAL").length;
 
   if (assets.isLoading) {
-    return <section className="state-panel">Loading Assets Library...</section>;
+    return <StatePanel>Loading Assets Library...</StatePanel>;
   }
 
   if (assets.isError || !assets.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Assets Library is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Assets Library is unavailable.</StatePanel>;
   }
 
   return (

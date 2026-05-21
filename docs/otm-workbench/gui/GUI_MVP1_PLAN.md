@@ -572,6 +572,8 @@ Delivered follow-up contracts:
   documented in GUI_REACT_BOUNDARY_CONTRACT.md
 - GUI module navigation contract
   documented in GUI_MODULE_NAVIGATION_CONTRACT.md
+- GUI state pattern contract
+  documented in GUI_STATE_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order

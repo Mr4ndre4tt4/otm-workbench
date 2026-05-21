@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useMasterDataTemplateDetail, useMasterDataTemplates } from '../../platform/hooks';
 import type { MasterDataTemplate } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function masterDataTemplateMeta(item: MasterDataTemplate) {
@@ -26,16 +25,11 @@ export function MasterDataView({ token }: { token: string }) {
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
 
   if (templates.isLoading) {
-    return <section className="state-panel">Loading Data Factory...</section>;
+    return <StatePanel>Loading Data Factory...</StatePanel>;
   }
 
   if (templates.isError || !templates.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Data Factory is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Data Factory is unavailable.</StatePanel>;
   }
 
   return (

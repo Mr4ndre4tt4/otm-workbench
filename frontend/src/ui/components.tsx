@@ -1,3 +1,4 @@
+import { AlertCircle } from "lucide-react";
 import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
 
 type ButtonProps = PropsWithChildren<
@@ -30,6 +31,20 @@ export function IconButton({
 export function StatusChip({ status }: { status: string }) {
   const normalized = status.toLowerCase();
   return <span className={`status-chip status-${normalized}`}>{status.replaceAll("_", " ")}</span>;
+}
+
+type StatePanelProps = {
+  children: ReactNode;
+  tone?: "default" | "error";
+};
+
+export function StatePanel({ children, tone = "default" }: StatePanelProps) {
+  return (
+    <section className={tone === "error" ? "state-panel state-panel-error" : "state-panel"}>
+      {tone === "error" ? <AlertCircle aria-hidden="true" /> : null}
+      <span>{children}</span>
+    </section>
+  );
 }
 
 export type MetricItem = {

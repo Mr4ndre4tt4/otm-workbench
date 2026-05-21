@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useCatalogMacroObjectDetail, useCatalogMacroObjectLoadPlan, useCatalogMacroObjects, useCatalogMacroObjectTables } from '../../platform/hooks';
 import type { CatalogMacroObject } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function catalogMacroMeta(item: CatalogMacroObject) {
@@ -29,16 +28,11 @@ export function CatalogCoreView({ token }: { token: string }) {
   const validatedTableCount = tableItems.filter((item) => item.validated_by_datadict).length;
 
   if (macroObjects.isLoading) {
-    return <section className="state-panel">Loading OTM Catalog Core...</section>;
+    return <StatePanel>Loading OTM Catalog Core...</StatePanel>;
   }
 
   if (macroObjects.isError || !macroObjects.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>OTM Catalog Core is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">OTM Catalog Core is unavailable.</StatePanel>;
   }
 
   return (

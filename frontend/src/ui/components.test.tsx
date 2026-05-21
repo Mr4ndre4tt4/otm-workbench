@@ -1,7 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, DetailList, ModuleObjectList, SelectedObjectPanel } from "./components";
+import { Button, DetailList, ModuleObjectList, SelectedObjectPanel, StatePanel } from "./components";
+
+describe("StatePanel", () => {
+  it("renders shared loading and error states", () => {
+    const { container, rerender } = render(<StatePanel>Loading Rates Studio...</StatePanel>);
+
+    expect(screen.getByText("Loading Rates Studio...")).toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+
+    rerender(<StatePanel tone="error">Rates Studio summary is unavailable.</StatePanel>);
+
+    expect(screen.getByText("Rates Studio summary is unavailable.")).toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+});
 
 describe("DetailList", () => {
   it("renders detail rows with metadata and status", () => {

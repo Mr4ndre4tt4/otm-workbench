@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useOrderReleaseTemplates } from '../../platform/hooks';
 import type { OrderReleaseTemplate } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function orderReleaseTemplateMeta(item: OrderReleaseTemplate) {
@@ -27,16 +26,11 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const defaultCount = selectedTemplate ? Object.keys(selectedTemplate.defaults).length : 0;
 
   if (templates.isLoading) {
-    return <section className="state-panel">Loading Order Release Generator...</section>;
+    return <StatePanel>Loading Order Release Generator...</StatePanel>;
   }
 
   if (templates.isError || !templates.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Order Release Generator is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Order Release Generator is unavailable.</StatePanel>;
   }
 
   return (

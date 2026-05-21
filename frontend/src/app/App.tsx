@@ -19,7 +19,7 @@ import {
 import { booleanStatus } from "../modules/moduleStatus";
 import { login, useCockpitSummary, useNavigation, useUserPreferences } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, MetricGrid, OperationalPanel, StatusChip } from "../ui/components";
+import { Button, MetricGrid, OperationalPanel, StatePanel, StatusChip } from "../ui/components";
 import type { NavigationItem } from "../platform/types";
 
 function LoginPanel() {
@@ -90,16 +90,11 @@ function CockpitContent({ token }: { token: string }) {
   const cockpit = useCockpitSummary(token);
 
   if (cockpit.isLoading) {
-    return <section className="state-panel">Loading Project Cockpit...</section>;
+    return <StatePanel>Loading Project Cockpit...</StatePanel>;
   }
 
   if (cockpit.isError || !cockpit.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Project Cockpit is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Project Cockpit is unavailable.</StatePanel>;
   }
 
   const data = cockpit.data;
@@ -249,10 +244,7 @@ function UnknownRoute() {
         label="Route not available"
         title="Module unavailable"
       />
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Use the backend-owned navigation menu to open an available module.</span>
-      </section>
+      <StatePanel tone="error">Use the backend-owned navigation menu to open an available module.</StatePanel>
     </>
   );
 }

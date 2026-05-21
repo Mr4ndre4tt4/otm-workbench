@@ -1,11 +1,10 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useIntegrationDefinitionDetail, useIntegrationDefinitions, useIntegrationMappings, useIntegrationPayloadArtifacts, useIntegrationSchemaDocuments, useIntegrationTransformTypes } from '../../platform/hooks';
 import type { IntegrationDefinition } from '../../platform/types';
 import { MODULE_DESCRIPTIONS } from '../../app/routes/moduleDescriptions';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function integrationDefinitionMeta(item: IntegrationDefinition) {
@@ -26,16 +25,11 @@ export function IntegrationMappingView({ token }: { token: string }) {
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
 
   if (definitions.isLoading || transformTypes.isLoading) {
-    return <section className="state-panel">Loading Integration Mapping Studio...</section>;
+    return <StatePanel>Loading Integration Mapping Studio...</StatePanel>;
   }
 
   if (definitions.isError || transformTypes.isError || !definitions.data || !transformTypes.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Integration Mapping Studio is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Integration Mapping Studio is unavailable.</StatePanel>;
   }
 
   return (

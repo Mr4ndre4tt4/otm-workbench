@@ -1,10 +1,9 @@
-import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { useLoadPlanPackageDetail, useLoadPlanPackages, useLoadPlanSummary } from '../../platform/hooks';
 import type { LoadPlanPackage } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function loadPlanPackageMeta(item: LoadPlanPackage) {
@@ -31,16 +30,11 @@ export function LoadPlanView({ token }: { token: string }) {
     0;
 
   if (summary.isLoading || packages.isLoading) {
-    return <section className="state-panel">Loading Load Plan...</section>;
+    return <StatePanel>Loading Load Plan...</StatePanel>;
   }
 
   if (summary.isError || packages.isError || !summary.data || !packages.data) {
-    return (
-      <section className="state-panel state-panel-error">
-        <AlertCircle aria-hidden="true" />
-        <span>Load Plan is unavailable.</span>
-      </section>
-    );
+    return <StatePanel tone="error">Load Plan is unavailable.</StatePanel>;
   }
 
   return (
