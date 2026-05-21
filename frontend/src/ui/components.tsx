@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
+import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
 
 type ButtonProps = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -92,5 +92,70 @@ export function OperationalPanel({
         <p className="empty-text">{emptyText}</p>
       )}
     </div>
+  );
+}
+
+export type SelectedObjectField = {
+  label: string;
+  value: number | string;
+};
+
+type SelectedObjectPanelProps = PropsWithChildren<{
+  actions?: ReactNode;
+  emptyText: string;
+  fields?: SelectedObjectField[];
+  isLoading?: boolean;
+  loadingText?: string;
+  status: string;
+  subtitle?: string;
+  title?: string;
+}>;
+
+export function SelectedObjectPanel({
+  actions,
+  children,
+  emptyText,
+  fields = [],
+  isLoading = false,
+  loadingText = "Loading selected object...",
+  status,
+  subtitle,
+  title
+}: SelectedObjectPanelProps) {
+  return (
+    <aside className="module-template-side">
+      <div className="panel-header">
+        <h2>Selected object</h2>
+        <StatusChip status={status} />
+      </div>
+      {isLoading ? (
+        <p className="empty-text">{loadingText}</p>
+      ) : title ? (
+        <div className="detail-stack">
+          <div>
+            <strong>{title}</strong>
+            {subtitle ? <span>{subtitle}</span> : null}
+          </div>
+          {fields.length ? (
+            <div className="detail-grid">
+              {fields.map((field) => (
+                <span className="detail-field" key={field.label}>
+                  <span>{field.label}</span>
+                  <strong>{field.value}</strong>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {actions ? (
+            <div className="detail-actions" aria-label="Selected object actions">
+              {actions}
+            </div>
+          ) : null}
+          {children}
+        </div>
+      ) : (
+        <p className="empty-text">{emptyText}</p>
+      )}
+    </aside>
   );
 }

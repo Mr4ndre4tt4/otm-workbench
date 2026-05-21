@@ -486,6 +486,11 @@ h2 {
   gap: 8px;
 }
 
+.detail-field {
+  display: grid;
+  gap: 2px;
+}
+
 .detail-actions {
   display: flex;
   flex-wrap: wrap;

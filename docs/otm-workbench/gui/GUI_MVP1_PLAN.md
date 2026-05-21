@@ -518,6 +518,8 @@ Delivered follow-up contracts:
   documented in GUI_SHARED_OPERATIONAL_PANELS.md
 - Shared metrics foundation
   documented in GUI_SHARED_METRICS.md
+- Selected object panel foundation
+  documented in GUI_SELECTED_OBJECT_PANEL.md
 ```
 
 ## 12. Implementation Order

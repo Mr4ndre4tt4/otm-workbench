@@ -34,7 +34,7 @@ import {
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, IconButton, MetricGrid, OperationalPanel, StatusChip } from "../ui/components";
+import { Button, IconButton, MetricGrid, OperationalPanel, SelectedObjectPanel, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
@@ -555,29 +555,10 @@ function RatesSummaryView({ token }: { token: string }) {
           )}
         </div>
 
-        <aside className="module-template-side">
-          <div className="panel-header">
-            <h2>Selected batch</h2>
-            <StatusChip status={batchDetail.data?.status ?? "PENDING"} />
-          </div>
-          {batchDetail.isLoading && effectiveBatchId ? (
-            <p className="empty-text">Loading selected batch...</p>
-          ) : batchDetail.data ? (
-            <div className="detail-stack">
-              <div>
-                <strong>{batchDetail.data.name}</strong>
-                <span>{batchDetail.data.scenario_code}</span>
-              </div>
-              <div className="detail-grid">
-                <span>Domain</span>
-                <strong>{batchDetail.data.domain_name}</strong>
-                <span>Macro object</span>
-                <strong>{batchDetail.data.catalog_macro_object_code}</strong>
-                <span>Tables</span>
-                <strong>{batchDetail.data.tables.length}</strong>
-              </div>
-              <div className="detail-actions" aria-label="Selected batch actions">
-                {batchDetail.data.available_actions.map((action) => (
+        <SelectedObjectPanel
+          actions={
+            batchDetail.data
+              ? batchDetail.data.available_actions.map((action) => (
                   <Button
                     disabled={action.disabled}
                     key={action.key}
@@ -586,28 +567,41 @@ function RatesSummaryView({ token }: { token: string }) {
                   >
                     {runningActionKey === action.key ? "Running..." : action.label}
                   </Button>
-                ))}
-              </div>
-              {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
-              {actionError ? <p className="form-error">{actionError}</p> : null}
-              {batchDetail.data.tables.length ? (
-                <div className="table-list" aria-label="Selected batch tables">
-                  {batchDetail.data.tables.map((table) => (
-                    <div className="table-list-item" key={table.id}>
-                      <strong>{table.table_name}</strong>
-                      <span>{table.row_count} row(s)</span>
-                      <StatusChip status={table.status} />
-                    </div>
-                  ))}
+                ))
+              : null
+          }
+          emptyText="Select a rate batch to inspect backend-owned details."
+          fields={
+            batchDetail.data
+              ? [
+                  { label: "Domain", value: batchDetail.data.domain_name },
+                  { label: "Macro object", value: batchDetail.data.catalog_macro_object_code },
+                  { label: "Tables", value: batchDetail.data.tables.length }
+                ]
+              : []
+          }
+          isLoading={batchDetail.isLoading && Boolean(effectiveBatchId)}
+          loadingText="Loading selected batch..."
+          status={batchDetail.data?.status ?? "PENDING"}
+          subtitle={batchDetail.data?.scenario_code}
+          title={batchDetail.data?.name}
+        >
+          {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
+          {actionError ? <p className="form-error">{actionError}</p> : null}
+          {batchDetail.data?.tables.length ? (
+            <div className="table-list" aria-label="Selected batch tables">
+              {batchDetail.data.tables.map((table) => (
+                <div className="table-list-item" key={table.id}>
+                  <strong>{table.table_name}</strong>
+                  <span>{table.row_count} row(s)</span>
+                  <StatusChip status={table.status} />
                 </div>
-              ) : (
-                <p className="empty-text">No tables have been staged for this batch.</p>
-              )}
+              ))}
             </div>
           ) : (
-            <p className="empty-text">Select a rate batch to inspect backend-owned details.</p>
+            <p className="empty-text">No tables have been staged for this batch.</p>
           )}
-        </aside>
+        </SelectedObjectPanel>
       </section>
 
       <section className="panel blockers-panel">
