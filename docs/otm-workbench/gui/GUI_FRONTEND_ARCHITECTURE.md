@@ -10,6 +10,8 @@ OTM Workbench should continue as a browser-first React application, designed so
 a future desktop client can consume the same backend contracts without changing
 module behavior.
 
+Durable frontend architecture decisions are recorded in `GUI_DECISIONS_LOG.md`.
+
 The frontend must stay a renderer and interaction layer. The backend remains the
 source of truth for navigation, permissions, lifecycle, user preferences,
 actions, validation, jobs, artifacts, evidence, and OTM-specific decisions.

@@ -606,6 +606,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTRACT_INDEX.md
 - GUI exceptions register
   documented in GUI_EXCEPTIONS_REGISTER.md
+- GUI decisions log
+  documented in GUI_DECISIONS_LOG.md
 ```
 
 ## 12. Implementation Order
