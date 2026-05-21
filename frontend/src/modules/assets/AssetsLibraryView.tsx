@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAssetDetail, useAssets, useAssetVersions } from '../../platform/hooks';
 import type { AssetItem } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function assetMeta(asset: AssetItem) {
@@ -48,59 +48,58 @@ export function AssetsLibraryView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Assets Library workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Assets</h2>
-            <StatusChip status={assetItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Assets"
-            emptyText="No assets available for the current context."
-            items={assetItems.map((asset) => ({
-              id: asset.id,
-              meta: assetMeta(asset),
-              status: asset.status,
-              subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
-              title: asset.name
-            }))}
-            onSelect={setSelectedAssetId}
-            selectedId={effectiveAssetId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected asset"
-          emptyText="Select an asset to inspect backend-owned metadata."
-          fields={
-            selectedAsset
-              ? [
-                  { label: "Category", value: selectedAsset.category },
-                  { label: "Sensitivity", value: selectedAsset.sensitivity },
-                  { label: "Macro object", value: selectedAsset.macro_object_code ?? "None" },
-                  { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" }
-                ]
-              : []
-          }
-          isLoading={assetDetail.isLoading && Boolean(effectiveAssetId)}
-          loadingText="Loading selected asset..."
-          status={selectedAsset?.status ?? "PENDING"}
-          subtitle={selectedAsset?.asset_type}
-          title={selectedAsset?.name}
-        >
-          {selectedAsset?.description ? <p className="empty-text">{selectedAsset.description}</p> : null}
-          <DetailList
-            ariaLabel="Selected asset versions"
-            emptyText="No versions uploaded for this asset."
-            items={(assetVersions.data?.items ?? []).map((version) => ({
-              id: version.id,
-              meta: [`v${version.version_number}`, version.content_type, `${version.size_bytes} bytes`],
-              status: version.status,
-              title: version.file_name
-            }))}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="Assets Library workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected asset"
+            emptyText="Select an asset to inspect backend-owned metadata."
+            fields={
+              selectedAsset
+                ? [
+                    { label: "Category", value: selectedAsset.category },
+                    { label: "Sensitivity", value: selectedAsset.sensitivity },
+                    { label: "Macro object", value: selectedAsset.macro_object_code ?? "None" },
+                    { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" }
+                  ]
+                : []
+            }
+            isLoading={assetDetail.isLoading && Boolean(effectiveAssetId)}
+            loadingText="Loading selected asset..."
+            status={selectedAsset?.status ?? "PENDING"}
+            subtitle={selectedAsset?.asset_type}
+            title={selectedAsset?.name}
+          >
+            {selectedAsset?.description ? <p className="empty-text">{selectedAsset.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected asset versions"
+              emptyText="No versions uploaded for this asset."
+              items={(assetVersions.data?.items ?? []).map((version) => ({
+                id: version.id,
+                meta: [`v${version.version_number}`, version.content_type, `${version.size_bytes} bytes`],
+                status: version.status,
+                title: version.file_name
+              }))}
+            />
+          </SelectedObjectPanel>
+        }
+        status={assetItems.length ? "ACTIVE" : "EMPTY"}
+        title="Assets"
+      >
+        <ModuleObjectList
+          ariaLabel="Assets"
+          emptyText="No assets available for the current context."
+          items={assetItems.map((asset) => ({
+            id: asset.id,
+            meta: assetMeta(asset),
+            status: asset.status,
+            subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
+            title: asset.name
+          }))}
+          onSelect={setSelectedAssetId}
+          selectedId={effectiveAssetId}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

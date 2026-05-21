@@ -66,7 +66,7 @@ Status: Accepted
 Date: 2026-05-21
 Decision: Use shared UI kit and shell components before adding module-specific visual patterns.
 Reason: MVP0/MVP1 modules should feel like one product and should not create per-module UI dialects.
-Frontend impact: Components such as PageHeader, StatePanel, ModuleObjectList, SelectedObjectPanel, DetailList, MetricGrid, OperationalPanel, StatusChip, Button, ActivityRow, ContextSummary, ContextSwitcher, ReadinessPanel, and PreferenceControls are governed patterns.
+Frontend impact: Components such as PageHeader, StatePanel, ModuleObjectList, ModuleWorkspaceLayout, ModuleWorkspaceSide, SelectedObjectPanel, DetailList, MetricGrid, OperationalPanel, StatusChip, Button, ActivityRow, ContextSummary, ContextSwitcher, ReadinessPanel, and PreferenceControls are governed patterns.
 Backend ownership: Shared components consume backend-owned data and actions without owning lifecycle or permission rules.
 Tests or guardrails: Pattern contract tests plus GUI_CONTRACT_INDEX.md.
 Supersedes: None.

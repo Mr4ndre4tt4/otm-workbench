@@ -7,6 +7,8 @@ import {
   DetailList,
   IconButton,
   ModuleObjectList,
+  ModuleWorkspaceLayout,
+  ModuleWorkspaceSide,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel
@@ -121,6 +123,34 @@ describe("ModuleObjectList", () => {
     );
 
     expect(screen.getByText("No objects available.")).toBeInTheDocument();
+  });
+});
+
+describe("ModuleWorkspaceLayout", () => {
+  it("renders the shared module workspace grid, primary panel, and side panel", () => {
+    render(
+      <ModuleWorkspaceLayout
+        ariaLabel="Rates Studio workspace"
+        side={
+          <ModuleWorkspaceSide title="Expected panels">
+            <ul>
+              <li>Available actions from backend</li>
+            </ul>
+          </ModuleWorkspaceSide>
+        }
+        status="ACTIVE"
+        title="Recent rate batches"
+      >
+        <div>Rate batch list</div>
+      </ModuleWorkspaceLayout>
+    );
+
+    expect(screen.getByLabelText("Rates Studio workspace")).toHaveClass("module-template");
+    expect(screen.getByRole("heading", { name: "Recent rate batches" })).toBeInTheDocument();
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("Rate batch list")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Expected panels" })).toBeInTheDocument();
+    expect(screen.getByText("Available actions from backend")).toBeInTheDocument();
   });
 });
 

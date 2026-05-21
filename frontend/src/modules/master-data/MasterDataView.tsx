@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useMasterDataTemplateDetail, useMasterDataTemplates } from '../../platform/hooks';
 import type { MasterDataTemplate } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function masterDataTemplateMeta(item: MasterDataTemplate) {
@@ -50,71 +50,70 @@ export function MasterDataView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Data Factory workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Templates</h2>
-            <StatusChip status={templateItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Master Data templates"
-            emptyText="No Master Data templates available for the current context."
-            items={templateItems.map((item) => ({
-              id: item.code,
-              meta: masterDataTemplateMeta(item),
-              status: item.status,
-              subtitle: item.name,
-              title: item.code
-            }))}
-            onSelect={setSelectedTemplateCode}
-            selectedId={effectiveTemplateCode}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected Master Data template"
-          emptyText="Select a template to inspect backend-owned metadata."
-          fields={
-            selectedTemplate
-              ? [
-                  { label: "Macro object", value: selectedTemplate.catalog_macro_object_code },
-                  { label: "Version", value: selectedTemplate.version },
-                  { label: "Target tables", value: selectedTemplate.target_tables.length },
-                  { label: "Fields", value: fieldCount }
-                ]
-              : []
-          }
-          isLoading={templateDetail.isLoading && Boolean(effectiveTemplateCode)}
-          loadingText="Loading selected template..."
-          status={selectedTemplate?.status ?? "PENDING"}
-          subtitle={selectedTemplate?.name}
-          title={selectedTemplate?.code}
-        >
-          {selectedTemplate?.description ? <p className="empty-text">{selectedTemplate.description}</p> : null}
-          <DetailList
-            ariaLabel="Selected template sheets"
-            emptyText="No sheets defined for this template."
-            items={(selectedTemplate?.sheets ?? []).map((sheet) => ({
-              id: sheet.code,
-              meta: [sheet.target_table, `${sheet.fields.length} field(s)`],
-              status: "ACTIVE",
-              title: sheet.code
-            }))}
-          />
-          <DetailList
-            ariaLabel="Selected template fields"
-            emptyText="No fields defined for this template."
-            items={(selectedTemplate?.sheets ?? []).flatMap((sheet) =>
-              sheet.fields.map((field) => ({
-                id: `${sheet.code}-${field.name}`,
-                meta: [sheet.code, field.target_column, field.required ? "Required" : "Optional"],
-                status: field.required ? "REQUIRED" : "OPTIONAL",
-                title: field.label
-              }))
-            )}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="Data Factory workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected Master Data template"
+            emptyText="Select a template to inspect backend-owned metadata."
+            fields={
+              selectedTemplate
+                ? [
+                    { label: "Macro object", value: selectedTemplate.catalog_macro_object_code },
+                    { label: "Version", value: selectedTemplate.version },
+                    { label: "Target tables", value: selectedTemplate.target_tables.length },
+                    { label: "Fields", value: fieldCount }
+                  ]
+                : []
+            }
+            isLoading={templateDetail.isLoading && Boolean(effectiveTemplateCode)}
+            loadingText="Loading selected template..."
+            status={selectedTemplate?.status ?? "PENDING"}
+            subtitle={selectedTemplate?.name}
+            title={selectedTemplate?.code}
+          >
+            {selectedTemplate?.description ? <p className="empty-text">{selectedTemplate.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected template sheets"
+              emptyText="No sheets defined for this template."
+              items={(selectedTemplate?.sheets ?? []).map((sheet) => ({
+                id: sheet.code,
+                meta: [sheet.target_table, `${sheet.fields.length} field(s)`],
+                status: "ACTIVE",
+                title: sheet.code
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected template fields"
+              emptyText="No fields defined for this template."
+              items={(selectedTemplate?.sheets ?? []).flatMap((sheet) =>
+                sheet.fields.map((field) => ({
+                  id: `${sheet.code}-${field.name}`,
+                  meta: [sheet.code, field.target_column, field.required ? "Required" : "Optional"],
+                  status: field.required ? "REQUIRED" : "OPTIONAL",
+                  title: field.label
+                }))
+              )}
+            />
+          </SelectedObjectPanel>
+        }
+        status={templateItems.length ? "ACTIVE" : "EMPTY"}
+        title="Templates"
+      >
+        <ModuleObjectList
+          ariaLabel="Master Data templates"
+          emptyText="No Master Data templates available for the current context."
+          items={templateItems.map((item) => ({
+            id: item.code,
+            meta: masterDataTemplateMeta(item),
+            status: item.status,
+            subtitle: item.name,
+            title: item.code
+          }))}
+          onSelect={setSelectedTemplateCode}
+          selectedId={effectiveTemplateCode}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useEvidenceDetail, useEvidenceHub } from '../../platform/hooks';
 import type { EvidenceItem } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function evidenceMeta(evidence: EvidenceItem) {
@@ -50,81 +50,80 @@ export function EvidenceHubView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Evidence Hub workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Evidence</h2>
-            <StatusChip status={evidenceItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Evidence entries"
-            emptyText="No client-safe evidence available for the current context."
-            items={evidenceItems.map((item) => ({
-              id: item.id,
-              meta: evidenceMeta(item),
-              status: item.status,
-              subtitle: item.source_module,
-              title: item.evidence_type
-            }))}
-            onSelect={setSelectedEvidenceId}
-            selectedId={effectiveEvidenceId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected evidence"
-          emptyText="Select evidence to inspect backend-owned metadata."
-          fields={
-            selectedEvidence
-              ? [
-                  { label: "Source module", value: selectedEvidence.source_module },
-                  { label: "Sensitivity", value: selectedEvidence.sensitivity_level },
-                  { label: "Artifact", value: selectedEvidence.artifact?.file_name ?? "None" },
-                  { label: "Manifest", value: selectedEvidence.manifest?.manifest_type ?? "None" }
-                ]
-              : []
-          }
-          isLoading={evidenceDetail.isLoading && Boolean(effectiveEvidenceId)}
-          loadingText="Loading selected evidence..."
-          status={selectedEvidence?.status ?? "PENDING"}
-          subtitle={selectedEvidence?.source_module}
-          title={selectedEvidence?.evidence_type}
-        >
-          <DetailList
-            ariaLabel="Selected evidence references"
-            emptyText="No artifact or manifest references for this evidence."
-            items={[
-              ...(selectedEvidence?.artifact
+      <ModuleWorkspaceLayout
+        ariaLabel="Evidence Hub workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected evidence"
+            emptyText="Select evidence to inspect backend-owned metadata."
+            fields={
+              selectedEvidence
                 ? [
-                    {
-                      id: selectedEvidence.artifact.id,
-                      meta: [
-                        selectedEvidence.artifact.artifact_type,
-                        selectedEvidence.artifact.content_type,
-                        `${selectedEvidence.artifact.size_bytes} bytes`
-                      ],
-                      status: selectedEvidence.artifact.sensitivity_level,
-                      title: selectedEvidence.artifact.file_name
-                    }
+                    { label: "Source module", value: selectedEvidence.source_module },
+                    { label: "Sensitivity", value: selectedEvidence.sensitivity_level },
+                    { label: "Artifact", value: selectedEvidence.artifact?.file_name ?? "None" },
+                    { label: "Manifest", value: selectedEvidence.manifest?.manifest_type ?? "None" }
                   ]
-                : []),
-              ...(selectedEvidence?.manifest
-                ? [
-                    {
-                      id: selectedEvidence.manifest.id,
-                      meta: [
-                        selectedEvidence.manifest.source_module,
-                        selectedEvidence.manifest.schema_version ?? "No schema version"
-                      ],
-                      status: selectedEvidence.manifest.status,
-                      title: selectedEvidence.manifest.manifest_type ?? "Manifest"
-                    }
-                  ]
-                : [])
-            ]}
-          />
-        </SelectedObjectPanel>
-      </section>
+                : []
+            }
+            isLoading={evidenceDetail.isLoading && Boolean(effectiveEvidenceId)}
+            loadingText="Loading selected evidence..."
+            status={selectedEvidence?.status ?? "PENDING"}
+            subtitle={selectedEvidence?.source_module}
+            title={selectedEvidence?.evidence_type}
+          >
+            <DetailList
+              ariaLabel="Selected evidence references"
+              emptyText="No artifact or manifest references for this evidence."
+              items={[
+                ...(selectedEvidence?.artifact
+                  ? [
+                      {
+                        id: selectedEvidence.artifact.id,
+                        meta: [
+                          selectedEvidence.artifact.artifact_type,
+                          selectedEvidence.artifact.content_type,
+                          `${selectedEvidence.artifact.size_bytes} bytes`
+                        ],
+                        status: selectedEvidence.artifact.sensitivity_level,
+                        title: selectedEvidence.artifact.file_name
+                      }
+                    ]
+                  : []),
+                ...(selectedEvidence?.manifest
+                  ? [
+                      {
+                        id: selectedEvidence.manifest.id,
+                        meta: [
+                          selectedEvidence.manifest.source_module,
+                          selectedEvidence.manifest.schema_version ?? "No schema version"
+                        ],
+                        status: selectedEvidence.manifest.status,
+                        title: selectedEvidence.manifest.manifest_type ?? "Manifest"
+                      }
+                    ]
+                  : [])
+              ]}
+            />
+          </SelectedObjectPanel>
+        }
+        status={evidenceItems.length ? "ACTIVE" : "EMPTY"}
+        title="Evidence"
+      >
+        <ModuleObjectList
+          ariaLabel="Evidence entries"
+          emptyText="No client-safe evidence available for the current context."
+          items={evidenceItems.map((item) => ({
+            id: item.id,
+            meta: evidenceMeta(item),
+            status: item.status,
+            subtitle: item.source_module,
+            title: item.evidence_type
+          }))}
+          onSelect={setSelectedEvidenceId}
+          selectedId={effectiveEvidenceId}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

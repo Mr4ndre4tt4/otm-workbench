@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useOrderReleaseTemplates } from '../../platform/hooks';
 import type { OrderReleaseTemplate } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function orderReleaseTemplateMeta(item: OrderReleaseTemplate) {
@@ -51,77 +51,76 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Order Release Generator workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Templates</h2>
-            <StatusChip status={templateItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Order Release templates"
-            emptyText="No Order Release templates available for the current context."
-            items={templateItems.map((item) => ({
-              id: item.id,
-              meta: orderReleaseTemplateMeta(item),
-              status: item.status,
-              subtitle: item.name,
-              title: item.code
-            }))}
-            onSelect={setSelectedTemplateId}
-            selectedId={effectiveTemplateId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected Order Release template"
-          emptyText="Select a template to inspect backend-owned Order Release metadata."
-          fields={
-            selectedTemplate
-              ? [
-                  { label: "Macro object", value: selectedTemplate.macro_object_code },
-                  { label: "Version", value: selectedTemplate.version },
-                  { label: "Required columns", value: selectedTemplate.required_columns.length },
-                  { label: "Optional columns", value: selectedTemplate.optional_columns.length }
-                ]
-              : []
-          }
-          isLoading={templates.isLoading}
-          loadingText="Loading selected template..."
-          status={selectedTemplate?.status ?? "PENDING"}
-          subtitle={selectedTemplate?.name}
-          title={selectedTemplate?.code}
-        >
-          {selectedTemplate?.description ? <p className="empty-text">{selectedTemplate.description}</p> : null}
-          <DetailList
-            ariaLabel="Selected order release required columns"
-            emptyText="No required columns defined for this template."
-            items={(selectedTemplate?.required_columns ?? []).map((column) => ({
-              id: `required-${column}`,
-              meta: ["Required"],
-              status: "REQUIRED",
-              title: column
-            }))}
-          />
-          <DetailList
-            ariaLabel="Selected order release optional columns and defaults"
-            emptyText="No optional columns or defaults defined for this template."
-            items={[
-              ...(selectedTemplate?.optional_columns ?? []).map((column) => ({
-                id: `optional-${column}`,
-                meta: ["Optional"],
-                status: "OPTIONAL",
+      <ModuleWorkspaceLayout
+        ariaLabel="Order Release Generator workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected Order Release template"
+            emptyText="Select a template to inspect backend-owned Order Release metadata."
+            fields={
+              selectedTemplate
+                ? [
+                    { label: "Macro object", value: selectedTemplate.macro_object_code },
+                    { label: "Version", value: selectedTemplate.version },
+                    { label: "Required columns", value: selectedTemplate.required_columns.length },
+                    { label: "Optional columns", value: selectedTemplate.optional_columns.length }
+                  ]
+                : []
+            }
+            isLoading={templates.isLoading}
+            loadingText="Loading selected template..."
+            status={selectedTemplate?.status ?? "PENDING"}
+            subtitle={selectedTemplate?.name}
+            title={selectedTemplate?.code}
+          >
+            {selectedTemplate?.description ? <p className="empty-text">{selectedTemplate.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected order release required columns"
+              emptyText="No required columns defined for this template."
+              items={(selectedTemplate?.required_columns ?? []).map((column) => ({
+                id: `required-${column}`,
+                meta: ["Required"],
+                status: "REQUIRED",
                 title: column
-              })),
-              ...Object.entries(selectedTemplate?.defaults ?? {}).map(([key, value]) => ({
-                id: `default-${key}`,
-                meta: [`Default: ${String(value)}`],
-                status: "DEFAULT",
-                title: key
-              }))
-            ]}
-          />
-        </SelectedObjectPanel>
-      </section>
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected order release optional columns and defaults"
+              emptyText="No optional columns or defaults defined for this template."
+              items={[
+                ...(selectedTemplate?.optional_columns ?? []).map((column) => ({
+                  id: `optional-${column}`,
+                  meta: ["Optional"],
+                  status: "OPTIONAL",
+                  title: column
+                })),
+                ...Object.entries(selectedTemplate?.defaults ?? {}).map(([key, value]) => ({
+                  id: `default-${key}`,
+                  meta: [`Default: ${String(value)}`],
+                  status: "DEFAULT",
+                  title: key
+                }))
+              ]}
+            />
+          </SelectedObjectPanel>
+        }
+        status={templateItems.length ? "ACTIVE" : "EMPTY"}
+        title="Templates"
+      >
+        <ModuleObjectList
+          ariaLabel="Order Release templates"
+          emptyText="No Order Release templates available for the current context."
+          items={templateItems.map((item) => ({
+            id: item.id,
+            meta: orderReleaseTemplateMeta(item),
+            status: item.status,
+            subtitle: item.name,
+            title: item.code
+          }))}
+          onSelect={setSelectedTemplateId}
+          selectedId={effectiveTemplateId}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

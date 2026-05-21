@@ -44,8 +44,9 @@ backend-owned navigation items.
 The first module route template contains:
 
 - Page header
-- Module status chip
-- Overview panel
+- Shared `ModuleWorkspaceLayout`
+- Module status chip in the primary panel
+- Overview panel content
 - Side panel for expected reusable areas:
   - primary list or work queue
   - selected object summary
@@ -55,6 +56,10 @@ The first module route template contains:
 This is intentionally table/detail oriented. Custom visual experiences should
 be added only when the module needs them and after the backend contract is
 stable.
+
+Standard module views should reuse
+`frontend/src/ui/components.tsx::ModuleWorkspaceLayout` instead of owning raw
+`module-template` markup.
 
 ## Next Step
 

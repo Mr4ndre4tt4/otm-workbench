@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useCatalogMacroObjectDetail, useCatalogMacroObjectLoadPlan, useCatalogMacroObjects, useCatalogMacroObjectTables } from '../../platform/hooks';
 import type { CatalogMacroObject } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function catalogMacroMeta(item: CatalogMacroObject) {
@@ -53,69 +53,68 @@ export function CatalogCoreView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="OTM Catalog Core workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Macro objects</h2>
-            <StatusChip status={macroItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Catalog macro objects"
-            emptyText="No catalog macro objects available for the current context."
-            items={macroItems.map((item) => ({
-              id: item.code,
-              meta: catalogMacroMeta(item),
-              status: item.allow_csvutil || item.allow_cutover ? "ACTIVE" : "READ_ONLY",
-              subtitle: item.name,
-              title: item.code
-            }))}
-            onSelect={setSelectedMacroCode}
-            selectedId={effectiveMacroCode}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected catalog macro object"
-          emptyText="Select a macro object to inspect backend-owned catalog metadata."
-          fields={
-            selectedMacro
-              ? [
-                  { label: "Category", value: selectedMacro.category },
-                  { label: "Default method", value: selectedMacro.default_method },
-                  { label: "Tables", value: selectedMacro.summary?.table_count ?? tableItems.length },
-                  { label: "Dependencies", value: selectedMacro.summary?.dependency_count ?? loadPlanItems.length - 1 }
-                ]
-              : []
-          }
-          isLoading={(macroDetail.isLoading || macroTables.isLoading || macroLoadPlan.isLoading) && Boolean(effectiveMacroCode)}
-          loadingText="Loading selected macro object..."
-          status={selectedMacro?.allow_csvutil || selectedMacro?.allow_cutover ? "ACTIVE" : "READ_ONLY"}
-          subtitle={selectedMacro?.name}
-          title={selectedMacro?.code}
-        >
-          {selectedMacro?.description ? <p className="empty-text">{selectedMacro.description}</p> : null}
-          <DetailList
-            ariaLabel="Selected macro object tables"
-            emptyText="No tables linked to this macro object."
-            items={tableItems.map((item) => ({
-              id: item.id,
-              meta: [item.relationship_role, item.data_category, item.allow_csvutil ? "CSVUTIL" : "No CSVUTIL"],
-              status: item.validated_by_datadict ? "VALIDATED" : "NEEDS_REVIEW",
-              title: item.table_name
-            }))}
-          />
-          <DetailList
-            ariaLabel="Selected macro object load plan"
-            emptyText="No load plan available for this macro object."
-            items={loadPlanItems.map((item) => ({
-              id: `${item.dependency_role}-${item.macro_object_code}`,
-              meta: [item.dependency_role, item.dependency_type, `${item.table_count} table(s)`],
-              status: item.all_tables_validated ? "VALIDATED" : "NEEDS_REVIEW",
-              title: item.macro_object_code
-            }))}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="OTM Catalog Core workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected catalog macro object"
+            emptyText="Select a macro object to inspect backend-owned catalog metadata."
+            fields={
+              selectedMacro
+                ? [
+                    { label: "Category", value: selectedMacro.category },
+                    { label: "Default method", value: selectedMacro.default_method },
+                    { label: "Tables", value: selectedMacro.summary?.table_count ?? tableItems.length },
+                    { label: "Dependencies", value: selectedMacro.summary?.dependency_count ?? loadPlanItems.length - 1 }
+                  ]
+                : []
+            }
+            isLoading={(macroDetail.isLoading || macroTables.isLoading || macroLoadPlan.isLoading) && Boolean(effectiveMacroCode)}
+            loadingText="Loading selected macro object..."
+            status={selectedMacro?.allow_csvutil || selectedMacro?.allow_cutover ? "ACTIVE" : "READ_ONLY"}
+            subtitle={selectedMacro?.name}
+            title={selectedMacro?.code}
+          >
+            {selectedMacro?.description ? <p className="empty-text">{selectedMacro.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected macro object tables"
+              emptyText="No tables linked to this macro object."
+              items={tableItems.map((item) => ({
+                id: item.id,
+                meta: [item.relationship_role, item.data_category, item.allow_csvutil ? "CSVUTIL" : "No CSVUTIL"],
+                status: item.validated_by_datadict ? "VALIDATED" : "NEEDS_REVIEW",
+                title: item.table_name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected macro object load plan"
+              emptyText="No load plan available for this macro object."
+              items={loadPlanItems.map((item) => ({
+                id: `${item.dependency_role}-${item.macro_object_code}`,
+                meta: [item.dependency_role, item.dependency_type, `${item.table_count} table(s)`],
+                status: item.all_tables_validated ? "VALIDATED" : "NEEDS_REVIEW",
+                title: item.macro_object_code
+              }))}
+            />
+          </SelectedObjectPanel>
+        }
+        status={macroItems.length ? "ACTIVE" : "EMPTY"}
+        title="Macro objects"
+      >
+        <ModuleObjectList
+          ariaLabel="Catalog macro objects"
+          emptyText="No catalog macro objects available for the current context."
+          items={macroItems.map((item) => ({
+            id: item.code,
+            meta: catalogMacroMeta(item),
+            status: item.allow_csvutil || item.allow_cutover ? "ACTIVE" : "READ_ONLY",
+            subtitle: item.name,
+            title: item.code
+          }))}
+          onSelect={setSelectedMacroCode}
+          selectedId={effectiveMacroCode}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

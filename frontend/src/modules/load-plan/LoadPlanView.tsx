@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useLoadPlanPackageDetail, useLoadPlanPackages, useLoadPlanSummary } from '../../platform/hooks';
 import type { LoadPlanPackage } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function loadPlanPackageMeta(item: LoadPlanPackage) {
@@ -55,58 +55,57 @@ export function LoadPlanView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Load Plan workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Packages</h2>
-            <StatusChip status={packageItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Load plan packages"
-            emptyText="No Load Plan packages registered for the current context."
-            items={packageItems.map((item) => ({
-              id: item.id,
-              meta: loadPlanPackageMeta(item),
-              status: item.status,
-              subtitle: item.summary.catalog_macro_object_code ?? item.source_module,
-              title: item.package_type
-            }))}
-            onSelect={setSelectedPackageId}
-            selectedId={effectivePackageId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected load plan package"
-          emptyText="Select a Load Plan package to inspect backend-owned package metadata."
-          fields={
-            selectedPackage
-              ? [
-                  { label: "Source module", value: selectedPackage.source_module },
-                  { label: "Source entity", value: selectedPackage.source_entity_type },
-                  { label: "Catalog macro", value: selectedPackage.summary.catalog_macro_object_code ?? "None" },
-                  { label: "Rows", value: sequenceRowCount }
-                ]
-              : []
-          }
-          isLoading={packageDetail.isLoading && Boolean(effectivePackageId)}
-          loadingText="Loading selected package..."
-          status={selectedPackage?.status ?? "PENDING"}
-          subtitle={selectedPackage?.summary.catalog_macro_object_code ?? selectedPackage?.source_module}
-          title={selectedPackage?.package_type}
-        >
-          <DetailList
-            ariaLabel="Selected package load sequence"
-            emptyText="No load sequence available for this package."
-            items={(selectedPackage?.load_sequence ?? []).map((item) => ({
-              id: `${selectedPackage?.id ?? "package"}-${item.position}-${item.table_name}`,
-              meta: [`Position ${item.position}`, `${item.row_count} rows`],
-              status: item.requirement_level,
-              title: item.table_name
-            }))}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="Load Plan workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected load plan package"
+            emptyText="Select a Load Plan package to inspect backend-owned package metadata."
+            fields={
+              selectedPackage
+                ? [
+                    { label: "Source module", value: selectedPackage.source_module },
+                    { label: "Source entity", value: selectedPackage.source_entity_type },
+                    { label: "Catalog macro", value: selectedPackage.summary.catalog_macro_object_code ?? "None" },
+                    { label: "Rows", value: sequenceRowCount }
+                  ]
+                : []
+            }
+            isLoading={packageDetail.isLoading && Boolean(effectivePackageId)}
+            loadingText="Loading selected package..."
+            status={selectedPackage?.status ?? "PENDING"}
+            subtitle={selectedPackage?.summary.catalog_macro_object_code ?? selectedPackage?.source_module}
+            title={selectedPackage?.package_type}
+          >
+            <DetailList
+              ariaLabel="Selected package load sequence"
+              emptyText="No load sequence available for this package."
+              items={(selectedPackage?.load_sequence ?? []).map((item) => ({
+                id: `${selectedPackage?.id ?? "package"}-${item.position}-${item.table_name}`,
+                meta: [`Position ${item.position}`, `${item.row_count} rows`],
+                status: item.requirement_level,
+                title: item.table_name
+              }))}
+            />
+          </SelectedObjectPanel>
+        }
+        status={packageItems.length ? "ACTIVE" : "EMPTY"}
+        title="Packages"
+      >
+        <ModuleObjectList
+          ariaLabel="Load plan packages"
+          emptyText="No Load Plan packages registered for the current context."
+          items={packageItems.map((item) => ({
+            id: item.id,
+            meta: loadPlanPackageMeta(item),
+            status: item.status,
+            subtitle: item.summary.catalog_macro_object_code ?? item.source_module,
+            title: item.package_type
+          }))}
+          onSelect={setSelectedPackageId}
+          selectedId={effectivePackageId}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

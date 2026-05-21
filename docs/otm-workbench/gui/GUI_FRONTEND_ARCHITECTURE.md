@@ -160,6 +160,8 @@ Examples:
 ```text
 Reusable:
 - ModuleObjectList
+- ModuleWorkspaceLayout
+- ModuleWorkspaceSide
 - SelectedObjectPanel
 - DetailList
 - MetricGrid

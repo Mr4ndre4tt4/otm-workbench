@@ -4,7 +4,7 @@ import { useIntegrationDefinitionDetail, useIntegrationDefinitions, useIntegrati
 import type { IntegrationDefinition } from '../../platform/types';
 import { MODULE_DESCRIPTIONS } from '../../app/routes/moduleDescriptions';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, SelectedObjectPanel, StatePanel, StatusChip } from '../../ui/components';
+import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function integrationDefinitionMeta(item: IntegrationDefinition) {
@@ -65,79 +65,78 @@ export function IntegrationMappingView({ token }: { token: string }) {
         ]}
       />
 
-      <section className="module-template" aria-label="Integration Mapping Studio workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Definitions</h2>
-            <StatusChip status={definitionItems.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Integration mapping definitions"
-            emptyText="No Integration Mapping definitions available for the current context."
-            items={definitionItems.map((item) => ({
-              id: item.id,
-              meta: integrationDefinitionMeta(item),
-              status: item.status,
-              subtitle: item.name,
-              title: item.code
-            }))}
-            onSelect={setSelectedDefinitionId}
-            selectedId={effectiveDefinitionId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected integration mapping definition"
-          emptyText="Select a definition to inspect backend-owned mapping metadata."
-          fields={
-            selectedDefinition
-              ? [
-                  { label: "Source system", value: selectedDefinition.source_system },
-                  { label: "Target system", value: selectedDefinition.target_system },
-                  { label: "Source format", value: selectedDefinition.source_format },
-                  { label: "Target format", value: selectedDefinition.target_format }
-                ]
-              : []
-          }
-          isLoading={definitionDetail.isLoading && Boolean(effectiveDefinitionId)}
-          loadingText="Loading selected definition..."
-          status={selectedDefinition?.status ?? "PENDING"}
-          subtitle={selectedDefinition?.name}
-          title={selectedDefinition?.code}
-        >
-          {selectedDefinition?.description ? <p className="empty-text">{selectedDefinition.description}</p> : null}
-          <DetailList
-            ariaLabel="Selected definition payload artifacts"
-            emptyText="No payload artifacts linked to this definition."
-            items={(payloadArtifacts.data?.items ?? []).map((artifact) => ({
-              id: artifact.id,
-              meta: [artifact.payload_role, artifact.payload_format, `${artifact.size_bytes} bytes`],
-              status: artifact.content_type,
-              title: artifact.file_name
-            }))}
-          />
-          <DetailList
-            ariaLabel="Selected definition schema documents"
-            emptyText="No schema documents parsed for this definition."
-            items={(schemaDocuments.data?.items ?? []).map((schema) => ({
-              id: schema.id,
-              meta: [schema.payload_format, `${schema.node_count} node(s)`],
-              status: schema.status,
-              title: schema.root_name
-            }))}
-          />
-          <DetailList
-            ariaLabel="Selected definition mappings"
-            emptyText="No mappings defined for this definition."
-            items={(mappings.data?.items ?? []).map((mapping) => ({
-              id: mapping.id,
-              meta: [mapping.source_path, mapping.transform_type],
-              status: mapping.status,
-              title: mapping.target_path
-            }))}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="Integration Mapping Studio workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected integration mapping definition"
+            emptyText="Select a definition to inspect backend-owned mapping metadata."
+            fields={
+              selectedDefinition
+                ? [
+                    { label: "Source system", value: selectedDefinition.source_system },
+                    { label: "Target system", value: selectedDefinition.target_system },
+                    { label: "Source format", value: selectedDefinition.source_format },
+                    { label: "Target format", value: selectedDefinition.target_format }
+                  ]
+                : []
+            }
+            isLoading={definitionDetail.isLoading && Boolean(effectiveDefinitionId)}
+            loadingText="Loading selected definition..."
+            status={selectedDefinition?.status ?? "PENDING"}
+            subtitle={selectedDefinition?.name}
+            title={selectedDefinition?.code}
+          >
+            {selectedDefinition?.description ? <p className="empty-text">{selectedDefinition.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected definition payload artifacts"
+              emptyText="No payload artifacts linked to this definition."
+              items={(payloadArtifacts.data?.items ?? []).map((artifact) => ({
+                id: artifact.id,
+                meta: [artifact.payload_role, artifact.payload_format, `${artifact.size_bytes} bytes`],
+                status: artifact.content_type,
+                title: artifact.file_name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition schema documents"
+              emptyText="No schema documents parsed for this definition."
+              items={(schemaDocuments.data?.items ?? []).map((schema) => ({
+                id: schema.id,
+                meta: [schema.payload_format, `${schema.node_count} node(s)`],
+                status: schema.status,
+                title: schema.root_name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition mappings"
+              emptyText="No mappings defined for this definition."
+              items={(mappings.data?.items ?? []).map((mapping) => ({
+                id: mapping.id,
+                meta: [mapping.source_path, mapping.transform_type],
+                status: mapping.status,
+                title: mapping.target_path
+              }))}
+            />
+          </SelectedObjectPanel>
+        }
+        status={definitionItems.length ? "ACTIVE" : "EMPTY"}
+        title="Definitions"
+      >
+        <ModuleObjectList
+          ariaLabel="Integration mapping definitions"
+          emptyText="No Integration Mapping definitions available for the current context."
+          items={definitionItems.map((item) => ({
+            id: item.id,
+            meta: integrationDefinitionMeta(item),
+            status: item.status,
+            subtitle: item.name,
+            title: item.code
+          }))}
+          onSelect={setSelectedDefinitionId}
+          selectedId={effectiveDefinitionId}
+        />
+      </ModuleWorkspaceLayout>
     </>
   );
 }

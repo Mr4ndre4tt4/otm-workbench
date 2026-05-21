@@ -16,7 +16,14 @@ import {
 import { booleanStatus } from "../../modules/moduleStatus";
 import { useCockpitSummary } from "../../platform/hooks";
 import type { NavigationItem } from "../../platform/types";
-import { ActivityRow, MetricGrid, OperationalPanel, StatePanel, StatusChip } from "../../ui/components";
+import {
+  ActivityRow,
+  MetricGrid,
+  ModuleWorkspaceLayout,
+  ModuleWorkspaceSide,
+  OperationalPanel,
+  StatePanel
+} from "../../ui/components";
 
 function CockpitContent({ token }: { token: string }) {
   const cockpit = useCockpitSummary(token);
@@ -114,27 +121,26 @@ function ModulePlaceholder({ item }: { item: NavigationItem }) {
   return (
     <>
       <PageHeader description={description} label="Module workspace" title={item.label} />
-      <section className="module-template" aria-label={`${item.label} module template`}>
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Overview</h2>
-            <StatusChip status={item.status} />
-          </div>
-          <p className="empty-text">
-            This route is wired into the shared shell. The next slice can attach the module list, detail, filters,
-            actions, and evidence panels without creating a custom page framework.
-          </p>
-        </div>
-        <aside className="module-template-side">
-          <h2>Expected panels</h2>
-          <ul>
-            <li>Primary list or work queue</li>
-            <li>Selected object summary</li>
-            <li>Available actions from backend</li>
-            <li>Jobs, artifacts, and evidence links</li>
-          </ul>
-        </aside>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel={`${item.label} module template`}
+        side={
+          <ModuleWorkspaceSide title="Expected panels">
+            <ul>
+              <li>Primary list or work queue</li>
+              <li>Selected object summary</li>
+              <li>Available actions from backend</li>
+              <li>Jobs, artifacts, and evidence links</li>
+            </ul>
+          </ModuleWorkspaceSide>
+        }
+        status={item.status}
+        title="Overview"
+      >
+        <p className="empty-text">
+          This route is wired into the shared shell. The next slice can attach the module list, detail, filters,
+          actions, and evidence panels without creating a custom page framework.
+        </p>
+      </ModuleWorkspaceLayout>
     </>
   );
 }

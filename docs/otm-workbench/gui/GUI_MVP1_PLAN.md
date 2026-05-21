@@ -508,6 +508,8 @@ Delivered follow-up contracts:
   documented in GUI_THEME_PREFERENCES.md
 - Module routing foundation
   documented in GUI_MODULE_ROUTING_FOUNDATION.md
+- Module workspace layout pattern contract
+  documented in GUI_MODULE_WORKSPACE_LAYOUT_PATTERN_CONTRACT.md
 - Route composition contract
   documented in GUI_ROUTE_COMPOSITION_CONTRACT.md
 - Rates Studio summary view

@@ -17,6 +17,7 @@ import {
   DetailList,
   MetricGrid,
   ModuleObjectList,
+  ModuleWorkspaceLayout,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel,
@@ -127,68 +128,67 @@ export function RatesSummaryView({ token }: { token: string }) {
         }))}
       />
 
-      <section className="module-template" aria-label="Rates Studio workspace">
-        <div className="module-template-main">
-          <div className="panel-header">
-            <h2>Recent rate batches</h2>
-            <StatusChip status={data.recent_objects.length ? "ACTIVE" : "EMPTY"} />
-          </div>
-          <ModuleObjectList
-            ariaLabel="Rate batches"
-            emptyText="No rate batches available for the current context."
-            items={data.recent_objects.map((batch) => ({
-              id: batch.id,
-              meta: rateBatchMeta(batch),
-              status: batch.status,
-              subtitle: batch.code,
-              title: batch.display_name
-            }))}
-            onSelect={setSelectedBatchId}
-            selectedId={effectiveBatchId}
-          />
-        </div>
-
-        <SelectedObjectPanel
-          ariaLabel="Selected rate batch"
-          actions={
-            batchDetail.data ? (
-              <ActionBar
-                actions={batchDetail.data.available_actions}
-                onAction={(action) => void runBatchAction(action)}
-                runningActionKey={runningActionKey}
-              />
-            ) : null
-          }
-          emptyText="Select a rate batch to inspect backend-owned details."
-          fields={
-            batchDetail.data
-              ? [
-                  { label: "Domain", value: batchDetail.data.domain_name },
-                  { label: "Macro object", value: batchDetail.data.catalog_macro_object_code },
-                  { label: "Tables", value: batchDetail.data.tables.length }
-                ]
-              : []
-          }
-          isLoading={batchDetail.isLoading && Boolean(effectiveBatchId)}
-          loadingText="Loading selected batch..."
-          status={batchDetail.data?.status ?? "PENDING"}
-          subtitle={batchDetail.data?.scenario_code}
-          title={batchDetail.data?.name}
-        >
-          {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
-          {actionError ? <p className="form-error">{actionError}</p> : null}
-          <DetailList
-            ariaLabel="Selected batch tables"
-            emptyText="No tables have been staged for this batch."
-            items={(batchDetail.data?.tables ?? []).map((table) => ({
-              id: table.id,
-              meta: [`${table.row_count} row(s)`],
-              status: table.status,
-              title: table.table_name
-            }))}
-          />
-        </SelectedObjectPanel>
-      </section>
+      <ModuleWorkspaceLayout
+        ariaLabel="Rates Studio workspace"
+        side={
+          <SelectedObjectPanel
+            ariaLabel="Selected rate batch"
+            actions={
+              batchDetail.data ? (
+                <ActionBar
+                  actions={batchDetail.data.available_actions}
+                  onAction={(action) => void runBatchAction(action)}
+                  runningActionKey={runningActionKey}
+                />
+              ) : null
+            }
+            emptyText="Select a rate batch to inspect backend-owned details."
+            fields={
+              batchDetail.data
+                ? [
+                    { label: "Domain", value: batchDetail.data.domain_name },
+                    { label: "Macro object", value: batchDetail.data.catalog_macro_object_code },
+                    { label: "Tables", value: batchDetail.data.tables.length }
+                  ]
+                : []
+            }
+            isLoading={batchDetail.isLoading && Boolean(effectiveBatchId)}
+            loadingText="Loading selected batch..."
+            status={batchDetail.data?.status ?? "PENDING"}
+            subtitle={batchDetail.data?.scenario_code}
+            title={batchDetail.data?.name}
+          >
+            {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
+            {actionError ? <p className="form-error">{actionError}</p> : null}
+            <DetailList
+              ariaLabel="Selected batch tables"
+              emptyText="No tables have been staged for this batch."
+              items={(batchDetail.data?.tables ?? []).map((table) => ({
+                id: table.id,
+                meta: [`${table.row_count} row(s)`],
+                status: table.status,
+                title: table.table_name
+              }))}
+            />
+          </SelectedObjectPanel>
+        }
+        status={data.recent_objects.length ? "ACTIVE" : "EMPTY"}
+        title="Recent rate batches"
+      >
+        <ModuleObjectList
+          ariaLabel="Rate batches"
+          emptyText="No rate batches available for the current context."
+          items={data.recent_objects.map((batch) => ({
+            id: batch.id,
+            meta: rateBatchMeta(batch),
+            status: batch.status,
+            subtitle: batch.code,
+            title: batch.display_name
+          }))}
+          onSelect={setSelectedBatchId}
+          selectedId={effectiveBatchId}
+        />
+      </ModuleWorkspaceLayout>
 
       <section className="panel blockers-panel">
         <div className="panel-header">
