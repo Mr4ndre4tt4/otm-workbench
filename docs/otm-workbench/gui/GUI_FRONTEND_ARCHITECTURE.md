@@ -376,6 +376,8 @@ Before adding a new screen, component, or visual variant, answer:
 
 Exceptions must be documented when a module needs a custom interaction.
 Record approved departures in `GUI_EXCEPTIONS_REGISTER.md` before implementation.
+Use `GUI_IMPLEMENTATION_CHECKLIST.md` as the required pre-flight and review
+gate for new GUI screens, modules, visual patterns, and shell behavior.
 
 ## 13. Initial Exceptions To Allow
 

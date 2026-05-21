@@ -618,6 +618,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTRACT_INDEX.md
 - GUI exceptions register
   documented in GUI_EXCEPTIONS_REGISTER.md
+- GUI implementation checklist
+  documented in GUI_IMPLEMENTATION_CHECKLIST.md
 - GUI decisions log
   documented in GUI_DECISIONS_LOG.md
 ```
