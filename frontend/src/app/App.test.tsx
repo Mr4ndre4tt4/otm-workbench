@@ -1512,4 +1512,94 @@ describe("App shell", () => {
     expect(screen.getByText("Region GID")).toBeInTheDocument();
     expect(screen.queryByText(/build workbook/i)).not.toBeInTheDocument();
   });
+
+  it("renders Order Release Generator from backend template contracts", async () => {
+    const template = {
+      id: "or_template_1",
+      code: "TL_ORDER_RELEASE_MVP0",
+      name: "Synthetic TL Order Release",
+      version: 1,
+      status: "ACTIVE",
+      macro_object_code: "ORDER_RELEASE",
+      description: "Synthetic template for TL order release XML generation.",
+      required_columns: ["release_gid", "source_location_gid", "dest_location_gid"],
+      optional_columns: ["equipment_group_gid", "ship_unit_count"],
+      defaults: {
+        transport_mode_gid: "TL",
+        service_provider_gid: "SYNTHETIC_CARRIER"
+      },
+      created_by: "system",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                {
+                  id: "order_release_generator",
+                  label: "Order Release Generator",
+                  path: "/order-release-generator",
+                  status: "ACTIVE"
+                }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/templates")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [template], total: 1, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/order-release-generator");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Order Release Generator" });
+    expect(screen.getAllByText("TL_ORDER_RELEASE_MVP0").length).toBeGreaterThan(0);
+    expect(screen.getByText("release_gid")).toBeInTheDocument();
+    expect(screen.getByText("equipment_group_gid")).toBeInTheDocument();
+    expect(screen.getByText("transport_mode_gid")).toBeInTheDocument();
+    expect(screen.queryByText(/submit otm/i)).not.toBeInTheDocument();
+  });
 });

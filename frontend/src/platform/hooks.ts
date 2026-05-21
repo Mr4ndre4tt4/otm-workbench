@@ -22,6 +22,7 @@ import type {
   MasterDataTemplate,
   MasterDataTemplatesResponse,
   NavigationResponse,
+  OrderReleaseTemplatesResponse,
   RateBatchArtifactsResponse,
   RateBatchDetail,
   RateBatchEvidenceResponse,
@@ -226,6 +227,14 @@ export function useMasterDataTemplateDetail(token: string | null, templateCode: 
     queryKey: ["modules", "master-data", "templates", templateCode],
     queryFn: () => apiGet<MasterDataTemplate>(`/api/v1/modules/master-data/templates/${templateCode}`, { token }),
     enabled: Boolean(token && templateCode)
+  });
+}
+
+export function useOrderReleaseTemplates(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "order-release-generator", "templates"],
+    queryFn: () => apiGet<OrderReleaseTemplatesResponse>("/api/v1/modules/order-release-generator/templates", { token }),
+    enabled: Boolean(token)
   });
 }
 
