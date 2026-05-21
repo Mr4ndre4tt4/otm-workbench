@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ActivityRow,
+  ArtifactList,
+  BlockerPanel,
   Button,
   DetailList,
   FeedbackMessage,
@@ -90,6 +92,47 @@ describe("DetailList", () => {
   });
 });
 
+describe("ArtifactList", () => {
+  it("renders artifact identity, metadata, and action", () => {
+    render(
+      <ArtifactList
+        items={[
+          {
+            action: <Button>Download</Button>,
+            id: "artifact_1",
+            meta: ["text/csv", "128 bytes"],
+            subtitle: "CSV export",
+            title: "rates.csv"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByText("rates.csv")).toBeInTheDocument();
+    expect(screen.getByText("CSV export")).toBeInTheDocument();
+    expect(screen.getByText("text/csv")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+  });
+
+  it("renders artifact status when no action is provided", () => {
+    render(
+      <ArtifactList
+        items={[
+          {
+            id: "evidence_1",
+            meta: ["Artifact linked", "Client safe"],
+            status: "ACTIVE",
+            subtitle: "Internal",
+            title: "Validation evidence"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+  });
+});
+
 describe("ModuleObjectList", () => {
   it("renders selectable module objects with metadata and status", async () => {
     const selected: string[] = [];
@@ -136,6 +179,30 @@ describe("ModuleObjectList", () => {
     );
 
     expect(screen.getByText("No objects available.")).toBeInTheDocument();
+  });
+});
+
+describe("BlockerPanel", () => {
+  it("renders blockers with backend codes and messages", () => {
+    render(
+      <BlockerPanel
+        emptyText="No blockers."
+        items={[{ codes: ["RATE_GEO_MISSING"], id: "blocker_1", message: "Missing geography reference." }]}
+        title="Open blockers"
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Open blockers" })).toBeInTheDocument();
+    expect(screen.getByText("BLOCKED")).toBeInTheDocument();
+    expect(screen.getByText("RATE_GEO_MISSING")).toBeInTheDocument();
+    expect(screen.getByText("Missing geography reference.")).toBeInTheDocument();
+  });
+
+  it("renders a ready empty state when no blockers exist", () => {
+    render(<BlockerPanel emptyText="No blockers." items={[]} title="Open blockers" />);
+
+    expect(screen.getByText("READY")).toBeInTheDocument();
+    expect(screen.getByText("No blockers.")).toBeInTheDocument();
   });
 });
 

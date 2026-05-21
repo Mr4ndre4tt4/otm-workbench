@@ -159,6 +159,8 @@ Examples:
 
 ```text
 Reusable:
+- ArtifactList
+- BlockerPanel
 - ModuleObjectList
 - ModuleWorkspaceLayout
 - ModuleWorkspaceSide

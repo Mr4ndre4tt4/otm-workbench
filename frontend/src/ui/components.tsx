@@ -182,6 +182,38 @@ export function DetailList({ ariaLabel, emptyText = "No detail rows available.",
   );
 }
 
+export type ArtifactListItem = {
+  action?: ReactNode;
+  id: string;
+  meta: Array<number | string>;
+  status?: string;
+  subtitle: string;
+  title: string;
+};
+
+type ArtifactListProps = {
+  items: ArtifactListItem[];
+};
+
+export function ArtifactList({ items }: ArtifactListProps) {
+  return (
+    <div className="artifact-list">
+      {items.map((item) => (
+        <div className="artifact-list-item" key={item.id}>
+          <div>
+            <strong>{item.title}</strong>
+            <span>{item.subtitle}</span>
+          </div>
+          {item.meta.map((value, index) => (
+            <span key={`${item.id}-${index}`}>{value}</span>
+          ))}
+          {item.action ?? (item.status ? <StatusChip status={item.status} /> : null)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type ModuleWorkspaceLayoutProps = PropsWithChildren<{
   ariaLabel: string;
   side: ReactNode;
@@ -215,6 +247,41 @@ export function ModuleWorkspaceSide({ ariaLabel, children, title }: ModuleWorksp
       <h2>{title}</h2>
       {children}
     </aside>
+  );
+}
+
+export type BlockerPanelItem = {
+  codes: string[];
+  id: string;
+  message: string;
+};
+
+type BlockerPanelProps = {
+  emptyText: string;
+  items: BlockerPanelItem[];
+  title: string;
+};
+
+export function BlockerPanel({ emptyText, items, title }: BlockerPanelProps) {
+  return (
+    <section className="panel blockers-panel">
+      <div className="panel-header">
+        <h2>{title}</h2>
+        <StatusChip status={items.length ? "BLOCKED" : "READY"} />
+      </div>
+      {items.length ? (
+        <div className="blocker-list">
+          {items.map((item) => (
+            <div className="blocker-item" key={item.id}>
+              <strong>{item.codes.join(", ")}</strong>
+              <span>{item.message}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="empty-text">{emptyText}</p>
+      )}
+    </section>
   );
 }
 

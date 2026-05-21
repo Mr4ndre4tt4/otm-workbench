@@ -512,6 +512,8 @@ Delivered follow-up contracts:
   documented in GUI_MODULE_WORKSPACE_LAYOUT_PATTERN_CONTRACT.md
 - Feedback message pattern contract
   documented in GUI_FEEDBACK_MESSAGE_PATTERN_CONTRACT.md
+- Operational list pattern contract
+  documented in GUI_OPERATIONAL_LIST_PATTERN_CONTRACT.md
 - Route composition contract
   documented in GUI_ROUTE_COMPOSITION_CONTRACT.md
 - Rates Studio summary view

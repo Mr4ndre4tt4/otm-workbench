@@ -13,6 +13,8 @@ import {
 import type { AvailableAction, RatesSummaryItem } from "../../platform/types";
 import { ActionBar, PageHeader } from "../../app/shell";
 import {
+  ArtifactList,
+  BlockerPanel,
   Button,
   DetailList,
   FeedbackMessage,
@@ -21,8 +23,7 @@ import {
   ModuleWorkspaceLayout,
   OperationalPanel,
   SelectedObjectPanel,
-  StatePanel,
-  StatusChip
+  StatePanel
 } from "../../ui/components";
 
 function severityStatus(severity: string) {
@@ -191,24 +192,15 @@ export function RatesSummaryView({ token }: { token: string }) {
         />
       </ModuleWorkspaceLayout>
 
-      <section className="panel blockers-panel">
-        <div className="panel-header">
-          <h2>Open blockers</h2>
-          <StatusChip status={data.open_blockers.length ? "BLOCKED" : "READY"} />
-        </div>
-        {data.open_blockers.length ? (
-          <div className="blocker-list">
-            {data.open_blockers.map((blocker) => (
-              <div className="blocker-item" key={`${blocker.object_type}-${blocker.object_id}`}>
-                <strong>{blocker.codes.join(", ")}</strong>
-                <span>{blocker.message}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="empty-text">No open blockers in the current rates summary.</p>
-        )}
-      </section>
+      <BlockerPanel
+        emptyText="No open blockers in the current rates summary."
+        items={data.open_blockers.map((blocker) => ({
+          codes: blocker.codes,
+          id: `${blocker.object_type}-${blocker.object_id}`,
+          message: blocker.message
+        }))}
+        title="Open blockers"
+      />
 
       <section className="activity-layout">
         <OperationalPanel
@@ -220,28 +212,23 @@ export function RatesSummaryView({ token }: { token: string }) {
           status={batchArtifacts.data?.total ? "ACTIVE" : "EMPTY"}
           title="Batch artifacts"
         >
-          <div className="artifact-list">
-            {(batchArtifacts.data?.items ?? []).map((artifact) => (
-              <div className="artifact-list-item" key={artifact.id}>
-                <div>
-                  <strong>{artifact.file_name}</strong>
-                  <span>{artifact.artifact_type}</span>
-                </div>
-                <span>{artifact.content_type}</span>
-                <span>{artifact.size_bytes} bytes</span>
-                {artifact.download_url ? (
+          <ArtifactList
+            items={(batchArtifacts.data?.items ?? []).map((artifact) => ({
+              action: artifact.download_url ? (
                   <Button
                     disabled={downloadingArtifactId === artifact.id}
                     onClick={() => void downloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
                   >
                     {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
                   </Button>
-                ) : (
-                  <StatusChip status={artifact.sensitivity_level} />
-                )}
-              </div>
-            ))}
-          </div>
+                ) : undefined,
+              id: artifact.id,
+              meta: [artifact.content_type, `${artifact.size_bytes} bytes`],
+              status: artifact.download_url ? undefined : artifact.sensitivity_level,
+              subtitle: artifact.artifact_type,
+              title: artifact.file_name
+            }))}
+          />
         </OperationalPanel>
 
         <OperationalPanel
@@ -253,19 +240,15 @@ export function RatesSummaryView({ token }: { token: string }) {
           status={batchEvidence.data?.total ? "ACTIVE" : "EMPTY"}
           title="Batch evidence"
         >
-          <div className="artifact-list">
-            {(batchEvidence.data?.items ?? []).map((evidence) => (
-              <div className="artifact-list-item" key={evidence.id}>
-                <div>
-                  <strong>{evidence.evidence_type}</strong>
-                  <span>{evidence.sensitivity_level}</span>
-                </div>
-                <span>{evidence.artifact_id ? "Artifact linked" : "No artifact"}</span>
-                <span>{evidence.client_safe ? "Client safe" : "Internal"}</span>
-                <StatusChip status={evidence.status} />
-              </div>
-            ))}
-          </div>
+          <ArtifactList
+            items={(batchEvidence.data?.items ?? []).map((evidence) => ({
+              id: evidence.id,
+              meta: [evidence.artifact_id ? "Artifact linked" : "No artifact", evidence.client_safe ? "Client safe" : "Internal"],
+              status: evidence.status,
+              subtitle: evidence.sensitivity_level,
+              title: evidence.evidence_type
+            }))}
+          />
         </OperationalPanel>
       </section>
     </>
