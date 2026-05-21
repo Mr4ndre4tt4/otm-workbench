@@ -100,6 +100,7 @@ describe("SelectedObjectPanel", () => {
     render(
       <SelectedObjectPanel
         actions={<Button>Approve</Button>}
+        ariaLabel="Selected rate batch"
         emptyText="Select an object."
         fields={[
           { label: "Domain", value: "OTM1" },
@@ -114,6 +115,7 @@ describe("SelectedObjectPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Selected object" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected rate batch")).toBeInTheDocument();
     expect(screen.getByText("READY")).toBeInTheDocument();
     expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
     expect(screen.getByText("ACCESSORIAL_ONLY")).toBeInTheDocument();
@@ -125,12 +127,18 @@ describe("SelectedObjectPanel", () => {
 
   it("renders loading and empty states without caller-owned panel markup", () => {
     const { rerender } = render(
-      <SelectedObjectPanel emptyText="Select an object." isLoading loadingText="Loading selected object..." status="PENDING" />
+      <SelectedObjectPanel
+        ariaLabel="Selected object"
+        emptyText="Select an object."
+        isLoading
+        loadingText="Loading selected object..."
+        status="PENDING"
+      />
     );
 
     expect(screen.getByText("Loading selected object...")).toBeInTheDocument();
 
-    rerender(<SelectedObjectPanel emptyText="Select an object." status="PENDING" />);
+    rerender(<SelectedObjectPanel ariaLabel="Selected object" emptyText="Select an object." status="PENDING" />);
 
     expect(screen.getByText("Select an object.")).toBeInTheDocument();
   });

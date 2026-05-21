@@ -70,6 +70,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected asset"
           emptyText="Select an asset to inspect backend-owned metadata."
           fields={
             selectedAsset

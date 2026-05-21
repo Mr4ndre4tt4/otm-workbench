@@ -201,6 +201,7 @@ export type SelectedObjectField = {
 
 type SelectedObjectPanelProps = PropsWithChildren<{
   actions?: ReactNode;
+  ariaLabel: string;
   emptyText: string;
   fields?: SelectedObjectField[];
   isLoading?: boolean;
@@ -212,6 +213,7 @@ type SelectedObjectPanelProps = PropsWithChildren<{
 
 export function SelectedObjectPanel({
   actions,
+  ariaLabel,
   children,
   emptyText,
   fields = [],
@@ -222,7 +224,7 @@ export function SelectedObjectPanel({
   title
 }: SelectedObjectPanelProps) {
   return (
-    <aside className="module-template-side">
+    <aside className="module-template-side" aria-label={ariaLabel}>
       <div className="panel-header">
         <h2>Selected object</h2>
         <StatusChip status={status} />

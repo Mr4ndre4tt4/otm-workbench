@@ -73,6 +73,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected Order Release template"
           emptyText="Select a template to inspect backend-owned Order Release metadata."
           fields={
             selectedTemplate

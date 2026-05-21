@@ -149,6 +149,7 @@ export function RatesSummaryView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected rate batch"
           actions={
             batchDetail.data ? (
               <ActionBar

@@ -75,6 +75,7 @@ export function CatalogCoreView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected catalog macro object"
           emptyText="Select a macro object to inspect backend-owned catalog metadata."
           fields={
             selectedMacro

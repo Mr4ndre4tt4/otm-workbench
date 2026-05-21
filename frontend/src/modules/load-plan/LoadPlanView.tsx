@@ -77,6 +77,7 @@ export function LoadPlanView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected load plan package"
           emptyText="Select a Load Plan package to inspect backend-owned package metadata."
           fields={
             selectedPackage

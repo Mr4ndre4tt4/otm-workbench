@@ -72,6 +72,7 @@ export function EvidenceHubView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected evidence"
           emptyText="Select evidence to inspect backend-owned metadata."
           fields={
             selectedEvidence

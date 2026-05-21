@@ -87,6 +87,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected integration mapping definition"
           emptyText="Select a definition to inspect backend-owned mapping metadata."
           fields={
             selectedDefinition

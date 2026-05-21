@@ -72,6 +72,7 @@ export function MasterDataView({ token }: { token: string }) {
         </div>
 
         <SelectedObjectPanel
+          ariaLabel="Selected Master Data template"
           emptyText="Select a template to inspect backend-owned metadata."
           fields={
             selectedTemplate
