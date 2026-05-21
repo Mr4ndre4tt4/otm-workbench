@@ -1602,4 +1602,213 @@ describe("App shell", () => {
     expect(screen.getByText("transport_mode_gid")).toBeInTheDocument();
     expect(screen.queryByText(/submit otm/i)).not.toBeInTheDocument();
   });
+
+  it("renders Integration Mapping Studio from backend definition and mapping contracts", async () => {
+    const definition = {
+      id: "definition_1",
+      code: "INT_SYNTHETIC_TRIP",
+      name: "Synthetic Trip Mapping",
+      description: "Synthetic mapping definition for GUI contract tests.",
+      source_system: "OTM",
+      target_system: "NDD",
+      source_format: "XML",
+      target_format: "JSON",
+      status: "DRAFT",
+      created_by: "synthetic.user@example.test",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                {
+                  id: "integration_mapping",
+                  label: "Integration Mapping Studio",
+                  path: "/integration-mapping",
+                  status: "ACTIVE"
+                }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/transform-types")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "transform_1",
+                  code: "DIRECT",
+                  name: "Direct",
+                  description: "Direct assignment.",
+                  requires_expression: false,
+                  status: "ACTIVE",
+                  sequence_index: 1,
+                  system_seeded: true,
+                  created_at: "2026-05-21T01:00:00",
+                  updated_at: "2026-05-21T01:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [definition], total: 1, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify(definition), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/payload-artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "payload_1",
+                  definition_id: "definition_1",
+                  artifact_id: "artifact_1",
+                  payload_role: "SOURCE_SAMPLE",
+                  payload_format: "XML",
+                  file_name: "planned_shipment.xml",
+                  description: "Synthetic source payload.",
+                  content_type: "application/xml",
+                  sha256: "abc123",
+                  size_bytes: 3210,
+                  created_by: "synthetic.user@example.test",
+                  created_at: "2026-05-21T01:00:00",
+                  updated_at: "2026-05-21T01:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/schema-documents")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "schema_1",
+                  definition_id: "definition_1",
+                  payload_artifact_id: "payload_1",
+                  payload_format: "XML",
+                  root_name: "PlannedShipment",
+                  node_count: 12,
+                  status: "PARSED",
+                  created_by: "synthetic.user@example.test",
+                  created_at: "2026-05-21T01:00:00",
+                  updated_at: "2026-05-21T01:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/mappings")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "mapping_1",
+                  definition_id: "definition_1",
+                  source_schema_document_id: "schema_1",
+                  target_schema_document_id: "schema_2",
+                  source_path: "/Shipment/Id",
+                  target_path: "$.numeroViagem",
+                  transform_type: "DIRECT",
+                  description: "Synthetic direct mapping.",
+                  sequence_index: 1,
+                  status: "ACTIVE",
+                  created_by: "synthetic.user@example.test",
+                  created_at: "2026-05-21T01:00:00",
+                  updated_at: "2026-05-21T01:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/integration-mapping");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Integration Mapping Studio" });
+    expect(await screen.findByText("INT_SYNTHETIC_TRIP")).toBeInTheDocument();
+    expect(screen.getByText("planned_shipment.xml")).toBeInTheDocument();
+    expect(screen.getByText("PlannedShipment")).toBeInTheDocument();
+    expect(screen.getByText("$.numeroViagem")).toBeInTheDocument();
+    expect(screen.queryByText(/generate spec/i)).not.toBeInTheDocument();
+  });
 });

@@ -536,6 +536,8 @@ Delivered follow-up contracts:
   documented in GUI_MASTER_DATA_VIEW.md
 - Order Release Generator backend-backed view
   documented in GUI_ORDER_RELEASE_GENERATOR_VIEW.md
+- Integration Mapping Studio backend-backed view
+  documented in GUI_INTEGRATION_MAPPING_VIEW.md
 ```
 
 ## 12. Implementation Order
