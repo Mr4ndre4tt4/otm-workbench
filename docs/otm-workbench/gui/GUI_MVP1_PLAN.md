@@ -544,6 +544,8 @@ Delivered follow-up contracts:
   documented in GUI_FRONTEND_ARCHITECTURE_CLEANUP.md
 - GUI CSS token audit
   documented in GUI_CSS_TOKEN_AUDIT.md
+- GUI theme token extraction
+  documented in GUI_THEME_TOKEN_EXTRACTION.md
 ```
 
 ## 12. Implementation Order

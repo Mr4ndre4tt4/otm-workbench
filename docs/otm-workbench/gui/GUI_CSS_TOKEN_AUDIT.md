@@ -172,6 +172,18 @@ The next implementation slice should be:
 That first extraction is intentionally small. Density/layout extraction should
 follow only after theme extraction is verified.
 
+## First Extraction Result
+
+The first extraction was completed in `GUI_THEME_TOKEN_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/tokens/theme.css
+```
+
+The moved theme blocks were kept unchanged.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
