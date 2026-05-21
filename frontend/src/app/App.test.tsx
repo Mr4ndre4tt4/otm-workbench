@@ -24,6 +24,13 @@ function renderApp(initialPath = "/") {
   );
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
 describe("App shell", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -107,6 +114,41 @@ describe("App shell", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Project Cockpit" })).toBeInTheDocument());
     expect(sessionStorage.getItem("otm_workbench.session_token")).toBe("session_token");
+  });
+
+  it("keeps unknown backend routes behind the module unavailable state", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return jsonResponse({ access_token: "token-1", token_type: "bearer" });
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return jsonResponse({
+          items: [{ id: "rates", label: "Rates Studio", path: "/rates", status: "ACTIVE" }],
+          total: 1,
+          page: 1,
+          page_size: 50
+        });
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return jsonResponse({
+          theme_mode: "light",
+          follow_system_theme: false,
+          density: "comfortable",
+          sidebar_mode: "expanded"
+        });
+      }
+      return jsonResponse({ detail: "Unexpected request" }, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/missing-module");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "synthetic-password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Module unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("Use the backend-owned navigation menu to open an available module.")).toBeInTheDocument();
   });
 
   it("updates active project context with backend selector contracts", async () => {
