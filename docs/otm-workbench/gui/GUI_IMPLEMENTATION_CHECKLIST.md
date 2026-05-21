@@ -27,6 +27,8 @@ Confirm the work has:
 - GUI_EXCEPTIONS_REGISTER.md reviewed for custom interaction needs.
 - GUI_DECISIONS_LOG.md reviewed for stack, shell, theme, desktop, and ownership
   decisions.
+- GUI_FOUNDATION_CONSOLIDATION_REVIEW.md checked when the work depends on a
+  stacked GUI branch sequence.
 - Linear updated or planned for the delivery slice.
 - Shared synthetic examples checked in `frontend/src/test/fixtures/gui.ts`
   before adding one-off fixtures.
