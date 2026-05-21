@@ -600,6 +600,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTEXT_SUMMARY_PATTERN_CONTRACT.md
 - GUI context switcher pattern contract
   documented in GUI_CONTEXT_SWITCHER_PATTERN_CONTRACT.md
+- GUI preference controls pattern contract
+  documented in GUI_PREFERENCE_CONTROLS_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order
