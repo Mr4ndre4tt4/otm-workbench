@@ -516,6 +516,8 @@ Delivered follow-up contracts:
   documented in GUI_RATES_ARTIFACT_DOWNLOAD.md
 - Shared operational panels foundation
   documented in GUI_SHARED_OPERATIONAL_PANELS.md
+- Shared metrics foundation
+  documented in GUI_SHARED_METRICS.md
 ```
 
 ## 12. Implementation Order

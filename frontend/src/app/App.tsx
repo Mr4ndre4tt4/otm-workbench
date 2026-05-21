@@ -34,7 +34,7 @@ import {
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, IconButton, OperationalPanel, StatusChip } from "../ui/components";
+import { Button, IconButton, MetricGrid, OperationalPanel, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
@@ -231,24 +231,35 @@ function CockpitContent({ token }: { token: string }) {
         </div>
       </section>
 
-      <section className="metrics-grid" aria-label="Project activity">
-        <div className="metric">
-          <span>Visible modules</span>
-          <strong>{data.module_summary.total}</strong>
-        </div>
-        <div className="metric">
-          <span>Recent jobs</span>
-          <strong>{data.counts.recent_jobs}</strong>
-        </div>
-        <div className="metric">
-          <span>Artifacts</span>
-          <strong>{data.counts.recent_artifacts}</strong>
-        </div>
-        <div className="metric">
-          <span>Evidence</span>
-          <strong>{data.counts.recent_evidence}</strong>
-        </div>
-      </section>
+      <MetricGrid
+        ariaLabel="Project activity"
+        items={[
+          {
+            key: "visible_modules",
+            label: "Visible modules",
+            status: booleanStatus(data.module_summary.total),
+            value: data.module_summary.total
+          },
+          {
+            key: "recent_jobs",
+            label: "Recent jobs",
+            status: booleanStatus(data.counts.recent_jobs),
+            value: data.counts.recent_jobs
+          },
+          {
+            key: "recent_artifacts",
+            label: "Artifacts",
+            status: booleanStatus(data.counts.recent_artifacts),
+            value: data.counts.recent_artifacts
+          },
+          {
+            key: "recent_evidence",
+            label: "Evidence",
+            status: booleanStatus(data.counts.recent_evidence),
+            value: data.counts.recent_evidence
+          }
+        ]}
+      />
 
       <section className="activity-layout">
         <OperationalPanel
@@ -392,6 +403,10 @@ function severityStatus(severity: string) {
   return "INFO";
 }
 
+function booleanStatus(value: number) {
+  return value > 0 ? "ACTIVE" : "EMPTY";
+}
+
 function RatesBatchRow({
   batch,
   isSelected,
@@ -508,15 +523,15 @@ function RatesSummaryView({ token }: { token: string }) {
         title={data.title}
       />
 
-      <section className="metrics-grid" aria-label="Rates summary metrics">
-        {data.counts.map((count) => (
-          <div className="metric" key={count.key}>
-            <span>{count.label}</span>
-            <strong>{count.value}</strong>
-            <StatusChip status={severityStatus(count.severity)} />
-          </div>
-        ))}
-      </section>
+      <MetricGrid
+        ariaLabel="Rates summary metrics"
+        items={data.counts.map((count) => ({
+          key: count.key,
+          label: count.label,
+          status: severityStatus(count.severity),
+          value: count.value
+        }))}
+      />
 
       <section className="module-template" aria-label="Rates Studio workspace">
         <div className="module-template-main">
