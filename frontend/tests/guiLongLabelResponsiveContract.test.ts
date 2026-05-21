@@ -91,10 +91,12 @@ describe("GUI long label responsive contract", () => {
     expect(contract).toContain("CPF");
   });
 
-  it("records browser visual QA as a later pass instead of claiming pixel evidence", () => {
+  it("records browser visual QA boundaries and current fallback evidence", () => {
     const contract = readFileSync(contractPath, "utf-8");
 
     expect(contract).toContain("does not claim visual pixel evidence");
-    expect(contract).toContain("Browser visual QA remains a later pass");
+    expect(contract).toContain("Browser visual QA is accepted only when");
+    expect(contract).toContain("OTM-77");
+    expect(contract).toContain("OTM-78");
   });
 });

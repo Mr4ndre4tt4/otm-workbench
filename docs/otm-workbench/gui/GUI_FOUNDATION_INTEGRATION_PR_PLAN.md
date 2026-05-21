@@ -41,7 +41,8 @@ Do not include:
 - new customer/client data examples
 - new Figma file creation
 - visual redesign beyond already-delivered CSS foundations
-- browser pixel claims not backed by successful visual QA
+- browser pixel claims not backed by successful visual QA evidence for the
+  exact branch and route
 ```
 
 ## 3. Review Sections
@@ -57,7 +58,7 @@ Use these PR sections:
 6. Synthetic fixtures and component gallery
 7. Module consistency, operational, action, and long-label guardrails
 8. Design system/Figma handoff
-9. Visual QA limitation and browser runtime fallback
+9. Visual QA fallback evidence and browser runtime boundary
 ```
 
 Each section should call out the relevant docs, tests, and branch/issue range.
@@ -82,6 +83,8 @@ OTM-69 GUI module operational surfaces - artifacts evidence jobs blockers
 OTM-70 GUI module action surfaces - backend actions disabled reasons feedback
 OTM-71 GUI module long-label responsive regression coverage
 OTM-72 GUI foundation integration PR plan
+OTM-77 Browser visual QA evidence - shell and Project Cockpit
+OTM-78 Rates GUI visual and keyboard QA slice
 ```
 
 If any listed issue is already done, the PR should summarize it as delivered
@@ -109,15 +112,18 @@ Expected known findings are client-safety guardrails and the existing synthetic
 
 ## 6. Browser QA Boundary
 
-Browser visual QA remains limited until the browser runtime issue is resolved
-or an approved external-browser fallback becomes part of the QA workflow.
+The in-app Browser plugin remains limited in this Codex session because the
+browser-control transport could not be used reliably. The approved local
+fallback for this PR is Playwright CLI against local FastAPI and Vite services.
 
-The PR may cite:
+The PR may cite the historical failed attempts and the completed evidence:
 
 ```text
 GUI_GALLERY_VISUAL_QA_ATTEMPT.md
 GUI_BROWSER_RUNTIME_DIAGNOSTIC.md
 GUI_SHELL_QA_CONTRACTS.md
+GUI_BROWSER_VISUAL_QA_OTM77.md
+GUI_RATES_VISUAL_QA_OTM78.md
 ```
 
 The PR must not claim pixel-perfect visual evidence unless a successful browser
@@ -131,7 +137,7 @@ Linear should contain:
 - integration issue link
 - branch name
 - validation evidence
-- known browser QA limitation
+- browser QA boundary and accepted Playwright fallback evidence
 - clear next step after integration
 ```
 
@@ -142,7 +148,7 @@ GitHub PR should contain:
 - validation commands and results
 - no-real-client-data statement
 - OTM_RESOURCES/ excluded statement
-- browser QA limitation
+- browser QA fallback evidence and remaining module/accessibility QA scope
 - follow-up issues for visual/accessibility QA or Figma handoff
 ```
 
@@ -168,7 +174,7 @@ a single reviewable foundation.
 - Synthetic fixtures and component gallery
 - Module consistency/action/operational/long-label guardrails
 - Design system/Figma handoff
-- Browser QA limitation
+- Browser QA fallback evidence
 
 ## Validation
 
@@ -187,8 +193,10 @@ a single reviewable foundation.
 
 ## Known Limitation
 
-Browser visual QA is documented but not fully proven in the current browser
-runtime. No pixel-perfect visual claim is made by this PR.
+In-app Browser plugin QA remains unavailable in this Codex session. Local
+Playwright fallback evidence exists for shell/Project Cockpit and Rates Studio;
+no pixel-perfect claim is made for routes that do not have branch-specific
+browser evidence.
 ```
 
 ## 9. Acceptance Criteria
@@ -200,6 +208,6 @@ This plan is accepted when:
 - it is referenced by GUI_FOUNDATION_CONSOLIDATION_REVIEW.md
 - review sections and excluded scope are explicit
 - validation commands and sensitive scan are documented
-- browser QA limitation is explicit
+- browser QA boundary and fallback evidence are explicit
 - Linear/GitHub handoff expectations are documented
 ```

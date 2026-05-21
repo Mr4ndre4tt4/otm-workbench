@@ -52,11 +52,13 @@ describe("GUI foundation consolidation review", () => {
     }
   });
 
-  it("records the current consolidation recommendation and visual QA limitation", () => {
+  it("records the current consolidation recommendation and visual QA fallback evidence", () => {
     const review = readFileSync(reviewPath, "utf-8");
 
     expect(review).toContain("Prepare a GUI foundation integration PR");
-    expect(review).toContain("no pixel evidence is claimed");
+    expect(review).toContain("Playwright CLI fallback evidence");
+    expect(review).toContain("OTM-77");
+    expect(review).toContain("OTM-78");
     expect(review).toContain("Avoid adding new module behavior inside the consolidation PR");
   });
 });

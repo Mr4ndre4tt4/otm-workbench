@@ -120,8 +120,10 @@ local file paths, CNPJ, CPF, secrets, or screenshots from customer data.
 
 This contract is a code and documentation guardrail. It does not claim visual pixel evidence.
 
-Browser visual QA remains a later pass after the browser runtime issue is
-resolved or an approved external-browser fallback is part of the QA workflow.
+Browser visual QA is accepted only when a branch-specific browser run,
+screenshot, or comparable visual QA artifact exists. OTM-77 and OTM-78 now
+provide Playwright fallback evidence for shell/Project Cockpit and Rates Studio.
+Other modules and the internal gallery still need their own visual QA evidence.
 
 ## 9. Guardrails
 
@@ -147,5 +149,5 @@ This contract is accepted when:
 - long path-like values are listed
 - shared CSS includes the wrapping guardrail
 - client-safe fixture rules are explicit
-- browser visual QA is documented as a later pass
+- browser visual QA boundary and current fallback evidence are documented
 ```

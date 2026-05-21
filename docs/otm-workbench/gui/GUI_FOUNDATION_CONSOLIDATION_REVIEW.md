@@ -80,7 +80,8 @@ Recommended review sequence:
 4. App-level route guardrail proving the gallery is authenticated and outside
    backend-owned production navigation.
 5. Component gallery coverage matrix and gallery route checks.
-6. Browser visual QA attempt and browser runtime fallback documentation.
+6. Browser visual QA attempts, runtime fallback documentation, and completed
+   Playwright fallback evidence.
 7. Component ownership split and frontend architecture cleanup.
 8. Module screen consistency audit across backend-backed modules.
 9. Design system/Figma handoff and icon-family governance.
@@ -88,6 +89,8 @@ Recommended review sequence:
 11. Module action surfaces contract.
 12. Long-label responsive guardrail.
 13. This refreshed consolidation review.
+14. OTM-77 shell/Project Cockpit browser visual QA evidence.
+15. OTM-78 Rates Studio browser visual and keyboard QA evidence.
 ```
 
 The merge/review path should not add new visual behavior. It should prove that
@@ -96,15 +99,16 @@ the current behavior is coherent and ready for the next GUI workstream.
 ## 5. Known Risks
 
 ```text
-- Browser visual QA remains blocked in this Codex/browser runtime session. The
-  external Chrome fallback was documented, but no pixel evidence is claimed.
+- The in-app Browser plugin remains unavailable in this Codex session, but
+  Playwright CLI fallback evidence is now captured for shell/Project Cockpit
+  and Rates Studio in OTM-77 and OTM-78.
 - frontend/src/ui/components.tsx now acts as the public UI kit barrel after the
   planned ownership split into internal component families.
 - GUI_FRONTEND_ARCHITECTURE.md now reflects accepted/current structure while
   later cleanup docs describe delivered slices.
 - Module screens share patterns and have consistency, operational surface,
-  action surface, and long-label guardrails, but richer GUI work still needs
-  browser visual QA and accessibility passes.
+  action surface, and long-label guardrails. Richer module GUI work still needs
+  additional module-specific visual QA and accessibility passes.
 - The branch stack is long. Merge/PR review should avoid mixing this foundation
   consolidation with new module behavior.
 ```
@@ -120,6 +124,8 @@ OTM-68 GUI design system handoff - Figma and icon family evaluation
 OTM-69 GUI module operational surfaces - artifacts evidence jobs blockers
 OTM-70 GUI module action surfaces - backend actions disabled reasons feedback
 OTM-71 GUI module long-label responsive regression coverage
+OTM-77 Browser visual QA evidence - shell and Project Cockpit
+OTM-78 Rates GUI visual and keyboard QA slice
 ```
 
 ## 6. Required Verification
@@ -158,14 +164,15 @@ Recommended PR sections:
 4. Backend-backed module screens.
 5. Component gallery and synthetic fixtures.
 6. Module consistency/action/operational contracts.
-7. Visual QA limitations and browser runtime fallback.
+7. Visual QA evidence and browser runtime fallback.
 ```
 
 After this integration review, the next GUI work should be either:
 
 ```text
-- a browser/accessibility QA pass if runtime access is restored; or
-- a narrow first Figma/design-system handoff task using the accepted contracts.
+- a narrow module-specific visual/accessibility QA pass, starting with
+  Integration Mapping Studio or the internal component gallery; or
+- a first Figma/design-system handoff task using the accepted contracts.
 ```
 
 Avoid adding new module behavior inside the consolidation PR.

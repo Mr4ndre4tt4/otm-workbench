@@ -26,7 +26,7 @@ describe("GUI foundation integration PR plan", () => {
       "Synthetic fixtures and component gallery",
       "Module consistency, operational, action, and long-label guardrails",
       "Design system/Figma handoff",
-      "Visual QA limitation and browser runtime fallback"
+      "Visual QA fallback evidence and browser runtime boundary"
     ]) {
       expect(plan).toContain(section);
     }
@@ -50,7 +50,9 @@ describe("GUI foundation integration PR plan", () => {
       "OTM-69",
       "OTM-70",
       "OTM-71",
-      "OTM-72"
+      "OTM-72",
+      "OTM-77",
+      "OTM-78"
     ]) {
       expect(plan).toContain(issueId);
     }
@@ -68,14 +70,17 @@ describe("GUI foundation integration PR plan", () => {
     expect(plan).toContain("OTM_RESOURCES/");
   });
 
-  it("keeps excluded scope, browser QA boundary, and handoff expectations explicit", () => {
+  it("keeps excluded scope, browser QA boundary, fallback evidence, and handoff expectations explicit", () => {
     const plan = readFileSync(planPath, "utf-8");
 
     for (const text of [
       "new backend module behavior",
       "new Figma file creation",
-      "browser runtime issue",
+      "browser-control transport",
+      "Playwright CLI",
       "must not claim pixel-perfect visual evidence",
+      "GUI_BROWSER_VISUAL_QA_OTM77.md",
+      "GUI_RATES_VISUAL_QA_OTM78.md",
       "Linear should contain",
       "GitHub PR should contain"
     ]) {
