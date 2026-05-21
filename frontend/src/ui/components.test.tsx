@@ -1,7 +1,27 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, DetailList, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatePanel } from "./components";
+import { Button, DetailList, IconButton, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatePanel } from "./components";
+
+describe("Button patterns", () => {
+  it("renders command buttons through the shared Button component", () => {
+    render(
+      <>
+        <Button>Secondary action</Button>
+        <Button variant="primary">Primary action</Button>
+      </>
+    );
+
+    expect(screen.getByRole("button", { name: "Secondary action" })).toHaveClass("button-secondary");
+    expect(screen.getByRole("button", { name: "Primary action" })).toHaveClass("button-primary");
+  });
+
+  it("renders icon-only commands with accessible labels", () => {
+    render(<IconButton label="Use dark mode">D</IconButton>);
+
+    expect(screen.getByRole("button", { name: "Use dark mode" })).toHaveAttribute("title", "Use dark mode");
+  });
+});
 
 describe("StatePanel", () => {
   it("renders shared loading and error states", () => {
