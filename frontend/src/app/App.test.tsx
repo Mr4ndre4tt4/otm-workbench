@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 import { AuthProvider } from "../platform/auth";
 
-function renderApp() {
+function renderApp(initialPath = "/") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false }
@@ -15,7 +16,9 @@ function renderApp() {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <App />
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -394,5 +397,61 @@ describe("App shell", () => {
 
     await waitFor(() => expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-sidebar", "collapsed"));
     expect(savedPreferences).toMatchObject({ density: "compact", sidebar_mode: "collapsed" });
+  });
+
+  it("renders a reusable module route template from backend navigation", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "rates", label: "Rates Studio", path: "/rates", status: "PLANNED" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/rates");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Rates Studio" });
+    expect(screen.getByText("Module workspace")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rates Studio module template")).toBeInTheDocument();
+    expect(screen.getByText("Available actions from backend")).toBeInTheDocument();
   });
 });

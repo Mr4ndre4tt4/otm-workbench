@@ -342,6 +342,8 @@ h2 {
 
 .metric,
 .panel,
+.module-template-main,
+.module-template-side,
 .state-panel,
 .login-panel {
   border: 1px solid var(--border);
@@ -355,7 +357,9 @@ h2 {
 }
 
 .app-shell[data-density="compact"] .metric,
-.app-shell[data-density="compact"] .panel {
+.app-shell[data-density="compact"] .panel,
+.app-shell[data-density="compact"] .module-template-main,
+.app-shell[data-density="compact"] .module-template-side {
   padding: 12px;
 }
 
@@ -376,6 +380,30 @@ h2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.module-template {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.module-template-main,
+.module-template-side {
+  padding: 16px;
+}
+
+.module-template-main {
+  min-height: 260px;
+}
+
+.module-template-side ul {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .panel {
@@ -559,6 +587,7 @@ h2 {
   .activity-layout,
   .metrics-grid,
   .login-panel,
+  .module-template,
   .context-switcher {
     grid-template-columns: 1fr;
   }

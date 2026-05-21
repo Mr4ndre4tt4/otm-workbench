@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { ApiError } from "../platform/api";
 import {
@@ -37,18 +38,35 @@ function navIcon(moduleId: string) {
   return <ChevronRight aria-hidden="true" />;
 }
 
-function SidebarNav({ items, sidebarMode }: { items: NavigationItem[]; sidebarMode: UserPreferences["sidebar_mode"] }) {
+function SidebarNav({
+  currentPath,
+  items,
+  sidebarMode
+}: {
+  currentPath: string;
+  items: NavigationItem[];
+  sidebarMode: UserPreferences["sidebar_mode"];
+}) {
   return (
     <nav className="sidebar-nav" aria-label="Workbench modules">
       {items.map((item) => (
-        <a className={item.id === "home" ? "nav-item nav-item-active" : "nav-item"} href={item.path} key={item.id}>
+        <NavLink
+          className={isNavigationItemActive(item, currentPath) ? "nav-item nav-item-active" : "nav-item"}
+          key={item.id}
+          to={item.path}
+        >
           <span className="nav-icon">{navIcon(item.id)}</span>
           <span className="nav-label">{item.label}</span>
           {sidebarMode === "expanded" ? <StatusChip status={item.status} /> : null}
-        </a>
+        </NavLink>
       ))}
     </nav>
   );
+}
+
+function isNavigationItemActive(item: NavigationItem, currentPath: string) {
+  if (item.id === "home" && (currentPath === "/" || currentPath === "/home")) return true;
+  return currentPath === item.path || currentPath.startsWith(`${item.path}/`);
 }
 
 function ContextSummary({ context }: { context: Record<string, unknown> }) {
@@ -75,6 +93,29 @@ function ActionBar({ actions }: { actions: AvailableAction[] }) {
         </Button>
       ))}
     </div>
+  );
+}
+
+function PageHeader({
+  actions,
+  description,
+  label,
+  title
+}: {
+  actions?: AvailableAction[];
+  description: string;
+  label: string;
+  title: string;
+}) {
+  return (
+    <header className="page-header">
+      <div>
+        <p className="section-label">{label}</p>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      {actions ? <ActionBar actions={actions} /> : null}
+    </header>
   );
 }
 
@@ -162,14 +203,12 @@ function CockpitContent({ token }: { token: string }) {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <p className="section-label">Workbench home</p>
-          <h1>{data.title}</h1>
-          <p>{data.description}</p>
-        </div>
-        <ActionBar actions={data.available_actions} />
-      </header>
+      <PageHeader
+        actions={data.available_actions}
+        description={data.description}
+        label="Workbench home"
+        title={data.title}
+      />
 
       <ContextSummary context={data.active_context} />
       <ContextSwitcher token={token} />
@@ -346,6 +385,75 @@ function ContextSwitcher({ token }: { token: string }) {
   );
 }
 
+const MODULE_DESCRIPTIONS: Record<string, string> = {
+  admin: "Workspace, project, profile, environment, users, roles, capabilities, and feature flag administration.",
+  assets: "Shared library for templates, payloads, generated files, specs, and reusable implementation assets.",
+  catalog: "Canonical OTM catalog foundation for macro objects, load plans, data dictionary alignment, and module contracts.",
+  dev_tools: "Internal diagnostics and development utilities exposed only behind admin and feature flag controls.",
+  evidence: "Client-safe evidence, manifests, artifacts, and implementation audit trail across modules.",
+  integration_mapping: "Table-first integration definitions, systems, endpoints, schema trees, mappings, joins, loops, and lookups.",
+  load_plan: "Load package intake, CSVUtil planning, review queues, cutover readiness, and handoff controls.",
+  master_data: "Template factory and master data batch preparation for backend-first OTM implementation flows.",
+  order_release_generator: "Order release template, batch, XML preview, artifact, and job orchestration workspace.",
+  rates: "Rate batch preparation, validation, approval, CSV preview, export artifacts, and load package handoff."
+};
+
+function ModulePlaceholder({ item }: { item: NavigationItem }) {
+  const description = MODULE_DESCRIPTIONS[item.id] ?? "Module workspace prepared for backend-owned contracts.";
+  return (
+    <>
+      <PageHeader description={description} label="Module workspace" title={item.label} />
+      <section className="module-template" aria-label={`${item.label} module template`}>
+        <div className="module-template-main">
+          <div className="panel-header">
+            <h2>Overview</h2>
+            <StatusChip status={item.status} />
+          </div>
+          <p className="empty-text">
+            This route is wired into the shared shell. The next slice can attach the module list, detail, filters,
+            actions, and evidence panels without creating a custom page framework.
+          </p>
+        </div>
+        <aside className="module-template-side">
+          <h2>Expected panels</h2>
+          <ul>
+            <li>Primary list or work queue</li>
+            <li>Selected object summary</li>
+            <li>Available actions from backend</li>
+            <li>Jobs, artifacts, and evidence links</li>
+          </ul>
+        </aside>
+      </section>
+    </>
+  );
+}
+
+function UnknownRoute() {
+  return (
+    <>
+      <PageHeader
+        description="This route is not registered by the backend navigation contract for the current user."
+        label="Route not available"
+        title="Module unavailable"
+      />
+      <section className="state-panel state-panel-error">
+        <AlertCircle aria-hidden="true" />
+        <span>Use the backend-owned navigation menu to open an available module.</span>
+      </section>
+    </>
+  );
+}
+
+function WorkbenchRoute({ items, token }: { items: NavigationItem[]; token: string }) {
+  const location = useLocation();
+  const currentPath = location.pathname;
+  if (currentPath === "/" || currentPath === "/home") {
+    return <CockpitContent token={token} />;
+  }
+  const item = items.find((candidate) => isNavigationItemActive(candidate, currentPath));
+  return item ? <ModulePlaceholder item={item} /> : <UnknownRoute />;
+}
+
 function PreferenceControls({
   preferences,
   token
@@ -448,6 +556,7 @@ export function App() {
   const auth = useAuth();
   const navigation = useNavigation(auth.token);
   const preferences = useUserPreferences(auth.token);
+  const location = useLocation();
   const themeMode = preferences.data?.theme_mode ?? "light";
   const density = preferences.data?.density ?? "comfortable";
   const sidebarMode = preferences.data?.sidebar_mode ?? "expanded";
@@ -462,7 +571,7 @@ export function App() {
             <span>Implementation cockpit</span>
           </div>
         </div>
-        <SidebarNav items={navigation.data?.items ?? []} sidebarMode={sidebarMode} />
+        <SidebarNav currentPath={location.pathname} items={navigation.data?.items ?? []} sidebarMode={sidebarMode} />
       </aside>
 
       <main className="main-area">
@@ -475,7 +584,7 @@ export function App() {
             <PreferenceControls preferences={preferences.data} token={auth.token} />
           </div>
         </div>
-        {auth.token ? <CockpitContent token={auth.token} /> : <LoginPanel />}
+        {auth.token ? <WorkbenchRoute items={navigation.data?.items ?? []} token={auth.token} /> : <LoginPanel />}
       </main>
     </div>
   );

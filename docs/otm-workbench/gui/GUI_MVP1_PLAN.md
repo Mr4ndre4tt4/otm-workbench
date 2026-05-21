@@ -502,6 +502,8 @@ Delivered follow-up contracts:
   documented in GUI_LOCAL_INTEGRATION_VALIDATION.md
 - Backend-owned theme preferences
   documented in GUI_THEME_PREFERENCES.md
+- Module routing foundation
+  documented in GUI_MODULE_ROUTING_FOUNDATION.md
 ```
 
 ## 12. Implementation Order
