@@ -33,7 +33,7 @@ Do not create raw `className="state-panel"` markup in module or app screens.
 Raw state-panel markup is owned by:
 
 ```text
-frontend/src/ui/components.tsx
+frontend/src/ui/components/states.tsx
 ```
 
 ## 3. Boundary

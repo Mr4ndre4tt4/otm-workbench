@@ -53,6 +53,17 @@ frontend/src/platform/types/
   platform.ts
   rates.ts
   shared.ts
+
+frontend/src/ui/
+  components.tsx
+  components/
+    activity.tsx
+    layouts.tsx
+    lists.tsx
+    metrics.tsx
+    panels.tsx
+    primitives.tsx
+    states.tsx
 ```
 
 `frontend/src/platform/hooks.ts` remains as the public compatibility barrel, so
@@ -69,6 +80,41 @@ imports:
 ```text
 ../platform/types
 ../../platform/types
+```
+
+`frontend/src/ui/components.tsx` remains the public UI kit barrel for app,
+shell, module, test, and fixture imports. Internal component families now live
+under `frontend/src/ui/components/`:
+
+```text
+activity.tsx
+  ActivityRow
+
+layouts.tsx
+  ModuleWorkspaceLayout
+  ModuleWorkspaceSide
+
+lists.tsx
+  ArtifactList
+  DetailList
+  ModuleObjectList
+
+metrics.tsx
+  MetricGrid
+
+panels.tsx
+  BlockerPanel
+  OperationalPanel
+  SelectedObjectPanel
+
+primitives.tsx
+  Button
+  IconButton
+  StatusChip
+
+states.tsx
+  FeedbackMessage
+  StatePanel
 ```
 
 ## Ownership Model
@@ -91,7 +137,8 @@ platform/
   future desktop adapters.
 
 ui/
-  Reusable components, visual primitives, operational panels, status rendering.
+  Public UI kit barrel, internal component families, visual primitives,
+  operational panels, status rendering, and shared CSS/token layers.
 ```
 
 ## Guardrails Preserved
@@ -144,15 +191,27 @@ npm run test
 npm run build
 ```
 
+Repeated after splitting `ui/components.tsx` into internal component families:
+
+```text
+npm run lint
+npm run test
+npm run build
+```
+
 ## Next Refactor Candidates
 
 The next cleanup slices should stay incremental:
 
 ```text
-1. Split platform/types.ts by domain while preserving a public barrel.
-2. Add module README files only when module-local widgets start to grow.
-3. Introduce token files for theme/status/density after the current CSS is audited.
-4. Add an internal component gallery or Storybook using `GUI_COMPONENT_GALLERY_PLAN.md` after shared UI patterns stabilize.
+1. Add module README files only when module-local widgets start to grow.
+2. Add a desktop adapter skeleton only when the first local desktop use case
+   appears.
+3. Add browser-backed visual screenshots when the Windows browser runner is
+   stable.
+4. Evaluate Storybook only if the internal gallery becomes too limited for
+   design review. Keep `GUI_COMPONENT_GALLERY_PLAN.md` as the gallery scope
+   source of truth.
 ```
 
 Do not start a broad visual redesign as part of these cleanup slices.

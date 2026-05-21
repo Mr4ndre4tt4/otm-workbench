@@ -1,7 +1,7 @@
 # GUI Frontend Architecture
 
-**Status:** proposed for review  
-**Branch:** `codex/gui-frontend-architecture`  
+**Status:** accepted and incrementally implemented
+**Branch:** `codex/gui-frontend-ownership-component-split`
 **Scope:** frontend architecture, UI consistency, design system governance, and desktop-ready boundaries.
 
 ## 1. Decision
@@ -93,7 +93,7 @@ dependency, or lifecycle rules.
 
 ## 4. Application Layers
 
-Target structure:
+Current target structure:
 
 ```text
 frontend/src/
@@ -111,14 +111,19 @@ frontend/src/
     desktop/
 
   ui/
+    components.tsx
+    components/
+      activity.tsx
+      layouts.tsx
+      lists.tsx
+      metrics.tsx
+      panels.tsx
+      primitives.tsx
+      states.tsx
     tokens/
     base.css
     components.css
     layouts.css
-    primitives/
-    components/
-    layouts/
-    states/
     patterns/
     icons/
 
@@ -133,9 +138,9 @@ frontend/src/
     integration-mapping/
 ```
 
-The current GUI has intentionally grown inside `App.tsx` while the first module
-views were being proven. The next architecture step is extraction, not visual
-reinvention.
+`frontend/src/ui/components.tsx` is the stable public barrel for shared UI kit
+imports. Internal files under `frontend/src/ui/components/` own implementation
+families, so module screens do not depend on component file locations.
 
 ## 5. Module Structure
 
@@ -343,19 +348,23 @@ repositories without changing module UI contracts.
 
 ## 11. Extraction Roadmap
 
-Recommended next architecture sequence:
+Architecture sequence status:
 
 ```text
 1. Split current App.tsx into shell, routing, preferences, and module views.
-2. Move shared UI components into clearer ui/components and ui/patterns groups.
-3. Move platform hooks/types into endpoint-oriented files.
-4. Create modules/* folders for delivered views.
-5. Introduce token files for theme, status, density, and layout.
-6. Add component-level tests for shared UI patterns.
+   Done.
+2. Move shared UI components into clearer ui/components groups while preserving
+   the public barrel. Done.
+3. Move platform hooks/types into endpoint-oriented files. Done.
+4. Create modules/* folders for delivered views. Done.
+5. Introduce token files for theme, status, density, and layout. Done for the
+   current shell/CSS foundation.
+6. Add component-level tests for shared UI patterns. Done for the current UI
+   kit.
 7. Add Storybook or an internal component gallery using
-   `GUI_COMPONENT_GALLERY_PLAN.md` after tokens stabilize. The first internal
-   route is `/__gui/component-gallery` and remains outside backend-owned
-   production navigation.
+   `GUI_COMPONENT_GALLERY_PLAN.md`. The first internal route is
+   `/__gui/component-gallery` and remains outside backend-owned production
+   navigation. Done for internal route MVP.
 8. Add desktop adapter skeletons only when the first desktop use case appears.
 ```
 

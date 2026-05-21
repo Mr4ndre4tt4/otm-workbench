@@ -15,7 +15,9 @@ decisions.
 
 ## Component
 
-`OperationalPanel` lives in `frontend/src/ui/components.tsx`.
+`OperationalPanel` is exported by the public
+`frontend/src/ui/components.tsx` barrel and implemented in
+`frontend/src/ui/components/panels.tsx`.
 
 It centralizes:
 

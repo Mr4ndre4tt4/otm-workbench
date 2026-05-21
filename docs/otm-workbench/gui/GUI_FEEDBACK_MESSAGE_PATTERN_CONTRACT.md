@@ -40,7 +40,8 @@ contracts or platform hooks return a result.
 
 ```text
 1. Use FeedbackMessage for inline success or error text in app and module code.
-2. Keep raw form-success and form-error classes inside ui/components.tsx.
+2. Keep raw form-success and form-error classes inside
+   `ui/components/states.tsx`.
 3. Do not use FeedbackMessage for persistent lifecycle/readiness state; use
    StatePanel, StatusChip, ReadinessPanel, or module contracts instead.
 ```

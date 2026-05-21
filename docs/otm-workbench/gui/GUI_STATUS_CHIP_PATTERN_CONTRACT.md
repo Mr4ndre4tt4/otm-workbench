@@ -35,7 +35,7 @@ For:
 Do not use raw `status-chip` or `status-*` classes outside:
 
 ```text
-frontend/src/ui/components.tsx
+frontend/src/ui/components/primitives.tsx
 frontend/src/ui/components.css
 ```
 

@@ -13,7 +13,8 @@ meaning, values, and severity/status interpretation.
 
 ## Component
 
-`MetricGrid` lives in `frontend/src/ui/components.tsx`.
+`MetricGrid` is exported by the public `frontend/src/ui/components.tsx` barrel
+and implemented in `frontend/src/ui/components/metrics.tsx`.
 
 It receives caller-provided metric items:
 

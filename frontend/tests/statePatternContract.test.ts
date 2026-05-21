@@ -3,7 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = resolve("src");
-const allowedRawStatePanelFiles = new Set(["ui/components.tsx"]);
+const allowedRawStatePanelFiles = new Set(["ui/components/states.tsx"]);
 
 function tsxFilesUnder(path: string): string[] {
   return readdirSync(path).flatMap((entry) => {
@@ -33,9 +33,9 @@ describe("GUI shared state pattern contract", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("exposes StatePanel from the shared UI components module", () => {
+  it("exposes StatePanel from the shared UI components barrel", () => {
     const components = readFileSync(resolve(sourceRoot, "ui/components.tsx"), "utf-8");
 
-    expect(components).toContain("export function StatePanel");
+    expect(components).toContain('export { FeedbackMessage, StatePanel } from "./components/states"');
   });
 });

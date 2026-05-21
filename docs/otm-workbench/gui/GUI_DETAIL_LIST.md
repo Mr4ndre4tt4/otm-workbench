@@ -13,7 +13,8 @@ steps while keeping module-specific data owned by backend contracts.
 
 ## Component
 
-`DetailList` lives in `frontend/src/ui/components.tsx`.
+`DetailList` is exported by the public `frontend/src/ui/components.tsx` barrel
+and implemented in `frontend/src/ui/components/lists.tsx`.
 
 It receives:
 

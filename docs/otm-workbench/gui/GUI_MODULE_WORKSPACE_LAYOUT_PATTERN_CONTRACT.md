@@ -53,7 +53,8 @@ content supplied by backend-owned contracts.
 
 ```text
 1. Every module view with the standard object/detail workspace uses ModuleWorkspaceLayout.
-2. Raw module-template and module-template-main classes stay inside ui/components.tsx.
+2. Raw module-template and module-template-main classes stay inside
+   `ui/components/layouts.tsx`.
 3. Placeholder route side content uses ModuleWorkspaceSide.
 4. Selected object details continue to use SelectedObjectPanel.
 5. Custom module layouts require an exception in GUI_EXCEPTIONS_REGISTER.md.

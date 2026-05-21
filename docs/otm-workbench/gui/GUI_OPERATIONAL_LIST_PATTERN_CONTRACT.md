@@ -53,7 +53,8 @@ backend contracts.
 ```text
 1. Use ArtifactList for compact artifact/evidence rows with metadata.
 2. Use BlockerPanel for blocker summaries and blocker empty state.
-3. Keep raw artifact/blocker classes inside ui/components.tsx.
+3. Keep raw artifact classes inside `ui/components/lists.tsx` and raw blocker
+   classes inside `ui/components/panels.tsx`.
 4. Use OperationalPanel around ArtifactList when loading and empty behavior is
    tied to a backend collection.
 ```

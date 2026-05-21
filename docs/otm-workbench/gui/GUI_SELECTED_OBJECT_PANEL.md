@@ -13,7 +13,9 @@ owning module lifecycle or permission decisions.
 
 ## Component
 
-`SelectedObjectPanel` lives in `frontend/src/ui/components.tsx`.
+`SelectedObjectPanel` is exported by the public
+`frontend/src/ui/components.tsx` barrel and implemented in
+`frontend/src/ui/components/panels.tsx`.
 
 It receives:
 

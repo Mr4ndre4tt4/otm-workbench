@@ -3,6 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = resolve("src");
+const allowedRawModuleTemplateFiles = new Set(["ui/components/layouts.tsx", "ui/components/panels.tsx"]);
 
 function tsxFilesUnder(path: string): string[] {
   return readdirSync(path).flatMap((entry) => {
@@ -25,7 +26,7 @@ describe("GUI module workspace layout pattern contract", () => {
         path: sourcePath(path),
         source: readFileSync(path, "utf-8")
       }))
-      .filter((file) => file.path !== "ui/components.tsx")
+      .filter((file) => !allowedRawModuleTemplateFiles.has(file.path))
       .filter((file) => file.source.includes("module-template"))
       .map((file) => file.path);
 

@@ -3,6 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = resolve("src");
+const allowedRawButtonFiles = new Set(["ui/components/primitives.tsx"]);
 
 function tsxFilesUnder(path: string): string[] {
   return readdirSync(path).flatMap((entry) => {
@@ -38,7 +39,7 @@ describe("GUI button pattern contract", () => {
         path: sourcePath(path),
         source: readFileSync(path, "utf-8")
       }))
-      .filter((file) => file.path !== "ui/components.tsx")
+      .filter((file) => !allowedRawButtonFiles.has(file.path))
       .filter((file) => file.source.includes("button-primary") || file.source.includes("button-secondary"))
       .map((file) => file.path);
 

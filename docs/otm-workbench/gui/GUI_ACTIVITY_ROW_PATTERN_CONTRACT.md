@@ -32,7 +32,7 @@ For:
 Do not use raw `activity-row` markup outside:
 
 ```text
-frontend/src/ui/components.tsx
+frontend/src/ui/components/activity.tsx
 ```
 
 ## 3. Boundary

@@ -3,6 +3,7 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const sourceRoot = resolve("src");
+const allowedRawOperationalListFiles = new Set(["ui/components/lists.tsx", "ui/components/panels.tsx"]);
 
 function tsxFilesUnder(path: string): string[] {
   return readdirSync(path).flatMap((entry) => {
@@ -26,7 +27,7 @@ describe("GUI operational list pattern contract", () => {
         path: sourcePath(path),
         source: readFileSync(path, "utf-8")
       }))
-      .filter((file) => file.path !== "ui/components.tsx")
+      .filter((file) => !allowedRawOperationalListFiles.has(file.path))
       .filter((file) => rawClassNames.some((className) => file.source.includes(className)))
       .map((file) => file.path);
 

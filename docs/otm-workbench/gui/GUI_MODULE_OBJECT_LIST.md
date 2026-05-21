@@ -12,7 +12,8 @@ status, metadata, and actions owned by backend contracts and module adapters.
 
 ## Component
 
-`ModuleObjectList` lives in `frontend/src/ui/components.tsx`.
+`ModuleObjectList` is exported by the public `frontend/src/ui/components.tsx`
+barrel and implemented in `frontend/src/ui/components/lists.tsx`.
 
 It receives:
 

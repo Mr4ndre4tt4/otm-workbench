@@ -34,7 +34,7 @@ For:
 Raw `<button>` elements are allowed only inside:
 
 ```text
-frontend/src/ui/components.tsx
+frontend/src/ui/components/primitives.tsx
 ```
 
 Do not use raw `button-primary` or `button-secondary` classes outside the UI

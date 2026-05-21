@@ -71,9 +71,10 @@ the current behavior is coherent and ready for the next GUI workstream.
 
 ```text
 - Browser visual QA is not fully proven in this Windows environment.
-- frontend/src/ui/components.tsx is broad and may need a planned ownership split.
-- GUI_FRONTEND_ARCHITECTURE.md still contains proposed/review language while
-  parts of the architecture are already implemented.
+- frontend/src/ui/components.tsx now acts as the public UI kit barrel after the
+  planned ownership split into internal component families.
+- GUI_FRONTEND_ARCHITECTURE.md now reflects accepted/current structure while
+  later cleanup docs describe delivered slices.
 - Module screens share patterns, but they still need a consistency audit before
   richer module-specific GUI work.
 ```
