@@ -11,11 +11,15 @@ function importSpecifiers(source: string) {
 }
 
 describe("React architecture boundaries", () => {
-  it("keeps App module views behind the modules barrel", () => {
-    const imports = importSpecifiers(readSource("app/App.tsx"));
+  it("keeps route module views behind the modules barrel", () => {
+    const appImports = importSpecifiers(readSource("app/App.tsx"));
+    const routeImports = importSpecifiers(readSource("app/routes/WorkbenchRoute.tsx"));
 
-    expect(imports).toContain("../modules");
-    expect(imports.filter((specifier) => specifier.startsWith("../modules/"))).toEqual(["../modules/moduleStatus"]);
+    expect(appImports.filter((specifier) => specifier.includes("/modules"))).toEqual([]);
+    expect(routeImports).toContain("../../modules");
+    expect(routeImports.filter((specifier) => specifier.startsWith("../../modules/"))).toEqual([
+      "../../modules/moduleStatus"
+    ]);
   });
 
   it("keeps App shell components behind the shell barrel", () => {
@@ -49,8 +53,10 @@ describe("React architecture boundaries", () => {
       "ActionBar",
       "ContextSummary",
       "ContextSwitcher",
+      "LoginPanel",
       "PageHeader",
       "PreferenceControls",
+      "ReadinessPanel",
       "SidebarNav"
     ];
 

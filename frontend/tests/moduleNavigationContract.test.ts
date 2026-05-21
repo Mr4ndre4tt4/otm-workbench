@@ -36,11 +36,11 @@ describe("GUI module navigation contract", () => {
   });
 
   it("routes every active module id to its module view", () => {
-    const appSource = readSource("app/App.tsx");
+    const routeSource = readSource("app/routes/WorkbenchRoute.tsx");
 
     for (const route of activeModuleRoutes) {
-      expect(appSource).toContain(`item?.id === "${route.id}"`);
-      expect(appSource).toContain(`<${route.viewName} token={token} />`);
+      expect(routeSource).toContain(`item?.id === "${route.id}"`);
+      expect(routeSource).toContain(`<${route.viewName} token={token} />`);
     }
   });
 
@@ -53,10 +53,10 @@ describe("GUI module navigation contract", () => {
   });
 
   it("keeps planned placeholder modules out of explicit App view routing", () => {
-    const appSource = readSource("app/App.tsx");
+    const routeSource = readSource("app/routes/WorkbenchRoute.tsx");
 
     for (const moduleId of placeholderOnlyModuleIds) {
-      expect(appSource).not.toContain(`item?.id === "${moduleId}"`);
+      expect(routeSource).not.toContain(`item?.id === "${moduleId}"`);
     }
   });
 });

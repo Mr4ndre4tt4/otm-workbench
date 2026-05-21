@@ -18,6 +18,15 @@ GET /api/v1/platform/navigation
 The frontend uses the returned `path`, `label`, `status`, and `id` to render the
 current route.
 
+Route composition is centralized in:
+
+```text
+frontend/src/app/routes/WorkbenchRoute.tsx
+```
+
+`App.tsx` remains the shell orchestrator and should not own concrete module
+dispatch branches.
+
 ## Routing Rules
 
 ```text
@@ -57,5 +66,7 @@ validation, approval, CSV preview, and export contracts.
 
 - `frontend/src/app/App.test.tsx` verifies `/rates` renders from backend
   navigation metadata.
+- `frontend/tests/routeCompositionContract.test.ts` verifies route dispatch
+  stays out of `App.tsx`.
 - Navigation remains contract-driven; no real client data or client-specific
   examples are required.

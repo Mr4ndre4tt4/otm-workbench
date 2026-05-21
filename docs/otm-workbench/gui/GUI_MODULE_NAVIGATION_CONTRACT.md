@@ -34,7 +34,7 @@ Each active module id must have:
 
 ```text
 - a description in frontend/src/app/routes/moduleDescriptions.ts
-- an explicit branch in WorkbenchRoute inside frontend/src/app/App.tsx
+- an explicit branch in frontend/src/app/routes/WorkbenchRoute.tsx
 - an exported view in frontend/src/modules/index.ts
 ```
 

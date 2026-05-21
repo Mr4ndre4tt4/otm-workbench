@@ -506,6 +506,8 @@ Delivered follow-up contracts:
   documented in GUI_THEME_PREFERENCES.md
 - Module routing foundation
   documented in GUI_MODULE_ROUTING_FOUNDATION.md
+- Route composition contract
+  documented in GUI_ROUTE_COMPOSITION_CONTRACT.md
 - Rates Studio summary view
   documented in GUI_RATES_SUMMARY_VIEW.md
 - Rates Studio batch detail panel
