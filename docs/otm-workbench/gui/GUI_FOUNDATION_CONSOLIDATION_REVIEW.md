@@ -146,6 +146,9 @@ Also confirm:
 Prepare a GUI foundation integration PR that groups the delivered stack into
 review sections instead of treating the current branch chain as unrelated work.
 
+Use `GUI_FOUNDATION_INTEGRATION_PR_PLAN.md` as the concrete PR checklist and
+handoff artifact.
+
 Recommended PR sections:
 
 ```text
