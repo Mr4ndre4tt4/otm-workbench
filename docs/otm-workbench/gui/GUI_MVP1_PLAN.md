@@ -552,6 +552,8 @@ Delivered follow-up contracts:
   documented in GUI_SIDEBAR_TOKEN_EXTRACTION.md
 - GUI responsive token extraction
   documented in GUI_RESPONSIVE_TOKEN_EXTRACTION.md
+- GUI shell QA contracts
+  documented in GUI_SHELL_QA_CONTRACTS.md
 ```
 
 ## 12. Implementation Order

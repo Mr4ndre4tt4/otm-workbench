@@ -218,6 +218,20 @@ frontend/src/ui/tokens/responsive.css
 The full `@media (max-width: 900px)` block was moved unchanged and imported
 after theme, density, and sidebar token files.
 
+## Shell QA Contracts
+
+The shell QA contract slice was completed in `GUI_SHELL_QA_CONTRACTS.md`.
+
+Delivered:
+
+```text
+frontend/src/app/shell/SidebarNav.test.tsx
+frontend/src/app/App.test.tsx
+```
+
+The tests cover backend-owned system theme persistence, shell data attributes,
+and expanded versus collapsed navigation behavior.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:
