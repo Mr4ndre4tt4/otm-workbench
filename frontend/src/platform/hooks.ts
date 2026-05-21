@@ -4,6 +4,9 @@ import { apiDownload, apiGet, apiPost, apiPut } from "./api";
 import type {
   ActiveContextResponse,
   ActiveContextUpdate,
+  AssetItem,
+  AssetsResponse,
+  AssetVersionsResponse,
   CockpitSummary,
   IdNameResponse,
   LoginResponse,
@@ -100,6 +103,30 @@ export function useRateBatchEvidence(token: string | null, batchId: string | nul
     queryKey: ["modules", "rates", "batches", batchId, "evidence"],
     queryFn: () => apiGet<RateBatchEvidenceResponse>(`/api/v1/modules/rates/batches/${batchId}/evidence`, { token }),
     enabled: Boolean(token && batchId)
+  });
+}
+
+export function useAssets(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets"],
+    queryFn: () => apiGet<AssetsResponse>("/api/v1/modules/assets/assets", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useAssetDetail(token: string | null, assetId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets", assetId],
+    queryFn: () => apiGet<AssetItem>(`/api/v1/modules/assets/assets/${assetId}`, { token }),
+    enabled: Boolean(token && assetId)
+  });
+}
+
+export function useAssetVersions(token: string | null, assetId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets", assetId, "versions"],
+    queryFn: () => apiGet<AssetVersionsResponse>(`/api/v1/modules/assets/assets/${assetId}/versions`, { token }),
+    enabled: Boolean(token && assetId)
   });
 }
 

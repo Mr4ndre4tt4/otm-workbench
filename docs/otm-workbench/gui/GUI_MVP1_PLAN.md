@@ -524,6 +524,8 @@ Delivered follow-up contracts:
   documented in GUI_MODULE_OBJECT_LIST.md
 - Detail list foundation
   documented in GUI_DETAIL_LIST.md
+- Assets Library backend-backed view
+  documented in GUI_ASSETS_LIBRARY_VIEW.md
 ```
 
 ## 12. Implementation Order

@@ -755,4 +755,158 @@ describe("App shell", () => {
       expect.objectContaining({ method: "POST" })
     );
   });
+
+  it("renders Assets Library from backend list and detail contracts", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ access_token: "session_token", token_type: "bearer" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+                { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+              ],
+              total: 2,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              theme_mode: "light",
+              follow_system_theme: false,
+              density: "comfortable",
+              sidebar_mode: "expanded"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "asset_1",
+                  project_id: null,
+                  profile_id: null,
+                  environment_id: null,
+                  name: "Synthetic Mapping Spec",
+                  description: "Client-safe synthetic support asset.",
+                  asset_type: "SPEC",
+                  category: "INTEGRATION",
+                  visibility: "PROJECT",
+                  scope_type: "PROJECT",
+                  sensitivity: "INTERNAL",
+                  status: "DRAFT",
+                  module_id: "integration_mapping",
+                  macro_object_code: "ORDER_RELEASE",
+                  otm_table_name: "ORDER_RELEASE",
+                  tags: ["SYNTHETIC", "MVP0"],
+                  current_version_id: "version_1",
+                  created_by: "synthetic.user@example.test",
+                  created_at: "2026-05-21T00:00:00",
+                  updated_at: "2026-05-21T00:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "asset_1",
+              project_id: null,
+              profile_id: null,
+              environment_id: null,
+              name: "Synthetic Mapping Spec",
+              description: "Client-safe synthetic support asset.",
+              asset_type: "SPEC",
+              category: "INTEGRATION",
+              visibility: "PROJECT",
+              scope_type: "PROJECT",
+              sensitivity: "INTERNAL",
+              status: "DRAFT",
+              module_id: "integration_mapping",
+              macro_object_code: "ORDER_RELEASE",
+              otm_table_name: "ORDER_RELEASE",
+              tags: ["SYNTHETIC", "MVP0"],
+              current_version_id: "version_1",
+              created_by: "synthetic.user@example.test",
+              created_at: "2026-05-21T00:00:00",
+              updated_at: "2026-05-21T00:00:00"
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_1/versions")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "version_1",
+                  asset_id: "asset_1",
+                  version_number: 1,
+                  status: "ACTIVE",
+                  file_name: "synthetic_spec.md",
+                  content_type: "text/markdown",
+                  sha256: "abc123",
+                  size_bytes: 42,
+                  uploaded_by: "synthetic.user@example.test",
+                  created_at: "2026-05-21T00:00:00",
+                  updated_at: "2026-05-21T00:00:00"
+                }
+              ],
+              total: 1,
+              page: 1,
+              page_size: 50
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/assets");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Assets Library" });
+    expect(await screen.findByText("Synthetic Mapping Spec")).toBeInTheDocument();
+    expect(screen.getAllByText("INTEGRATION").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ORDER_RELEASE").length).toBeGreaterThan(0);
+    expect(await screen.findByText("synthetic_spec.md")).toBeInTheDocument();
+    expect(screen.getByText("42 bytes")).toBeInTheDocument();
+    expect(screen.queryByText(/storage_path/i)).not.toBeInTheDocument();
+  });
 });
