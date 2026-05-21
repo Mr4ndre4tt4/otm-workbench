@@ -25,9 +25,28 @@ describe("Internal component gallery route contract", () => {
       "syntheticModuleObjects",
       "syntheticDetailRows",
       "syntheticArtifactItems",
-      "syntheticBlockers"
+      "syntheticBlockers",
+      "syntheticUserPreferences",
+      "syntheticCompactDarkPreferences",
+      "syntheticNavigationItems"
     ]) {
       expect(gallerySource).toContain(fixture);
+    }
+  });
+
+  it("keeps the gallery coverage matrix visible in the route source", () => {
+    const gallerySource = readSource("app/routes/ComponentGalleryRoute.tsx");
+
+    for (const section of [
+      "WorkbenchShell",
+      "LoginPanel",
+      "ContextSwitcher preview",
+      "ReadinessPanel",
+      "PreferenceControls",
+      "ActionBar",
+      "StatusChip"
+    ]) {
+      expect(gallerySource).toContain(section);
     }
   });
 });

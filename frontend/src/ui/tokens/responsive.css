@@ -37,7 +37,8 @@
   .module-template,
   .module-row,
   .artifact-list-item,
-  .context-switcher {
+  .context-switcher,
+  .gallery-selector-preview {
     grid-template-columns: 1fr;
   }
 

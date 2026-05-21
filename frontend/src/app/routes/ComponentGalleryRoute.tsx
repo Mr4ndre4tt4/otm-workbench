@@ -1,4 +1,4 @@
-import { PageHeader } from "../shell";
+import { ActionBar, ContextSummary, LoginPanel, PageHeader, PreferenceControls, ReadinessPanel } from "../shell";
 import {
   ArtifactList,
   BlockerPanel,
@@ -11,15 +11,19 @@ import {
   ModuleWorkspaceLayout,
   OperationalPanel,
   SelectedObjectPanel,
-  StatePanel
+  StatePanel,
+  StatusChip
 } from "../../ui/components";
 import {
   syntheticAction,
   syntheticArtifactItems,
   syntheticBlockers,
+  syntheticCompactDarkPreferences,
   syntheticDetailRows,
   syntheticMetricItems,
-  syntheticModuleObjects
+  syntheticModuleObjects,
+  syntheticNavigationItems,
+  syntheticUserPreferences
 } from "../../test/fixtures/gui";
 
 const galleryActions = [
@@ -32,6 +36,8 @@ const galleryActions = [
     variant: "primary"
   })
 ];
+
+const statusVariants = ["READY", "BLOCKED", "ERROR", "READ_ONLY", "PENDING", "ACTIVE"];
 
 export function ComponentGalleryRoute() {
   const selectedObject = syntheticModuleObjects[0];
@@ -46,6 +52,159 @@ export function ComponentGalleryRoute() {
       />
 
       <MetricGrid ariaLabel="Synthetic gallery metrics" items={syntheticMetricItems} />
+
+      <section className="activity-layout" aria-label="Gallery shell examples">
+        <OperationalPanel
+          ariaLabel="Gallery shell frame"
+          emptyText="No shell preview."
+          hasItems
+          status="READY"
+          title="WorkbenchShell"
+        >
+          <div className="detail-stack">
+            <div className="brand-lockup">
+              <span className="brand-mark">OTM</span>
+              <div className="brand-text">
+                <strong>Workbench</strong>
+                <span>Implementation cockpit</span>
+              </div>
+            </div>
+            <DetailList
+              ariaLabel="Gallery shell attributes"
+              items={[
+                {
+                  id: "gallery_shell_theme",
+                  meta: ["Light default", syntheticUserPreferences.theme_mode],
+                  status: "READY",
+                  title: "Theme"
+                },
+                {
+                  id: "gallery_shell_sidebar",
+                  meta: ["Desktop-ready", syntheticUserPreferences.sidebar_mode],
+                  status: "READY",
+                  title: "Sidebar"
+                },
+                {
+                  id: "gallery_shell_navigation",
+                  meta: [syntheticNavigationItems.length, "backend navigation item(s)"],
+                  status: "ACTIVE",
+                  title: "Navigation"
+                }
+              ]}
+            />
+          </div>
+        </OperationalPanel>
+
+        <OperationalPanel
+          ariaLabel="Gallery login panel"
+          emptyText="No login panel preview."
+          hasItems
+          status="READY"
+          title="LoginPanel"
+        >
+          <LoginPanel />
+        </OperationalPanel>
+      </section>
+
+      <section className="activity-layout" aria-label="Gallery context and preference examples">
+        <OperationalPanel
+          ariaLabel="Gallery context states"
+          emptyText="No context preview."
+          hasItems
+          status="ACTIVE"
+          title="Context"
+        >
+          <div className="detail-stack">
+            <ContextSummary
+              context={{
+                domain_name: "SYNTHETIC_DOMAIN",
+                environment_id: "synthetic_environment",
+                profile_id: "synthetic_profile",
+                project_id: "synthetic_project"
+              }}
+            />
+            <form className="gallery-selector-preview" aria-label="Gallery ContextSwitcher preview">
+              <label>
+                <span>Project</span>
+                <select defaultValue="synthetic_project" disabled>
+                  <option value="synthetic_project">Synthetic Project</option>
+                </select>
+              </label>
+              <label>
+                <span>Profile</span>
+                <select defaultValue="synthetic_profile" disabled>
+                  <option value="synthetic_profile">Synthetic Profile</option>
+                </select>
+              </label>
+              <label>
+                <span>Environment</span>
+                <select defaultValue="synthetic_environment" disabled>
+                  <option value="synthetic_environment">Synthetic Environment</option>
+                </select>
+              </label>
+              <label>
+                <span>Domain</span>
+                <input readOnly value="SYNTHETIC_DOMAIN" />
+              </label>
+              <Button disabled variant="primary">
+                Apply context
+              </Button>
+            </form>
+            <ReadinessPanel
+              setupStatus={{
+                active_context_selected: true,
+                environment_count: 1,
+                missing_requirements: [],
+                profile_count: 1,
+                status: "READY"
+              }}
+              status="ready"
+            />
+          </div>
+        </OperationalPanel>
+
+        <OperationalPanel
+          ariaLabel="Gallery preference controls"
+          emptyText="No preferences preview."
+          hasItems
+          status="READY"
+          title="Preferences"
+        >
+          <div className="detail-stack">
+            <PreferenceControls preferences={syntheticUserPreferences} token={null} />
+            <PreferenceControls preferences={syntheticCompactDarkPreferences} token={null} />
+          </div>
+        </OperationalPanel>
+      </section>
+
+      <section className="activity-layout" aria-label="Gallery action and status examples">
+        <OperationalPanel
+          ariaLabel="Gallery actions"
+          emptyText="No actions preview."
+          hasItems
+          status="ACTIVE"
+          title="ActionBar"
+        >
+          <div className="detail-stack">
+            <ActionBar actions={galleryActions} />
+            <ActionBar actions={galleryActions} runningActionKey="gallery_refresh" />
+          </div>
+        </OperationalPanel>
+
+        <OperationalPanel
+          ariaLabel="Gallery status variants"
+          emptyText="No status preview."
+          hasItems
+          status="READY"
+          title="StatusChip"
+        >
+          <div className="gallery-state-badge-preview" aria-label="Gallery status chip variants">
+            {statusVariants.map((status) => (
+              <StatusChip key={status} status={status} />
+            ))}
+          </div>
+        </OperationalPanel>
+      </section>
 
       <ModuleWorkspaceLayout
         ariaLabel="Synthetic component gallery workspace"

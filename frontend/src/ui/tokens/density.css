@@ -29,6 +29,7 @@
   padding: 8px 0;
 }
 
-.app-shell[data-density="compact"] .context-switcher {
+.app-shell[data-density="compact"] .context-switcher,
+.app-shell[data-density="compact"] .gallery-selector-preview {
   padding: 10px;
 }

@@ -1,7 +1,7 @@
 # GUI Component Gallery Plan
 
-**Status:** in progress
-**Branch:** `codex/gui-component-gallery-plan`  
+**Status:** delivered for MVP coverage
+**Branch:** `codex/gui-component-gallery-coverage`
 **Scope:** component gallery or Storybook-equivalent plan for shared GUI patterns.
 
 ## 1. Purpose
@@ -89,27 +89,34 @@ Constraints:
 
 ## 4. Initial Pattern Coverage
 
-| Pattern | Required Examples | Data |
-|---|---|---|
-| WorkbenchShell | authenticated, unauthenticated, compact, collapsed sidebar | synthetic navigation and preferences |
-| LoginPanel | empty, submitting, backend error | synthetic auth error |
-| PageHeader | no actions, primary action, disabled action | synthetic backend actions |
-| ContextSummary | ready, missing context | synthetic active context |
-| ContextSwitcher | loading selectors, ready selectors, success, error | synthetic projects/profiles/environments |
-| ReadinessPanel | ready, needs context, missing requirements | synthetic setup status |
-| MetricGrid | normal counts, warning, zero/empty | synthetic metrics |
-| ModuleWorkspaceLayout | object/detail workspace, placeholder workspace | synthetic object list |
-| ModuleObjectList | selected, empty, long labels | synthetic objects |
-| SelectedObjectPanel | selected, loading, empty, actions | synthetic selected object |
-| DetailList | rows, empty, long metadata | synthetic detail rows |
-| OperationalPanel | loading, empty, active | synthetic jobs/artifacts/evidence |
-| ArtifactList | downloadable artifact, status-only artifact, evidence row | synthetic artifact/evidence rows |
-| BlockerPanel | blocked, ready empty state | synthetic blockers |
-| ActionBar | enabled, disabled with reason, running action | synthetic backend actions |
-| FeedbackMessage | success, error | synthetic text |
-| StatePanel | loading, unavailable | synthetic state text |
-| StatusChip | ready, blocked, error, read-only, pending | synthetic statuses |
-| Button/IconButton | primary, secondary, disabled, icon-only | synthetic commands |
+| Pattern | Required Examples | Data | MVP Route Coverage |
+|---|---|---|---|
+| WorkbenchShell | authenticated, compact, collapsed-sidebar reference | synthetic navigation and preferences | delivered through shell reference panel |
+| LoginPanel | empty state | synthetic auth context | delivered as isolated shell example |
+| PageHeader | title, subtitle, metadata, primary action | synthetic backend actions | delivered |
+| ContextSummary | ready context | synthetic active context | delivered |
+| ContextSwitcher | ready selectors preview | synthetic projects/profiles/environments | delivered as disabled visual preview |
+| ReadinessPanel | ready setup status | synthetic setup status | delivered |
+| PreferenceControls | light/default and compact/dark | synthetic user preferences | delivered |
+| MetricGrid | normal counts, warning, zero/empty | synthetic metrics | delivered |
+| ModuleWorkspaceLayout | object/detail workspace | synthetic object list | delivered |
+| ModuleObjectList | selected, long labels | synthetic objects | delivered |
+| SelectedObjectPanel | selected object and actions | synthetic selected object | delivered |
+| DetailList | rows and long metadata | synthetic detail rows | delivered |
+| OperationalPanel | active panels for fixtures, auth, context, preferences, actions | synthetic jobs/artifacts/evidence/context | delivered |
+| ArtifactList | downloadable artifact, status-only artifact, evidence row | synthetic artifact/evidence rows | delivered |
+| BlockerPanel | blocked state | synthetic blockers | delivered |
+| ActionBar | enabled, disabled with reason, running action | synthetic backend actions | delivered |
+| FeedbackMessage | success and error | synthetic text | delivered |
+| StatePanel | loading and unavailable | synthetic state text | delivered |
+| StatusChip | ready, blocked, error, read-only, pending, active | synthetic statuses | delivered |
+| Button/IconButton | primary, secondary, disabled, icon-only | synthetic commands | delivered |
+
+The gallery route intentionally shows `ContextSwitcher` as a disabled synthetic
+preview rather than mounting the production component. The production
+`ContextSwitcher` owns backend-backed project, profile, and environment hooks,
+so the gallery keeps the selector shape visible without creating a second data
+loading surface or hidden mock backend.
 
 ## 5. Fixture Rules
 
@@ -119,12 +126,14 @@ Initial fixture source:
 frontend/src/test/fixtures/gui.ts
 ```
 
-Current shared UI kit consumer:
+Current shared UI kit and gallery consumers:
 
 ```text
 frontend/src/ui/components.test.tsx
 frontend/src/app/routes/ComponentGalleryRoute.tsx
 frontend/src/app/AppComponentGalleryRoute.test.tsx
+frontend/src/app/routes/ComponentGalleryRoute.test.tsx
+frontend/tests/componentGalleryRouteContract.test.ts
 ```
 
 Fixtures must:
@@ -150,12 +159,13 @@ Fixtures must not:
 ## 6. Rollout
 
 ```text
-1. Create synthetic fixture builders for shared platform objects.
+1. Create synthetic fixture builders for shared platform objects. Done.
 2. Add internal gallery route or Storybook shell with no production navigation.
-3. Add primitive UI kit examples.
-4. Add shell examples.
-5. Add module workspace/object display examples.
-6. Add operational/artifact/evidence examples.
+   Done.
+3. Add primitive UI kit examples. Done.
+4. Add shell examples. Done.
+5. Add module workspace/object display examples. Done.
+6. Add operational/artifact/evidence examples. Done.
 7. Add visual/a11y screenshot checks when browser automation is reliable.
 8. Require new reusable components to add a gallery example or explicit
    exception.

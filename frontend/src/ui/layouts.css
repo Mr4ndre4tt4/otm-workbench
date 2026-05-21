@@ -1,5 +1,7 @@
 .context-summary,
 .context-switcher,
+.gallery-selector-preview,
+.gallery-state-badge-preview,
 .readiness,
 .metrics-grid,
 .activity-layout {
@@ -309,7 +311,26 @@
   box-shadow: var(--shadow);
 }
 
-.context-switcher label {
+.gallery-selector-preview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.gallery-state-badge-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.context-switcher label,
+.gallery-selector-preview label {
   display: grid;
   gap: 6px;
   color: var(--muted);
@@ -318,7 +339,9 @@
 }
 
 .context-switcher select,
-.context-switcher input {
+.context-switcher input,
+.gallery-selector-preview select,
+.gallery-selector-preview input {
   min-height: 38px;
   min-width: 0;
   border: 1px solid var(--border);
