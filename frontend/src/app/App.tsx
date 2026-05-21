@@ -25,6 +25,7 @@ import {
   useNavigation,
   useProfiles,
   useProjects,
+  useRateBatchDetail,
   useRatesSummary,
   useUserPreferences
 } from "../platform/hooks";
@@ -393,10 +394,23 @@ function severityStatus(severity: string) {
   return "INFO";
 }
 
-function RatesBatchRow({ batch }: { batch: RatesSummaryItem }) {
+function RatesBatchRow({
+  batch,
+  isSelected,
+  onSelect
+}: {
+  batch: RatesSummaryItem;
+  isSelected: boolean;
+  onSelect: (batchId: string) => void;
+}) {
   const issueCount = Object.values(batch.summary.issue_summary).reduce((total, value) => total + value, 0);
   return (
-    <div className="module-row">
+    <button
+      aria-pressed={isSelected}
+      className={isSelected ? "module-row module-row-selected" : "module-row"}
+      onClick={() => onSelect(batch.id)}
+      type="button"
+    >
       <div>
         <strong>{batch.display_name}</strong>
         <span>{batch.code}</span>
@@ -405,12 +419,16 @@ function RatesBatchRow({ batch }: { batch: RatesSummaryItem }) {
       <span>{batch.summary.row_count} row(s)</span>
       <span>{issueCount} issue(s)</span>
       <StatusChip status={batch.status} />
-    </div>
+    </button>
   );
 }
 
 function RatesSummaryView({ token }: { token: string }) {
   const rates = useRatesSummary(token);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const recentObjects = rates.data?.recent_objects ?? [];
+  const effectiveBatchId = selectedBatchId ?? recentObjects[0]?.id ?? null;
+  const batchDetail = useRateBatchDetail(token, effectiveBatchId);
 
   if (rates.isLoading) {
     return <section className="state-panel">Loading Rates Studio...</section>;
@@ -455,7 +473,12 @@ function RatesSummaryView({ token }: { token: string }) {
           {data.recent_objects.length ? (
             <div className="module-list">
               {data.recent_objects.map((batch) => (
-                <RatesBatchRow batch={batch} key={batch.id} />
+                <RatesBatchRow
+                  batch={batch}
+                  isSelected={batch.id === effectiveBatchId}
+                  key={batch.id}
+                  onSelect={setSelectedBatchId}
+                />
               ))}
             </div>
           ) : (
@@ -465,22 +488,73 @@ function RatesSummaryView({ token }: { token: string }) {
 
         <aside className="module-template-side">
           <div className="panel-header">
-            <h2>Open blockers</h2>
-            <StatusChip status={data.open_blockers.length ? "BLOCKED" : "READY"} />
+            <h2>Selected batch</h2>
+            <StatusChip status={batchDetail.data?.status ?? "PENDING"} />
           </div>
-          {data.open_blockers.length ? (
-            <div className="blocker-list">
-              {data.open_blockers.map((blocker) => (
-                <div className="blocker-item" key={`${blocker.object_type}-${blocker.object_id}`}>
-                  <strong>{blocker.codes.join(", ")}</strong>
-                  <span>{blocker.message}</span>
+          {batchDetail.isLoading && effectiveBatchId ? (
+            <p className="empty-text">Loading selected batch...</p>
+          ) : batchDetail.data ? (
+            <div className="detail-stack">
+              <div>
+                <strong>{batchDetail.data.name}</strong>
+                <span>{batchDetail.data.scenario_code}</span>
+              </div>
+              <div className="detail-grid">
+                <span>Domain</span>
+                <strong>{batchDetail.data.domain_name}</strong>
+                <span>Macro object</span>
+                <strong>{batchDetail.data.catalog_macro_object_code}</strong>
+                <span>Tables</span>
+                <strong>{batchDetail.data.tables.length}</strong>
+              </div>
+              <div className="detail-actions" aria-label="Selected batch actions">
+                {batchDetail.data.available_actions.map((action) => (
+                  <Button
+                    disabled={action.disabled}
+                    key={action.key}
+                    variant={action.variant === "primary" ? "primary" : "secondary"}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+              {batchDetail.data.tables.length ? (
+                <div className="table-list" aria-label="Selected batch tables">
+                  {batchDetail.data.tables.map((table) => (
+                    <div className="table-list-item" key={table.id}>
+                      <strong>{table.table_name}</strong>
+                      <span>{table.row_count} row(s)</span>
+                      <StatusChip status={table.status} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="empty-text">No tables have been staged for this batch.</p>
+              )}
             </div>
           ) : (
-            <p className="empty-text">No open blockers in the current rates summary.</p>
+            <p className="empty-text">Select a rate batch to inspect backend-owned details.</p>
           )}
         </aside>
+      </section>
+
+      <section className="panel blockers-panel">
+        <div className="panel-header">
+          <h2>Open blockers</h2>
+          <StatusChip status={data.open_blockers.length ? "BLOCKED" : "READY"} />
+        </div>
+        {data.open_blockers.length ? (
+          <div className="blocker-list">
+            {data.open_blockers.map((blocker) => (
+              <div className="blocker-item" key={`${blocker.object_type}-${blocker.object_id}`}>
+                <strong>{blocker.codes.join(", ")}</strong>
+                <span>{blocker.message}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-text">No open blockers in the current rates summary.</p>
+        )}
       </section>
     </>
   );

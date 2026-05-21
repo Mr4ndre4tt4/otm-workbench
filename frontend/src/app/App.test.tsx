@@ -475,6 +475,25 @@ describe("App shell", () => {
                   },
                   badges: [],
                   available_actions: []
+                },
+                {
+                  id: "batch_2",
+                  code: "ACCESSORIAL_ONLY",
+                  display_name: "Synthetic blocked batch",
+                  status: "DRAFT",
+                  project_id: null,
+                  profile_id: null,
+                  environment_id: null,
+                  domain_name: "OTM1",
+                  summary: {
+                    ready_for_approval: false,
+                    ready_for_export: false,
+                    table_count: 0,
+                    row_count: 0,
+                    issue_summary: { errors: 0, warnings: 0 }
+                  },
+                  badges: ["NO_ROWS"],
+                  available_actions: []
                 }
               ],
               open_blockers: [
@@ -506,6 +525,92 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "batch_1",
+              project_id: null,
+              environment_id: null,
+              profile_id: null,
+              scenario_code: "ACCESSORIAL_ONLY",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              name: "Synthetic ready batch",
+              description: "",
+              status: "EXPORT_PREVIEWED",
+              source_type: "api",
+              domain_name: "OTM1",
+              created_by: null,
+              summary_json: "{}",
+              tables: [
+                {
+                  id: "table_1",
+                  batch_id: "batch_1",
+                  table_name: "ACCESSORIAL_COST",
+                  sequence_index: 1,
+                  requirement_level: "OPTIONAL",
+                  row_count: 1,
+                  status: "VALID"
+                }
+              ],
+              available_actions: [
+                {
+                  key: "approve",
+                  label: "Approve",
+                  method: "POST",
+                  href: "/api/v1/modules/rates/batches/batch_1/approve",
+                  variant: "primary",
+                  icon_key: "check",
+                  disabled: false,
+                  disabled_reason: null,
+                  requires_confirmation: true
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_2")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "batch_2",
+              project_id: null,
+              environment_id: null,
+              profile_id: null,
+              scenario_code: "ACCESSORIAL_ONLY",
+              catalog_macro_object_code: "RATE_RECORD",
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+              name: "Synthetic blocked batch",
+              description: "",
+              status: "DRAFT",
+              source_type: "api",
+              domain_name: "OTM1",
+              created_by: null,
+              summary_json: "{}",
+              tables: [],
+              available_actions: [
+                {
+                  key: "validate",
+                  label: "Validate",
+                  method: "POST",
+                  href: "/api/v1/modules/rates/batches/batch_2/validate",
+                  variant: "primary",
+                  icon_key: "check",
+                  disabled: false,
+                  disabled_reason: null,
+                  requires_confirmation: false
+                }
+              ]
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -518,7 +623,14 @@ describe("App shell", () => {
     await screen.findByRole("heading", { name: "Rates Studio" });
     expect(screen.getByLabelText("Rates summary metrics")).toBeInTheDocument();
     expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
+    expect(await screen.findByText("ACCESSORIAL_COST")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(screen.getByText("Ready for approval")).toBeInTheDocument();
     expect(screen.getByText("Rate batch is not ready: NO_ROWS")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Synthetic blocked batch/ }));
+
+    expect(await screen.findByText("No tables have been staged for this batch.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Validate" })).toBeInTheDocument();
   });
 });

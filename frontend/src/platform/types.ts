@@ -86,6 +86,35 @@ export type RatesSummaryItem = {
   available_actions: AvailableAction[];
 };
 
+export type RateBatchTable = {
+  id: string;
+  batch_id: string;
+  table_name: string;
+  sequence_index: number;
+  requirement_level: string;
+  row_count: number;
+  status: string;
+};
+
+export type RateBatchDetail = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  scenario_code: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  name: string;
+  description: string;
+  status: string;
+  source_type: string;
+  domain_name: string;
+  created_by: string | null;
+  summary_json: string;
+  tables: RateBatchTable[];
+  available_actions: AvailableAction[];
+};
+
 export type RatesSummary = {
   module_id: "rates";
   status: string;

@@ -506,6 +506,8 @@ Delivered follow-up contracts:
   documented in GUI_MODULE_ROUTING_FOUNDATION.md
 - Rates Studio summary view
   documented in GUI_RATES_SUMMARY_VIEW.md
+- Rates Studio batch detail panel
+  documented in GUI_RATES_BATCH_DETAIL_PANEL.md
 ```
 
 ## 12. Implementation Order
