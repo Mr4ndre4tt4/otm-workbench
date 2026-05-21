@@ -1,7 +1,46 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, SelectedObjectPanel } from "./components";
+import { Button, ModuleObjectList, SelectedObjectPanel } from "./components";
+
+describe("ModuleObjectList", () => {
+  it("renders selectable module objects with metadata and status", async () => {
+    const selected: string[] = [];
+    render(
+      <ModuleObjectList
+        items={[
+          {
+            id: "batch_1",
+            meta: ["1 table", "12 rows", "0 issues"],
+            status: "READY",
+            subtitle: "ACCESSORIAL_ONLY",
+            title: "Synthetic ready batch"
+          }
+        ]}
+        onSelect={(id) => selected.push(id)}
+        selectedId="batch_1"
+      />
+    );
+
+    const row = screen.getByRole("button", { name: /Synthetic ready batch/ });
+    expect(row).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("ACCESSORIAL_ONLY")).toBeInTheDocument();
+    expect(screen.getByText("1 table")).toBeInTheDocument();
+    expect(screen.getByText("12 rows")).toBeInTheDocument();
+    expect(screen.getByText("0 issues")).toBeInTheDocument();
+    expect(screen.getByText("READY")).toBeInTheDocument();
+
+    row.click();
+
+    expect(selected).toEqual(["batch_1"]);
+  });
+
+  it("renders an empty state without caller-owned list markup", () => {
+    render(<ModuleObjectList emptyText="No objects available." items={[]} onSelect={() => undefined} selectedId={null} />);
+
+    expect(screen.getByText("No objects available.")).toBeInTheDocument();
+  });
+});
 
 describe("SelectedObjectPanel", () => {
   it("renders object identity, metadata, actions, and detail content", () => {

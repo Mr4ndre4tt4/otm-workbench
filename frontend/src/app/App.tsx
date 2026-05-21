@@ -34,7 +34,7 @@ import {
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, IconButton, MetricGrid, OperationalPanel, SelectedObjectPanel, StatusChip } from "../ui/components";
+import { Button, IconButton, MetricGrid, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatusChip } from "../ui/components";
 import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
@@ -407,33 +407,9 @@ function booleanStatus(value: number) {
   return value > 0 ? "ACTIVE" : "EMPTY";
 }
 
-function RatesBatchRow({
-  batch,
-  isSelected,
-  onSelect
-}: {
-  batch: RatesSummaryItem;
-  isSelected: boolean;
-  onSelect: (batchId: string) => void;
-}) {
+function rateBatchMeta(batch: RatesSummaryItem) {
   const issueCount = Object.values(batch.summary.issue_summary).reduce((total, value) => total + value, 0);
-  return (
-    <button
-      aria-pressed={isSelected}
-      className={isSelected ? "module-row module-row-selected" : "module-row"}
-      onClick={() => onSelect(batch.id)}
-      type="button"
-    >
-      <div>
-        <strong>{batch.display_name}</strong>
-        <span>{batch.code}</span>
-      </div>
-      <span>{batch.summary.table_count} table(s)</span>
-      <span>{batch.summary.row_count} row(s)</span>
-      <span>{issueCount} issue(s)</span>
-      <StatusChip status={batch.status} />
-    </button>
-  );
+  return [`${batch.summary.table_count} table(s)`, `${batch.summary.row_count} row(s)`, `${issueCount} issue(s)`];
 }
 
 function RatesSummaryView({ token }: { token: string }) {
@@ -539,20 +515,18 @@ function RatesSummaryView({ token }: { token: string }) {
             <h2>Recent rate batches</h2>
             <StatusChip status={data.recent_objects.length ? "ACTIVE" : "EMPTY"} />
           </div>
-          {data.recent_objects.length ? (
-            <div className="module-list">
-              {data.recent_objects.map((batch) => (
-                <RatesBatchRow
-                  batch={batch}
-                  isSelected={batch.id === effectiveBatchId}
-                  key={batch.id}
-                  onSelect={setSelectedBatchId}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="empty-text">No rate batches available for the current context.</p>
-          )}
+          <ModuleObjectList
+            emptyText="No rate batches available for the current context."
+            items={data.recent_objects.map((batch) => ({
+              id: batch.id,
+              meta: rateBatchMeta(batch),
+              status: batch.status,
+              subtitle: batch.code,
+              title: batch.display_name
+            }))}
+            onSelect={setSelectedBatchId}
+            selectedId={effectiveBatchId}
+          />
         </div>
 
         <SelectedObjectPanel

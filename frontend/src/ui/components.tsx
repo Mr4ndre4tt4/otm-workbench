@@ -58,6 +58,55 @@ export function MetricGrid({ ariaLabel, items }: MetricGridProps) {
   );
 }
 
+export type ModuleObjectListItem = {
+  id: string;
+  meta: Array<number | string>;
+  status: string;
+  subtitle?: string;
+  title: string;
+};
+
+type ModuleObjectListProps = {
+  emptyText?: string;
+  items: ModuleObjectListItem[];
+  onSelect: (id: string) => void;
+  selectedId: string | null;
+};
+
+export function ModuleObjectList({
+  emptyText = "No objects available.",
+  items,
+  onSelect,
+  selectedId
+}: ModuleObjectListProps) {
+  if (!items.length) {
+    return <p className="empty-text">{emptyText}</p>;
+  }
+
+  return (
+    <div className="module-list">
+      {items.map((item) => (
+        <button
+          aria-pressed={item.id === selectedId}
+          className={item.id === selectedId ? "module-row module-row-selected" : "module-row"}
+          key={item.id}
+          onClick={() => onSelect(item.id)}
+          type="button"
+        >
+          <div>
+            <strong>{item.title}</strong>
+            {item.subtitle ? <span>{item.subtitle}</span> : null}
+          </div>
+          {item.meta.map((value, index) => (
+            <span key={`${item.id}-${index}`}>{value}</span>
+          ))}
+          <StatusChip status={item.status} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 type OperationalPanelProps = PropsWithChildren<{
   className?: string;
   emptyText: string;
