@@ -40,6 +40,19 @@ frontend/src/platform/hooks/
   orderReleaseGenerator.ts
   platform.ts
   rates.ts
+
+frontend/src/platform/types/
+  assets.ts
+  catalog.ts
+  cockpit.ts
+  evidence.ts
+  integrationMapping.ts
+  loadPlan.ts
+  masterData.ts
+  orderReleaseGenerator.ts
+  platform.ts
+  rates.ts
+  shared.ts
 ```
 
 `frontend/src/platform/hooks.ts` remains as the public compatibility barrel, so
@@ -48,6 +61,14 @@ existing imports can continue to use:
 ```text
 ../platform/hooks
 ../../platform/hooks
+```
+
+`frontend/src/platform/types.ts` follows the same barrel pattern for public type
+imports:
+
+```text
+../platform/types
+../../platform/types
 ```
 
 ## Ownership Model
@@ -66,7 +87,8 @@ modules/
   Backend-backed module views and module-specific display helpers.
 
 platform/
-  API client, backend hooks, auth/session, preferences, future desktop adapters.
+  API client, backend hooks, typed API contracts, auth/session, preferences,
+  future desktop adapters.
 
 ui/
   Reusable components, visual primitives, operational panels, status rendering.
@@ -113,6 +135,14 @@ npm run build
 ```
 
 All passed locally.
+
+Repeated after splitting `platform/types.ts` by domain:
+
+```text
+npm run lint
+npm run test
+npm run build
+```
 
 ## Next Refactor Candidates
 
