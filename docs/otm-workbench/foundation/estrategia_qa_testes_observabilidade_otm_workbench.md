@@ -254,6 +254,40 @@ pytest -q
 python -m compileall -q app
 ```
 
+### 8.1 Backend runtime e isolamento de banco
+
+O backend usa SQLite local em testes. Para evitar colisao entre execucoes e
+preparar paralelizacao futura, `tests/conftest.py` deve configurar
+`OTM_DATABASE_URL` antes de importar o app/database, apontando para um arquivo
+temporario por processo/worker pytest.
+
+Regra atual:
+
+```text
+- Execucao serial e suportada.
+- Execucao paralela so deve ser habilitada quando cada worker usar banco
+  isolado e nenhum teste depender de estado global compartilhado.
+- Se CI nao puder paralelizar com seguranca, segmentar a suite por grupos de
+  modulo com budget proprio.
+```
+
+Matriz backend recomendada para CI enquanto a suite completa for pesada:
+
+```bash
+python -m pytest tests/test_operational_context.py tests/test_project_cockpit_summary.py -q
+python -m pytest tests/test_rates_summary.py tests/test_rates_batch_approval.py tests/test_rates_csv_export_artifacts.py -q
+python -m pytest tests/test_rates_batches.py tests/test_rates_batch_csv_preview.py tests/test_rates_batch_scenarios.py tests/test_rates_batch_validation.py tests/test_rates_csv_preview.py tests/test_rates_dictionary.py tests/test_reference_catalog.py -q
+python -m pytest tests/test_integration_mapping_foundation.py tests/test_integration_mapping_definitions.py tests/test_integration_mapping_systems.py tests/test_integration_mapping_schema_tree.py tests/test_integration_mapping_schema_persistence.py tests/test_integration_mapping_payload_artifacts.py tests/test_integration_mapping_mappings.py tests/test_integration_mapping_validation.py tests/test_integration_mapping_preview.py tests/test_integration_mapping_joins.py tests/test_integration_mapping_lookups.py tests/test_integration_mapping_loops.py tests/test_integration_mapping_audit_events.py tests/test_integration_mapping_synthetic_e2e.py tests/test_integration_mapping_spec_generator.py -q
+python -m pytest tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_checklist.py tests/test_load_plan_csvutil_builder.py tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_cutover_readiness.py tests/test_load_plan_zip_analysis.py tests/test_load_plan_sequence_blockers.py tests/test_load_plan_readiness_export.py tests/test_load_plan_review_decisions.py tests/test_load_plan_review_queue.py tests/test_load_plan_package_intake.py -q
+python -m pytest tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py -q
+python -m pytest tests/test_assets_library_foundation.py tests/test_assets_library_assets.py tests/test_assets_library_links.py tests/test_assets_library_permissions.py tests/test_assets_library_versions.py tests/test_master_data_templates.py tests/test_catalog_core.py tests/test_coordinate_quality_engine.py tests/test_coordinate_quality_api.py tests/test_health.py tests/test_evidence_hub_index.py tests/test_error_contracts.py tests/test_database.py tests/test_modules_navigation.py tests/test_operational_metadata.py tests/test_auth_permissions.py -q
+python -m pytest tests/test_cli.py -q
+```
+
+Evidencia de 2026-05-21 no PR #181: os grupos pesados passaram serialmente,
+mas a soma ultrapassa 10 minutos. Timeout da suite completa nesse budget deve
+ser tratado como limite de runtime, nao automaticamente como travamento.
+
 Frontend:
 
 ```bash
