@@ -573,6 +573,16 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/rates/batches/batch_2/validate")) {
+        expect(init?.method).toBe("POST");
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ batch_id: "batch_2", status: "VALIDATED", issues: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/rates/batches/batch_2")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(
@@ -603,7 +613,8 @@ describe("App shell", () => {
                   icon_key: "check",
                   disabled: false,
                   disabled_reason: null,
-                  requires_confirmation: false
+                  requires_confirmation: false,
+                  result_hint: "refresh_object"
                 }
               ]
             }),
@@ -631,6 +642,12 @@ describe("App shell", () => {
     await userEvent.click(screen.getByRole("button", { name: /Synthetic blocked batch/ }));
 
     expect(await screen.findByText("No tables have been staged for this batch.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Validate" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Validate" }));
+
+    expect(await screen.findByText("Validate completed.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/modules/rates/batches/batch_2/validate",
+      expect.objectContaining({ method: "POST" })
+    );
   });
 });

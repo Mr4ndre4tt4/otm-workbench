@@ -53,6 +53,10 @@ export function updateActiveContext(token: string, payload: ActiveContextUpdate)
   return apiPost<ActiveContextResponse>("/api/v1/platform/active-context", payload, { token });
 }
 
+export function executeBackendAction<T = Record<string, unknown>>(token: string, href: string) {
+  return apiPost<T>(href, {}, { token });
+}
+
 export function useCockpitSummary(token: string | null) {
   return useQuery({
     queryKey: ["platform", "project-cockpit", "summary"],

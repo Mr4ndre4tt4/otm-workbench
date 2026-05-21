@@ -49,6 +49,8 @@ export type AvailableAction = {
   disabled: boolean;
   disabled_reason: string | null;
   requires_confirmation: boolean;
+  permission?: string | null;
+  result_hint?: "download" | "refresh_list" | "refresh_object" | string | null;
 };
 
 export type ModuleCount = {

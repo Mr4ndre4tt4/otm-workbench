@@ -53,7 +53,7 @@ export async function apiGet<T>(path: string, options: RequestOptions = {}): Pro
 
 export async function apiPost<T>(
   path: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown> = {},
   options: RequestOptions = {}
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

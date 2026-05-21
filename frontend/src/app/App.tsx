@@ -17,6 +17,7 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import { ApiError } from "../platform/api";
 import {
+  executeBackendAction,
   login,
   updateActiveContext,
   updateUserPreferences,
@@ -424,8 +425,12 @@ function RatesBatchRow({
 }
 
 function RatesSummaryView({ token }: { token: string }) {
+  const queryClient = useQueryClient();
   const rates = useRatesSummary(token);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [runningActionKey, setRunningActionKey] = useState<string | null>(null);
   const recentObjects = rates.data?.recent_objects ?? [];
   const effectiveBatchId = selectedBatchId ?? recentObjects[0]?.id ?? null;
   const batchDetail = useRateBatchDetail(token, effectiveBatchId);
@@ -444,6 +449,31 @@ function RatesSummaryView({ token }: { token: string }) {
   }
 
   const data = rates.data;
+
+  async function runBatchAction(action: AvailableAction) {
+    if (action.method !== "POST" || action.disabled) return;
+    setActionMessage(null);
+    setActionError(null);
+    setRunningActionKey(action.key);
+    try {
+      await executeBackendAction(token, action.href);
+      setActionMessage(`${action.label} completed.`);
+      if (action.result_hint === "refresh_object" || action.result_hint === "refresh_list") {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["modules", "rates", "summary"] }),
+          queryClient.invalidateQueries({ queryKey: ["modules", "rates", "batches", effectiveBatchId] })
+        ]);
+      }
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setActionError(caught.message);
+      } else {
+        setActionError(`${action.label} failed.`);
+      }
+    } finally {
+      setRunningActionKey(null);
+    }
+  }
 
   return (
     <>
@@ -512,12 +542,15 @@ function RatesSummaryView({ token }: { token: string }) {
                   <Button
                     disabled={action.disabled}
                     key={action.key}
+                    onClick={() => void runBatchAction(action)}
                     variant={action.variant === "primary" ? "primary" : "secondary"}
                   >
-                    {action.label}
+                    {runningActionKey === action.key ? "Running..." : action.label}
                   </Button>
                 ))}
               </div>
+              {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
+              {actionError ? <p className="form-error">{actionError}</p> : null}
               {batchDetail.data.tables.length ? (
                 <div className="table-list" aria-label="Selected batch tables">
                   {batchDetail.data.tables.map((table) => (
