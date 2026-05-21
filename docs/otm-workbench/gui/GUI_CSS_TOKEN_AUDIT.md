@@ -232,6 +232,21 @@ frontend/src/app/App.test.tsx
 The tests cover backend-owned system theme persistence, shell data attributes,
 and expanded versus collapsed navigation behavior.
 
+## Shared Component Style Extraction
+
+The shared component style extraction was completed in
+`GUI_SHARED_COMPONENT_STYLE_EXTRACTION.md`.
+
+Delivered:
+
+```text
+frontend/src/ui/components.css
+```
+
+The file owns reusable primitive styles for buttons, icon buttons, status chips,
+and shared form/preference messages. Shell layout and module-specific styles
+remain in `frontend/src/styles.css`.
+
 ## Acceptance Criteria
 
 The CSS token audit is accepted when:

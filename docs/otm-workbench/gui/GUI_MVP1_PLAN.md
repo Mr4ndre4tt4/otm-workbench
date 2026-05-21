@@ -554,6 +554,8 @@ Delivered follow-up contracts:
   documented in GUI_RESPONSIVE_TOKEN_EXTRACTION.md
 - GUI shell QA contracts
   documented in GUI_SHELL_QA_CONTRACTS.md
+- GUI shared component style extraction
+  documented in GUI_SHARED_COMPONENT_STYLE_EXTRACTION.md
 ```
 
 ## 12. Implementation Order
