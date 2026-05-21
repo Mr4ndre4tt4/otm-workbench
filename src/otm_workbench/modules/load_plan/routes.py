@@ -89,6 +89,29 @@ def unsupported_catalog_payload(catalog_macro_object_code: str) -> dict[str, obj
     }
 
 
+def filter_items_by_catalog_macro_object(
+    items: list[dict[str, object]],
+    catalog_macro_object_code: str | None,
+) -> dict[str, object] | PageResponse:
+    if not catalog_macro_object_code:
+        return PageResponse(items=items, total=len(items))
+    if is_unsupported_catalog_macro_object(catalog_macro_object_code):
+        payload = PageResponse(items=[], total=0).model_dump()
+        payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+        return payload
+    filtered_items = [
+        item
+        for item in items
+        if isinstance(item.get("summary"), dict)
+        and item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
+    ]
+    if items and not filtered_items:
+        payload = PageResponse(items=[], total=0).model_dump()
+        payload.update(unsupported_catalog_payload(catalog_macro_object_code))
+        return payload
+    return PageResponse(items=filtered_items, total=len(filtered_items))
+
+
 class CsvutilBuildRequest(BaseModel):
     package_id: str
     parameter_set: dict[str, object] | None = None
@@ -171,17 +194,7 @@ def list_load_plan_packages(
 ):
     packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at.desc()).all()
     items = [serialize_load_plan_package(package) for package in packages]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/packages/{package_id}")
@@ -353,17 +366,7 @@ def list_sequence_snapshots(
         query = query.filter(LoadPlanSequenceSnapshot.status == status)
     snapshots = query.order_by(LoadPlanSequenceSnapshot.generated_at.desc()).all()
     items = [serialize_sequence_snapshot(snapshot) for snapshot in snapshots]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/sequence/snapshots/{snapshot_id}")
@@ -424,17 +427,7 @@ def list_cutover_readiness(
         query = query.filter(LoadPlanCutoverReadiness.status == status)
     items = query.order_by(LoadPlanCutoverReadiness.generated_at.desc()).all()
     serialized_items = [serialize_cutover_readiness(item) for item in items]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        serialized_items = [
-            item
-            for item in serialized_items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=serialized_items, total=len(serialized_items))
+    return filter_items_by_catalog_macro_object(serialized_items, catalog_macro_object_code)
 
 
 @router.get("/cutover-readiness/latest")
@@ -492,17 +485,7 @@ def list_cutover_handoffs(
         query = query.filter(LoadPlanCutoverHandoff.status == status)
     handoffs = query.order_by(LoadPlanCutoverHandoff.committed_at.desc()).all()
     items = [serialize_cutover_handoff(handoff) for handoff in handoffs]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/cutover-handoff/{handoff_id}")
@@ -535,17 +518,7 @@ def list_readiness_exports(
         query = query.filter(LoadPlanReadinessExport.status == status)
     exports = query.order_by(LoadPlanReadinessExport.exported_at.desc()).all()
     items = [serialize_readiness_export(export) for export in exports]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/cutover-readiness/exports/{export_id}")
@@ -649,17 +622,7 @@ def list_csvutil_builds(
 ):
     builds = db.query(CsvutilBuild).order_by(CsvutilBuild.created_at.desc()).all()
     items = [serialize_csvutil_build(build) for build in builds]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/csvutil/builds/{build_id}")
@@ -703,17 +666,7 @@ def list_zip_analyses(
 ):
     analyses = db.query(LoadPlanZipAnalysis).order_by(LoadPlanZipAnalysis.created_at.desc()).all()
     items = [serialize_zip_analysis(analysis) for analysis in analyses]
-    if catalog_macro_object_code:
-        if is_unsupported_catalog_macro_object(catalog_macro_object_code):
-            payload = PageResponse(items=[], total=0).model_dump()
-            payload.update(unsupported_catalog_payload(catalog_macro_object_code))
-            return payload
-        items = [
-            item
-            for item in items
-            if item["summary"].get("catalog_macro_object_code") == catalog_macro_object_code
-        ]
-    return PageResponse(items=items, total=len(items))
+    return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
 
 @router.get("/zip-analysis/{analysis_id}")
