@@ -1,7 +1,36 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Button, ModuleObjectList, SelectedObjectPanel } from "./components";
+import { Button, DetailList, ModuleObjectList, SelectedObjectPanel } from "./components";
+
+describe("DetailList", () => {
+  it("renders detail rows with metadata and status", () => {
+    render(
+      <DetailList
+        ariaLabel="Selected batch tables"
+        items={[
+          {
+            id: "table_1",
+            meta: ["1 row"],
+            status: "VALID",
+            title: "ACCESSORIAL_COST"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByLabelText("Selected batch tables")).toBeInTheDocument();
+    expect(screen.getByText("ACCESSORIAL_COST")).toBeInTheDocument();
+    expect(screen.getByText("1 row")).toBeInTheDocument();
+    expect(screen.getByText("VALID")).toBeInTheDocument();
+  });
+
+  it("renders an empty state for missing detail rows", () => {
+    render(<DetailList ariaLabel="Selected batch tables" emptyText="No rows found." items={[]} />);
+
+    expect(screen.getByText("No rows found.")).toBeInTheDocument();
+  });
+});
 
 describe("ModuleObjectList", () => {
   it("renders selectable module objects with metadata and status", async () => {

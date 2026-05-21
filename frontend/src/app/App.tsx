@@ -34,7 +34,16 @@ import {
   useUserPreferences
 } from "../platform/hooks";
 import { useAuth } from "../platform/useAuth";
-import { Button, IconButton, MetricGrid, ModuleObjectList, OperationalPanel, SelectedObjectPanel, StatusChip } from "../ui/components";
+import {
+  Button,
+  DetailList,
+  IconButton,
+  MetricGrid,
+  ModuleObjectList,
+  OperationalPanel,
+  SelectedObjectPanel,
+  StatusChip
+} from "../ui/components";
 import type { AvailableAction, NavigationItem, RatesSummaryItem } from "../platform/types";
 import type { UserPreferences } from "../platform/types";
 
@@ -562,19 +571,16 @@ function RatesSummaryView({ token }: { token: string }) {
         >
           {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
           {actionError ? <p className="form-error">{actionError}</p> : null}
-          {batchDetail.data?.tables.length ? (
-            <div className="table-list" aria-label="Selected batch tables">
-              {batchDetail.data.tables.map((table) => (
-                <div className="table-list-item" key={table.id}>
-                  <strong>{table.table_name}</strong>
-                  <span>{table.row_count} row(s)</span>
-                  <StatusChip status={table.status} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-text">No tables have been staged for this batch.</p>
-          )}
+          <DetailList
+            ariaLabel="Selected batch tables"
+            emptyText="No tables have been staged for this batch."
+            items={(batchDetail.data?.tables ?? []).map((table) => ({
+              id: table.id,
+              meta: [`${table.row_count} row(s)`],
+              status: table.status,
+              title: table.table_name
+            }))}
+          />
         </SelectedObjectPanel>
       </section>
 

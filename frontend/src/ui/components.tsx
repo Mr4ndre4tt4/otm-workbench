@@ -107,6 +107,39 @@ export function ModuleObjectList({
   );
 }
 
+export type DetailListItem = {
+  id: string;
+  meta: Array<number | string>;
+  status?: string;
+  title: string;
+};
+
+type DetailListProps = {
+  ariaLabel: string;
+  emptyText?: string;
+  items: DetailListItem[];
+};
+
+export function DetailList({ ariaLabel, emptyText = "No detail rows available.", items }: DetailListProps) {
+  if (!items.length) {
+    return <p className="empty-text">{emptyText}</p>;
+  }
+
+  return (
+    <div className="table-list" aria-label={ariaLabel}>
+      {items.map((item) => (
+        <div className="table-list-item" key={item.id}>
+          <strong>{item.title}</strong>
+          {item.meta.map((value, index) => (
+            <span key={`${item.id}-${index}`}>{value}</span>
+          ))}
+          {item.status ? <StatusChip status={item.status} /> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type OperationalPanelProps = PropsWithChildren<{
   className?: string;
   emptyText: string;
