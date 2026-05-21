@@ -134,6 +134,7 @@ export function RatesSummaryView({ token }: { token: string }) {
             <StatusChip status={data.recent_objects.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Rate batches"
             emptyText="No rate batches available for the current context."
             items={data.recent_objects.map((batch) => ({
               id: batch.id,

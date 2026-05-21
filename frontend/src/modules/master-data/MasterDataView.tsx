@@ -57,6 +57,7 @@ export function MasterDataView({ token }: { token: string }) {
             <StatusChip status={templateItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Master Data templates"
             emptyText="No Master Data templates available for the current context."
             items={templateItems.map((item) => ({
               id: item.code,

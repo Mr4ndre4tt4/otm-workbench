@@ -62,6 +62,7 @@ export function LoadPlanView({ token }: { token: string }) {
             <StatusChip status={packageItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Load plan packages"
             emptyText="No Load Plan packages registered for the current context."
             items={packageItems.map((item) => ({
               id: item.id,

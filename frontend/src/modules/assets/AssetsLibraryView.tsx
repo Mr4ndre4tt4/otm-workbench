@@ -55,6 +55,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
             <StatusChip status={assetItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Assets"
             emptyText="No assets available for the current context."
             items={assetItems.map((asset) => ({
               id: asset.id,

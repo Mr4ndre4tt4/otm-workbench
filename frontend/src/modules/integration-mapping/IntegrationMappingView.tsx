@@ -72,6 +72,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
             <StatusChip status={definitionItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Integration mapping definitions"
             emptyText="No Integration Mapping definitions available for the current context."
             items={definitionItems.map((item) => ({
               id: item.id,

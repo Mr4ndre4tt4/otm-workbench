@@ -82,6 +82,7 @@ export type ModuleObjectListItem = {
 };
 
 type ModuleObjectListProps = {
+  ariaLabel: string;
   emptyText?: string;
   items: ModuleObjectListItem[];
   onSelect: (id: string) => void;
@@ -89,6 +90,7 @@ type ModuleObjectListProps = {
 };
 
 export function ModuleObjectList({
+  ariaLabel,
   emptyText = "No objects available.",
   items,
   onSelect,
@@ -99,7 +101,7 @@ export function ModuleObjectList({
   }
 
   return (
-    <div className="module-list">
+    <div className="module-list" aria-label={ariaLabel}>
       {items.map((item) => (
         <button
           aria-pressed={item.id === selectedId}

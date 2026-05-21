@@ -60,6 +60,7 @@ export function CatalogCoreView({ token }: { token: string }) {
             <StatusChip status={macroItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Catalog macro objects"
             emptyText="No catalog macro objects available for the current context."
             items={macroItems.map((item) => ({
               id: item.code,

@@ -576,6 +576,8 @@ Delivered follow-up contracts:
   documented in GUI_STATE_PATTERN_CONTRACT.md
 - GUI action pattern contract
   documented in GUI_ACTION_PATTERN_CONTRACT.md
+- GUI object list pattern contract
+  documented in GUI_OBJECT_LIST_PATTERN_CONTRACT.md
 ```
 
 ## 12. Implementation Order

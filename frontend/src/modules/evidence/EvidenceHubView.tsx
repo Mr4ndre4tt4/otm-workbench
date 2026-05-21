@@ -57,6 +57,7 @@ export function EvidenceHubView({ token }: { token: string }) {
             <StatusChip status={evidenceItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Evidence entries"
             emptyText="No client-safe evidence available for the current context."
             items={evidenceItems.map((item) => ({
               id: item.id,

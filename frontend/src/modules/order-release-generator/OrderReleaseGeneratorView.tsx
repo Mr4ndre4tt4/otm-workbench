@@ -58,6 +58,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             <StatusChip status={templateItems.length ? "ACTIVE" : "EMPTY"} />
           </div>
           <ModuleObjectList
+            ariaLabel="Order Release templates"
             emptyText="No Order Release templates available for the current context."
             items={templateItems.map((item) => ({
               id: item.id,

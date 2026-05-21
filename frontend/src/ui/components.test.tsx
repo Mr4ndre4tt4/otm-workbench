@@ -51,6 +51,7 @@ describe("ModuleObjectList", () => {
     const selected: string[] = [];
     render(
       <ModuleObjectList
+        ariaLabel="Rate batches"
         items={[
           {
             id: "batch_1",
@@ -66,6 +67,7 @@ describe("ModuleObjectList", () => {
     );
 
     const row = screen.getByRole("button", { name: /Synthetic ready batch/ });
+    expect(screen.getByLabelText("Rate batches")).toBeInTheDocument();
     expect(row).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("ACCESSORIAL_ONLY")).toBeInTheDocument();
     expect(screen.getByText("1 table")).toBeInTheDocument();
@@ -79,7 +81,15 @@ describe("ModuleObjectList", () => {
   });
 
   it("renders an empty state without caller-owned list markup", () => {
-    render(<ModuleObjectList emptyText="No objects available." items={[]} onSelect={() => undefined} selectedId={null} />);
+    render(
+      <ModuleObjectList
+        ariaLabel="Module objects"
+        emptyText="No objects available."
+        items={[]}
+        onSelect={() => undefined}
+        selectedId={null}
+      />
+    );
 
     expect(screen.getByText("No objects available.")).toBeInTheDocument();
   });
