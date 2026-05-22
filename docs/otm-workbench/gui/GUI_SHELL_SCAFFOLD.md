@@ -22,7 +22,8 @@ TanStack Query
 Vitest
 Testing Library
 ESLint
-Lucide icons for temporary shell icons
+Lucide icons as temporary fallback renderers until backend-owned icon registry
+metadata is implemented
 ```
 
 The product component boundary is `src/ui/`. Future module screens should use
@@ -58,6 +59,7 @@ The frontend does not own:
 - job status;
 - artifact/evidence safety;
 - user theme preference.
+- navigation icon identity and module display labels.
 
 Those values are read from backend contracts and rendered as UI state.
 
@@ -86,3 +88,9 @@ module-specific views.
 
 Future shell changes should update `GUI_WORKBENCH_SHELL_PATTERN_CONTRACT.md`
 and its tests before expanding visual behavior.
+
+Icon and label metadata should follow
+`GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md`: the backend owns module labels,
+icon keys, icon family/variant references, and navigation ordering; the
+frontend only renders approved icons and accessible labels from the returned
+contract.

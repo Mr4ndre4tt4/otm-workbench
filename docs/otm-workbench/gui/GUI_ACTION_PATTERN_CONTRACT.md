@@ -76,3 +76,7 @@ Later slices can extend the same pattern with:
 ```
 
 Those extensions should continue consuming backend-owned action metadata.
+
+Icon mapping must follow `GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md`: action and
+navigation icon keys are backend-owned metadata, while the frontend only maps an
+approved key to an approved renderer or sanitized asset.

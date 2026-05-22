@@ -188,6 +188,7 @@ All upcoming GUI module work must include:
 
 ```text
 - backend-owned navigation and module visibility
+- backend-owned icon keys, module labels, program labels, and display metadata
 - backend-owned actions or explicitly documented action gaps
 - module completion status using First functional slice done / MVP workflow done
   / Module complete
@@ -205,6 +206,11 @@ All upcoming GUI module work must include:
 - no module-specific visual identity
 - Linear update with delivered scope and gaps
 ```
+
+Platform icon and label governance is tracked in
+`GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md`. Until that platform slice is
+implemented, Lucide icons may remain as temporary fallback renderers, but new
+module work should avoid adding frontend-owned module identity maps.
 
 ## 7. Immediate Recommendation
 
