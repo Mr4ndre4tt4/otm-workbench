@@ -170,6 +170,11 @@ Backend `ApiError.details.error` is now surfaced in Data Factory feedback, so a
 failed workbook upload can explain the specific sheet/header issue and the user
 can replace the file and upload successfully without leaving the stage.
 
+The fifth OTM-119 hardening slice expands browser QA route recovery. After
+exporting a package, the script leaves Data Factory, returns, opens the Output
+stage, and verifies durable backend-owned batch and artifact rows are still
+visible.
+
 ## Validation
 
 ```text

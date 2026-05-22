@@ -248,6 +248,13 @@ async function run() {
     await page.locator('a[href="/master-data"]').click();
     await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
     await page.getByLabel("Master Data templates").getByText("REGIONS_BASIC", { exact: true }).waitFor();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
+    await page.getByLabel("Durable Master Data batches").getByText("REGIONS_BASIC", { exact: true }).first().waitFor();
+    await page
+      .getByLabel("Master Data export artifacts")
+      .getByText(/master_data_batch_.+\.zip/)
+      .first()
+      .waitFor();
 
     if (consoleErrors.length || failedResponses.length) {
       throw new Error(
@@ -265,7 +272,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "master-data-author-template-workbook-upload-output-export-return",
+          journey: "master-data-author-template-workbook-upload-output-export-route-recovery",
           authorTemplateCode,
           baseUrl,
           apiBaseUrl
