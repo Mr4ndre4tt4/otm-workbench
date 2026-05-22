@@ -1328,6 +1328,64 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
     assert rows[0].content.startswith("REGION\nREGION_GID,REGION_XID,REGION_NAME")
 
 
+def test_master_data_batch_build_csv_is_idempotent_for_double_click(
+    client,
+    admin_header,
+    db_session,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_double_click_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    first_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/build-csv",
+        headers=admin_header,
+    )
+
+    second_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/build-csv",
+        headers=admin_header,
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    payload = second_response.json()
+    assert payload["batch_id"] == batch_id
+    assert payload["status"] == "CSV_BUILT"
+    assert payload["csv_file_count"] == 2
+    assert [item["file_name"] for item in payload["files"]] == ["001_REGION.csv", "002_REGION_DETAIL.csv"]
+    persisted_count = db_session.execute(
+        text("select count(*) from master_data_csv_files where batch_id = :batch_id"),
+        {"batch_id": batch_id},
+    ).scalar_one()
+    assert persisted_count == 2
+
+
 def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
     client,
     admin_header,

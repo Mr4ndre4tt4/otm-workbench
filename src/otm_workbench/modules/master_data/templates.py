@@ -1299,6 +1299,28 @@ def build_master_data_csv_files(
     batch: MasterDataBatch,
     dictionary_root: Path,
 ) -> dict[str, object]:
+    if batch.status == "CSV_BUILT":
+        csv_files = (
+            db.query(MasterDataCsvFile)
+            .filter(MasterDataCsvFile.batch_id == batch.id)
+            .order_by(MasterDataCsvFile.file_name)
+            .all()
+        )
+        if csv_files:
+            return {
+                "batch_id": batch.id,
+                "status": batch.status,
+                "csv_file_count": len(csv_files),
+                "files": [
+                    {
+                        "table_name": csv_file.table_name,
+                        "file_name": csv_file.file_name,
+                        "row_count": csv_file.row_count,
+                        "content": csv_file.content,
+                    }
+                    for csv_file in csv_files
+                ],
+            }
     if batch.status != "OUTPUT_BUILT":
         raise ValueError("Only output-built Master Data batches can build CSV files.")
 
