@@ -130,6 +130,29 @@ export type CutoverChecklistReadiness = {
   evidence_id?: string;
 };
 
+export type CsvutilBuild = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  status: string;
+  ctl_artifact_id: string | null;
+  cl_artifact_id: string | null;
+  manifest_id: string | null;
+  evidence_id: string | null;
+  summary: {
+    package_type?: string;
+    table_count?: number;
+    row_count?: number;
+    catalog_macro_object_code?: string;
+    catalog_load_plan_path?: string;
+    parameter_set?: Record<string, string>;
+  };
+  created_by: string | null;
+  built_at: string | null;
+};
+
 export type CutoverHandoffEligibility = {
   package_id: string;
   eligible: boolean;

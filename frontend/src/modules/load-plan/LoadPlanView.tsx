@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
+  buildCsvutilFromCutoverChecklist,
   createCutoverChecklistFromPackage,
   generateCutoverChecklistReadiness,
   updateCutoverChecklistItem,
@@ -10,7 +11,7 @@ import {
   useLoadPlanPackages,
   useLoadPlanSummary
 } from '../../platform/hooks';
-import type { CutoverChecklist, CutoverChecklistReadiness, LoadPlanPackage } from '../../platform/types';
+import type { CsvutilBuild, CutoverChecklist, CutoverChecklistReadiness, LoadPlanPackage } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
 import {
   BlockerPanel,
@@ -37,7 +38,8 @@ const loadPlanWorkflowStages = [
   { id: "packages", title: "Packages", status: "1" },
   { id: "checklist", title: "Checklist", status: "2" },
   { id: "readiness", title: "Readiness", status: "3" },
-  { id: "handoff", title: "Handoff", status: "4" }
+  { id: "csvutil", title: "CSVUTIL", status: "4" },
+  { id: "handoff", title: "Handoff", status: "5" }
 ] as const;
 
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
@@ -50,6 +52,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [activeStage, setActiveStage] = useState<LoadPlanWorkflowStage>("packages");
   const [checklist, setChecklist] = useState<CutoverChecklist | null>(null);
   const [readiness, setReadiness] = useState<CutoverChecklistReadiness | null>(null);
+  const [csvutilBuild, setCsvutilBuild] = useState<CsvutilBuild | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -91,7 +94,7 @@ export function LoadPlanView({ token }: { token: string }) {
     try {
       const updated = await updateCutoverChecklistItem(token, itemId, {
         evidence_id: evidenceId.trim() || null,
-        method: "MANUAL",
+        method: "CSVUTIL",
         status: "DONE"
       });
       setChecklist(updated);
@@ -118,6 +121,23 @@ export function LoadPlanView({ token }: { token: string }) {
       setActiveStage("readiness");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not generate readiness.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleBuildCsvutil = async () => {
+    if (!checklist) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await buildCsvutilFromCutoverChecklist(token, checklist.id);
+      setCsvutilBuild(result);
+      setOperationMessage(`CSVUTIL build ${result.id} is ${result.status}.`);
+      setActiveStage("csvutil");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not build CSVUTIL artifacts.");
     } finally {
       setIsMutating(false);
     }
@@ -252,9 +272,11 @@ export function LoadPlanView({ token }: { token: string }) {
                       <span>{item.evidence_required ? "Evidence required" : "Evidence optional"}</span>
                     </div>
                     <div className="table-list-status">
-                      <Button disabled={isMutating} onClick={() => void handleCompleteChecklistItem(item.id)} variant="secondary">
-                        Mark done
-                      </Button>
+                      {item.item_code === "TABLE_READY" ? (
+                        <Button disabled={isMutating} onClick={() => void handleCompleteChecklistItem(item.id)} variant="secondary">
+                          Mark CSVUTIL ready
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -305,6 +327,53 @@ export function LoadPlanView({ token }: { token: string }) {
                   title="Checklist blockers"
                 />
               </>
+            ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "csvutil" ? (
+          <OperationalPanel
+            ariaLabel="CSVUTIL build artifacts"
+            emptyText="Create a cutover checklist before building CSVUTIL control artifacts."
+            hasItems
+            status={csvutilBuild?.status ?? "PENDING"}
+            title="CSVUTIL"
+          >
+            <div className="load-plan-action-bar">
+              <Button disabled={!checklist || isMutating} onClick={() => void handleBuildCsvutil()} variant="primary">
+                Build CSVUTIL
+              </Button>
+            </div>
+            {csvutilBuild ? (
+              <DetailList
+                ariaLabel="CSVUTIL artifact ids"
+                items={[
+                  {
+                    id: "csvutil-ctl",
+                    meta: [csvutilBuild.ctl_artifact_id ?? "Missing CTL artifact"],
+                    status: csvutilBuild.ctl_artifact_id ? "READY" : "MISSING",
+                    title: "CTL artifact"
+                  },
+                  {
+                    id: "csvutil-cl",
+                    meta: [csvutilBuild.cl_artifact_id ?? "Missing CL artifact"],
+                    status: csvutilBuild.cl_artifact_id ? "READY" : "MISSING",
+                    title: "CL artifact"
+                  },
+                  {
+                    id: "csvutil-manifest",
+                    meta: [csvutilBuild.manifest_id ?? "Missing manifest"],
+                    status: csvutilBuild.manifest_id ? "READY" : "MISSING",
+                    title: "Manifest"
+                  },
+                  {
+                    id: "csvutil-evidence",
+                    meta: [csvutilBuild.evidence_id ?? "Missing evidence"],
+                    status: csvutilBuild.evidence_id ? "READY" : "MISSING",
+                    title: "Evidence"
+                  }
+                ]}
+              />
             ) : null}
           </OperationalPanel>
         ) : null}

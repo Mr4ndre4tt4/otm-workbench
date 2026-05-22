@@ -145,6 +145,28 @@ function syntheticSuffix() {
   return Date.now().toString(36).toUpperCase();
 }
 
+async function waitForCsvutilBuildResult(page) {
+  try {
+    await page.getByText(/^CSVUTIL build .* is BUILT\.$/).waitFor({ timeout: 10000 });
+    return;
+  } catch (error) {
+    const visibleText = await page.locator("body").innerText().catch(() => "");
+    const csvutilLines = visibleText
+      .split("\n")
+      .filter((line) => /CSVUTIL|eligible|evidence|required|failed|error|build/i.test(line))
+      .join("\n");
+    throw new Error(
+      [
+        "CSVUTIL build success message did not appear.",
+        csvutilLines ? `Visible diagnostic lines:\n${csvutilLines}` : "",
+        error instanceof Error ? `Original wait error: ${error.message}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -202,13 +224,22 @@ async function run() {
     await checklistPanel.getByText("ACCESSORIAL_COST").waitFor();
 
     await page.getByLabel("Evidence id").fill(seeded.evidence.id);
-    await checklistPanel.getByRole("button", { name: "Mark done" }).first().click();
+    await checklistPanel.getByRole("button", { name: "Mark CSVUTIL ready" }).first().click();
     await page.getByText("Checklist item updated.").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Readiness" }).click();
     await page.getByRole("button", { name: "Generate readiness" }).click();
     await page.getByText(/^Checklist readiness is (READY|BLOCKED|NEEDS_REVIEW)\.$/).waitFor();
     await page.getByLabel("Cutover readiness summary").waitFor();
+
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "CSVUTIL" }).click();
+    await page.getByRole("button", { name: "Build CSVUTIL" }).click();
+    await waitForCsvutilBuildResult(page);
+    const csvutilPanel = page.getByLabel("CSVUTIL build artifacts");
+    await csvutilPanel.getByText("CTL artifact").waitFor();
+    await csvutilPanel.getByText("CL artifact").waitFor();
+    await csvutilPanel.getByText("Manifest").waitFor();
+    await csvutilPanel.getByText("Evidence").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Handoff" }).click();
     await page.getByLabel("Cutover handoff eligibility", { exact: true }).waitFor();
@@ -236,7 +267,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "load-plan-cutover-checklist-readiness-return",
+          journey: "load-plan-cutover-checklist-readiness-csvutil-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,

@@ -138,6 +138,36 @@ function cutoverChecklist(itemStatus = "PENDING") {
   };
 }
 
+function csvutilBuild() {
+  return {
+    built_at: "2026-05-22T00:05:00",
+    cl_artifact_id: "artifact_csvutil_cl",
+    created_by: "admin@example.test",
+    ctl_artifact_id: "artifact_csvutil_ctl",
+    environment_id: null,
+    evidence_id: "evidence_csvutil",
+    id: "csvutil_build_1",
+    manifest_id: "manifest_csvutil",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    status: "BUILT",
+    summary: {
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+      catalog_macro_object_code: "RATE_RECORD",
+      package_type: "rates_csv_zip",
+      parameter_set: {
+        date_format: "YYYY-MM-DD HH24:MI:SS",
+        delimiter: "COMMA",
+        encoding: "UTF-8",
+        mode: "INSERT"
+      },
+      row_count: 3,
+      table_count: 2
+    }
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -149,6 +179,7 @@ describe("Functional Load Plan journey", () => {
     let itemDone = false;
     let readinessGenerated = false;
     const checklistRequests: unknown[] = [];
+    const csvutilRequests: unknown[] = [];
     const itemRequests: unknown[] = [];
     const readinessRequests: unknown[] = [];
 
@@ -248,6 +279,11 @@ describe("Functional Load Plan journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/checklist_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        csvutilRequests.push({ body: JSON.parse(String(init?.body)), method: init?.method });
+        return Promise.resolve(jsonResponse(csvutilBuild()));
+      }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
           jsonResponse({
@@ -290,7 +326,7 @@ describe("Functional Load Plan journey", () => {
 
     await userEvent.clear(screen.getByLabelText("Evidence id"));
     await userEvent.type(screen.getByLabelText("Evidence id"), "SYN_EVIDENCE_001");
-    await userEvent.click(within(checklistPanel).getByRole("button", { name: "Mark done" }));
+    await userEvent.click(within(checklistPanel).getByRole("button", { name: "Mark CSVUTIL ready" }));
     await screen.findByText("Checklist item updated.");
 
     await userEvent.click(screen.getByRole("button", { name: /3Readiness/ }));
@@ -298,12 +334,34 @@ describe("Functional Load Plan journey", () => {
     await screen.findByText("Checklist readiness is READY.");
     expect(screen.getByLabelText("Cutover readiness summary")).toHaveTextContent("DONE");
 
-    await userEvent.click(screen.getByRole("button", { name: /4Handoff/ }));
+    await userEvent.click(screen.getByRole("button", { name: /4CSVUTIL/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Build CSVUTIL" }));
+    await screen.findByText("CSVUTIL build csvutil_build_1 is BUILT.");
+    const csvutilPanel = await screen.findByLabelText("CSVUTIL build artifacts");
+    expect(csvutilPanel).toHaveTextContent("artifact_csvutil_ctl");
+    expect(csvutilPanel).toHaveTextContent("artifact_csvutil_cl");
+    expect(csvutilPanel).toHaveTextContent("manifest_csvutil");
+    expect(csvutilPanel).toHaveTextContent("evidence_csvutil");
+
+    await userEvent.click(screen.getByRole("button", { name: /5Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
     expect(await screen.findByText("READINESS_EXPORT_MISSING")).toBeInTheDocument();
 
     expect(checklistRequests).toEqual([{ method: "POST" }]);
-    expect(itemRequests).toEqual([{ evidence_id: "SYN_EVIDENCE_001", method: "MANUAL", status: "DONE" }]);
+    expect(csvutilRequests).toEqual([
+      {
+        body: {
+          parameter_set: {
+            date_format: "YYYY-MM-DD HH24:MI:SS",
+            delimiter: "COMMA",
+            encoding: "UTF-8",
+            mode: "INSERT"
+          }
+        },
+        method: "POST"
+      }
+    ]);
+    expect(itemRequests).toEqual([{ evidence_id: "SYN_EVIDENCE_001", method: "CSVUTIL", status: "DONE" }]);
     expect(readinessRequests).toEqual([{ method: "POST" }]);
     expect(itemDone).toBe(true);
 

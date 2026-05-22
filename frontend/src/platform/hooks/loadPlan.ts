@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiGet, apiPatch, apiPost } from "../api";
 import type {
+  CsvutilBuild,
   CutoverChecklist,
   CutoverChecklistReadiness,
   CutoverHandoffEligibility,
@@ -50,6 +51,21 @@ export function generateCutoverChecklistReadiness(token: string, checklistId: st
   return apiPost<CutoverChecklistReadiness>(
     `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/readiness`,
     {},
+    { token }
+  );
+}
+
+export function buildCsvutilFromCutoverChecklist(token: string, checklistId: string) {
+  return apiPost<CsvutilBuild>(
+    `/api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/${checklistId}`,
+    {
+      parameter_set: {
+        date_format: "YYYY-MM-DD HH24:MI:SS",
+        delimiter: "COMMA",
+        encoding: "UTF-8",
+        mode: "INSERT"
+      }
+    },
     { token }
   );
 }

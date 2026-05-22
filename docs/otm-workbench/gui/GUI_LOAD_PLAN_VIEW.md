@@ -22,6 +22,7 @@ GET /api/v1/modules/load-plan/packages/{package_id}
 POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}
 PATCH /api/v1/modules/load-plan/cutover-checklists/items/{item_id}
 POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/readiness
+POST /api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/{checklist_id}
 GET /api/v1/modules/load-plan/cutover-handoff/eligibility?package_id={package_id}
 ```
 
@@ -36,9 +37,10 @@ review queue + staged workflow
 First delivered story:
 
 ```text
-select package -> create checklist -> update item evidence/status ->
-generate checklist readiness -> inspect handoff eligibility -> leave route ->
-return with backend-owned package state visible
+select package -> create checklist -> mark item CSVUTIL-ready with evidence ->
+generate checklist readiness -> build CSVUTIL CTL/CL artifacts from checklist ->
+inspect handoff eligibility -> leave route -> return with backend-owned package
+state visible
 ```
 
 The screen uses shared components:
@@ -48,9 +50,9 @@ The screen uses shared components:
 - ModuleObjectList for selectable Load Plan packages in the package stage;
 - SelectedObjectPanel for selected package metadata;
 - DetailList for the selected package load sequence, readiness counts, and
-  handoff facts;
+  CSVUTIL artifact ids, and handoff facts;
 - OperationalPanel, FeedbackMessage, Button, and BlockerPanel for checklist,
-  readiness, and handoff stages.
+  readiness, CSVUTIL, and handoff stages.
 ```
 
 The first selected package defaults to the first backend item. Selecting
@@ -62,6 +64,8 @@ another package updates the detail query through backend-owned ids.
 - No client-specific sample data in tests or docs.
 - No frontend-only package registration decisions.
 - No frontend-only CSVUTIL, cutover readiness, or handoff actions.
+- CSVUTIL uses the backend build-from-checklist endpoint and backend-owned
+  artifact/evidence/manifest ids.
 - No local artifact path rendering.
 - Package status, catalog macro, evidence references, artifact references, and load sequence come from backend contracts.
 ```
@@ -69,7 +73,6 @@ another package updates the detail query through backend-owned ids.
 Out of current scope:
 
 ```text
-- CSVUTIL build UI;
 - ZIP analysis UI;
 - full review queue decision UI;
 - package registration from Rates/Master Data inside the Load Plan route;
