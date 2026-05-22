@@ -23,6 +23,10 @@ POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}
 PATCH /api/v1/modules/load-plan/cutover-checklists/items/{item_id}
 POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/readiness
 POST /api/v1/modules/load-plan/csvutil/build/from-cutover-checklist/{checklist_id}
+POST /api/v1/modules/load-plan/zip-analysis
+POST /api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis_id}
+GET /api/v1/modules/load-plan/review-queue?package_id={package_id}
+POST /api/v1/modules/load-plan/review-queue/{item_id}/decide
 GET /api/v1/modules/load-plan/cutover-handoff/eligibility?package_id={package_id}
 ```
 
@@ -39,6 +43,7 @@ First delivered story:
 ```text
 select package -> create checklist -> mark item CSVUTIL-ready with evidence ->
 generate checklist readiness -> build CSVUTIL CTL/CL artifacts from checklist ->
+run ZIP analysis -> generate review queue -> decide review item when present ->
 inspect handoff eligibility -> leave route -> return with backend-owned package
 state visible
 ```
@@ -49,10 +54,10 @@ The screen uses shared components:
 - MetricGrid for registered package, source, catalog macro, and visible row counters;
 - ModuleObjectList for selectable Load Plan packages in the package stage;
 - SelectedObjectPanel for selected package metadata;
-- DetailList for the selected package load sequence, readiness counts, and
-  CSVUTIL artifact ids, and handoff facts;
+- DetailList for the selected package load sequence, readiness counts,
+  CSVUTIL artifact ids, ZIP findings, and handoff facts;
 - OperationalPanel, FeedbackMessage, Button, and BlockerPanel for checklist,
-  readiness, CSVUTIL, and handoff stages.
+  readiness, CSVUTIL, ZIP review, and handoff stages.
 ```
 
 The first selected package defaults to the first backend item. Selecting
@@ -66,6 +71,8 @@ another package updates the detail query through backend-owned ids.
 - No frontend-only CSVUTIL, cutover readiness, or handoff actions.
 - CSVUTIL uses the backend build-from-checklist endpoint and backend-owned
   artifact/evidence/manifest ids.
+- ZIP review uses backend-owned analysis, review queue, decision, evidence, and
+  Data Dictionary findings.
 - No local artifact path rendering.
 - Package status, catalog macro, evidence references, artifact references, and load sequence come from backend contracts.
 ```
@@ -73,8 +80,6 @@ another package updates the detail query through backend-owned ids.
 Out of current scope:
 
 ```text
-- ZIP analysis UI;
-- full review queue decision UI;
 - package registration from Rates/Master Data inside the Load Plan route;
 - go/no-go commit;
 - handoff commit;

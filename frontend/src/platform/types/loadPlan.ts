@@ -153,6 +153,96 @@ export type CsvutilBuild = {
   built_at: string | null;
 };
 
+export type LoadPlanZipFinding = {
+  severity: string;
+  code: string;
+  message: string;
+  table_name?: string | null;
+  file_name?: string | null;
+  details?: Record<string, unknown>;
+};
+
+export type LoadPlanZipAnalysis = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  status: string;
+  source_artifact_id: string | null;
+  source_manifest_id: string | null;
+  manifest_id: string | null;
+  evidence_id: string | null;
+  summary: {
+    package_type?: string;
+    file_count?: number;
+    csv_file_count?: number;
+    table_count?: number;
+    row_count?: number;
+    finding_count?: number;
+    error_count?: number;
+    warning_count?: number;
+    catalog_macro_object_code?: string;
+    catalog_load_plan_path?: string;
+  };
+  findings: LoadPlanZipFinding[];
+  created_by: string | null;
+  analyzed_at: string | null;
+};
+
+export type LoadPlanReviewItem = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  zip_analysis_id: string;
+  source_type: string;
+  source_code: string;
+  severity: string;
+  status: string;
+  category: string;
+  table_name: string | null;
+  file_name: string | null;
+  title: string;
+  description: string;
+  details: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string | null;
+  latest_decision_id?: string | null;
+  latest_decision_status?: string | null;
+  latest_decided_at?: string | null;
+};
+
+export type LoadPlanReviewQueueResponse = PageResponse<LoadPlanReviewItem>;
+
+export type LoadPlanReviewQueueGeneration = {
+  analysis_id: string;
+  package_id: string;
+  created_count: number;
+  existing_count: number;
+  catalog_macro_object_code?: string;
+  catalog_load_plan_path?: string;
+  items: LoadPlanReviewItem[];
+};
+
+export type LoadPlanReviewDecision = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  review_item_id: string;
+  decision_status: string;
+  decision_note: string;
+  evidence_id: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  catalog_macro_object_code?: string;
+  catalog_load_plan_path?: string;
+  review_item: LoadPlanReviewItem;
+};
+
 export type CutoverHandoffEligibility = {
   package_id: string;
   eligible: boolean;

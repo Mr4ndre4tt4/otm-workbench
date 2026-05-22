@@ -6,9 +6,13 @@ import type {
   CutoverChecklist,
   CutoverChecklistReadiness,
   CutoverHandoffEligibility,
+  LoadPlanReviewDecision,
+  LoadPlanReviewQueueGeneration,
+  LoadPlanReviewQueueResponse,
   LoadPlanPackage,
   LoadPlanPackagesResponse,
-  LoadPlanSummary
+  LoadPlanSummary,
+  LoadPlanZipAnalysis
 } from "../types";
 
 export function useLoadPlanSummary(token: string | null) {
@@ -68,6 +72,35 @@ export function buildCsvutilFromCutoverChecklist(token: string, checklistId: str
     },
     { token }
   );
+}
+
+export function runLoadPlanZipAnalysis(token: string, packageId: string) {
+  return apiPost<LoadPlanZipAnalysis>("/api/v1/modules/load-plan/zip-analysis", { package_id: packageId }, { token });
+}
+
+export function generateReviewQueueFromZipAnalysis(token: string, analysisId: string) {
+  return apiPost<LoadPlanReviewQueueGeneration>(
+    `/api/v1/modules/load-plan/review-queue/from-zip-analysis/${analysisId}`,
+    {},
+    { token }
+  );
+}
+
+export function decideLoadPlanReviewItem(
+  token: string,
+  itemId: string,
+  payload: { decision_note: string; decision_status: string }
+) {
+  return apiPost<LoadPlanReviewDecision>(`/api/v1/modules/load-plan/review-queue/${itemId}/decide`, payload, { token });
+}
+
+export function useLoadPlanReviewQueue(token: string | null, packageId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "load-plan", "review-queue", packageId],
+    queryFn: () =>
+      apiGet<LoadPlanReviewQueueResponse>(`/api/v1/modules/load-plan/review-queue?package_id=${packageId}`, { token }),
+    enabled: Boolean(token && packageId)
+  });
 }
 
 export function useCutoverHandoffEligibility(token: string | null, packageId: string | null) {

@@ -168,6 +168,70 @@ function csvutilBuild() {
   };
 }
 
+function zipAnalysis() {
+  return {
+    analyzed_at: "2026-05-22T00:10:00",
+    created_by: "admin@example.test",
+    environment_id: null,
+    evidence_id: "evidence_zip_analysis",
+    findings: [
+      {
+        code: "CSV_UNKNOWN_COLUMN",
+        details: { column_name: "SYNTHETIC_UNKNOWN_COLUMN" },
+        file_name: "csv/001_RATE_GEO_COST.csv",
+        message: "A CSV column was not found in the local OTM Data Dictionary.",
+        severity: "ERROR",
+        table_name: "RATE_GEO_COST"
+      }
+    ],
+    id: "zip_analysis_1",
+    manifest_id: "manifest_zip_analysis",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    source_artifact_id: "artifact_export",
+    source_manifest_id: "manifest_1",
+    status: "ANALYZED",
+    summary: {
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+      catalog_macro_object_code: "RATE_RECORD",
+      csv_file_count: 1,
+      error_count: 1,
+      finding_count: 1,
+      package_type: "rates_csv_zip",
+      row_count: 3,
+      table_count: 2,
+      warning_count: 0
+    }
+  };
+}
+
+function reviewItem(status = "PENDING_REVIEW", latestDecisionStatus: string | null = null) {
+  return {
+    category: "DATA_DICTIONARY",
+    created_at: "2026-05-22T00:11:00",
+    created_by: "admin@example.test",
+    description: "A CSV column was not found in the local OTM Data Dictionary and needs review before load planning continues.",
+    details: { column_name: "SYNTHETIC_UNKNOWN_COLUMN" },
+    environment_id: null,
+    file_name: "csv/001_RATE_GEO_COST.csv",
+    id: "review_item_1",
+    latest_decided_at: latestDecisionStatus ? "2026-05-22T00:12:00" : null,
+    latest_decision_id: latestDecisionStatus ? "review_decision_1" : null,
+    latest_decision_status: latestDecisionStatus,
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    severity: "ERROR",
+    source_code: "CSV_UNKNOWN_COLUMN",
+    source_type: "zip_analysis_finding",
+    status,
+    table_name: "RATE_GEO_COST",
+    title: "Unknown OTM Data Dictionary column",
+    zip_analysis_id: "zip_analysis_1"
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -178,10 +242,15 @@ describe("Functional Load Plan journey", () => {
     let checklistCreated = false;
     let itemDone = false;
     let readinessGenerated = false;
+    let reviewQueueGenerated = false;
+    let reviewItemConfirmed = false;
     const checklistRequests: unknown[] = [];
     const csvutilRequests: unknown[] = [];
     const itemRequests: unknown[] = [];
     const readinessRequests: unknown[] = [];
+    const reviewDecisionRequests: unknown[] = [];
+    const reviewQueueRequests: unknown[] = [];
+    const zipAnalysisRequests: unknown[] = [];
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -284,6 +353,59 @@ describe("Functional Load Plan journey", () => {
         csvutilRequests.push({ body: JSON.parse(String(init?.body)), method: init?.method });
         return Promise.resolve(jsonResponse(csvutilBuild()));
       }
+      if (url.endsWith("/api/v1/modules/load-plan/zip-analysis")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        zipAnalysisRequests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(jsonResponse(zipAnalysis()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/review-queue?package_id=package_1")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: reviewQueueGenerated ? [reviewItem(reviewItemConfirmed ? "CONFIRMED" : "PENDING_REVIEW", reviewItemConfirmed ? "CONFIRMED" : null)] : [],
+            total: reviewQueueGenerated ? 1 : 0
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/review-queue/from-zip-analysis/zip_analysis_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        reviewQueueRequests.push({ method: init?.method });
+        reviewQueueGenerated = true;
+        return Promise.resolve(
+          jsonResponse({
+            analysis_id: "zip_analysis_1",
+            catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+            catalog_macro_object_code: "RATE_RECORD",
+            created_count: 1,
+            existing_count: 0,
+            items: [reviewItem()],
+            package_id: "package_1"
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/review-queue/review_item_1/decide")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        reviewDecisionRequests.push(body);
+        reviewItemConfirmed = true;
+        return Promise.resolve(
+          jsonResponse({
+            catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+            catalog_macro_object_code: "RATE_RECORD",
+            decided_at: "2026-05-22T00:12:00",
+            decided_by: "admin@example.test",
+            decision_note: "Synthetic UI review.",
+            decision_status: "CONFIRMED",
+            environment_id: null,
+            evidence_id: "evidence_review_decision",
+            id: "review_decision_1",
+            package_id: "package_1",
+            profile_id: null,
+            project_id: null,
+            review_item: reviewItem("CONFIRMED", "CONFIRMED"),
+            review_item_id: "review_item_1"
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
           jsonResponse({
@@ -343,7 +465,20 @@ describe("Functional Load Plan journey", () => {
     expect(csvutilPanel).toHaveTextContent("manifest_csvutil");
     expect(csvutilPanel).toHaveTextContent("evidence_csvutil");
 
-    await userEvent.click(screen.getByRole("button", { name: /5Handoff/ }));
+    await userEvent.click(screen.getByRole("button", { name: /5ZIP review/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Run ZIP analysis" }));
+    await screen.findByText("ZIP analysis zip_analysis_1 is ANALYZED.");
+    expect(screen.getByLabelText("ZIP analysis findings")).toHaveTextContent("CSV_UNKNOWN_COLUMN");
+    await userEvent.click(screen.getByRole("button", { name: "Generate review queue" }));
+    await screen.findByText("Review queue generated with 1 new item(s).");
+    const reviewPanel = await screen.findByLabelText("Load Plan review queue");
+    expect(reviewPanel).toHaveTextContent("Unknown OTM Data Dictionary column");
+    expect(reviewPanel).toHaveTextContent("PENDING_REVIEW");
+    await userEvent.click(within(reviewPanel).getByRole("button", { name: "Confirm finding" }));
+    await screen.findByText("Review item review_item_1 decided as CONFIRMED.");
+    expect(reviewPanel).toHaveTextContent("CONFIRMED");
+
+    await userEvent.click(screen.getByRole("button", { name: /6Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
     expect(await screen.findByText("READINESS_EXPORT_MISSING")).toBeInTheDocument();
 
@@ -363,6 +498,9 @@ describe("Functional Load Plan journey", () => {
     ]);
     expect(itemRequests).toEqual([{ evidence_id: "SYN_EVIDENCE_001", method: "CSVUTIL", status: "DONE" }]);
     expect(readinessRequests).toEqual([{ method: "POST" }]);
+    expect(zipAnalysisRequests).toEqual([{ package_id: "package_1" }]);
+    expect(reviewQueueRequests).toEqual([{ method: "POST" }]);
+    expect(reviewDecisionRequests).toEqual([{ decision_note: "Synthetic UI review.", decision_status: "CONFIRMED" }]);
     expect(itemDone).toBe(true);
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));

@@ -4,14 +4,25 @@ import { useState } from 'react';
 import {
   buildCsvutilFromCutoverChecklist,
   createCutoverChecklistFromPackage,
+  decideLoadPlanReviewItem,
   generateCutoverChecklistReadiness,
+  generateReviewQueueFromZipAnalysis,
+  runLoadPlanZipAnalysis,
   updateCutoverChecklistItem,
   useCutoverHandoffEligibility,
   useLoadPlanPackageDetail,
   useLoadPlanPackages,
+  useLoadPlanReviewQueue,
   useLoadPlanSummary
 } from '../../platform/hooks';
-import type { CsvutilBuild, CutoverChecklist, CutoverChecklistReadiness, LoadPlanPackage } from '../../platform/types';
+import type {
+  CsvutilBuild,
+  CutoverChecklist,
+  CutoverChecklistReadiness,
+  LoadPlanPackage,
+  LoadPlanReviewItem,
+  LoadPlanZipAnalysis
+} from '../../platform/types';
 import { PageHeader } from '../../app/shell';
 import {
   BlockerPanel,
@@ -39,7 +50,8 @@ const loadPlanWorkflowStages = [
   { id: "checklist", title: "Checklist", status: "2" },
   { id: "readiness", title: "Readiness", status: "3" },
   { id: "csvutil", title: "CSVUTIL", status: "4" },
-  { id: "handoff", title: "Handoff", status: "5" }
+  { id: "zip-review", title: "ZIP review", status: "5" },
+  { id: "handoff", title: "Handoff", status: "6" }
 ] as const;
 
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
@@ -53,6 +65,8 @@ export function LoadPlanView({ token }: { token: string }) {
   const [checklist, setChecklist] = useState<CutoverChecklist | null>(null);
   const [readiness, setReadiness] = useState<CutoverChecklistReadiness | null>(null);
   const [csvutilBuild, setCsvutilBuild] = useState<CsvutilBuild | null>(null);
+  const [zipAnalysis, setZipAnalysis] = useState<LoadPlanZipAnalysis | null>(null);
+  const [reviewItems, setReviewItems] = useState<LoadPlanReviewItem[]>([]);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -61,6 +75,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const effectivePackageId = selectedPackageId ?? packageItems[0]?.id ?? null;
   const packageDetail = useLoadPlanPackageDetail(token, effectivePackageId);
   const handoffEligibility = useCutoverHandoffEligibility(token, effectivePackageId);
+  const reviewQueue = useLoadPlanReviewQueue(token, effectivePackageId);
   const selectedPackage = packageDetail.data;
   const sourceModuleCount = Object.keys(summary.data?.by_source_module ?? {}).length;
   const catalogMacroCount = Object.keys(summary.data?.by_catalog_macro_object ?? {}).length;
@@ -69,6 +84,7 @@ export function LoadPlanView({ token }: { token: string }) {
     selectedPackage?.summary.row_count ??
     selectedPackage?.load_sequence.reduce((total, sequenceItem) => total + sequenceItem.row_count, 0) ??
     0;
+  const effectiveReviewItems = reviewItems.length ? reviewItems : reviewQueue.data?.items ?? [];
 
   const handleCreateChecklist = async () => {
     if (!effectivePackageId) return;
@@ -138,6 +154,61 @@ export function LoadPlanView({ token }: { token: string }) {
       setActiveStage("csvutil");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not build CSVUTIL artifacts.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleRunZipAnalysis = async () => {
+    if (!effectivePackageId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await runLoadPlanZipAnalysis(token, effectivePackageId);
+      setZipAnalysis(result);
+      setOperationMessage(`ZIP analysis ${result.id} is ${result.status}.`);
+      setActiveStage("zip-review");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not run ZIP analysis.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleGenerateReviewQueue = async () => {
+    if (!zipAnalysis) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await generateReviewQueueFromZipAnalysis(token, zipAnalysis.id);
+      setReviewItems(result.items);
+      await queryClient.invalidateQueries({ queryKey: ["modules", "load-plan", "review-queue", effectivePackageId] });
+      setOperationMessage(`Review queue generated with ${result.created_count} new item(s).`);
+      setActiveStage("zip-review");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not generate review queue.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleConfirmReviewItem = async (itemId: string) => {
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await decideLoadPlanReviewItem(token, itemId, {
+        decision_note: "Synthetic UI review.",
+        decision_status: "CONFIRMED"
+      });
+      setReviewItems((items) => items.map((item) => (item.id === result.review_item_id ? result.review_item : item)));
+      await queryClient.invalidateQueries({ queryKey: ["modules", "load-plan", "review-queue", effectivePackageId] });
+      setOperationMessage(`Review item ${result.review_item_id} decided as ${result.decision_status}.`);
+      setActiveStage("zip-review");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not decide review item.");
     } finally {
       setIsMutating(false);
     }
@@ -375,6 +446,77 @@ export function LoadPlanView({ token }: { token: string }) {
                 ]}
               />
             ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "zip-review" ? (
+          <OperationalPanel
+            ariaLabel="ZIP analysis and review queue"
+            emptyText="Run ZIP analysis on the selected package before generating review items."
+            hasItems
+            status={zipAnalysis?.status ?? "PENDING"}
+            title="ZIP review"
+          >
+            <div className="load-plan-action-bar">
+              <Button disabled={!effectivePackageId || isMutating} onClick={() => void handleRunZipAnalysis()} variant="primary">
+                Run ZIP analysis
+              </Button>
+              <Button disabled={!zipAnalysis || isMutating} onClick={() => void handleGenerateReviewQueue()} variant="secondary">
+                Generate review queue
+              </Button>
+            </div>
+            {zipAnalysis ? (
+              <DetailList
+                ariaLabel="ZIP analysis findings"
+                emptyText="ZIP analysis returned no findings."
+                items={
+                  zipAnalysis.findings.length
+                    ? zipAnalysis.findings.map((finding) => ({
+                        id: `${finding.code}-${finding.table_name ?? "package"}-${finding.file_name ?? "zip"}`,
+                        meta: [finding.table_name ?? "Package", finding.file_name ?? "No file", finding.message],
+                        status: finding.severity,
+                        title: finding.code
+                      }))
+                    : [
+                        {
+                          id: "zip-analysis-clean",
+                          meta: [
+                            `${zipAnalysis.summary.csv_file_count ?? 0} CSV file(s)`,
+                            `${zipAnalysis.summary.row_count ?? 0} row(s)`
+                          ],
+                          status: zipAnalysis.status,
+                          title: "No findings"
+                        }
+                      ]
+                }
+              />
+            ) : null}
+            <div className="table-list" aria-label="Load Plan review queue">
+              {effectiveReviewItems.length ? (
+                effectiveReviewItems.map((item) => (
+                  <div className="table-list-item" key={item.id}>
+                    <strong className="table-list-main">{item.title}</strong>
+                    <div className="table-list-meta">
+                      <span>{item.source_code}</span>
+                      <span>{item.table_name ?? "Package"}</span>
+                      <span>{item.file_name ?? "No file"}</span>
+                    </div>
+                    <div className="table-list-status">
+                      <span className="status-chip">{item.latest_decision_status ?? item.status}</span>
+                      {item.status === "PENDING_REVIEW" ? (
+                        <Button disabled={isMutating} onClick={() => void handleConfirmReviewItem(item.id)} variant="secondary">
+                          Confirm finding
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="empty-text">
+                  {reviewQueue.isLoading ? "Loading review queue..." : "No review items for the selected package."}
+                </p>
+              )}
+            </div>
           </OperationalPanel>
         ) : null}
 

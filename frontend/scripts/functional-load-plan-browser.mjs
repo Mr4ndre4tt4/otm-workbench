@@ -241,6 +241,14 @@ async function run() {
     await csvutilPanel.getByText("Manifest").waitFor();
     await csvutilPanel.getByText("Evidence").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "ZIP review" }).click();
+    await page.getByRole("button", { name: "Run ZIP analysis" }).click();
+    await page.getByText(/^ZIP analysis .* is ANALYZED\.$/).waitFor();
+    await page.getByLabel("ZIP analysis findings").waitFor();
+    await page.getByRole("button", { name: "Generate review queue" }).click();
+    await page.getByText(/^Review queue generated with [0-9]+ new item\(s\)\.$/).waitFor();
+    await page.getByLabel("Load Plan review queue").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Handoff" }).click();
     await page.getByLabel("Cutover handoff eligibility", { exact: true }).waitFor();
     await page.getByText(/READINESS_EXPORT_MISSING|CUTOVER_READINESS_MISSING/).first().waitFor();
@@ -267,7 +275,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "load-plan-cutover-checklist-readiness-csvutil-return",
+          journey: "load-plan-cutover-checklist-readiness-csvutil-zip-review-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
