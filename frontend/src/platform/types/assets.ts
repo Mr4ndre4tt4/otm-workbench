@@ -37,5 +37,37 @@ export type AssetVersion = {
   updated_at: string | null;
 };
 
+export type AssetLink = {
+  id: string;
+  asset_id: string;
+  link_type: string;
+  target_id: string;
+  target_label: string;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type AssetCreateRequest = {
+  name: string;
+  description: string;
+  asset_type: string;
+  category: string;
+  visibility: string;
+  scope_type: string;
+  sensitivity: string;
+  module_id?: string | null;
+  macro_object_code?: string | null;
+  otm_table_name?: string | null;
+  tags: string[];
+};
+
+export type AssetLinkCreateRequest = {
+  link_type: string;
+  target_id: string;
+  target_label: string;
+};
+
 export type AssetsResponse = PageResponse<AssetItem>;
 export type AssetVersionsResponse = PageResponse<AssetVersion>;
+export type AssetLinksResponse = PageResponse<AssetLink>;

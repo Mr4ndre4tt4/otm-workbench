@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice done | Backend flows mostly ready | Review queue + staged workflow | Continue with CSVUTIL, ZIP analysis, go/no-go, handoff commit, and artifact follow-ups. |
 | Master Data / Data Factory | First functional slice done | Backend flows ready for seeded templates/batches | Staged workflow + object detail | Not complete; OTM-115 owns template factory, OTM CSV parity, durable state, and negative/out-of-order QA. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Partial GUI | Backend asset/version/link APIs ready | Object list/detail | Needs create/upload/link/download story. |
+| Assets Library | Functional journey done | Backend asset/version/link APIs ready | Object list/detail + operational lifecycle | Custom metadata editing and advanced filters remain follow-ups. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 

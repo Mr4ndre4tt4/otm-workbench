@@ -1,0 +1,278 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { App } from "./App";
+import { AuthProvider } from "../platform/auth";
+
+function renderFunctionalApp(initialPath = "/assets") {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...headers }
+  });
+}
+
+function platformPreferences() {
+  return {
+    density: "comfortable",
+    follow_system_theme: false,
+    sidebar_mode: "expanded",
+    theme_mode: "light"
+  };
+}
+
+function cockpitSummary() {
+  return {
+    active_context: {},
+    available_actions: [],
+    counts: { recent_artifacts: 0, recent_evidence: 0, recent_jobs: 0 },
+    description: "Project-level operational overview.",
+    module_id: "home",
+    module_summary: { counts_by_status: { ACTIVE: 2 }, items: [], total: 2 },
+    recent_artifacts: [],
+    recent_evidence: [],
+    recent_jobs: [],
+    setup_status: {
+      active_context_selected: true,
+      environment_count: 1,
+      missing_requirements: [],
+      profile_count: 1,
+      status: "READY"
+    },
+    status: "ready",
+    title: "Project Cockpit"
+  };
+}
+
+function assetFixture(status = "DRAFT", currentVersionId: string | null = null) {
+  return {
+    asset_type: "SPEC",
+    category: "INTEGRATION",
+    created_at: "2026-05-22T00:00:00",
+    created_by: "admin@example.test",
+    current_version_id: currentVersionId,
+    description: "Client-safe synthetic support asset.",
+    environment_id: null,
+    id: "asset_qa_1",
+    macro_object_code: "ORDER_RELEASE",
+    module_id: "integration_mapping",
+    name: "Synthetic Mapping Spec",
+    otm_table_name: "ORDER_RELEASE",
+    profile_id: null,
+    project_id: null,
+    scope_type: "MODULE",
+    sensitivity: "INTERNAL",
+    status,
+    tags: ["SYNTHETIC", "MVP0"],
+    updated_at: null,
+    visibility: "PROJECT"
+  };
+}
+
+function versionFixture() {
+  return {
+    asset_id: "asset_qa_1",
+    content_type: "text/markdown",
+    created_at: "2026-05-22T00:00:00",
+    file_name: "synthetic_mapping_spec.md",
+    id: "asset_version_1",
+    sha256: "abc123",
+    size_bytes: 42,
+    status: "ACTIVE",
+    updated_at: null,
+    uploaded_by: "admin@example.test",
+    version_number: 1
+  };
+}
+
+function linkFixture() {
+  return {
+    asset_id: "asset_qa_1",
+    created_at: "2026-05-22T00:00:00",
+    created_by: "admin@example.test",
+    id: "asset_link_1",
+    link_type: "MODULE",
+    target_id: "integration_mapping",
+    target_label: "Integration Mapping Studio",
+    updated_at: null
+  };
+}
+
+describe("Functional Assets Library journey", () => {
+  afterEach(() => {
+    sessionStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
+    const createRequests: unknown[] = [];
+    const uploadRequests: unknown[] = [];
+    const linkRequests: unknown[] = [];
+    const downloadRequests: unknown[] = [];
+    const archiveRequests: unknown[] = [];
+    let createdAsset: ReturnType<typeof assetFixture> | null = null;
+    let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
+    let createdLink: ReturnType<typeof linkFixture> | null = null;
+
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        if (init?.method === "POST") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          const body = JSON.parse(String(init?.body));
+          createRequests.push(body);
+          createdAsset = assetFixture("DRAFT", null);
+          return Promise.resolve(jsonResponse(createdAsset));
+        }
+        return Promise.resolve(jsonResponse({ items: createdAsset ? [createdAsset] : [], total: createdAsset ? 1 : 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        return Promise.resolve(jsonResponse(createdAsset ?? assetFixture("DRAFT", null)));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        if (init?.method === "POST") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          expect(init?.body).toBeInstanceOf(FormData);
+          uploadRequests.push({ method: init?.method });
+          uploadedVersion = versionFixture();
+          createdAsset = assetFixture("DRAFT", uploadedVersion.id);
+          return Promise.resolve(jsonResponse(uploadedVersion));
+        }
+        return Promise.resolve(jsonResponse({ items: uploadedVersion ? [uploadedVersion] : [], total: uploadedVersion ? 1 : 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        if (init?.method === "POST") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          const body = JSON.parse(String(init?.body));
+          linkRequests.push(body);
+          createdLink = linkFixture();
+          return Promise.resolve(jsonResponse(createdLink));
+        }
+        return Promise.resolve(jsonResponse({ items: createdLink ? [createdLink] : [], total: createdLink ? 1 : 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/download")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        downloadRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          new Response(new Blob(["# synthetic mapping spec"], { type: "text/markdown" }), {
+            headers: { "Content-Disposition": "attachment; filename=\"synthetic_mapping_spec.md\"" },
+            status: 200
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/archive")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        archiveRequests.push({ method: init?.method });
+        createdAsset = assetFixture("ARCHIVED", uploadedVersion?.id ?? null);
+        return Promise.resolve(jsonResponse(createdAsset));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Assets Library" });
+    await userEvent.click(screen.getByRole("button", { name: "Create asset" }));
+    await screen.findByText("Asset Synthetic Mapping Spec created.");
+    expect(screen.getByLabelText("Assets")).toHaveTextContent("Synthetic Mapping Spec");
+
+    const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
+    await userEvent.upload(screen.getByLabelText("Asset version file"), versionFile);
+    await userEvent.click(screen.getByRole("button", { name: "Upload version" }));
+    await screen.findByText("Asset version synthetic_mapping_spec.md uploaded.");
+    expect(screen.getByLabelText("Selected asset versions")).toHaveTextContent("synthetic_mapping_spec.md");
+
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("Asset link integration_mapping created.");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Integration Mapping Studio");
+
+    await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
+    await screen.findByText("Download started: synthetic_mapping_spec.md.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Archive asset" }));
+    await screen.findByText("Asset Synthetic Mapping Spec archived.");
+    expect(screen.getByLabelText("Selected asset")).toHaveTextContent("ARCHIVED");
+
+    await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
+    await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));
+    await screen.findByRole("heading", { name: "Assets Library" });
+    expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Mapping Spec");
+
+    expect(createRequests).toEqual([
+      expect.objectContaining({
+        asset_type: "SPEC",
+        category: "INTEGRATION",
+        module_id: "integration_mapping",
+        name: "Synthetic Mapping Spec",
+        scope_type: "MODULE"
+      })
+    ]);
+    expect(uploadRequests).toEqual([{ method: "POST" }]);
+    expect(linkRequests).toEqual([
+      { link_type: "MODULE", target_id: "integration_mapping", target_label: "Integration Mapping Studio" }
+    ]);
+    expect(downloadRequests).toEqual([{ method: "GET" }]);
+    expect(archiveRequests).toEqual([{ method: "POST" }]);
+    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("MODULE").length).toBeGreaterThan(0);
+  }, 60000);
+});
