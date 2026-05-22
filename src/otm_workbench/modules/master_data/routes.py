@@ -1,13 +1,15 @@
 from pathlib import Path
+import json
 
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import MasterDataBatch, MasterDataTemplate, User
+from otm_workbench.models import Artifact, AuditLog, Evidence, MasterDataBatch, MasterDataCsvFile, MasterDataTemplate, User
 from otm_workbench.modules.master_data.coordinate_quality.routes import router as coordinate_quality_router
 from otm_workbench.modules.master_data.templates import (
     build_master_data_csv_files,
@@ -26,6 +28,7 @@ from otm_workbench.modules.master_data.templates import (
     validate_master_data_batch_relationships,
     validate_master_data_template,
 )
+from otm_workbench.platform.services import file_sha256
 
 router = APIRouter(prefix="/api/v1/modules/master-data", tags=["master-data"])
 router.include_router(coordinate_quality_router)
@@ -52,6 +55,85 @@ class MasterDataTemplateDraftRequest(BaseModel):
 
 class MasterDataTemplateVersionRequest(BaseModel):
     new_code: str | None = None
+
+
+def _json_loads(value: str, fallback):
+    try:
+        return json.loads(value or "")
+    except json.JSONDecodeError:
+        return fallback
+
+
+def serialize_master_data_batch(db: Session, batch: MasterDataBatch) -> dict[str, object]:
+    csv_file_count = (
+        db.query(MasterDataCsvFile)
+        .filter(MasterDataCsvFile.batch_id == batch.id)
+        .count()
+    )
+    return {
+        "batch_id": batch.id,
+        "template_code": batch.template_code,
+        "status": batch.status,
+        "file_name": batch.file_name,
+        "content_type": batch.content_type,
+        "sheet_count": len(_json_loads(batch.sheet_summaries_json, [])),
+        "row_count": batch.row_count,
+        "issue_count": batch.issue_count,
+        "sheet_summaries": _json_loads(batch.sheet_summaries_json, []),
+        "issues": _json_loads(batch.issues_json, []),
+        "csv_file_count": csv_file_count,
+        "created_at": batch.created_at.isoformat() if batch.created_at else None,
+        "updated_at": batch.updated_at.isoformat() if batch.updated_at else None,
+    }
+
+
+def _evidence_batch_id(evidence: Evidence) -> str | None:
+    summary = _json_loads(evidence.summary_json, {})
+    if isinstance(summary, dict):
+        return summary.get("source_entity_id")
+    return None
+
+
+def master_data_batch_artifacts(db: Session, batch_id: str) -> list[tuple[Artifact, Evidence]]:
+    rows = (
+        db.query(Artifact, Evidence)
+        .join(Evidence, Evidence.artifact_id == Artifact.id)
+        .filter(Artifact.source_module == "master_data")
+        .filter(Evidence.source_module == "master_data")
+        .filter(Evidence.client_safe.is_(True))
+        .order_by(Artifact.created_at.desc())
+        .all()
+    )
+    return [(artifact, evidence) for artifact, evidence in rows if _evidence_batch_id(evidence) == batch_id]
+
+
+def serialize_master_data_artifact(batch_id: str, artifact: Artifact, evidence: Evidence) -> dict[str, object]:
+    return {
+        "id": artifact.id,
+        "artifact_type": artifact.artifact_type,
+        "file_name": artifact.file_name,
+        "content_type": artifact.content_type,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "sensitivity_level": artifact.sensitivity_level,
+        "evidence_id": evidence.id,
+        "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
+        "download_url": f"/api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact.id}/download",
+    }
+
+
+def get_master_data_batch_or_404(db: Session, batch_id: str) -> MasterDataBatch:
+    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    return batch
+
+
+def get_batch_artifact_or_404(db: Session, batch_id: str, artifact_id: str) -> tuple[Artifact, Evidence]:
+    for artifact, evidence in master_data_batch_artifacts(db, batch_id):
+        if artifact.id == artifact_id:
+            return artifact, evidence
+    raise api_error(404, "MASTER_DATA_ARTIFACT_NOT_FOUND", "Master Data artifact not found for this batch.")
 
 
 @router.get("/health")
@@ -190,6 +272,82 @@ def get_master_data_template(
     if template is None:
         raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
     return serialize_master_data_template(template)
+
+
+@router.get("/batches")
+def list_master_data_batches(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batches = db.query(MasterDataBatch).order_by(MasterDataBatch.created_at.desc()).all()
+    items = [serialize_master_data_batch(db, batch) for batch in batches]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}")
+def get_master_data_batch_detail(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = get_master_data_batch_or_404(db, batch_id)
+    return serialize_master_data_batch(db, batch)
+
+
+@router.get("/batches/{batch_id}/artifacts")
+def list_master_data_batch_artifacts(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    get_master_data_batch_or_404(db, batch_id)
+    artifacts = [
+        serialize_master_data_artifact(batch_id, artifact, evidence)
+        for artifact, evidence in master_data_batch_artifacts(db, batch_id)
+    ]
+    return PageResponse(items=artifacts, total=len(artifacts))
+
+
+@router.get("/batches/{batch_id}/artifacts/{artifact_id}/download")
+def download_master_data_batch_artifact(
+    batch_id: str,
+    artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    get_master_data_batch_or_404(db, batch_id)
+    artifact, evidence = get_batch_artifact_or_404(db, batch_id, artifact_id)
+    path = Path(artifact.file_path)
+    if not path.exists() or not path.is_file():
+        raise api_error(404, "MASTER_DATA_ARTIFACT_FILE_NOT_FOUND", "Master Data artifact file not found.")
+    actual_sha256, actual_size = file_sha256(str(path))
+    if actual_sha256 != artifact.sha256:
+        raise api_error(409, "MASTER_DATA_ARTIFACT_HASH_MISMATCH", "Master Data artifact hash mismatch.")
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="master_data.batch.artifact.download",
+            target_type="artifact",
+            target_id=artifact.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "batch_id": batch_id,
+                    "evidence_id": evidence.id,
+                    "sha256": artifact.sha256,
+                    "size_bytes": actual_size,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+    return FileResponse(
+        path,
+        media_type=artifact.content_type,
+        filename=artifact.file_name,
+        headers={"X-Artifact-SHA256": artifact.sha256},
+    )
 
 
 @router.post("/templates/{template_code}/validate")

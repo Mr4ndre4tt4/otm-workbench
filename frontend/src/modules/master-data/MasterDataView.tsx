@@ -5,6 +5,7 @@ import {
   buildMasterDataOutput,
   buildMasterDataWorkbook,
   createMasterDataTemplateDraft,
+  downloadBackendArtifact,
   createMasterDataTemplateVersion,
   exportMasterDataCsvPackage,
   mapMasterDataBatch,
@@ -14,6 +15,8 @@ import {
   useCatalogColumnsByTable,
   useCatalogMacroObjectTables,
   useCatalogMacroObjects,
+  useMasterDataBatchArtifacts,
+  useMasterDataBatches,
   useMasterDataTemplateDetail,
   useMasterDataTemplates,
   validateMasterDataTemplateDefinition,
@@ -22,6 +25,7 @@ import {
 } from '../../platform/hooks';
 import type {
   MasterDataActionResult,
+  MasterDataArtifact,
   MasterDataBatch,
   MasterDataRelationshipValidation,
   MasterDataTemplate,
@@ -29,8 +33,10 @@ import type {
   MasterDataTemplateValidation,
   MasterDataWorkbookArtifact
 } from '../../platform/types';
+import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
 import {
+  ArtifactList,
   BlockerPanel,
   Button,
   DetailList,
@@ -278,6 +284,7 @@ function locationDraftPayload(
 
 export function MasterDataView({ token }: { token: string }) {
   const templates = useMasterDataTemplates(token);
+  const batches = useMasterDataBatches(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
   const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
   const catalogAuthorTables = useCatalogMacroObjectTables(token, authorMacroObjectCode);
@@ -291,6 +298,7 @@ export function MasterDataView({ token }: { token: string }) {
   const [outputResult, setOutputResult] = useState<MasterDataActionResult | null>(null);
   const [csvResult, setCsvResult] = useState<MasterDataActionResult | null>(null);
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [authorTemplateCode, setAuthorTemplateCode] = useState("LOCATIONS_DYNAMIC_UI");
   const [authorTemplateName, setAuthorTemplateName] = useState("Locations Dynamic UI");
   const [authorTables, setAuthorTables] = useState<string[]>(["LOCATION"]);
@@ -318,6 +326,8 @@ export function MasterDataView({ token }: { token: string }) {
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
   const authorSelectedColumns = selectedAuthorColumns(authorTables, authorColumnsByTable);
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
+  const activeBatch = uploadedBatch ?? batches.data?.items[0] ?? null;
+  const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
   const authorDraftPreview = locationDraftPayload(
     authorTemplateCode.trim().toUpperCase() || "LOCATIONS_DYNAMIC_UI",
     authorTemplateName.trim() || "Locations Dynamic UI",
@@ -535,6 +545,7 @@ export function MasterDataView({ token }: { token: string }) {
         setOutputResult(null);
         setCsvResult(null);
         setExportResult(null);
+        await batches.refetch();
         return result;
       },
       (result) => `Workbook uploaded as batch ${result.batch_id}.`
@@ -542,10 +553,10 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleValidateRelationships = () => {
-    if (!uploadedBatch) return;
+    if (!activeBatch) return;
     void runAction(
       async () => {
-        const result = await validateMasterDataRelationships(token, uploadedBatch.batch_id);
+        const result = await validateMasterDataRelationships(token, activeBatch.batch_id);
         setRelationshipValidation(result);
         return result;
       },
@@ -554,10 +565,10 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleMapBatch = () => {
-    if (!uploadedBatch) return;
+    if (!activeBatch) return;
     void runAction(
       async () => {
-        const result = await mapMasterDataBatch(token, uploadedBatch.batch_id);
+        const result = await mapMasterDataBatch(token, activeBatch.batch_id);
         setMappingResult(result);
         return result;
       },
@@ -566,10 +577,10 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleBuildOutput = () => {
-    if (!uploadedBatch) return;
+    if (!activeBatch) return;
     void runAction(
       async () => {
-        const result = await buildMasterDataOutput(token, uploadedBatch.batch_id);
+        const result = await buildMasterDataOutput(token, activeBatch.batch_id);
         setOutputResult(result);
         return result;
       },
@@ -578,10 +589,10 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleBuildCsv = () => {
-    if (!uploadedBatch) return;
+    if (!activeBatch) return;
     void runAction(
       async () => {
-        const result = await buildMasterDataCsv(token, uploadedBatch.batch_id);
+        const result = await buildMasterDataCsv(token, activeBatch.batch_id);
         setCsvResult(result);
         return result;
       },
@@ -590,15 +601,40 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleExportCsvPackage = () => {
-    if (!uploadedBatch) return;
+    if (!activeBatch) return;
     void runAction(
       async () => {
-        const result = await exportMasterDataCsvPackage(token, uploadedBatch.batch_id);
+        const result = await exportMasterDataCsvPackage(token, activeBatch.batch_id);
         setExportResult(result);
+        await batches.refetch();
+        await batchArtifacts.refetch();
         return result;
       },
       (result) => `CSV package export is ${result.status}.`
     );
+  };
+
+  const handleDownloadArtifact = async (artifact: MasterDataArtifact) => {
+    if (!artifact.download_url) return;
+    setIsMutating(true);
+    setDownloadingArtifactId(artifact.id);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await downloadBackendArtifact(token, artifact.download_url);
+      const objectUrl = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = result.filename ?? artifact.file_name;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      setOperationMessage(`Download started: ${result.filename ?? artifact.file_name}.`);
+    } catch (error) {
+      setOperationError(error instanceof ApiError ? error.message : "Could not download Master Data artifact.");
+    } finally {
+      setDownloadingArtifactId(null);
+      setIsMutating(false);
+    }
   };
 
   if (templates.isLoading) {
@@ -640,8 +676,8 @@ export function MasterDataView({ token }: { token: string }) {
                     { label: "Version", value: selectedTemplate.version },
                     { label: "Target tables", value: selectedTemplate.target_tables.length },
                     { label: "Fields", value: fieldCount },
-                    { label: "Active batch", value: uploadedBatch?.batch_id ?? "None" },
-                    { label: "Batch status", value: uploadedBatch?.status ?? "No batch" }
+                    { label: "Active batch", value: activeBatch?.batch_id ?? "None" },
+                    { label: "Batch status", value: activeBatch?.status ?? "No batch" }
                   ]
                 : []
             }
@@ -1009,7 +1045,7 @@ export function MasterDataView({ token }: { token: string }) {
             ariaLabel="Workbook upload workflow"
             emptyText="Build or choose a workbook before uploading a batch."
             hasItems={Boolean(effectiveTemplateCode)}
-            status={uploadedBatch?.status ?? "PENDING"}
+            status={activeBatch?.status ?? "PENDING"}
             title="Upload"
           >
             <div className="master-data-action-bar">
@@ -1025,19 +1061,19 @@ export function MasterDataView({ token }: { token: string }) {
                 Upload workbook
               </Button>
             </div>
-            {uploadedBatch ? (
+            {activeBatch ? (
               <DetailList
                 ariaLabel="Active batch summary"
                 items={[
                   {
-                    id: uploadedBatch.batch_id,
+                    id: activeBatch.batch_id,
                     meta: [
-                      uploadedBatch.template_code,
-                      uploadedBatch.file_name ?? "Uploaded workbook",
-                      `${uploadedBatch.row_count ?? 0} row(s)`
+                      activeBatch.template_code,
+                      activeBatch.file_name ?? "Uploaded workbook",
+                      `${activeBatch.row_count ?? 0} row(s)`
                     ],
-                    status: uploadedBatch.status,
-                    title: uploadedBatch.batch_id
+                    status: activeBatch.status,
+                    title: activeBatch.batch_id
                   }
                 ]}
               />
@@ -1049,12 +1085,12 @@ export function MasterDataView({ token }: { token: string }) {
           <OperationalPanel
             ariaLabel="Relationship validation workflow"
             emptyText="Upload a batch before validating relationships."
-            hasItems={Boolean(uploadedBatch)}
+            hasItems={Boolean(activeBatch)}
             status={relationshipValidation?.valid ? "VALID" : relationshipValidation?.status ?? "PENDING"}
             title="Validate"
           >
             <div className="master-data-action-bar">
-              <Button disabled={!uploadedBatch || isMutating} onClick={handleValidateRelationships} variant="primary">
+              <Button disabled={!activeBatch || isMutating} onClick={handleValidateRelationships} variant="primary">
                 Validate relationships
               </Button>
             </div>
@@ -1089,12 +1125,12 @@ export function MasterDataView({ token }: { token: string }) {
           <OperationalPanel
             ariaLabel="Mapping workflow"
             emptyText="Upload a batch before mapping records."
-            hasItems={Boolean(uploadedBatch)}
+            hasItems={Boolean(activeBatch)}
             status={mappingResult?.status ?? "PENDING"}
             title="Map"
           >
             <div className="master-data-action-bar">
-              <Button disabled={!uploadedBatch || isMutating} onClick={handleMapBatch} variant="primary">
+              <Button disabled={!activeBatch || isMutating} onClick={handleMapBatch} variant="primary">
                 Map records
               </Button>
             </div>
@@ -1118,18 +1154,18 @@ export function MasterDataView({ token }: { token: string }) {
           <OperationalPanel
             ariaLabel="Output and export workflow"
             emptyText="Upload a batch before generating output artifacts."
-            hasItems={Boolean(uploadedBatch)}
+            hasItems={Boolean(activeBatch)}
             status={exportResult?.status ?? csvResult?.status ?? outputResult?.status ?? "PENDING"}
             title="Output"
           >
             <div className="master-data-action-bar master-data-output-actions">
-              <Button disabled={!uploadedBatch || isMutating} onClick={handleBuildOutput} variant="primary">
+              <Button disabled={!activeBatch || isMutating} onClick={handleBuildOutput} variant="primary">
                 Build output
               </Button>
-              <Button disabled={!uploadedBatch || isMutating} onClick={handleBuildCsv} variant="secondary">
+              <Button disabled={!activeBatch || isMutating} onClick={handleBuildCsv} variant="secondary">
                 Build CSV
               </Button>
-              <Button disabled={!uploadedBatch || isMutating} onClick={handleExportCsvPackage} variant="secondary">
+              <Button disabled={!activeBatch || isMutating} onClick={handleExportCsvPackage} variant="secondary">
                 Export package
               </Button>
             </div>
@@ -1171,6 +1207,42 @@ export function MasterDataView({ token }: { token: string }) {
                 ]}
               />
             ) : null}
+            <DetailList
+              ariaLabel="Durable Master Data batches"
+              emptyText="No backend batches available yet."
+              items={(batches.data?.items ?? []).map((batch) => ({
+                id: batch.batch_id,
+                meta: [
+                  batch.template_code,
+                  batch.file_name ?? "Uploaded workbook",
+                  `${batch.row_count ?? 0} row(s)`,
+                  `${batch.csv_file_count ?? 0} CSV file(s)`
+                ],
+                status: batch.status,
+                title: batch.batch_id
+              }))}
+            />
+            <section aria-label="Master Data export artifacts" className="master-data-generated-artifacts">
+              <h3>Export artifacts</h3>
+              {batchArtifacts.isLoading && activeBatch ? <p className="empty-text">Loading export artifacts...</p> : null}
+              <ArtifactList
+                items={(batchArtifacts.data?.items ?? []).map((artifact) => ({
+                  action: artifact.download_url ? (
+                    <Button
+                      disabled={downloadingArtifactId === artifact.id}
+                      onClick={() => void handleDownloadArtifact(artifact)}
+                    >
+                      {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                    </Button>
+                  ) : undefined,
+                  id: artifact.id,
+                  meta: [artifact.content_type, `${artifact.size_bytes} bytes`, artifact.sha256],
+                  status: artifact.sensitivity_level,
+                  subtitle: artifact.artifact_type,
+                  title: artifact.file_name
+                }))}
+              />
+            </section>
           </OperationalPanel>
         ) : null}
       </ModuleWorkspaceLayout>

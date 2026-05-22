@@ -1401,3 +1401,138 @@ def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
     assert manifest_payload["source_entity_id"] == batch_id
     assert manifest_payload["files"][0]["file_name"] == "001_REGION.csv"
     assert json.loads(manifest.manifest_json)["manifest_type"] == "master_data_csv_export"
+
+
+def test_master_data_batch_detail_and_artifacts_are_client_safe_and_downloadable(
+    client,
+    admin_header,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+    export_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+    artifact_id = export_response.json()["artifact_id"]
+
+    list_response = client.get("/api/v1/modules/master-data/batches", headers=admin_header)
+    detail_response = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header)
+    artifacts_response = client.get(f"/api/v1/modules/master-data/batches/{batch_id}/artifacts", headers=admin_header)
+    download_response = client.get(
+        f"/api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download",
+        headers=admin_header,
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["batch_id"] == batch_id
+    assert "file_path" not in json.dumps(list_response.json())
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload["batch_id"] == batch_id
+    assert detail_payload["status"] == "EXPORTED"
+    assert detail_payload["sheet_summaries"][0]["sheet_code"] == "REGIONS"
+    assert detail_payload["csv_file_count"] == 2
+    assert "file_path" not in json.dumps(detail_payload)
+    assert artifacts_response.status_code == 200
+    artifact_payload = artifacts_response.json()["items"][0]
+    assert artifact_payload["id"] == artifact_id
+    assert artifact_payload["download_url"].endswith(
+        f"/api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download"
+    )
+    assert "file_path" not in json.dumps(artifacts_response.json())
+    assert download_response.status_code == 200
+    assert download_response.headers["content-type"] == "application/zip"
+    assert download_response.headers["x-artifact-sha256"] == export_response.json()["sha256"]
+    assert download_response.content.startswith(b"PK")
+
+
+def test_master_data_batch_artifact_download_rejects_cross_batch_artifact(
+    client,
+    admin_header,
+):
+    first_workbook = Workbook()
+    first_regions = first_workbook.active
+    first_regions.title = "REGIONS"
+    first_regions.append(["Region GID", "Region XID", "Region Name"])
+    first_regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    first_details = first_workbook.create_sheet("REGION_DETAILS")
+    first_details.append(["Region GID", "Location GID"])
+    first_details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    first_bytes = BytesIO()
+    first_workbook.save(first_bytes)
+    first_bytes.seek(0)
+    first_batch = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload_1.xlsx",
+                first_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    ).json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{first_batch}/validate-relationships", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{first_batch}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{first_batch}/build-output", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{first_batch}/build-csv", headers=admin_header)
+    export = client.post(
+        f"/api/v1/modules/master-data/batches/{first_batch}/export-csv-package",
+        headers=admin_header,
+    ).json()
+
+    second_workbook = Workbook()
+    second_regions = second_workbook.active
+    second_regions.title = "REGIONS"
+    second_regions.append(["Region GID", "Region XID", "Region Name"])
+    second_regions.append(["SYN.REGION_002", "REGION_002", "Synthetic Region 2"])
+    second_details = second_workbook.create_sheet("REGION_DETAILS")
+    second_details.append(["Region GID", "Location GID"])
+    second_details.append(["SYN.REGION_002", "SYN.LOCATION_002"])
+    second_bytes = BytesIO()
+    second_workbook.save(second_bytes)
+    second_bytes.seek(0)
+    second_batch = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload_2.xlsx",
+                second_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    ).json()["batch_id"]
+
+    response = client.get(
+        f"/api/v1/modules/master-data/batches/{second_batch}/artifacts/{export['artifact_id']}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "MASTER_DATA_ARTIFACT_NOT_FOUND"

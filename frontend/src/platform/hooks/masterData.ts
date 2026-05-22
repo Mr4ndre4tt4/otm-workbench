@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost, apiUpload } from "../api";
 import type {
   MasterDataActionResult,
+  MasterDataArtifactsResponse,
   MasterDataBatch,
+  MasterDataBatchesResponse,
   MasterDataRelationshipValidation,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
@@ -25,6 +27,22 @@ export function useMasterDataTemplateDetail(token: string | null, templateCode: 
     queryKey: ["modules", "master-data", "templates", templateCode],
     queryFn: () => apiGet<MasterDataTemplate>(`/api/v1/modules/master-data/templates/${templateCode}`, { token }),
     enabled: Boolean(token && templateCode)
+  });
+}
+
+export function useMasterDataBatches(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches"],
+    queryFn: () => apiGet<MasterDataBatchesResponse>("/api/v1/modules/master-data/batches", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useMasterDataBatchArtifacts(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches", batchId, "artifacts"],
+    queryFn: () => apiGet<MasterDataArtifactsResponse>(`/api/v1/modules/master-data/batches/${batchId}/artifacts`, { token }),
+    enabled: Boolean(token && batchId)
   });
 }
 

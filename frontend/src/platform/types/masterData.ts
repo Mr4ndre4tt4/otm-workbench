@@ -64,15 +64,40 @@ export type MasterDataBatch = {
   batch_id: string;
   template_code: string;
   status: string;
+  content_type?: string;
   file_name?: string;
+  issue_count?: number;
   sheet_count?: number;
   row_count?: number;
   sheets?: Array<{
     sheet_code: string;
     row_count: number;
   }>;
+  sheet_summaries?: Array<{
+    sheet_code: string;
+    target_table?: string;
+    row_count: number;
+  }>;
+  csv_file_count?: number;
   summary?: Record<string, unknown>;
 };
+
+export type MasterDataBatchesResponse = PageResponse<MasterDataBatch>;
+
+export type MasterDataArtifact = {
+  id: string;
+  artifact_type: string;
+  file_name: string;
+  content_type: string;
+  sha256: string;
+  size_bytes: number;
+  sensitivity_level: string;
+  evidence_id?: string;
+  created_at?: string | null;
+  download_url?: string;
+};
+
+export type MasterDataArtifactsResponse = PageResponse<MasterDataArtifact>;
 
 export type MasterDataRelationshipValidation = {
   batch_id: string;

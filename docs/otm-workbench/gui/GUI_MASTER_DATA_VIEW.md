@@ -1,7 +1,7 @@
 # GUI Master Data View
 
-**Status:** authoring multi-table slice delivered; completion hardening remains
-**Linear:** OTM-114, OTM-117
+**Status:** authoring and durable artifact slice delivered; completion QA hardening remains
+**Linear:** OTM-114, OTM-117, OTM-118
 **Scope:** `/master-data` Data Factory staged workflow.
 
 ## Objective
@@ -55,6 +55,10 @@ POST /api/v1/modules/master-data/batches/{batch_id}/map
 POST /api/v1/modules/master-data/batches/{batch_id}/build-output
 POST /api/v1/modules/master-data/batches/{batch_id}/build-csv
 POST /api/v1/modules/master-data/batches/{batch_id}/export-csv-package
+GET  /api/v1/modules/master-data/batches
+GET  /api/v1/modules/master-data/batches/{batch_id}
+GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
+GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 ```
 
 ## Out Of Scope
@@ -65,12 +69,12 @@ POST /api/v1/modules/master-data/batches/{batch_id}/export-csv-package
 - browser spreadsheet editor
 - Load Plan registration from Data Factory
 - direct OTM import
-- durable batch history across route reloads
+- advanced batch history filters/pagination
 ```
 
-Batch workflow state is visible during the route session. Route return-state
-currently proves backend-owned template state. Durable batch recovery should be
-backed by a future batch list/detail endpoint if needed.
+Batch workflow state is recoverable from backend batch list/detail endpoints.
+Generated CSV ZIP artifacts are listed by batch and downloaded through a
+batch-scoped guarded URL.
 
 The OTM-117 first slice adds a backend-backed authoring stage using a synthetic
 Location template preset. It proves draft creation, definition validation,
@@ -136,6 +140,13 @@ the Author stage. Macro-object selection now comes from
 loaded per selected table through `GET /api/v1/catalog/tables/{table}/columns`.
 The draft payload persists the selected `catalog_macro_object_code` and uses it
 as the Data Dictionary documentation scope.
+
+The first OTM-118 slice adds durable batch and artifact recovery. The backend
+now exposes client-safe batch list/detail payloads, batch-scoped artifact
+listing, and guarded artifact download with source-module, evidence ownership,
+hash, and audit checks. The frontend Output stage renders the backend batch
+list and export artifacts, then downloads through the module-scoped guarded URL
+instead of relying on session-only `artifact_id` state.
 
 ## Validation
 

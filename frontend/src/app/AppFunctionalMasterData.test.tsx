@@ -239,6 +239,9 @@ describe("Functional Master Data journey", () => {
     const outputRequests: unknown[] = [];
     const csvRequests: unknown[] = [];
     const exportRequests: unknown[] = [];
+    const batchListRequests: unknown[] = [];
+    const artifactListRequests: unknown[] = [];
+    const artifactDownloadRequests: string[] = [];
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -284,6 +287,31 @@ describe("Functional Master Data journey", () => {
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
         return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        batchListRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                batch_id: "batch_1",
+                csv_file_count: 2,
+                file_name: "regions_basic_upload.xlsx",
+                issue_count: 0,
+                row_count: 2,
+                sheet_count: 2,
+                sheet_summaries: [
+                  { row_count: 1, sheet_code: "REGIONS", target_table: "REGION" },
+                  { row_count: 1, sheet_code: "REGION_DETAILS", target_table: "REGION_DETAIL" }
+                ],
+                status: "EXPORTED",
+                template_code: "REGIONS_BASIC"
+              }
+            ],
+            total: 1
+          })
+        );
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC/validate")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -373,6 +401,38 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        artifactListRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                artifact_type: "master_data_csv_zip",
+                content_type: "application/zip",
+                download_url: "/api/v1/modules/master-data/batches/batch_1/artifacts/artifact_csv_package/download",
+                evidence_id: "evidence_csv_package",
+                file_name: "master_data_regions_basic.zip",
+                id: "artifact_csv_package",
+                sensitivity_level: "client_safe",
+                sha256: "abc123",
+                size_bytes: 128
+              }
+            ],
+            total: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts/artifact_csv_package/download")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        artifactDownloadRequests.push(url);
+        return Promise.resolve(
+          new Response(new Blob(["synthetic zip"], { type: "application/zip" }), {
+            headers: { "Content-Disposition": 'attachment; filename="master_data_regions_basic.zip"' },
+            status: 200
+          })
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -422,6 +482,10 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Export package" }));
     await screen.findByText("CSV package export is EXPORTED.");
     expect(screen.getByLabelText("Export package summary")).toHaveTextContent("artifact_csv_package");
+    expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
+    expect(screen.getByLabelText("Master Data export artifacts")).toHaveTextContent("master_data_regions_basic.zip");
+    await userEvent.click(within(screen.getByLabelText("Master Data export artifacts")).getByRole("button", { name: "Download" }));
+    await screen.findByText("Download started: master_data_regions_basic.zip.");
 
     expect(templateValidationRequests).toEqual([{ method: "POST" }]);
     expect(workbookRequests).toEqual([{ method: "POST" }]);
@@ -431,6 +495,11 @@ describe("Functional Master Data journey", () => {
     expect(outputRequests).toEqual([{ method: "POST" }]);
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
+    expect(batchListRequests.length).toBeGreaterThan(0);
+    expect(artifactListRequests.length).toBeGreaterThan(0);
+    expect(artifactDownloadRequests).toEqual([
+      "/api/v1/modules/master-data/batches/batch_1/artifacts/artifact_csv_package/download"
+    ]);
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Data Factory/ }));
