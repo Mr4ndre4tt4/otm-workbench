@@ -127,10 +127,14 @@ async function run() {
 
     await page.locator('a[href="/assets"]').click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
+    await page.getByLabel("Assets Library workflow").waitFor();
+
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
     await page.getByRole("button", { name: "Create asset" }).click();
     await page.getByText("Asset Synthetic Mapping Spec created.").waitFor();
-    await page.getByRole("button", { name: /Synthetic Mapping Spec/ }).first().waitFor();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Mapping Spec").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     await page.getByLabel("Asset version file").setInputFiles({
       name: "synthetic_mapping_spec.md",
       mimeType: "text/markdown",
@@ -140,21 +144,32 @@ async function run() {
     await page.getByText("Asset version synthetic_mapping_spec.md uploaded.").waitFor();
     await page.getByLabel("Selected asset versions").getByText("synthetic_mapping_spec.md").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText("Asset link integration_mapping created.").waitFor();
     await page.getByLabel("Selected asset links").getByText("Integration Mapping Studio").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Lifecycle" }).click();
     await page.getByRole("button", { name: "Download current version" }).click();
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
 
     await page.getByRole("button", { name: "Archive asset" }).click();
     await page.getByText("Asset Synthetic Mapping Spec archived.").waitFor();
-    await page.getByLabel("Selected asset").getByText("ARCHIVED").waitFor();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("ARCHIVED").waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
+    if (await page.getByRole("button", { name: "Upload version" }).isEnabled()) {
+      throw new Error("Upload version remains enabled after asset archive.");
+    }
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    if (await page.getByRole("button", { name: "Create link" }).isEnabled()) {
+      throw new Error("Create link remains enabled after asset archive.");
+    }
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/assets"]').click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
     await page.getByRole("button", { name: /Synthetic Mapping Spec/ }).first().waitFor();
 
     if (consoleErrors.length || failedResponses.length) {
@@ -173,7 +188,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-create-upload-link-download-archive-return",
+          journey: "assets-staged-create-upload-link-download-archive-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,

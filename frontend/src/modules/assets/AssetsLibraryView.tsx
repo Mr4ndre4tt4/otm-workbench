@@ -32,10 +32,21 @@ function assetMeta(asset: AssetItem) {
   return [asset.asset_type, asset.category, scope];
 }
 
+const assetWorkflowStages = [
+  { id: "library", title: "Library", status: "1" },
+  { id: "create", title: "Create", status: "2" },
+  { id: "version", title: "Version", status: "3" },
+  { id: "link", title: "Link", status: "4" },
+  { id: "lifecycle", title: "Lifecycle", status: "5" }
+] as const;
+
+type AssetWorkflowStage = (typeof assetWorkflowStages)[number]["id"];
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const assets = useAssets(token);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
@@ -49,6 +60,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const selectedAsset = operationAsset?.id === effectiveAssetId ? operationAsset : assetDetail.data;
   const versionedCount = assetItems.filter((asset) => asset.current_version_id).length;
   const internalCount = assetItems.filter((asset) => asset.sensitivity === "INTERNAL").length;
+  const isArchived = selectedAsset?.status === "ARCHIVED";
 
   const refreshAssetState = async (assetId: string) => {
     await Promise.all([
@@ -92,6 +104,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
         setSelectedAssetId(created.id);
         setOperationAsset(created);
         await refreshAssetState(created.id);
+        setActiveStage("version");
         return created;
       },
       (result) => `Asset ${result.name} created.`
@@ -106,7 +119,9 @@ export function AssetsLibraryView({ token }: { token: string }) {
         setOperationAsset((current) =>
           current?.id === effectiveAssetId ? { ...current, current_version_id: version.id } : current
         );
+        setSelectedVersionFile(null);
         await refreshAssetState(effectiveAssetId);
+        setActiveStage("link");
         return version;
       },
       (result) => `Asset version ${result.file_name} uploaded.`
@@ -123,6 +138,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
           target_label: "Integration Mapping Studio"
         });
         await refreshAssetState(effectiveAssetId);
+        setActiveStage("lifecycle");
         return link;
       },
       (result) => `Asset link ${result.target_id} created.`
@@ -143,6 +159,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
       async () => {
         const archived = await archiveAsset(token, effectiveAssetId);
         setOperationAsset(archived);
+        setSelectedVersionFile(null);
         await refreshAssetState(effectiveAssetId);
         return archived;
       },
@@ -199,14 +216,6 @@ export function AssetsLibraryView({ token }: { token: string }) {
             title={selectedAsset?.name}
           >
             {selectedAsset?.description ? <p className="empty-text">{selectedAsset.description}</p> : null}
-            <div className="master-data-action-bar">
-              <Button disabled={isMutating || !effectiveAssetId || !selectedAsset?.current_version_id} onClick={handleDownloadCurrentVersion} variant="secondary">
-                Download current version
-              </Button>
-              <Button disabled={isMutating || !effectiveAssetId || selectedAsset?.status === "ARCHIVED"} onClick={handleArchiveAsset} variant="secondary">
-                Archive asset
-              </Button>
-            </div>
             <DetailList
               ariaLabel="Selected asset versions"
               emptyText="No versions uploaded for this asset."
@@ -232,58 +241,142 @@ export function AssetsLibraryView({ token }: { token: string }) {
         status={assetItems.length ? "ACTIVE" : "EMPTY"}
         title="Assets"
       >
+        <div className="load-plan-workflow" aria-label="Assets Library workflow">
+          {assetWorkflowStages.map((stage) => (
+            <button
+              aria-pressed={activeStage === stage.id}
+              className={
+                activeStage === stage.id
+                  ? "load-plan-workflow-step load-plan-workflow-step-active"
+                  : "load-plan-workflow-step"
+              }
+              key={stage.id}
+              onClick={() => setActiveStage(stage.id)}
+              type="button"
+            >
+              <span>{stage.status}</span>
+              <strong>{stage.title}</strong>
+            </button>
+          ))}
+        </div>
+
         {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
         {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
 
-        <OperationalPanel
-          ariaLabel="Assets authoring workflow"
-          emptyText="Create an asset before uploading versions or links."
-          hasItems
-          status={selectedAsset?.status ?? "READY"}
-          title="Asset workflow"
-        >
-          <div className="master-data-action-bar">
-            <Button disabled={isMutating} onClick={handleCreateAsset} variant="primary">
-              Create asset
-            </Button>
-            <label>
-              Asset version file
-              <input
-                aria-label="Asset version file"
-                onChange={(event) => setSelectedVersionFile(event.target.files?.[0] ?? null)}
-                type="file"
-              />
-            </label>
-            <Button disabled={isMutating || !effectiveAssetId || !selectedVersionFile} onClick={handleUploadVersion} variant="secondary">
-              Upload version
-            </Button>
-            <Button disabled={isMutating || !effectiveAssetId} onClick={handleCreateLink} variant="secondary">
-              Create link
-            </Button>
-          </div>
-        </OperationalPanel>
-
-        <OperationalPanel
-          ariaLabel="Assets list workflow"
-          emptyText="No assets available for the current context."
-          hasItems={Boolean(assetItems.length)}
-          status={assetItems.length ? "ACTIVE" : "EMPTY"}
-          title="Assets"
-        >
-          <ModuleObjectList
-            ariaLabel="Assets"
+        {activeStage === "library" ? (
+          <OperationalPanel
+            ariaLabel="Assets list workflow"
             emptyText="No assets available for the current context."
-            items={assetItems.map((asset) => ({
-              id: asset.id,
-              meta: assetMeta(asset),
-              status: asset.status,
-              subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
-              title: asset.name
-            }))}
-            onSelect={setSelectedAssetId}
-            selectedId={effectiveAssetId}
-          />
-        </OperationalPanel>
+            hasItems={Boolean(assetItems.length)}
+            status={assetItems.length ? "ACTIVE" : "EMPTY"}
+            title="Library"
+          >
+            <ModuleObjectList
+              ariaLabel="Assets"
+              emptyText="No assets available for the current context."
+              items={assetItems.map((asset) => ({
+                id: asset.id,
+                meta: assetMeta(asset),
+                status: asset.status,
+                subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
+                title: asset.name
+              }))}
+              onSelect={(assetId) => {
+                setSelectedAssetId(assetId);
+                setOperationAsset(null);
+              }}
+              selectedId={effectiveAssetId}
+            />
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "create" ? (
+          <OperationalPanel
+            ariaLabel="Assets create workflow"
+            emptyText="Create a governed support asset before adding file versions or links."
+            hasItems
+            status="READY"
+            title="Create asset"
+          >
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating} onClick={handleCreateAsset} variant="primary">
+                Create asset
+              </Button>
+            </div>
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "version" ? (
+          <OperationalPanel
+            ariaLabel="Assets version workflow"
+            emptyText="Select an asset before uploading a version."
+            hasItems
+            status={isArchived ? "ARCHIVED" : selectedAsset?.current_version_id ? "VERSIONED" : "PENDING"}
+            title="Version"
+          >
+            <div className="master-data-action-bar">
+              <label>
+                Asset version file
+                <input
+                  aria-label="Asset version file"
+                  disabled={isArchived}
+                  onChange={(event) => setSelectedVersionFile(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+              </label>
+              <Button
+                disabled={isMutating || !effectiveAssetId || !selectedVersionFile || isArchived}
+                onClick={handleUploadVersion}
+                variant="primary"
+              >
+                Upload version
+              </Button>
+            </div>
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "link" ? (
+          <OperationalPanel
+            ariaLabel="Assets link workflow"
+            emptyText="Select an active asset before linking it to another workbench object."
+            hasItems
+            status={isArchived ? "ARCHIVED" : "READY"}
+            title="Link"
+          >
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !effectiveAssetId || isArchived} onClick={handleCreateLink} variant="primary">
+                Create link
+              </Button>
+            </div>
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "lifecycle" ? (
+          <OperationalPanel
+            ariaLabel="Assets lifecycle workflow"
+            emptyText="Select an asset before downloading or archiving it."
+            hasItems
+            status={selectedAsset?.status ?? "PENDING"}
+            title="Lifecycle"
+          >
+            <div className="master-data-action-bar">
+              <Button
+                disabled={isMutating || !effectiveAssetId || !selectedAsset?.current_version_id}
+                onClick={handleDownloadCurrentVersion}
+                variant="secondary"
+              >
+                Download current version
+              </Button>
+              <Button
+                disabled={isMutating || !effectiveAssetId || isArchived}
+                onClick={handleArchiveAsset}
+                variant="primary"
+              >
+                Archive asset
+              </Button>
+            </div>
+          </OperationalPanel>
+        ) : null}
       </ModuleWorkspaceLayout>
     </>
   );

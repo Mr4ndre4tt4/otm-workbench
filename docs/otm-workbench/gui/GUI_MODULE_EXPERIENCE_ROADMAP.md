@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Functional journey done | Backend asset/version/link APIs ready | Object list/detail + operational lifecycle | Custom metadata editing and advanced filters remain follow-ups. |
+| Assets Library | Functional journey done | Backend asset/version/link APIs ready | Object list/detail + staged lifecycle workflow | Custom metadata editing, advanced filters, and richer link authoring remain follow-ups. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
@@ -162,8 +162,8 @@ collaboration.
 ```text
 Primary object: asset
 Primary pattern: object list/detail
-First story: create asset -> upload version -> link to module object ->
-download current version -> archive asset.
+First story: library review -> create asset -> upload version -> link to module
+object -> download current version -> archive asset with lifecycle guards.
 ```
 
 Required GUI work:
@@ -172,6 +172,10 @@ Required GUI work:
 - Add create/upload/link/archive actions.
 - Use ArtifactList or version list for files.
 - Keep file eligibility, version state, and links backend-owned.
+- Keep the screen staged; do not return to stacked create/upload/link/list
+  panels.
+- Add richer metadata authoring, backend filter controls, and supported link
+  type selection before treating the module as complete.
 ```
 
 ## 5. Pattern Risks To Watch

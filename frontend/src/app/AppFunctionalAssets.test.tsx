@@ -232,26 +232,40 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Assets Library" });
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("1Library");
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("2Create");
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("3Version");
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("4Link");
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("5Lifecycle");
+
+    await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
     await userEvent.click(screen.getByRole("button", { name: "Create asset" }));
     await screen.findByText("Asset Synthetic Mapping Spec created.");
-    expect(screen.getByLabelText("Assets")).toHaveTextContent("Synthetic Mapping Spec");
+    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Mapping Spec");
 
+    await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
     await userEvent.upload(screen.getByLabelText("Asset version file"), versionFile);
     await userEvent.click(screen.getByRole("button", { name: "Upload version" }));
     await screen.findByText("Asset version synthetic_mapping_spec.md uploaded.");
     expect(screen.getByLabelText("Selected asset versions")).toHaveTextContent("synthetic_mapping_spec.md");
 
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
     await screen.findByText("Asset link integration_mapping created.");
     expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Integration Mapping Studio");
 
+    await userEvent.click(screen.getByRole("button", { name: /5Lifecycle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
     await screen.findByText("Download started: synthetic_mapping_spec.md.");
 
     await userEvent.click(screen.getByRole("button", { name: "Archive asset" }));
     await screen.findByText("Asset Synthetic Mapping Spec archived.");
-    expect(screen.getByLabelText("Selected asset")).toHaveTextContent("ARCHIVED");
+    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("ARCHIVED");
+    await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
+    expect(screen.getByRole("button", { name: "Upload version" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    expect(screen.getByRole("button", { name: "Create link" })).toBeDisabled();
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));

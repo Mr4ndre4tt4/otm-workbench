@@ -32,16 +32,19 @@ The screen uses shared components:
 - MetricGrid for asset counters;
 - ModuleObjectList for selectable assets;
 - SelectedObjectPanel for selected asset metadata;
-- OperationalPanel for create/upload/link actions;
+- A staged workflow for Library -> Create -> Version -> Link -> Lifecycle;
+- OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
 ```
 
 The first selected asset defaults to the first backend item. Selecting another
 asset updates detail, versions, and links through backend-owned ids. The current
-functional slice creates a client-safe synthetic support asset, uploads a file
-version, creates a module link, downloads the current version through the
-guarded backend download endpoint, and archives the asset.
+functional slice follows a staged story: review the Library, create a
+client-safe synthetic support asset, upload a file version, create a module
+link, download the current version through the guarded backend download
+endpoint, and archive the asset. Once the backend returns `ARCHIVED`, the UI
+keeps lifecycle actions disabled for new uploads and links.
 
 ## Safety
 
@@ -59,6 +62,8 @@ Still open:
 - richer custom metadata editing
 - advanced filters
 - arbitrary link authoring beyond the current module-link slice
+- deeper authoring for backend-owned classifications, tags, visibility, scope,
+  sensitivity, OTM table links, and macro-object links
 ```
 
 ## Validation
@@ -69,6 +74,7 @@ Commands executed:
 cd frontend
 npm run qa:functional:assets
 npm run qa:functional:assets:browser
+npm run test -- src/app/AppFunctionalAssets.test.tsx
 npm run lint
 npm run build
 python -m pytest tests/test_assets_library_foundation.py tests/test_assets_library_assets.py tests/test_assets_library_versions.py tests/test_assets_library_links.py tests/test_assets_library_permissions.py
