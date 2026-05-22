@@ -1536,3 +1536,68 @@ def test_master_data_batch_artifact_download_rejects_cross_batch_artifact(
 
     assert response.status_code == 404
     assert response.json()["code"] == "MASTER_DATA_ARTIFACT_NOT_FOUND"
+
+
+def test_master_data_batch_artifacts_marks_missing_file_unavailable(
+    client,
+    admin_header,
+    db_session,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_id = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_missing_artifact_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    ).json()["batch_id"]
+    missing_path = Path("var/artifacts/master_data/removed_export.zip")
+    artifact = Artifact(
+        source_module="master_data",
+        artifact_type="master_data_csv_zip",
+        file_path=str(missing_path),
+        file_name="removed_export.zip",
+        content_type="application/zip",
+        sha256="0" * 64,
+        size_bytes=123,
+        sensitivity_level="client_safe",
+    )
+    db_session.add(artifact)
+    db_session.flush()
+    db_session.add(
+        Evidence(
+            source_module="master_data",
+            evidence_type="master_data_csv_export",
+            status="CREATED",
+            summary_json=json.dumps({"source_entity_id": batch_id}),
+            artifact_id=artifact.id,
+            client_safe=True,
+            sensitivity_level="client_safe",
+        )
+    )
+    db_session.commit()
+
+    response = client.get(
+        f"/api/v1/modules/master-data/batches/{batch_id}/artifacts",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["id"] == artifact.id
+    assert item["availability_status"] == "FILE_MISSING"
+    assert item["download_url"] is None

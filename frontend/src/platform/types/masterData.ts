@@ -94,7 +94,8 @@ export type MasterDataArtifact = {
   sensitivity_level: string;
   evidence_id?: string;
   created_at?: string | null;
-  download_url?: string;
+  availability_status?: "AVAILABLE" | "FILE_MISSING";
+  download_url?: string | null;
 };
 
 export type MasterDataArtifactsResponse = PageResponse<MasterDataArtifact>;

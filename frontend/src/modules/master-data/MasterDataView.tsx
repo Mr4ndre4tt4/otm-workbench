@@ -1237,7 +1237,7 @@ export function MasterDataView({ token }: { token: string }) {
                   ) : undefined,
                   id: artifact.id,
                   meta: [artifact.content_type, `${artifact.size_bytes} bytes`, artifact.sha256],
-                  status: artifact.sensitivity_level,
+                  status: artifact.availability_status ?? artifact.sensitivity_level,
                   subtitle: artifact.artifact_type,
                   title: artifact.file_name
                 }))}

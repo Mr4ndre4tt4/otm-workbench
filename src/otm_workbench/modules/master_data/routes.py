@@ -108,6 +108,8 @@ def master_data_batch_artifacts(db: Session, batch_id: str) -> list[tuple[Artifa
 
 
 def serialize_master_data_artifact(batch_id: str, artifact: Artifact, evidence: Evidence) -> dict[str, object]:
+    path = Path(artifact.file_path)
+    is_available = path.exists() and path.is_file()
     return {
         "id": artifact.id,
         "artifact_type": artifact.artifact_type,
@@ -118,7 +120,12 @@ def serialize_master_data_artifact(batch_id: str, artifact: Artifact, evidence: 
         "sensitivity_level": artifact.sensitivity_level,
         "evidence_id": evidence.id,
         "created_at": artifact.created_at.isoformat() if artifact.created_at else None,
-        "download_url": f"/api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact.id}/download",
+        "availability_status": "AVAILABLE" if is_available else "FILE_MISSING",
+        "download_url": (
+            f"/api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact.id}/download"
+            if is_available
+            else None
+        ),
     }
 
 
