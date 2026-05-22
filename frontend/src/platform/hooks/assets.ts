@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiDownload, apiGet, apiPost, apiUpload, type DownloadResponse } from "../api";
+import { apiDownload, apiGet, apiPatch, apiPost, apiUpload, type DownloadResponse } from "../api";
 import type {
   AssetClassificationsResponse,
   AssetCreateRequest,
@@ -9,6 +9,7 @@ import type {
   AssetLink,
   AssetLinkCreateRequest,
   AssetLinksResponse,
+  AssetUpdateRequest,
   AssetsResponse,
   AssetVersion,
   AssetVersionsResponse
@@ -68,6 +69,10 @@ export function useAssetLinks(token: string | null, assetId: string | null) {
 
 export function createAsset(token: string | null, payload: AssetCreateRequest) {
   return apiPost<AssetItem>("/api/v1/modules/assets/assets", payload, { token });
+}
+
+export function updateAsset(token: string | null, assetId: string, payload: AssetUpdateRequest) {
+  return apiPatch<AssetItem>(`/api/v1/modules/assets/assets/${assetId}`, payload, { token });
 }
 
 export function uploadAssetVersion(token: string | null, assetId: string, file: File) {

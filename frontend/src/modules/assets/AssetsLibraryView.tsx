@@ -6,6 +6,7 @@ import {
   createAsset,
   createAssetLink,
   downloadCurrentAssetVersion,
+  updateAsset,
   uploadAssetVersion,
   useAssetClassifications,
   useAssetDetail,
@@ -78,6 +79,25 @@ function classificationItems(classifications: AssetClassification[] | undefined,
     system_protected: true,
     classification_type: "fallback"
   }));
+}
+
+function assetDraftPayload(assetDraft: typeof defaultAssetDraft) {
+  return {
+    name: assetDraft.name.trim(),
+    description: assetDraft.description.trim(),
+    asset_type: assetDraft.asset_type,
+    category: assetDraft.category,
+    visibility: assetDraft.visibility,
+    scope_type: assetDraft.scope_type,
+    sensitivity: assetDraft.sensitivity,
+    module_id: assetDraft.module_id.trim() || null,
+    macro_object_code: assetDraft.macro_object_code.trim() || null,
+    otm_table_name: assetDraft.otm_table_name.trim() || null,
+    tags: assetDraft.tags
+      .split(",")
+      .map((tag) => tag.trim().toUpperCase())
+      .filter(Boolean)
+  };
 }
 
 export function AssetsLibraryView({ token }: { token: string }) {
@@ -162,22 +182,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const handleCreateAsset = () => {
     void runAction(
       async () => {
-        const created = await createAsset(token, {
-          name: assetDraft.name.trim(),
-          description: assetDraft.description.trim(),
-          asset_type: assetDraft.asset_type,
-          category: assetDraft.category,
-          visibility: assetDraft.visibility,
-          scope_type: assetDraft.scope_type,
-          sensitivity: assetDraft.sensitivity,
-          module_id: assetDraft.module_id.trim() || null,
-          macro_object_code: assetDraft.macro_object_code.trim() || null,
-          otm_table_name: assetDraft.otm_table_name.trim() || null,
-          tags: assetDraft.tags
-            .split(",")
-            .map((tag) => tag.trim().toUpperCase())
-            .filter(Boolean)
-        });
+        const created = await createAsset(token, assetDraftPayload(assetDraft));
         setSelectedAssetId(created.id);
         setOperationAsset(created);
         await refreshAssetState(created.id);
@@ -185,6 +190,20 @@ export function AssetsLibraryView({ token }: { token: string }) {
         return created;
       },
       (result) => `Asset ${result.name} created.`
+    );
+  };
+
+  const handleUpdateAsset = () => {
+    if (!effectiveAssetId || isArchived) return;
+    void runAction(
+      async () => {
+        const updated = await updateAsset(token, effectiveAssetId, assetDraftPayload(assetDraft));
+        setSelectedAssetId(updated.id);
+        setOperationAsset(updated);
+        await refreshAssetState(updated.id);
+        return updated;
+      },
+      (result) => `Asset ${result.name} updated.`
     );
   };
 
@@ -562,6 +581,13 @@ export function AssetsLibraryView({ token }: { token: string }) {
               </label>
               <Button disabled={isMutating || !assetDraft.name.trim()} onClick={handleCreateAsset} variant="primary">
                 Create asset
+              </Button>
+              <Button
+                disabled={isMutating || !effectiveAssetId || isArchived || !assetDraft.name.trim()}
+                onClick={handleUpdateAsset}
+                variant="secondary"
+              >
+                Update asset
               </Button>
             </div>
           </OperationalPanel>

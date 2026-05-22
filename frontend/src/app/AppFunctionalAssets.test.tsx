@@ -202,6 +202,7 @@ describe("Functional Assets Library journey", () => {
 
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
     const createRequests: unknown[] = [];
+    const updateRequests: unknown[] = [];
     const uploadRequests: unknown[] = [];
     const linkRequests: unknown[] = [];
     const downloadRequests: unknown[] = [];
@@ -278,6 +279,13 @@ describe("Functional Assets Library journey", () => {
         return Promise.resolve(jsonResponse({ items: createdAsset ? [createdAsset] : [], total: createdAsset ? 1 : 0 }));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        if (init?.method === "PATCH") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          const body = JSON.parse(String(init?.body));
+          updateRequests.push(body);
+          createdAsset = { ...(createdAsset ?? assetFixture("DRAFT", null)), ...body };
+          return Promise.resolve(jsonResponse(createdAsset));
+        }
         return Promise.resolve(jsonResponse(createdAsset ?? assetFixture("DRAFT", null)));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
@@ -363,6 +371,17 @@ describe("Functional Assets Library journey", () => {
     await screen.findByText("Asset Synthetic Rate Table Notes created.");
     expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Rate Table Notes");
 
+    await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
+    await userEvent.clear(screen.getByLabelText("Asset name"));
+    await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Rate Table Notes Updated");
+    await userEvent.clear(screen.getByLabelText("Asset description"));
+    await userEvent.type(screen.getByLabelText("Asset description"), "Updated client-safe rate table support asset.");
+    await userEvent.clear(screen.getByLabelText("Asset tags"));
+    await userEvent.type(screen.getByLabelText("Asset tags"), "SYNTHETIC,RATE,UPDATED");
+    await userEvent.click(screen.getByRole("button", { name: "Update asset" }));
+    await screen.findByText("Asset Synthetic Rate Table Notes Updated updated.");
+    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Rate Table Notes Updated");
+
     await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
     await userEvent.upload(screen.getByLabelText("Asset version file"), versionFile);
@@ -385,7 +404,7 @@ describe("Functional Assets Library journey", () => {
     await screen.findByText("Download started: synthetic_mapping_spec.md.");
 
     await userEvent.click(screen.getByRole("button", { name: "Archive asset" }));
-    await screen.findByText("Asset Synthetic Rate Table Notes archived.");
+    await screen.findByText("Asset Synthetic Rate Table Notes Updated archived.");
     expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("ARCHIVED");
     await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     expect(screen.getByRole("button", { name: "Upload version" })).toBeDisabled();
@@ -395,7 +414,7 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));
     await screen.findByRole("heading", { name: "Assets Library" });
-    expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Rate Table Notes");
+    expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Rate Table Notes Updated");
 
     expect(createRequests).toEqual([
       {
@@ -413,6 +432,21 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
+    expect(updateRequests).toEqual([
+      {
+        asset_type: "SPEC",
+        category: "INTEGRATION",
+        description: "Updated client-safe rate table support asset.",
+        macro_object_code: "RATE_GEO",
+        module_id: "rates",
+        name: "Synthetic Rate Table Notes Updated",
+        otm_table_name: "RATE_GEO_COST",
+        scope_type: "MODULE",
+        sensitivity: "INTERNAL",
+        tags: ["SYNTHETIC", "RATE", "UPDATED"],
+        visibility: "PROJECT"
+      }
+    ]);
     expect(linkRequests).toEqual([
       { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "Rate Geo Cost table" }
     ]);

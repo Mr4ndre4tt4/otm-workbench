@@ -62,6 +62,8 @@ export type AssetCreateRequest = {
   tags: string[];
 };
 
+export type AssetUpdateRequest = Partial<AssetCreateRequest>;
+
 export type AssetLinkCreateRequest = {
   link_type: string;
   target_id: string;

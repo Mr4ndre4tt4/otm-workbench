@@ -17,6 +17,7 @@ GET /api/v1/modules/assets/assets
 GET /api/v1/modules/assets/classifications
 POST /api/v1/modules/assets/assets
 GET /api/v1/modules/assets/assets/{asset_id}
+PATCH /api/v1/modules/assets/assets/{asset_id}
 POST /api/v1/modules/assets/assets/{asset_id}/archive
 GET /api/v1/modules/assets/assets/{asset_id}/download
 GET /api/v1/modules/assets/assets/{asset_id}/versions
@@ -37,6 +38,8 @@ The screen uses shared components:
 - Backend-owned classification-driven filters and link type options;
 - Create-stage metadata authoring for asset name, description, type, category,
   visibility, scope, sensitivity, module id, macro object, OTM table, and tags;
+- Update action for the selected asset using the same backend-owned metadata
+  payload and `PATCH` contract;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -46,15 +49,15 @@ The first selected asset defaults to the first backend item. Selecting another
 asset updates detail, versions, and links through backend-owned ids. The current
 functional slice follows a staged story: review the Library with backend
 filters, create a client-safe synthetic support asset, upload a file version,
-create a selected link type such as `OTM_TABLE`, download the current version
-through the guarded backend download endpoint, and archive the asset. Once the
-backend returns `ARCHIVED`, the UI keeps lifecycle actions disabled for new
-uploads and links.
+edit its metadata, upload a file version, create a selected link type such as
+`OTM_TABLE`, download the current version through the guarded backend download
+endpoint, and archive the asset. Once the backend returns `ARCHIVED`, the UI
+keeps lifecycle actions disabled for new uploads and links.
 
 The create stage no longer creates a fixed hard-coded synthetic asset. It
-authors the backend create payload from visible UI controls, using backend-owned
-classification values where available and conservative fallback options where a
-classification group is not returned yet.
+authors create and update payloads from visible UI controls, using
+backend-owned classification values where available and conservative fallback
+options where a classification group is not returned yet.
 
 ## Safety
 
@@ -69,8 +72,7 @@ classification group is not returned yet.
 Still open:
 
 ```text
-- richer custom metadata editing
-- edit existing metadata after creation
+- richer custom metadata validation and dirty-state handling
 - additional filters beyond the first type/category/status/tag controls
 - richer link authoring UX and validation messaging for every supported link type
 - deeper authoring for backend-owned classifications and link target validation
