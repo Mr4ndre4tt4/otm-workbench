@@ -1404,15 +1404,43 @@ def export_master_data_csv_package(
     artifact_root: Path,
     generated_by: str,
 ) -> dict[str, object]:
-    if batch.status != "CSV_BUILT":
-        raise ValueError("Only CSV-built Master Data batches can be exported.")
-
     csv_files = (
         db.query(MasterDataCsvFile)
         .filter(MasterDataCsvFile.batch_id == batch.id)
         .order_by(MasterDataCsvFile.file_name)
         .all()
     )
+    if batch.status == "EXPORTED":
+        existing_evidence = (
+            db.query(Evidence)
+            .filter(Evidence.source_module == "master_data")
+            .filter(Evidence.evidence_type == "master_data_csv_export")
+            .filter(Evidence.client_safe.is_(True))
+            .order_by(Evidence.created_at.desc())
+            .all()
+        )
+        for evidence in existing_evidence:
+            summary = json.loads(evidence.summary_json or "{}")
+            if summary.get("source_entity_id") != batch.id:
+                continue
+            artifact = db.query(Artifact).filter(Artifact.id == evidence.artifact_id).first()
+            manifest = db.query(Manifest).filter(Manifest.id == evidence.manifest_id).first()
+            if artifact is None or manifest is None:
+                continue
+            return {
+                "batch_id": batch.id,
+                "status": batch.status,
+                "artifact_id": artifact.id,
+                "manifest_id": manifest.id,
+                "evidence_id": evidence.id,
+                "file_name": artifact.file_name,
+                "sha256": artifact.sha256,
+                "size_bytes": artifact.size_bytes,
+                "tables": [csv_file.table_name for csv_file in csv_files],
+            }
+    if batch.status != "CSV_BUILT":
+        raise ValueError("Only CSV-built Master Data batches can be exported.")
+
     if not csv_files:
         raise ValueError("Master Data batch has no CSV files to export.")
 

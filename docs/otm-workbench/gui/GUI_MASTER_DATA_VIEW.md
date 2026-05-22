@@ -160,6 +160,11 @@ double-click or retry after success. Repeating `build-csv` on a `CSV_BUILT`
 batch returns the persisted CSV files without duplicating records or moving the
 batch backward in the lifecycle.
 
+The third OTM-119 hardening slice applies the same retry contract to CSV
+package export. Repeating `export-csv-package` on an `EXPORTED` batch returns
+the existing client-safe artifact, manifest, and evidence IDs instead of
+creating duplicate packages or returning a lifecycle conflict.
+
 ## Validation
 
 ```text
@@ -175,6 +180,7 @@ Focused OTM-119 backend QA:
 ```text
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_artifacts_marks_missing_file_unavailable -q
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_build_csv_is_idempotent_for_double_click -q
+python -m pytest tests\test_master_data_templates.py::test_master_data_batch_export_csv_package_is_idempotent_for_retry -q
 ```
 
 For isolated local QA against a non-default backend port, the Vite development

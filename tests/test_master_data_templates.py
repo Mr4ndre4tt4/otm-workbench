@@ -1461,6 +1461,77 @@ def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
     assert json.loads(manifest.manifest_json)["manifest_type"] == "master_data_csv_export"
 
 
+def test_master_data_batch_export_csv_package_is_idempotent_for_retry(
+    client,
+    admin_header,
+    db_session,
+):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_export_retry_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+    first_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+
+    second_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    first_payload = first_response.json()
+    second_payload = second_response.json()
+    assert second_payload["status"] == "EXPORTED"
+    assert second_payload["artifact_id"] == first_payload["artifact_id"]
+    assert second_payload["manifest_id"] == first_payload["manifest_id"]
+    assert second_payload["evidence_id"] == first_payload["evidence_id"]
+    assert second_payload["tables"] == ["REGION", "REGION_DETAIL"]
+    assert (
+        db_session.query(Artifact)
+        .filter(Artifact.source_module == "master_data")
+        .filter(Artifact.artifact_type == "master_data_csv_zip")
+        .count()
+        == 1
+    )
+    assert (
+        db_session.query(Evidence)
+        .filter(Evidence.source_module == "master_data")
+        .filter(Evidence.evidence_type == "master_data_csv_export")
+        .count()
+        == 1
+    )
+    assert db_session.query(AuditLog).filter(AuditLog.action == "master_data.batch.export_csv").count() == 1
+
+
 def test_master_data_batch_detail_and_artifacts_are_client_safe_and_downloadable(
     client,
     admin_header,
