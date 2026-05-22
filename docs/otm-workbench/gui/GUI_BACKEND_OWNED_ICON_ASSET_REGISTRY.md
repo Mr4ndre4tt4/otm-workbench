@@ -98,6 +98,13 @@ Sidebar rendering consumes `icon_key` from the backend navigation payload. The
 current renderer still maps approved keys to Lucide fallback icons until an
 Iconly export/sanitization pipeline exists.
 
+The sidebar must not contain module-specific icon decisions. Approved fallback
+rendering belongs in the shared UI icon registry, currently:
+
+```text
+frontend/src/ui/icons.tsx
+```
+
 Recommended icon reference shape:
 
 ```json
@@ -196,7 +203,7 @@ Recommended next slice:
    done; action icon registry remains a follow-up.
 4. Add tests proving module labels/icons come from backend payloads. Done for
    navigation/sidebar.
-5. Add static guardrail blocking module-specific sidebar icon maps.
+5. Add static guardrail blocking module-specific sidebar icon maps. Done.
 6. Update Linear with any module that still has hardcoded display metadata.
 ```
 
