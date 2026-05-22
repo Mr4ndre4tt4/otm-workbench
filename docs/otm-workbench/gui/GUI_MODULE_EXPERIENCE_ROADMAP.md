@@ -44,7 +44,7 @@ For each module:
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
 | Load Plan / Cutover | First functional slice done | Backend flows mostly ready | Review queue + staged workflow | Continue with CSVUTIL, ZIP analysis, go/no-go, handoff commit, and artifact follow-ups. |
-| Master Data / Data Factory | First functional slice done | Backend flows ready for seeded templates/batches | Staged workflow + object detail | Not complete; OTM-115 owns template factory, OTM CSV parity, durable state, and negative/out-of-order QA. |
+| Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
 | Assets Library | Functional journey done | Backend asset/version/link APIs ready | Object list/detail + operational lifecycle | Custom metadata editing and advanced filters remain follow-ups. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
@@ -88,21 +88,27 @@ upload synthetic workbook -> validate relationships -> map -> build output ->
 build CSV/export package.
 ```
 
-Remaining GUI work:
+Delivered after OTM-119:
 
 ```text
-- Complete OTM-115 before calling the module complete.
-- Implement OTM-116 backend dynamic template factory first, using
-  docs/superpowers/specs/2026-05-22-master-data-dynamic-template-factory-design.md.
-- Add UI-driven template authoring from N OTM tables.
-- Add friendly labels, fixed/default values, and one-to-many field mappings.
-- Add guarded workbook and CSV/ZIP downloads.
-- Add Coordinate Quality placement and workflow.
-- Add backend batch list/detail if durable batch return-state is required.
-- Add guarded Load Plan registration from exported package.
-- Add spreadsheet preview/editor only if it has a backend-owned use case.
-- Add negative and out-of-order UI QA for human recovery paths.
+- UI-driven template authoring from Catalog/Data Dictionary-backed tables.
+- Friendly labels plus fixed/default values and one-to-many target mappings.
+- Template validation, workbook generation, workbook upload, relationship
+  validation, mapping, output, CSV build, and CSV/ZIP export.
+- Durable batch list/detail and batch-scoped artifact listing/download.
+- Negative/out-of-order QA for missing artifacts, repeated CSV/export clicks,
+  invalid upload recovery, and route leave/return recovery.
 - Keep OTM table/dependency validation backend-owned through Catalog Core.
+```
+
+Remaining GUI work before `Module complete`:
+
+```text
+- Add Coordinate Quality placement and workflow.
+- Add guarded Load Plan registration from exported package.
+- Add direct OTM import only after submit/credential guardrails are designed.
+- Add spreadsheet preview/editor only if it has a backend-owned use case.
+- Expand advanced batch history filters/pagination if operational volume needs it.
 ```
 
 ### 4.3 Evidence Hub

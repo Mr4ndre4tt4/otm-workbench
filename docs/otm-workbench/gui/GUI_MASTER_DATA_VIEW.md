@@ -1,6 +1,6 @@
 # GUI Master Data View
 
-**Status:** authoring and durable artifact slice delivered; completion QA hardening remains
+**Status:** MVP workflow done; module-complete follow-ups remain
 **Linear:** OTM-114, OTM-117, OTM-118
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
@@ -174,6 +174,11 @@ The fifth OTM-119 hardening slice expands browser QA route recovery. After
 exporting a package, the script leaves Data Factory, returns, opens the Output
 stage, and verifies durable backend-owned batch and artifact rows are still
 visible.
+
+OTM-119 closes the current Master Data MVP workflow hardening pass. The module
+is not marked `Module complete` because Coordinate Quality GUI, Load Plan
+registration, direct OTM import, and richer workbook/spreadsheet operations are
+tracked as follow-up scope.
 
 ## Validation
 
