@@ -135,9 +135,20 @@ async function run() {
     await page.getByRole("button", { name: "Apply asset filters" }).click();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
+    await page.getByLabel("Asset name").fill("Synthetic Rate Table Notes");
+    await page.getByLabel("Asset description").fill("Client-safe rate table support asset.");
+    await page.getByLabel("Asset type").selectOption("SPEC");
+    await page.getByLabel("Asset category").selectOption("INTEGRATION");
+    await page.getByLabel("Asset visibility").selectOption("PROJECT");
+    await page.getByLabel("Asset scope").selectOption("MODULE");
+    await page.getByLabel("Asset sensitivity").selectOption("INTERNAL");
+    await page.getByLabel("Asset module id").fill("rates");
+    await page.getByLabel("Asset macro object").fill("RATE_GEO");
+    await page.getByLabel("Asset OTM table").fill("RATE_GEO_COST");
+    await page.getByLabel("Asset tags").fill("SYNTHETIC,RATE");
     await page.getByRole("button", { name: "Create asset" }).click();
-    await page.getByText("Asset Synthetic Mapping Spec created.").waitFor();
-    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Mapping Spec").waitFor();
+    await page.getByText("Asset Synthetic Rate Table Notes created.").waitFor();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     await page.getByLabel("Asset version file").setInputFiles({
@@ -162,7 +173,7 @@ async function run() {
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
 
     await page.getByRole("button", { name: "Archive asset" }).click();
-    await page.getByText("Asset Synthetic Mapping Spec archived.").waitFor();
+    await page.getByText("Asset Synthetic Rate Table Notes archived.").waitFor();
     await page.getByLabel("Selected asset", { exact: true }).getByText("ARCHIVED").waitFor();
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     if (await page.getByRole("button", { name: "Upload version" }).isEnabled()) {
@@ -178,7 +189,7 @@ async function run() {
     await page.locator('a[href="/assets"]').click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
-    await page.getByRole("button", { name: /Synthetic Mapping Spec/ }).first().waitFor();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes/ }).first().waitFor();
 
     if (consoleErrors.length || failedResponses.length) {
       throw new Error(
@@ -196,7 +207,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-staged-create-upload-otm-table-link-download-archive-guards-return",
+          journey: "assets-filtered-metadata-create-upload-otm-table-link-download-archive-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,

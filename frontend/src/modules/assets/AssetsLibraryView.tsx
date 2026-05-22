@@ -50,6 +50,20 @@ const emptyAssetFilters: AssetFilters = {
   tag: ""
 };
 
+const defaultAssetDraft = {
+  asset_type: "SPEC",
+  category: "INTEGRATION",
+  description: "Client-safe synthetic support asset.",
+  macro_object_code: "ORDER_RELEASE",
+  module_id: "integration_mapping",
+  name: "Synthetic Mapping Spec",
+  otm_table_name: "ORDER_RELEASE",
+  scope_type: "MODULE",
+  sensitivity: "INTERNAL",
+  tags: "SYNTHETIC,MVP0",
+  visibility: "PROJECT"
+};
+
 function classificationItems(classifications: AssetClassification[] | undefined, fallback: string[]) {
   if (classifications?.length) {
     return classifications;
@@ -76,6 +90,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
+  const [assetDraft, setAssetDraft] = useState(defaultAssetDraft);
   const [linkType, setLinkType] = useState("MODULE");
   const [linkTargetId, setLinkTargetId] = useState("integration_mapping");
   const [linkTargetLabel, setLinkTargetLabel] = useState("Integration Mapping Studio");
@@ -108,6 +123,18 @@ export function AssetsLibraryView({ token }: { token: string }) {
     classificationGroups.find((group) => group.classification_type === "asset_link_type")?.items,
     ["MODULE", "MACRO_OBJECT", "OTM_TABLE", "ARTIFACT", "EVIDENCE"]
   );
+  const assetVisibilityOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_visibility")?.items,
+    ["PROJECT", "PROFILE", "MODULE"]
+  );
+  const assetScopeOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_scope")?.items,
+    ["GLOBAL", "PROJECT", "MODULE"]
+  );
+  const assetSensitivityOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_sensitivity")?.items,
+    ["PUBLIC", "INTERNAL", "SECRET"]
+  );
 
   const refreshAssetState = async (assetId: string) => {
     await Promise.all([
@@ -136,17 +163,20 @@ export function AssetsLibraryView({ token }: { token: string }) {
     void runAction(
       async () => {
         const created = await createAsset(token, {
-          name: "Synthetic Mapping Spec",
-          description: "Client-safe synthetic support asset.",
-          asset_type: "SPEC",
-          category: "INTEGRATION",
-          visibility: "PROJECT",
-          scope_type: "MODULE",
-          sensitivity: "INTERNAL",
-          module_id: "integration_mapping",
-          macro_object_code: "ORDER_RELEASE",
-          otm_table_name: "ORDER_RELEASE",
-          tags: ["SYNTHETIC", "MVP0"]
+          name: assetDraft.name.trim(),
+          description: assetDraft.description.trim(),
+          asset_type: assetDraft.asset_type,
+          category: assetDraft.category,
+          visibility: assetDraft.visibility,
+          scope_type: assetDraft.scope_type,
+          sensitivity: assetDraft.sensitivity,
+          module_id: assetDraft.module_id.trim() || null,
+          macro_object_code: assetDraft.macro_object_code.trim() || null,
+          otm_table_name: assetDraft.otm_table_name.trim() || null,
+          tags: assetDraft.tags
+            .split(",")
+            .map((tag) => tag.trim().toUpperCase())
+            .filter(Boolean)
         });
         setSelectedAssetId(created.id);
         setOperationAsset(created);
@@ -412,7 +442,125 @@ export function AssetsLibraryView({ token }: { token: string }) {
             title="Create asset"
           >
             <div className="master-data-action-bar">
-              <Button disabled={isMutating} onClick={handleCreateAsset} variant="primary">
+              <label>
+                Asset name
+                <input
+                  aria-label="Asset name"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
+                  value={assetDraft.name}
+                />
+              </label>
+              <label>
+                Asset description
+                <input
+                  aria-label="Asset description"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, description: event.target.value }))}
+                  value={assetDraft.description}
+                />
+              </label>
+              <label>
+                Asset type
+                <select
+                  aria-label="Asset type"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, asset_type: event.target.value }))}
+                  value={assetDraft.asset_type}
+                >
+                  {assetTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset category
+                <select
+                  aria-label="Asset category"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, category: event.target.value }))}
+                  value={assetDraft.category}
+                >
+                  {assetCategoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset visibility
+                <select
+                  aria-label="Asset visibility"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, visibility: event.target.value }))}
+                  value={assetDraft.visibility}
+                >
+                  {assetVisibilityOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset scope
+                <select
+                  aria-label="Asset scope"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, scope_type: event.target.value }))}
+                  value={assetDraft.scope_type}
+                >
+                  {assetScopeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset sensitivity
+                <select
+                  aria-label="Asset sensitivity"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, sensitivity: event.target.value }))}
+                  value={assetDraft.sensitivity}
+                >
+                  {assetSensitivityOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset module id
+                <input
+                  aria-label="Asset module id"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, module_id: event.target.value }))}
+                  value={assetDraft.module_id}
+                />
+              </label>
+              <label>
+                Asset macro object
+                <input
+                  aria-label="Asset macro object"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, macro_object_code: event.target.value }))}
+                  value={assetDraft.macro_object_code}
+                />
+              </label>
+              <label>
+                Asset OTM table
+                <input
+                  aria-label="Asset OTM table"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, otm_table_name: event.target.value }))}
+                  value={assetDraft.otm_table_name}
+                />
+              </label>
+              <label>
+                Asset tags
+                <input
+                  aria-label="Asset tags"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, tags: event.target.value }))}
+                  value={assetDraft.tags}
+                />
+              </label>
+              <Button disabled={isMutating || !assetDraft.name.trim()} onClick={handleCreateAsset} variant="primary">
                 Create asset
               </Button>
             </div>

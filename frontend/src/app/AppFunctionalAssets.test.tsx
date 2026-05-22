@@ -258,7 +258,20 @@ describe("Functional Assets Library journey", () => {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
           const body = JSON.parse(String(init?.body));
           createRequests.push(body);
-          createdAsset = assetFixture("DRAFT", null);
+          createdAsset = {
+            ...assetFixture("DRAFT", null),
+            asset_type: body.asset_type,
+            category: body.category,
+            description: body.description,
+            macro_object_code: body.macro_object_code,
+            module_id: body.module_id,
+            name: body.name,
+            otm_table_name: body.otm_table_name,
+            scope_type: body.scope_type,
+            sensitivity: body.sensitivity,
+            tags: body.tags,
+            visibility: body.visibility
+          };
           return Promise.resolve(jsonResponse(createdAsset));
         }
         listUrls.push(url);
@@ -273,7 +286,7 @@ describe("Functional Assets Library journey", () => {
           expect(init?.body).toBeInstanceOf(FormData);
           uploadRequests.push({ method: init?.method });
           uploadedVersion = versionFixture();
-          createdAsset = assetFixture("DRAFT", uploadedVersion.id);
+          createdAsset = { ...(createdAsset ?? assetFixture("DRAFT", null)), current_version_id: uploadedVersion.id };
           return Promise.resolve(jsonResponse(uploadedVersion));
         }
         return Promise.resolve(jsonResponse({ items: uploadedVersion ? [uploadedVersion] : [], total: uploadedVersion ? 1 : 0 }));
@@ -301,7 +314,7 @@ describe("Functional Assets Library journey", () => {
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/archive")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         archiveRequests.push({ method: init?.method });
-        createdAsset = assetFixture("ARCHIVED", uploadedVersion?.id ?? null);
+        createdAsset = { ...(createdAsset ?? assetFixture("DRAFT", uploadedVersion?.id ?? null)), status: "ARCHIVED" };
         return Promise.resolve(jsonResponse(createdAsset));
       }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
@@ -329,9 +342,26 @@ describe("Functional Assets Library journey", () => {
     expect(listUrls.some((url) => url.includes("status=DRAFT") && url.includes("tag=MVP0"))).toBe(true);
 
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
+    await userEvent.clear(screen.getByLabelText("Asset name"));
+    await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Rate Table Notes");
+    await userEvent.clear(screen.getByLabelText("Asset description"));
+    await userEvent.type(screen.getByLabelText("Asset description"), "Client-safe rate table support asset.");
+    await userEvent.selectOptions(screen.getByLabelText("Asset type"), "SPEC");
+    await userEvent.selectOptions(screen.getByLabelText("Asset category"), "INTEGRATION");
+    await userEvent.selectOptions(screen.getByLabelText("Asset visibility"), "PROJECT");
+    await userEvent.selectOptions(screen.getByLabelText("Asset scope"), "MODULE");
+    await userEvent.selectOptions(screen.getByLabelText("Asset sensitivity"), "INTERNAL");
+    await userEvent.clear(screen.getByLabelText("Asset module id"));
+    await userEvent.type(screen.getByLabelText("Asset module id"), "rates");
+    await userEvent.clear(screen.getByLabelText("Asset macro object"));
+    await userEvent.type(screen.getByLabelText("Asset macro object"), "RATE_GEO");
+    await userEvent.clear(screen.getByLabelText("Asset OTM table"));
+    await userEvent.type(screen.getByLabelText("Asset OTM table"), "RATE_GEO_COST");
+    await userEvent.clear(screen.getByLabelText("Asset tags"));
+    await userEvent.type(screen.getByLabelText("Asset tags"), "SYNTHETIC,RATE");
     await userEvent.click(screen.getByRole("button", { name: "Create asset" }));
-    await screen.findByText("Asset Synthetic Mapping Spec created.");
-    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Mapping Spec");
+    await screen.findByText("Asset Synthetic Rate Table Notes created.");
+    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Rate Table Notes");
 
     await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
@@ -355,7 +385,7 @@ describe("Functional Assets Library journey", () => {
     await screen.findByText("Download started: synthetic_mapping_spec.md.");
 
     await userEvent.click(screen.getByRole("button", { name: "Archive asset" }));
-    await screen.findByText("Asset Synthetic Mapping Spec archived.");
+    await screen.findByText("Asset Synthetic Rate Table Notes archived.");
     expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("ARCHIVED");
     await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     expect(screen.getByRole("button", { name: "Upload version" })).toBeDisabled();
@@ -365,16 +395,22 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));
     await screen.findByRole("heading", { name: "Assets Library" });
-    expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Mapping Spec");
+    expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Rate Table Notes");
 
     expect(createRequests).toEqual([
-      expect.objectContaining({
+      {
         asset_type: "SPEC",
         category: "INTEGRATION",
-        module_id: "integration_mapping",
-        name: "Synthetic Mapping Spec",
-        scope_type: "MODULE"
-      })
+        description: "Client-safe rate table support asset.",
+        macro_object_code: "RATE_GEO",
+        module_id: "rates",
+        name: "Synthetic Rate Table Notes",
+        otm_table_name: "RATE_GEO_COST",
+        scope_type: "MODULE",
+        sensitivity: "INTERNAL",
+        tags: ["SYNTHETIC", "RATE"],
+        visibility: "PROJECT"
+      }
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
     expect(linkRequests).toEqual([

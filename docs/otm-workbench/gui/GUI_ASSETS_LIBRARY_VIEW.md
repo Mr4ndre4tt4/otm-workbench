@@ -35,6 +35,8 @@ The screen uses shared components:
 - SelectedObjectPanel for selected asset metadata;
 - A staged workflow for Library -> Create -> Version -> Link -> Lifecycle;
 - Backend-owned classification-driven filters and link type options;
+- Create-stage metadata authoring for asset name, description, type, category,
+  visibility, scope, sensitivity, module id, macro object, OTM table, and tags;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -48,6 +50,11 @@ create a selected link type such as `OTM_TABLE`, download the current version
 through the guarded backend download endpoint, and archive the asset. Once the
 backend returns `ARCHIVED`, the UI keeps lifecycle actions disabled for new
 uploads and links.
+
+The create stage no longer creates a fixed hard-coded synthetic asset. It
+authors the backend create payload from visible UI controls, using backend-owned
+classification values where available and conservative fallback options where a
+classification group is not returned yet.
 
 ## Safety
 
@@ -63,10 +70,10 @@ Still open:
 
 ```text
 - richer custom metadata editing
+- edit existing metadata after creation
 - additional filters beyond the first type/category/status/tag controls
 - richer link authoring UX and validation messaging for every supported link type
-- deeper authoring for backend-owned classifications, tags, visibility, scope,
-  sensitivity, OTM table links, and macro-object links
+- deeper authoring for backend-owned classifications and link target validation
 ```
 
 ## Validation
