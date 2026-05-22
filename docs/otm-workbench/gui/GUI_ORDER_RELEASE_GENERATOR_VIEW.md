@@ -1,16 +1,19 @@
 # GUI Order Release Generator View
 
-**Status:** implemented
-**Branch:** `codex/gui-order-release-generator-view`
+**Status:** first functional slice implemented
+**Branch:** `codex/gui-foundation-integration-pr-plan`
 
 ## Objective
 
 Add the first backend-backed Order Release Generator screen using the shared GUI
 foundation.
 
-Order Release Generator now renders template list, selected template metadata,
-required columns, optional columns, and defaults from backend contracts instead
-of the generic module placeholder.
+Order Release Generator now renders a staged backend-owned workflow instead of
+only showing the template list.
+
+```text
+Templates -> Batch -> Preview -> Artifact -> Submit
+```
 
 ## Backend Contracts
 
@@ -18,10 +21,12 @@ The GUI consumes:
 
 ```text
 GET /api/v1/modules/order-release-generator/templates
+GET /api/v1/modules/order-release-generator/batches
+POST /api/v1/modules/order-release-generator/batches
+POST /api/v1/modules/order-release-generator/batches/{batch_id}/preview-xml
+POST /api/v1/modules/order-release-generator/batches/{batch_id}/generate-xml-artifact
+POST /api/v1/modules/order-release-generator/batches/{batch_id}/submit-otm
 ```
-
-The backend currently exposes batch detail by id, but not a batch list endpoint,
-so this first GUI slice starts with templates only.
 
 ## GUI Behavior
 
@@ -32,27 +37,39 @@ The screen uses shared components:
 - ModuleObjectList for selectable Order Release templates;
 - SelectedObjectPanel for selected template metadata;
 - DetailList for required columns;
-- DetailList for optional columns and defaults.
+- DetailList for optional columns and defaults;
+- OperationalPanel for each generator stage;
+- FeedbackMessage for backend action results and guarded submit errors.
 ```
 
-The first selected template defaults to the first backend item. Selecting
-another template updates the selected panel from the backend-owned template
-list.
+The first selected template defaults to the first backend item. The batch stage
+creates a client-safe synthetic batch from JSON rows. The preview stage asks the
+backend to build XML. The artifact stage asks the backend to generate the DB XML
+artifact and evidence. The submit stage calls the guarded MVP0 endpoint and
+renders the backend reason/capability required for future direct OTM submit.
+
+Recent batches are read from the backend `/batches` list, so leaving the route
+and returning can recover the created batch without frontend-only persistence.
 
 ## Safety
 
 ```text
 - No client-specific sample data in tests or docs.
-- No frontend-only batch creation decisions.
-- No XML preview, XML artifact generation, or OTM submit actions.
+- No frontend-only batch recovery.
 - No local artifact path rendering.
-- Template status, macro object linkage, columns, and defaults come from backend contracts.
+- Direct OTM submit remains guarded and disabled in MVP0.
+- Template status, macro object linkage, columns, defaults, batches, XML preview,
+  artifact metadata, evidence id, and submit guard details come from backend
+  contracts.
 ```
 
-This slice intentionally keeps Order Release Generator read-only. Batch import,
-batch detail navigation, XML preview, XML artifact generation, and OTM submit
-controls can be wired later through backend-owned available actions or explicit
-guarded endpoints.
+Still open:
+
+```text
+- guarded XML artifact download affordance
+- richer row/template authoring UX
+- governed direct OTM submit capability after MVP0
+```
 
 ## Validation
 
@@ -60,8 +77,9 @@ Commands executed:
 
 ```text
 cd frontend
-npm run test -- App.test.tsx
+npm run qa:functional:order-release
+npm run qa:functional:order-release:browser
 npm run lint
-npm run test
 npm run build
+python -m pytest tests/test_order_release_generator_batches.py
 ```

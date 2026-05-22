@@ -48,6 +48,21 @@ def list_order_release_templates(
     return PageResponse(items=items, total=len(items))
 
 
+@router.get("/batches")
+def list_batches(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batches = (
+        db.query(OrderReleaseBatch)
+        .order_by(OrderReleaseBatch.created_at.desc(), OrderReleaseBatch.id.desc())
+        .limit(25)
+        .all()
+    )
+    items = [serialize_order_release_batch(batch) for batch in batches]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.post("/batches")
 def create_batch(
     payload: OrderReleaseBatchCreateRequest,

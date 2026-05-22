@@ -110,6 +110,24 @@ def test_get_order_release_batch_detail(client, admin_header):
     assert len(payload["rows"]) == 3
 
 
+def test_list_order_release_batches_returns_recent_backend_state(client, admin_header):
+    template_id = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header).json()["items"][0]["id"]
+    created = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": "synthetic_or.xlsx", "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+
+    response = client.get("/api/v1/modules/order-release-generator/batches", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["id"] == created["id"]
+    assert payload["items"][0]["status"] == "VALID"
+    assert "rows" not in payload["items"][0]
+
+
 def test_create_order_release_batch_rejects_missing_template(client, admin_header):
     response = client.post(
         "/api/v1/modules/order-release-generator/batches",

@@ -1,9 +1,33 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { useOrderReleaseTemplates } from '../../platform/hooks';
-import type { OrderReleaseTemplate } from '../../platform/types';
+import {
+  createOrderReleaseBatch,
+  generateOrderReleaseXmlArtifact,
+  previewOrderReleaseXml,
+  submitOrderReleaseToOtm,
+  useOrderReleaseBatches,
+  useOrderReleaseTemplates
+} from '../../platform/hooks';
+import type {
+  OrderReleaseBatch,
+  OrderReleaseTemplate,
+  OrderReleaseXmlArtifact,
+  OrderReleaseXmlPreview
+} from '../../platform/types';
+import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
+import {
+  Button,
+  DetailList,
+  FeedbackMessage,
+  MetricGrid,
+  ModuleObjectList,
+  ModuleWorkspaceLayout,
+  OperationalPanel,
+  SelectedObjectPanel,
+  StatePanel
+} from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function orderReleaseTemplateMeta(item: OrderReleaseTemplate) {
@@ -15,15 +39,97 @@ function orderReleaseTemplateMeta(item: OrderReleaseTemplate) {
   ];
 }
 
+const workflowStages = [
+  { id: "templates", title: "Templates", status: "1" },
+  { id: "batch", title: "Batch", status: "2" },
+  { id: "preview", title: "Preview", status: "3" },
+  { id: "artifact", title: "Artifact", status: "4" },
+  { id: "submit", title: "Submit", status: "5" }
+] as const;
+
+type OrderReleaseWorkflowStage = (typeof workflowStages)[number]["id"];
+
+const syntheticOrderReleaseRows = [
+  {
+    release_gid: "OTM1.OR_SYN_001",
+    source_location_gid: "OTM1.SOURCE_A",
+    destination_location_gid: "OTM1.DEST_A",
+    early_pickup_date: "2026-05-20 08:00:00",
+    late_delivery_date: "2026-05-21 17:00:00",
+    item_gid: "OTM1.ITEM_A",
+    packaged_item_gid: "OTM1.PACK_A",
+    weight: "100",
+    weight_uom: "KG"
+  },
+  {
+    release_gid: "OTM1.OR_SYN_001",
+    source_location_gid: "OTM1.SOURCE_A",
+    destination_location_gid: "OTM1.DEST_A",
+    early_pickup_date: "2026-05-20 08:00:00",
+    late_delivery_date: "2026-05-21 17:00:00",
+    item_gid: "OTM1.ITEM_B",
+    packaged_item_gid: "OTM1.PACK_B",
+    weight: "55",
+    weight_uom: "KG"
+  },
+  {
+    release_gid: "OTM1.OR_SYN_002",
+    source_location_gid: "OTM1.SOURCE_B",
+    destination_location_gid: "OTM1.DEST_B",
+    early_pickup_date: "2026-05-22 08:00:00",
+    late_delivery_date: "2026-05-23 17:00:00",
+    item_gid: "OTM1.ITEM_C",
+    packaged_item_gid: "OTM1.PACK_C",
+    weight: "75",
+    weight_uom: "KG"
+  }
+];
+
+function batchMeta(batch: OrderReleaseBatch) {
+  return [
+    batch.file_name,
+    `${batch.row_count} row(s)`,
+    `${batch.release_count} release(s)`,
+    `${batch.issue_count} issue(s)`
+  ];
+}
+
+function parseRows(text: string) {
+  const parsed = JSON.parse(text) as unknown;
+  if (!Array.isArray(parsed) || parsed.some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
+    throw new Error("Batch rows must be a JSON array of objects.");
+  }
+  return parsed as Array<Record<string, unknown>>;
+}
+
 export function OrderReleaseGeneratorView({ token }: { token: string }) {
+  const queryClient = useQueryClient();
   const templates = useOrderReleaseTemplates(token);
+  const batches = useOrderReleaseBatches(token);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [activeStage, setActiveStage] = useState<OrderReleaseWorkflowStage>("templates");
+  const [fileName, setFileName] = useState("synthetic_order_release_rows.json");
+  const [rowsJson, setRowsJson] = useState(JSON.stringify(syntheticOrderReleaseRows, null, 2));
+  const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
+  const [xmlPreview, setXmlPreview] = useState<OrderReleaseXmlPreview | null>(null);
+  const [xmlArtifact, setXmlArtifact] = useState<OrderReleaseXmlArtifact | null>(null);
+  const [submitGuard, setSubmitGuard] = useState<Record<string, unknown> | null>(null);
+  const [operationMessage, setOperationMessage] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
   const templateItems = templates.data?.items ?? [];
+  const batchItems = batches.data?.items ?? [];
   const effectiveTemplateId = selectedTemplateId ?? templateItems[0]?.id ?? null;
+  const effectiveBatchId = selectedBatchId ?? createdBatch?.id ?? batchItems[0]?.id ?? null;
   const selectedTemplate = templateItems.find((item) => item.id === effectiveTemplateId) ?? null;
+  const selectedBatch = createdBatch?.id === effectiveBatchId
+    ? createdBatch
+    : batchItems.find((item) => item.id === effectiveBatchId) ?? null;
   const requiredColumnCount = selectedTemplate?.required_columns.length ?? 0;
   const optionalColumnCount = selectedTemplate?.optional_columns.length ?? 0;
   const defaultCount = selectedTemplate ? Object.keys(selectedTemplate.defaults).length : 0;
+  const activeBatch = selectedBatch ?? createdBatch;
 
   if (templates.isLoading) {
     return <StatePanel>Loading Order Release Generator...</StatePanel>;
@@ -32,6 +138,80 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   if (templates.isError || !templates.data) {
     return <StatePanel tone="error">Order Release Generator is unavailable.</StatePanel>;
   }
+
+  const runAction = async <T,>(action: () => Promise<T>, onSuccess: (result: T) => string) => {
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await action();
+      setOperationMessage(onSuccess(result));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setOperationError(error.message);
+        setSubmitGuard(error.details);
+      } else {
+        setOperationError(error instanceof Error ? error.message : "Order Release action failed.");
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateBatch = () => {
+    if (!effectiveTemplateId) return;
+    void runAction(
+      async () => {
+        const rows = parseRows(rowsJson);
+        const result = await createOrderReleaseBatch(token, {
+          template_id: effectiveTemplateId,
+          file_name: fileName.trim() || "synthetic_order_release_rows.json",
+          rows
+        });
+        setCreatedBatch(result);
+        setSelectedBatchId(result.id);
+        setXmlPreview(null);
+        setXmlArtifact(null);
+        setSubmitGuard(null);
+        await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "batches"] });
+        return result;
+      },
+      (result) => `Order Release batch ${result.id} created.`
+    );
+  };
+
+  const handlePreviewXml = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => {
+        const result = await previewOrderReleaseXml(token, activeBatch.id);
+        setXmlPreview(result);
+        return result;
+      },
+      () => "Order Release XML preview generated."
+    );
+  };
+
+  const handleGenerateArtifact = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => {
+        const result = await generateOrderReleaseXmlArtifact(token, activeBatch.id);
+        setXmlArtifact(result);
+        await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "batches"] });
+        return result;
+      },
+      (result) => `Order Release XML artifact ${result.artifact_id} generated.`
+    );
+  };
+
+  const handleSubmitGuard = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => submitOrderReleaseToOtm(token, activeBatch.id),
+      () => "Order Release submitted to OTM."
+    );
+  };
 
   return (
     <>
@@ -104,21 +284,201 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             />
           </SelectedObjectPanel>
         }
-        status={templateItems.length ? "ACTIVE" : "EMPTY"}
-        title="Templates"
+        status={activeBatch?.status ?? (templateItems.length ? "ACTIVE" : "EMPTY")}
+        title="Generator workflow"
       >
-        <ModuleObjectList
-          ariaLabel="Order Release templates"
-          emptyText="No Order Release templates available for the current context."
-          items={templateItems.map((item) => ({
-            id: item.id,
-            meta: orderReleaseTemplateMeta(item),
-            status: item.status,
-            subtitle: item.name,
-            title: item.code
+        <div className="workflow-tabs" aria-label="Order Release Generator workflow">
+          {workflowStages.map((stage) => (
+            <Button
+              key={stage.id}
+              onClick={() => setActiveStage(stage.id)}
+              variant={activeStage === stage.id ? "primary" : "secondary"}
+            >
+              {stage.status}
+              {stage.title}
+            </Button>
+          ))}
+        </div>
+
+        {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+        {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+        {activeStage === "templates" ? (
+          <OperationalPanel
+            ariaLabel="Order Release template selection"
+            emptyText="No Order Release templates available for the current context."
+            hasItems={Boolean(templateItems.length)}
+            status={templateItems.length ? "ACTIVE" : "EMPTY"}
+            title="Templates"
+          >
+            <ModuleObjectList
+              ariaLabel="Order Release templates"
+              emptyText="No Order Release templates available for the current context."
+              items={templateItems.map((item) => ({
+                id: item.id,
+                meta: orderReleaseTemplateMeta(item),
+                status: item.status,
+                subtitle: item.name,
+                title: item.code
+              }))}
+              onSelect={setSelectedTemplateId}
+              selectedId={effectiveTemplateId}
+            />
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "batch" ? (
+          <OperationalPanel
+            ariaLabel="Order Release batch authoring"
+            emptyText="Select a template before creating an Order Release batch."
+            hasItems={Boolean(effectiveTemplateId)}
+            status={activeBatch?.status ?? "PENDING"}
+            title="Batch"
+          >
+            <div className="master-data-author-grid">
+              <label>
+                Batch file name
+                <input
+                  aria-label="Batch file name"
+                  onChange={(event) => setFileName(event.target.value)}
+                  value={fileName}
+                />
+              </label>
+            </div>
+            <label className="full-width-field">
+              Batch rows JSON
+              <textarea
+                aria-label="Batch rows JSON"
+                onChange={(event) => setRowsJson(event.target.value)}
+                rows={12}
+                value={rowsJson}
+              />
+            </label>
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !effectiveTemplateId} onClick={handleCreateBatch} variant="primary">
+                Create batch
+              </Button>
+            </div>
+            {activeBatch ? (
+              <DetailList
+                ariaLabel="Active Order Release batch"
+                items={[
+                  {
+                    id: activeBatch.id,
+                    meta: batchMeta(activeBatch),
+                    status: activeBatch.status,
+                    title: activeBatch.id
+                  }
+                ]}
+              />
+            ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "preview" ? (
+          <OperationalPanel
+            ariaLabel="Order Release XML preview workflow"
+            emptyText="Create or select a valid batch before previewing XML."
+            hasItems={Boolean(activeBatch)}
+            status={xmlPreview ? "PREVIEWED" : activeBatch?.status ?? "PENDING"}
+            title="Preview"
+          >
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !activeBatch} onClick={handlePreviewXml} variant="primary">
+                Preview XML
+              </Button>
+            </div>
+            {xmlPreview ? (
+              <DetailList
+                ariaLabel="Order Release XML preview"
+                items={[
+                  {
+                    id: xmlPreview.job_id,
+                    meta: [`${xmlPreview.release_count} release(s)`, `${xmlPreview.line_count} line(s)`, xmlPreview.xml],
+                    status: "PREVIEWED",
+                    title: "Transmission"
+                  }
+                ]}
+              />
+            ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "artifact" ? (
+          <OperationalPanel
+            ariaLabel="Order Release XML artifact workflow"
+            emptyText="Create or select a valid batch before generating XML artifacts."
+            hasItems={Boolean(activeBatch)}
+            status={xmlArtifact?.status ?? (xmlArtifact ? "GENERATED" : "PENDING")}
+            title="Artifact"
+          >
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !activeBatch} onClick={handleGenerateArtifact} variant="primary">
+                Generate XML artifact
+              </Button>
+            </div>
+            {xmlArtifact ? (
+              <DetailList
+                ariaLabel="Order Release XML artifact"
+                items={[
+                  {
+                    id: xmlArtifact.artifact_id,
+                    meta: [
+                      xmlArtifact.file_name,
+                      xmlArtifact.evidence_id,
+                      `${xmlArtifact.size_bytes} byte(s)`,
+                      xmlArtifact.sha256
+                    ],
+                    status: xmlArtifact.status ?? "GENERATED",
+                    title: xmlArtifact.artifact_id
+                  }
+                ]}
+              />
+            ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "submit" ? (
+          <OperationalPanel
+            ariaLabel="Order Release OTM submit guard workflow"
+            emptyText="Create or select a batch before verifying submit guard state."
+            hasItems={Boolean(activeBatch)}
+            status={submitGuard ? "GUARDED" : "PENDING"}
+            title="Submit"
+          >
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !activeBatch} onClick={handleSubmitGuard} variant="primary">
+                Verify OTM submit guard
+              </Button>
+            </div>
+            {submitGuard ? (
+              <DetailList
+                ariaLabel="OTM submit guard"
+                items={[
+                  {
+                    id: String(submitGuard.batch_id ?? activeBatch?.id ?? "submit-guard"),
+                    meta: [
+                      String(submitGuard.required_capability ?? "No capability"),
+                      String(submitGuard.reason ?? "No guard reason")
+                    ],
+                    status: "GUARDED",
+                    title: "Direct OTM submit disabled"
+                  }
+                ]}
+              />
+            ) : null}
+          </OperationalPanel>
+        ) : null}
+
+        <DetailList
+          ariaLabel="Recent Order Release batches"
+          emptyText="No backend-owned Order Release batches created yet."
+          items={batchItems.map((batch) => ({
+            id: batch.id,
+            meta: batchMeta(batch),
+            status: batch.status,
+            title: batch.id
           }))}
-          onSelect={setSelectedTemplateId}
-          selectedId={effectiveTemplateId}
         />
       </ModuleWorkspaceLayout>
     </>

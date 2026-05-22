@@ -48,7 +48,7 @@ For each module:
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
 | Assets Library | Partial GUI | Backend asset/version/link APIs ready | Object list/detail | Needs create/upload/link/download story. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
-| Order Release Generator | Partial GUI | Template/batch/XML artifact APIs ready | Staged workflow | Good later candidate for end-to-end workflow. |
+| Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
 ## 4. Recommended Next GUI Queue
 
@@ -224,6 +224,8 @@ Reason:
   by template, batch, XML artifact, and submit-guard APIs.
 ```
 
-Before coding, keep the first Order Release Generator GUI slice narrow: select
-template, create batch, preview XML, generate XML artifact, inspect guarded OTM
-submit state, route return-state.
+First GUI functional slice is now implemented: select template, create batch,
+preview XML, generate XML artifact, inspect guarded OTM submit state, and return
+with backend-owned recent batch state. Browser QA is covered by
+`qa:functional:order-release:browser`. Next Order Release hardening should add a
+governed artifact download affordance.
