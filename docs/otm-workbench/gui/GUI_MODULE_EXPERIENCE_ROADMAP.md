@@ -43,7 +43,7 @@ For each module:
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice. |
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
-| Load Plan / Cutover | First functional slice plus CSVUTIL and ZIP review UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with go/no-go, readiness export, handoff commit, and artifact follow-ups. |
+| Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, and exports UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with go/no-go, handoff commit, and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
 | Assets Library | Functional journey done | Backend asset/version/link APIs ready | Object list/detail + operational lifecycle | Custom metadata editing and advanced filters remain follow-ups. |
@@ -64,12 +64,14 @@ Delivered story: select package -> create checklist -> update item
 evidence/status -> run checklist readiness -> build CSVUTIL from checklist ->
 inspect generated CTL/CL/manifest/evidence ids -> run ZIP analysis -> generate
 review queue -> decide review items when present -> inspect handoff eligibility.
+Then generate package readiness, export readiness ZIP, and export the cutover
+package from the checklist.
 ```
 
 Remaining GUI work:
 
 ```text
-- Add cutover package export and guarded artifact download.
+- Add guarded artifact download.
 - Add go/no-go commit workflow.
 - Add handoff commit workflow after readiness export/archive evidence exists.
 - Keep go/no-go, handoff eligibility, and artifact generation backend-owned.

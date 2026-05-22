@@ -3,9 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "../api";
 import type {
   CsvutilBuild,
+  CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
   CutoverHandoffEligibility,
+  LoadPlanCutoverReadinessGeneration,
+  LoadPlanReadinessExport,
   LoadPlanReviewDecision,
   LoadPlanReviewQueueGeneration,
   LoadPlanReviewQueueResponse,
@@ -54,6 +57,26 @@ export function updateCutoverChecklistItem(
 export function generateCutoverChecklistReadiness(token: string, checklistId: string) {
   return apiPost<CutoverChecklistReadiness>(
     `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/readiness`,
+    {},
+    { token }
+  );
+}
+
+export function generateLoadPlanCutoverReadiness(token: string, packageId: string) {
+  return apiPost<LoadPlanCutoverReadinessGeneration>(
+    "/api/v1/modules/load-plan/cutover-readiness/generate",
+    { package_id: packageId },
+    { token }
+  );
+}
+
+export function exportLoadPlanCutoverReadiness(token: string, readinessId: string) {
+  return apiPost<LoadPlanReadinessExport>(`/api/v1/modules/load-plan/cutover-readiness/${readinessId}/export`, {}, { token });
+}
+
+export function exportCutoverChecklistPackage(token: string, checklistId: string) {
+  return apiPost<CutoverPackageExport>(
+    `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/export-package`,
     {},
     { token }
   );

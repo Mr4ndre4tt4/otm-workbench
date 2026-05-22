@@ -5,7 +5,10 @@ import {
   buildCsvutilFromCutoverChecklist,
   createCutoverChecklistFromPackage,
   decideLoadPlanReviewItem,
+  exportCutoverChecklistPackage,
+  exportLoadPlanCutoverReadiness,
   generateCutoverChecklistReadiness,
+  generateLoadPlanCutoverReadiness,
   generateReviewQueueFromZipAnalysis,
   runLoadPlanZipAnalysis,
   updateCutoverChecklistItem,
@@ -17,9 +20,12 @@ import {
 } from '../../platform/hooks';
 import type {
   CsvutilBuild,
+  CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
+  LoadPlanCutoverReadiness,
   LoadPlanPackage,
+  LoadPlanReadinessExport,
   LoadPlanReviewItem,
   LoadPlanZipAnalysis
 } from '../../platform/types';
@@ -51,7 +57,8 @@ const loadPlanWorkflowStages = [
   { id: "readiness", title: "Readiness", status: "3" },
   { id: "csvutil", title: "CSVUTIL", status: "4" },
   { id: "zip-review", title: "ZIP review", status: "5" },
-  { id: "handoff", title: "Handoff", status: "6" }
+  { id: "exports", title: "Exports", status: "6" },
+  { id: "handoff", title: "Handoff", status: "7" }
 ] as const;
 
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
@@ -67,6 +74,9 @@ export function LoadPlanView({ token }: { token: string }) {
   const [csvutilBuild, setCsvutilBuild] = useState<CsvutilBuild | null>(null);
   const [zipAnalysis, setZipAnalysis] = useState<LoadPlanZipAnalysis | null>(null);
   const [reviewItems, setReviewItems] = useState<LoadPlanReviewItem[]>([]);
+  const [packageReadiness, setPackageReadiness] = useState<LoadPlanCutoverReadiness | null>(null);
+  const [readinessExport, setReadinessExport] = useState<LoadPlanReadinessExport | null>(null);
+  const [cutoverPackageExport, setCutoverPackageExport] = useState<CutoverPackageExport | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -209,6 +219,65 @@ export function LoadPlanView({ token }: { token: string }) {
       setActiveStage("zip-review");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not decide review item.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleGeneratePackageReadiness = async () => {
+    if (!effectivePackageId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await generateLoadPlanCutoverReadiness(token, effectivePackageId);
+      const item = result.items[0] ?? null;
+      setPackageReadiness(item);
+      if (item) {
+        setOperationMessage(`Package readiness ${item.id} is ${item.status}.`);
+      } else {
+        setOperationMessage("Package readiness generation returned no items.");
+      }
+      setActiveStage("exports");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not generate package readiness.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleExportReadiness = async () => {
+    if (!packageReadiness) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await exportLoadPlanCutoverReadiness(token, packageReadiness.id);
+      setReadinessExport(result);
+      await queryClient.invalidateQueries({
+        queryKey: ["modules", "load-plan", "cutover-handoff", "eligibility", effectivePackageId]
+      });
+      setOperationMessage(`Readiness export ${result.id} is ${result.status}.`);
+      setActiveStage("exports");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not export readiness.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleExportCutoverPackage = async () => {
+    if (!checklist) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await exportCutoverChecklistPackage(token, checklist.id);
+      setCutoverPackageExport(result);
+      setOperationMessage(`Cutover package export is ${result.status}.`);
+      setActiveStage("exports");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not export cutover package.");
     } finally {
       setIsMutating(false);
     }
@@ -517,6 +586,72 @@ export function LoadPlanView({ token }: { token: string }) {
                 </p>
               )}
             </div>
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "exports" ? (
+          <OperationalPanel
+            ariaLabel="Load Plan export artifacts"
+            emptyText="Generate package readiness before exporting readiness and cutover package artifacts."
+            hasItems
+            status={cutoverPackageExport?.status ?? readinessExport?.status ?? packageReadiness?.status ?? "PENDING"}
+            title="Exports"
+          >
+            <div className="load-plan-action-bar">
+              <Button disabled={!effectivePackageId || isMutating} onClick={() => void handleGeneratePackageReadiness()} variant="primary">
+                Generate package readiness
+              </Button>
+              <Button disabled={!packageReadiness || isMutating} onClick={() => void handleExportReadiness()} variant="secondary">
+                Export readiness
+              </Button>
+              <Button disabled={!checklist || isMutating} onClick={() => void handleExportCutoverPackage()} variant="secondary">
+                Export cutover package
+              </Button>
+            </div>
+            <DetailList
+              ariaLabel="Load Plan export ids"
+              emptyText="No export artifacts generated for this route session."
+              items={[
+                ...(packageReadiness
+                  ? [
+                      {
+                        id: "package-readiness",
+                        meta: [packageReadiness.evidence_id ?? "Missing readiness evidence"],
+                        status: packageReadiness.status,
+                        title: "Package readiness"
+                      }
+                    ]
+                  : []),
+                ...(readinessExport
+                  ? [
+                      {
+                        id: "readiness-export",
+                        meta: [
+                          readinessExport.artifact_id ?? "Missing artifact",
+                          readinessExport.manifest_id ?? "Missing manifest",
+                          readinessExport.evidence_id ?? "Missing evidence"
+                        ],
+                        status: readinessExport.status,
+                        title: "Readiness export"
+                      }
+                    ]
+                  : []),
+                ...(cutoverPackageExport
+                  ? [
+                      {
+                        id: "cutover-package-export",
+                        meta: [
+                          cutoverPackageExport.artifact_id ?? "Missing artifact",
+                          cutoverPackageExport.manifest_id ?? "Missing manifest",
+                          cutoverPackageExport.evidence_id ?? "Missing evidence"
+                        ],
+                        status: cutoverPackageExport.status,
+                        title: "Cutover package"
+                      }
+                    ]
+                  : [])
+              ]}
+            />
           </OperationalPanel>
         ) : null}
 

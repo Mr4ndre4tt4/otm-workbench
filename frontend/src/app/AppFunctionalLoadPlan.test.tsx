@@ -232,6 +232,85 @@ function reviewItem(status = "PENDING_REVIEW", latestDecisionStatus: string | nu
   };
 }
 
+function packageReadiness() {
+  return {
+    blockers: [
+      {
+        code: "SEQUENCE_SNAPSHOT_MISSING",
+        details: {},
+        message: "Generate a sequence snapshot before final readiness.",
+        severity: "ERROR",
+        source_id: null,
+        source_type: null,
+        table_name: null
+      }
+    ],
+    environment_id: null,
+    evidence_id: "evidence_package_readiness",
+    generated_at: "2026-05-22T00:13:00",
+    generated_by: "admin@example.test",
+    id: "package_readiness_1",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    readiness: {
+      checks: [],
+      status: "MISSING_SEQUENCE"
+    },
+    sequence_snapshot_id: null,
+    status: "MISSING_SEQUENCE",
+    summary: {
+      blocker_count: 1,
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+      catalog_macro_object_code: "RATE_RECORD",
+      next_actions: ["generate_sequence_snapshot"]
+    }
+  };
+}
+
+function readinessExport() {
+  return {
+    artifact_id: "artifact_readiness_export",
+    environment_id: null,
+    evidence_id: "evidence_readiness_export",
+    exported_at: "2026-05-22T00:14:00",
+    exported_by: "admin@example.test",
+    id: "readiness_export_1",
+    manifest_id: "manifest_readiness_export",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    readiness_id: "package_readiness_1",
+    status: "EXPORTED",
+    summary: {
+      blocker_count: 1,
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+      catalog_macro_object_code: "RATE_RECORD",
+      readiness_status: "MISSING_SEQUENCE"
+    }
+  };
+}
+
+function cutoverPackageExport() {
+  return {
+    artifact_id: "artifact_cutover_package",
+    catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+    catalog_macro_object_code: "RATE_RECORD",
+    checklist_id: "checklist_1",
+    content_type: "application/zip",
+    csvutil_build_count: 1,
+    evidence_id: "evidence_cutover_package",
+    exported_at: "2026-05-22T00:15:00",
+    exported_by: "admin@example.test",
+    file_name: "cutover_package_checklist_1.zip",
+    manifest_id: "manifest_cutover_package",
+    package_id: "package_1",
+    readiness_evidence_id: "evidence_readiness",
+    readiness_status: "READY",
+    status: "EXPORTED"
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -244,10 +323,14 @@ describe("Functional Load Plan journey", () => {
     let readinessGenerated = false;
     let reviewQueueGenerated = false;
     let reviewItemConfirmed = false;
+    let readinessExported = false;
     const checklistRequests: unknown[] = [];
+    const cutoverPackageRequests: unknown[] = [];
     const csvutilRequests: unknown[] = [];
     const itemRequests: unknown[] = [];
+    const packageReadinessRequests: unknown[] = [];
     const readinessRequests: unknown[] = [];
+    const readinessExportRequests: unknown[] = [];
     const reviewDecisionRequests: unknown[] = [];
     const reviewQueueRequests: unknown[] = [];
     const zipAnalysisRequests: unknown[] = [];
@@ -406,23 +489,55 @@ describe("Functional Load Plan journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-readiness/generate")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        packageReadinessRequests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(
+          jsonResponse({
+            items: [packageReadiness()],
+            summary: {
+              blocker_count: 1,
+              missing_sequence_count: 1,
+              next_actions: ["generate_sequence_snapshot"],
+              package_count: 1
+            }
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-readiness/package_readiness_1/export")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        readinessExportRequests.push({ method: init?.method });
+        readinessExported = true;
+        return Promise.resolve(jsonResponse(readinessExport()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/checklist_1/export-package")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        cutoverPackageRequests.push({ method: init?.method });
+        return Promise.resolve(jsonResponse(cutoverPackageExport()));
+      }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
           jsonResponse({
             archive_evidence_id: null,
-            blockers: readinessGenerated
-              ? [{ code: "READINESS_EXPORT_MISSING", message: "Export readiness first.", severity: "ERROR" }]
-              : [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
+            blockers: readinessExported
+              ? [{ code: "CUTOVER_READINESS_NOT_READY", message: "Latest readiness is not READY.", severity: "ERROR" }]
+              : readinessGenerated
+                ? [{ code: "READINESS_EXPORT_MISSING", message: "Export readiness first.", severity: "ERROR" }]
+                : [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
             checklist_id: checklistCreated ? "checklist_1" : null,
             checklist_readiness_evidence_id: readinessGenerated ? "evidence_readiness" : null,
             checklist_readiness_status: readinessGenerated ? "READY" : null,
             eligible: false,
-            next_actions: readinessGenerated ? ["READINESS_EXPORT_MISSING"] : ["CUTOVER_READINESS_MISSING"],
+            next_actions: readinessExported
+              ? ["CUTOVER_READINESS_NOT_READY"]
+              : readinessGenerated
+                ? ["READINESS_EXPORT_MISSING"]
+                : ["CUTOVER_READINESS_MISSING"],
             package_id: "package_1",
             readiness_export_evidence_id: null,
             readiness_export_id: null,
-            readiness_id: null,
-            readiness_status: null,
+            readiness_id: readinessExported ? "package_readiness_1" : null,
+            readiness_status: readinessExported ? "MISSING_SEQUENCE" : null,
             status: "INELIGIBLE"
           })
         );
@@ -478,9 +593,21 @@ describe("Functional Load Plan journey", () => {
     await screen.findByText("Review item review_item_1 decided as CONFIRMED.");
     expect(reviewPanel).toHaveTextContent("CONFIRMED");
 
-    await userEvent.click(screen.getByRole("button", { name: /6Handoff/ }));
+    await userEvent.click(screen.getByRole("button", { name: /6Exports/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Generate package readiness" }));
+    await screen.findByText("Package readiness package_readiness_1 is MISSING_SEQUENCE.");
+    await userEvent.click(screen.getByRole("button", { name: "Export readiness" }));
+    await screen.findByText("Readiness export readiness_export_1 is EXPORTED.");
+    await userEvent.click(screen.getByRole("button", { name: "Export cutover package" }));
+    await screen.findByText("Cutover package export is EXPORTED.");
+    const exportsPanel = await screen.findByLabelText("Load Plan export artifacts");
+    expect(exportsPanel).toHaveTextContent("artifact_readiness_export");
+    expect(exportsPanel).toHaveTextContent("artifact_cutover_package");
+    expect(exportsPanel).toHaveTextContent("evidence_cutover_package");
+
+    await userEvent.click(screen.getByRole("button", { name: /7Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
-    expect(await screen.findByText("READINESS_EXPORT_MISSING")).toBeInTheDocument();
+    expect(await screen.findByText("CUTOVER_READINESS_NOT_READY")).toBeInTheDocument();
 
     expect(checklistRequests).toEqual([{ method: "POST" }]);
     expect(csvutilRequests).toEqual([
@@ -501,6 +628,9 @@ describe("Functional Load Plan journey", () => {
     expect(zipAnalysisRequests).toEqual([{ package_id: "package_1" }]);
     expect(reviewQueueRequests).toEqual([{ method: "POST" }]);
     expect(reviewDecisionRequests).toEqual([{ decision_note: "Synthetic UI review.", decision_status: "CONFIRMED" }]);
+    expect(packageReadinessRequests).toEqual([{ package_id: "package_1" }]);
+    expect(readinessExportRequests).toEqual([{ method: "POST" }]);
+    expect(cutoverPackageRequests).toEqual([{ method: "POST" }]);
     expect(itemDone).toBe(true);
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));

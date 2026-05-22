@@ -243,6 +243,61 @@ export type LoadPlanReviewDecision = {
   review_item: LoadPlanReviewItem;
 };
 
+export type LoadPlanCutoverReadiness = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  sequence_snapshot_id: string | null;
+  status: string;
+  readiness: Record<string, unknown>;
+  blockers: CutoverReadinessBlocker[];
+  summary: Record<string, unknown>;
+  evidence_id: string | null;
+  generated_by: string | null;
+  generated_at: string | null;
+};
+
+export type LoadPlanCutoverReadinessGeneration = {
+  items: LoadPlanCutoverReadiness[];
+  summary: Record<string, unknown>;
+};
+
+export type LoadPlanReadinessExport = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  readiness_id: string;
+  status: string;
+  artifact_id: string | null;
+  manifest_id: string | null;
+  evidence_id: string | null;
+  summary: Record<string, unknown>;
+  exported_by: string | null;
+  exported_at: string | null;
+};
+
+export type CutoverPackageExport = {
+  status: string;
+  checklist_id: string;
+  package_id: string;
+  readiness_evidence_id: string | null;
+  readiness_status: string | null;
+  csvutil_build_count: number;
+  exported_at: string | null;
+  exported_by: string | null;
+  catalog_macro_object_code?: string;
+  catalog_load_plan_path?: string;
+  artifact_id: string | null;
+  manifest_id: string | null;
+  evidence_id: string | null;
+  file_name: string | null;
+  content_type: string | null;
+};
+
 export type CutoverHandoffEligibility = {
   package_id: string;
   eligible: boolean;
