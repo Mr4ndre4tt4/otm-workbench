@@ -68,6 +68,35 @@ export type AssetLinkCreateRequest = {
   target_label: string;
 };
 
+export type AssetFilters = {
+  asset_type?: string;
+  category?: string;
+  status?: string;
+  scope_type?: string;
+  tag?: string;
+  module_id?: string;
+  macro_object_code?: string;
+  otm_table_name?: string;
+};
+
+export type AssetClassification = {
+  id: string;
+  classification_type: string;
+  code: string;
+  name: string;
+  description: string;
+  sort_order: number;
+  system_protected: boolean;
+  is_active: boolean;
+};
+
+export type AssetClassificationGroup = {
+  classification_type: string;
+  items: AssetClassification[];
+  total: number;
+};
+
 export type AssetsResponse = PageResponse<AssetItem>;
 export type AssetVersionsResponse = PageResponse<AssetVersion>;
 export type AssetLinksResponse = PageResponse<AssetLink>;
+export type AssetClassificationsResponse = PageResponse<AssetClassificationGroup>;

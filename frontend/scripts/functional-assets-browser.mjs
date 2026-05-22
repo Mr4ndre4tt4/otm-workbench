@@ -128,6 +128,11 @@ async function run() {
     await page.locator('a[href="/assets"]').click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
     await page.getByLabel("Assets Library workflow").waitFor();
+    await page.getByLabel("Asset type filter").selectOption("SPEC");
+    await page.getByLabel("Asset category filter").selectOption("INTEGRATION");
+    await page.getByLabel("Asset status filter").selectOption("DRAFT");
+    await page.getByLabel("Asset tag filter").fill("MVP0");
+    await page.getByRole("button", { name: "Apply asset filters" }).click();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
     await page.getByRole("button", { name: "Create asset" }).click();
@@ -145,9 +150,12 @@ async function run() {
     await page.getByLabel("Selected asset versions").getByText("synthetic_mapping_spec.md").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    await page.getByLabel("Asset link type").selectOption("OTM_TABLE");
+    await page.getByLabel("Asset link target id").fill("RATE_GEO_COST");
+    await page.getByLabel("Asset link target label").fill("Rate Geo Cost table");
     await page.getByRole("button", { name: "Create link" }).click();
-    await page.getByText("Asset link integration_mapping created.").waitFor();
-    await page.getByLabel("Selected asset links").getByText("Integration Mapping Studio").waitFor();
+    await page.getByText("Asset link RATE_GEO_COST created.").waitFor();
+    await page.getByLabel("Selected asset links").getByText("Rate Geo Cost table").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Lifecycle" }).click();
     await page.getByRole("button", { name: "Download current version" }).click();
@@ -188,7 +196,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-staged-create-upload-link-download-archive-guards-return",
+          journey: "assets-filtered-staged-create-upload-otm-table-link-download-archive-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,

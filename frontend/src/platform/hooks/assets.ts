@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiDownload, apiGet, apiPost, apiUpload, type DownloadResponse } from "../api";
 import type {
+  AssetClassificationsResponse,
   AssetCreateRequest,
+  AssetFilters,
   AssetItem,
   AssetLink,
   AssetLinkCreateRequest,
@@ -12,10 +14,30 @@ import type {
   AssetVersionsResponse
 } from "../types";
 
-export function useAssets(token: string | null) {
+function assetFilterQuery(filters: AssetFilters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    const normalized = value?.trim();
+    if (normalized) {
+      params.set(key, normalized);
+    }
+  });
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export function useAssetClassifications(token: string | null) {
   return useQuery({
-    queryKey: ["modules", "assets", "assets"],
-    queryFn: () => apiGet<AssetsResponse>("/api/v1/modules/assets/assets", { token }),
+    queryKey: ["modules", "assets", "classifications"],
+    queryFn: () => apiGet<AssetClassificationsResponse>("/api/v1/modules/assets/classifications", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useAssets(token: string | null, filters: AssetFilters = {}) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets", filters],
+    queryFn: () => apiGet<AssetsResponse>(`/api/v1/modules/assets/assets${assetFilterQuery(filters)}`, { token }),
     enabled: Boolean(token)
   });
 }

@@ -14,6 +14,7 @@ The GUI consumes:
 
 ```text
 GET /api/v1/modules/assets/assets
+GET /api/v1/modules/assets/classifications
 POST /api/v1/modules/assets/assets
 GET /api/v1/modules/assets/assets/{asset_id}
 POST /api/v1/modules/assets/assets/{asset_id}/archive
@@ -33,6 +34,7 @@ The screen uses shared components:
 - ModuleObjectList for selectable assets;
 - SelectedObjectPanel for selected asset metadata;
 - A staged workflow for Library -> Create -> Version -> Link -> Lifecycle;
+- Backend-owned classification-driven filters and link type options;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -40,11 +42,12 @@ The screen uses shared components:
 
 The first selected asset defaults to the first backend item. Selecting another
 asset updates detail, versions, and links through backend-owned ids. The current
-functional slice follows a staged story: review the Library, create a
-client-safe synthetic support asset, upload a file version, create a module
-link, download the current version through the guarded backend download
-endpoint, and archive the asset. Once the backend returns `ARCHIVED`, the UI
-keeps lifecycle actions disabled for new uploads and links.
+functional slice follows a staged story: review the Library with backend
+filters, create a client-safe synthetic support asset, upload a file version,
+create a selected link type such as `OTM_TABLE`, download the current version
+through the guarded backend download endpoint, and archive the asset. Once the
+backend returns `ARCHIVED`, the UI keeps lifecycle actions disabled for new
+uploads and links.
 
 ## Safety
 
@@ -60,8 +63,8 @@ Still open:
 
 ```text
 - richer custom metadata editing
-- advanced filters
-- arbitrary link authoring beyond the current module-link slice
+- additional filters beyond the first type/category/status/tag controls
+- richer link authoring UX and validation messaging for every supported link type
 - deeper authoring for backend-owned classifications, tags, visibility, scope,
   sensitivity, OTM table links, and macro-object links
 ```

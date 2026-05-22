@@ -7,12 +7,13 @@ import {
   createAssetLink,
   downloadCurrentAssetVersion,
   uploadAssetVersion,
+  useAssetClassifications,
   useAssetDetail,
   useAssetLinks,
   useAssets,
   useAssetVersions
 } from '../../platform/hooks';
-import type { AssetItem } from '../../platform/types';
+import type { AssetClassification, AssetFilters, AssetItem } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
 import {
   Button,
@@ -42,13 +43,42 @@ const assetWorkflowStages = [
 
 type AssetWorkflowStage = (typeof assetWorkflowStages)[number]["id"];
 
+const emptyAssetFilters: AssetFilters = {
+  asset_type: "",
+  category: "",
+  status: "",
+  tag: ""
+};
+
+function classificationItems(classifications: AssetClassification[] | undefined, fallback: string[]) {
+  if (classifications?.length) {
+    return classifications;
+  }
+  return fallback.map((code, index) => ({
+    code,
+    description: code,
+    id: `${code}-${index}`,
+    is_active: true,
+    name: code,
+    sort_order: index,
+    system_protected: true,
+    classification_type: "fallback"
+  }));
+}
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
-  const assets = useAssets(token);
+  const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
+  const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
+  const assets = useAssets(token, assetFilters);
+  const classifications = useAssetClassifications(token);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
+  const [linkType, setLinkType] = useState("MODULE");
+  const [linkTargetId, setLinkTargetId] = useState("integration_mapping");
+  const [linkTargetLabel, setLinkTargetLabel] = useState("Integration Mapping Studio");
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -61,6 +91,23 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const versionedCount = assetItems.filter((asset) => asset.current_version_id).length;
   const internalCount = assetItems.filter((asset) => asset.sensitivity === "INTERNAL").length;
   const isArchived = selectedAsset?.status === "ARCHIVED";
+  const classificationGroups = classifications.data?.items ?? [];
+  const assetTypeOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_type")?.items,
+    ["SPEC", "TEMPLATE", "SAMPLE_PAYLOAD"]
+  );
+  const assetCategoryOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_category")?.items,
+    ["INTEGRATION", "OTM_SETUP", "TESTING"]
+  );
+  const assetStatusOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_status")?.items,
+    ["DRAFT", "ACTIVE", "ARCHIVED"]
+  );
+  const assetLinkTypeOptions = classificationItems(
+    classificationGroups.find((group) => group.classification_type === "asset_link_type")?.items,
+    ["MODULE", "MACRO_OBJECT", "OTM_TABLE", "ARTIFACT", "EVIDENCE"]
+  );
 
   const refreshAssetState = async (assetId: string) => {
     await Promise.all([
@@ -133,9 +180,9 @@ export function AssetsLibraryView({ token }: { token: string }) {
     void runAction(
       async () => {
         const link = await createAssetLink(token, effectiveAssetId, {
-          link_type: "MODULE",
-          target_id: "integration_mapping",
-          target_label: "Integration Mapping Studio"
+          link_type: linkType,
+          target_id: linkTargetId.trim(),
+          target_label: linkTargetLabel.trim()
         });
         await refreshAssetState(effectiveAssetId);
         setActiveStage("lifecycle");
@@ -267,10 +314,76 @@ export function AssetsLibraryView({ token }: { token: string }) {
           <OperationalPanel
             ariaLabel="Assets list workflow"
             emptyText="No assets available for the current context."
-            hasItems={Boolean(assetItems.length)}
+            hasItems
             status={assetItems.length ? "ACTIVE" : "EMPTY"}
             title="Library"
           >
+            <div className="master-data-action-bar">
+              <label>
+                Asset type filter
+                <select
+                  aria-label="Asset type filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, asset_type: event.target.value }))}
+                  value={draftAssetFilters.asset_type ?? ""}
+                >
+                  <option value="">Any type</option>
+                  {assetTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset category filter
+                <select
+                  aria-label="Asset category filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, category: event.target.value }))}
+                  value={draftAssetFilters.category ?? ""}
+                >
+                  <option value="">Any category</option>
+                  {assetCategoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset status filter
+                <select
+                  aria-label="Asset status filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, status: event.target.value }))}
+                  value={draftAssetFilters.status ?? ""}
+                >
+                  <option value="">Any status</option>
+                  {assetStatusOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset tag filter
+                <input
+                  aria-label="Asset tag filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, tag: event.target.value }))}
+                  value={draftAssetFilters.tag ?? ""}
+                />
+              </label>
+              <Button
+                disabled={isMutating}
+                onClick={() => {
+                  setAssetFilters(draftAssetFilters);
+                  setSelectedAssetId(null);
+                  setOperationAsset(null);
+                }}
+                variant="secondary"
+              >
+                Apply asset filters
+              </Button>
+            </div>
             <ModuleObjectList
               ariaLabel="Assets"
               emptyText="No assets available for the current context."
@@ -344,7 +457,37 @@ export function AssetsLibraryView({ token }: { token: string }) {
             title="Link"
           >
             <div className="master-data-action-bar">
-              <Button disabled={isMutating || !effectiveAssetId || isArchived} onClick={handleCreateLink} variant="primary">
+              <label>
+                Asset link type
+                <select aria-label="Asset link type" onChange={(event) => setLinkType(event.target.value)} value={linkType}>
+                  {assetLinkTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset link target id
+                <input
+                  aria-label="Asset link target id"
+                  onChange={(event) => setLinkTargetId(event.target.value)}
+                  value={linkTargetId}
+                />
+              </label>
+              <label>
+                Asset link target label
+                <input
+                  aria-label="Asset link target label"
+                  onChange={(event) => setLinkTargetLabel(event.target.value)}
+                  value={linkTargetLabel}
+                />
+              </label>
+              <Button
+                disabled={isMutating || !effectiveAssetId || isArchived || !linkTargetId.trim()}
+                onClick={handleCreateLink}
+                variant="primary"
+              >
                 Create link
               </Button>
             </div>

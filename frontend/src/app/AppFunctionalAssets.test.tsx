@@ -117,6 +117,83 @@ function linkFixture() {
   };
 }
 
+function classificationGroups() {
+  return {
+    items: [
+      {
+        classification_type: "asset_type",
+        items: [
+          {
+            code: "SPEC",
+            description: "Functional or technical specification.",
+            id: "asset_type_spec",
+            is_active: true,
+            name: "Specification",
+            sort_order: 20,
+            system_protected: true
+          }
+        ],
+        total: 1
+      },
+      {
+        classification_type: "asset_category",
+        items: [
+          {
+            code: "INTEGRATION",
+            description: "Integration-oriented artifact.",
+            id: "asset_category_integration",
+            is_active: true,
+            name: "Integration",
+            sort_order: 20,
+            system_protected: true
+          }
+        ],
+        total: 1
+      },
+      {
+        classification_type: "asset_status",
+        items: [
+          {
+            code: "DRAFT",
+            description: "Editable draft asset.",
+            id: "asset_status_draft",
+            is_active: true,
+            name: "Draft",
+            sort_order: 10,
+            system_protected: true
+          }
+        ],
+        total: 1
+      },
+      {
+        classification_type: "asset_link_type",
+        items: [
+          {
+            code: "MODULE",
+            description: "Links an asset to a module.",
+            id: "asset_link_module",
+            is_active: true,
+            name: "Module",
+            sort_order: 10,
+            system_protected: true
+          },
+          {
+            code: "OTM_TABLE",
+            description: "Links an asset to an OTM table.",
+            id: "asset_link_table",
+            is_active: true,
+            name: "OTM Table",
+            sort_order: 30,
+            system_protected: true
+          }
+        ],
+        total: 2
+      }
+    ],
+    total: 4
+  };
+}
+
 describe("Functional Assets Library journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -129,6 +206,7 @@ describe("Functional Assets Library journey", () => {
     const linkRequests: unknown[] = [];
     const downloadRequests: unknown[] = [];
     const archiveRequests: unknown[] = [];
+    const listUrls: string[] = [];
     let createdAsset: ReturnType<typeof assetFixture> | null = null;
     let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
     let createdLink: ReturnType<typeof linkFixture> | null = null;
@@ -172,7 +250,10 @@ describe("Functional Assets Library journey", () => {
       if (url.endsWith("/api/v1/platform/environments")) {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
-      if (url.endsWith("/api/v1/modules/assets/assets")) {
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.includes("/api/v1/modules/assets/assets") && !url.includes("/asset_qa_1")) {
         if (init?.method === "POST") {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
           const body = JSON.parse(String(init?.body));
@@ -180,6 +261,7 @@ describe("Functional Assets Library journey", () => {
           createdAsset = assetFixture("DRAFT", null);
           return Promise.resolve(jsonResponse(createdAsset));
         }
+        listUrls.push(url);
         return Promise.resolve(jsonResponse({ items: createdAsset ? [createdAsset] : [], total: createdAsset ? 1 : 0 }));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
@@ -201,7 +283,7 @@ describe("Functional Assets Library journey", () => {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
           const body = JSON.parse(String(init?.body));
           linkRequests.push(body);
-          createdLink = linkFixture();
+          createdLink = { ...linkFixture(), link_type: body.link_type, target_id: body.target_id, target_label: body.target_label };
           return Promise.resolve(jsonResponse(createdLink));
         }
         return Promise.resolve(jsonResponse({ items: createdLink ? [createdLink] : [], total: createdLink ? 1 : 0 }));
@@ -238,6 +320,14 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("4Link");
     expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("5Lifecycle");
 
+    await userEvent.selectOptions(screen.getByLabelText("Asset type filter"), "SPEC");
+    await userEvent.selectOptions(screen.getByLabelText("Asset category filter"), "INTEGRATION");
+    await userEvent.selectOptions(screen.getByLabelText("Asset status filter"), "DRAFT");
+    await userEvent.type(screen.getByLabelText("Asset tag filter"), "MVP0");
+    await userEvent.click(screen.getByRole("button", { name: "Apply asset filters" }));
+    expect(listUrls.some((url) => url.includes("asset_type=SPEC") && url.includes("category=INTEGRATION"))).toBe(true);
+    expect(listUrls.some((url) => url.includes("status=DRAFT") && url.includes("tag=MVP0"))).toBe(true);
+
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
     await userEvent.click(screen.getByRole("button", { name: "Create asset" }));
     await screen.findByText("Asset Synthetic Mapping Spec created.");
@@ -251,9 +341,14 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Selected asset versions")).toHaveTextContent("synthetic_mapping_spec.md");
 
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "OTM_TABLE");
+    await userEvent.clear(screen.getByLabelText("Asset link target id"));
+    await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_GEO_COST");
+    await userEvent.clear(screen.getByLabelText("Asset link target label"));
+    await userEvent.type(screen.getByLabelText("Asset link target label"), "Rate Geo Cost table");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
-    await screen.findByText("Asset link integration_mapping created.");
-    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Integration Mapping Studio");
+    await screen.findByText("Asset link RATE_GEO_COST created.");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Geo Cost table");
 
     await userEvent.click(screen.getByRole("button", { name: /5Lifecycle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
@@ -283,10 +378,10 @@ describe("Functional Assets Library journey", () => {
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
     expect(linkRequests).toEqual([
-      { link_type: "MODULE", target_id: "integration_mapping", target_label: "Integration Mapping Studio" }
+      { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "Rate Geo Cost table" }
     ]);
     expect(downloadRequests).toEqual([{ method: "GET" }]);
     expect(archiveRequests).toEqual([{ method: "POST" }]);
-    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("MODULE").length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("OTM_TABLE").length).toBeGreaterThan(0);
   }, 60000);
 });
