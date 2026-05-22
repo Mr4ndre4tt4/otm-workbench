@@ -109,13 +109,29 @@ class ModuleResponse(BaseModel):
     display_name: str
     route_base: str
     status: str
+    label_key: str
+    description: str
+    icon_key: str
+    icon_family: str
+    icon_variant: str
+    icon_style: str
+    icon_name: str
 
 
 class NavigationItem(BaseModel):
     id: str
     label: str
+    label_key: str
+    description: str
     path: str
     status: str
+    icon_key: str
+    icon_family: str
+    icon_variant: str
+    icon_style: str
+    icon_name: str
+    icon_light_ref: dict[str, object]
+    icon_dark_ref: dict[str, object]
 
 
 def allowed_domains_for_context(domain_name: str | None, can_view_all_domains: bool) -> list[str]:
@@ -697,6 +713,13 @@ def list_modules(
             display_name=item.display_name,
             route_base=item.route_base,
             status=item.status,
+            label_key=item.label_key,
+            description=item.description,
+            icon_key=item.icon_key,
+            icon_family=item.icon_family,
+            icon_variant=item.icon_variant,
+            icon_style=item.icon_style,
+            icon_name=item.icon_name,
         )
         for item in modules
     ]

@@ -2,9 +2,51 @@ import type { ArtifactListItem, BlockerPanelItem, DetailListItem, MetricItem, Mo
 import type { AvailableAction, NavigationItem, UserPreferences } from "../../platform/types";
 
 export const syntheticNavigationItems: NavigationItem[] = [
-  { id: "rates", label: "Rates Studio", path: "/rates", status: "ready" },
-  { id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ready" },
-  { id: "evidence", label: "Evidence Hub", path: "/evidence", status: "needs_context" }
+  {
+    id: "rates",
+    label: "Rates Studio",
+    label_key: "module.rates.label",
+    description: "Rates workspace",
+    path: "/rates",
+    status: "ready",
+    icon_key: "rates",
+    icon_family: "iconly",
+    icon_variant: "regular",
+    icon_style: "broken",
+    icon_name: "Chart",
+    icon_light_ref: {},
+    icon_dark_ref: {}
+  },
+  {
+    id: "catalog",
+    label: "OTM Catalog Core",
+    label_key: "module.catalog.label",
+    description: "Catalog workspace",
+    path: "/catalog",
+    status: "ready",
+    icon_key: "catalog",
+    icon_family: "iconly",
+    icon_variant: "regular",
+    icon_style: "broken",
+    icon_name: "Folder",
+    icon_light_ref: {},
+    icon_dark_ref: {}
+  },
+  {
+    id: "evidence",
+    label: "Evidence Hub",
+    label_key: "module.evidence.label",
+    description: "Evidence workspace",
+    path: "/evidence",
+    status: "needs_context",
+    icon_key: "evidence",
+    icon_family: "iconly",
+    icon_variant: "regular",
+    icon_style: "broken",
+    icon_name: "Shield Done",
+    icon_light_ref: {},
+    icon_dark_ref: {}
+  }
 ];
 
 export const syntheticUserPreferences: UserPreferences = {

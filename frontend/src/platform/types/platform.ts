@@ -3,8 +3,17 @@ import type { PageResponse } from "./shared";
 export type NavigationItem = {
   id: string;
   label: string;
+  label_key: string;
+  description: string;
   path: string;
   status: string;
+  icon_key: string;
+  icon_family: string;
+  icon_variant: string;
+  icon_style: string;
+  icon_name: string;
+  icon_light_ref: Record<string, unknown>;
+  icon_dark_ref: Record<string, unknown>;
 };
 
 export type NavigationResponse = PageResponse<NavigationItem>;

@@ -20,6 +20,27 @@ def test_navigation_hides_dev_only_when_flag_is_disabled(client, admin_header):
     assert "dev_tools" not in module_ids
 
 
+def test_navigation_returns_backend_owned_icon_and_label_metadata(client, admin_header):
+    response = client.get("/api/v1/platform/navigation", headers=admin_header)
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    home = next(item for item in items if item["id"] == "home")
+    catalog = next(item for item in items if item["id"] == "catalog")
+
+    assert home["label"] == "Project Cockpit"
+    assert home["label_key"] == "module.home.label"
+    assert home["icon_key"] == "home"
+    assert home["icon_family"] == "iconly"
+    assert home["icon_variant"] == "regular"
+    assert home["icon_style"] == "broken"
+    assert home["icon_name"] == "Home"
+    assert home["icon_light_ref"]["figma_page"] == "Library | Light"
+    assert home["icon_dark_ref"]["figma_page"] == "Library | Dark"
+    assert catalog["label_key"] == "module.catalog.label"
+    assert catalog["icon_key"] == "catalog"
+
+
 def test_feature_flag_can_enable_dev_module_for_admin(client, admin_header):
     flag = client.post(
         "/api/v1/platform/feature-flags",

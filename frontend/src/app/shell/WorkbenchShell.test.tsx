@@ -10,8 +10,17 @@ const navigationItems: NavigationItem[] = [
   {
     id: "rates",
     label: "Rates",
+    label_key: "module.rates.label",
+    description: "Rates workspace",
     path: "/rates",
-    status: "ready"
+    status: "ready",
+    icon_key: "rates",
+    icon_family: "iconly",
+    icon_variant: "regular",
+    icon_style: "broken",
+    icon_name: "Chart",
+    icon_light_ref: {},
+    icon_dark_ref: {}
   }
 ];
 

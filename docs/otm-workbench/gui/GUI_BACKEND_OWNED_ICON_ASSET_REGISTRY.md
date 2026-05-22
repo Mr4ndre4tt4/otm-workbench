@@ -1,6 +1,6 @@
 # GUI Backend-Owned Icon And Label Registry
 
-**Status:** design decision
+**Status:** first platform slice implemented
 **Figma source:** Iconly V3.0 Free + Iconly Pro Community
 **Figma file key:** `8h6mUDOqSXent0hqlSY7k7`
 
@@ -71,6 +71,32 @@ Add or extend backend-owned UI metadata with these responsibilities:
 The existing `/api/v1/platform/navigation` contract should return these fields
 after the registry is implemented. The frontend should render only what the
 backend returns.
+
+Implemented first slice:
+
+```text
+GET /api/v1/platform/navigation
+GET /api/v1/platform/modules
+```
+
+The module registry now persists and serves:
+
+```text
+label_key
+description
+icon_key
+icon_family
+icon_variant
+icon_style
+icon_name
+icon_light_ref
+icon_dark_ref
+sort_order
+```
+
+Sidebar rendering consumes `icon_key` from the backend navigation payload. The
+current renderer still maps approved keys to Lucide fallback icons until an
+Iconly export/sanitization pipeline exists.
 
 Recommended icon reference shape:
 
@@ -163,10 +189,13 @@ Icon assets must be treated as UI-controlled assets:
 Recommended next slice:
 
 ```text
-1. Add backend migration/model/seed data for UI icon and label registry.
+1. Add backend migration/model/seed data for UI icon and label registry. Done.
 2. Extend platform navigation response with icon_key and label_key metadata.
-3. Update frontend sidebar/action rendering to consume backend icon_key.
-4. Add tests proving module labels/icons come from backend payloads.
+   Done.
+3. Update frontend sidebar/action rendering to consume backend icon_key. Sidebar
+   done; action icon registry remains a follow-up.
+4. Add tests proving module labels/icons come from backend payloads. Done for
+   navigation/sidebar.
 5. Add static guardrail blocking module-specific sidebar icon maps.
 6. Update Linear with any module that still has hardcoded display metadata.
 ```
