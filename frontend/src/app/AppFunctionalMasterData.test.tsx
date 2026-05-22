@@ -507,6 +507,122 @@ describe("Functional Master Data journey", () => {
     expect((await screen.findAllByText("REGIONS_BASIC")).length).toBeGreaterThan(0);
   }, 60000);
 
+  it("shows workbook upload details and recovers after replacing the file", async () => {
+    const uploadRequests: string[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [regionsTemplate()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
+        return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC/batches")) {
+        expect(init?.body).toBeInstanceOf(FormData);
+        uploadRequests.push(init?.method ?? "GET");
+        if (uploadRequests.length === 1) {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                code: "MASTER_DATA_WORKBOOK_INVALID",
+                details: { error: "Uploaded workbook headers do not match REGIONS." },
+                message: "Uploaded workbook does not match the template."
+              },
+              422
+            )
+          );
+        }
+        return Promise.resolve(
+          jsonResponse({
+            batch_id: "batch_recovered",
+            file_name: "regions_basic_fixed.xlsx",
+            row_count: 2,
+            sheet_count: 2,
+            sheets: [
+              { row_count: 1, sheet_code: "REGIONS" },
+              { row_count: 1, sheet_code: "REGION_DETAILS" }
+            ],
+            status: "PARSED",
+            template_code: "REGIONS_BASIC"
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_recovered/artifacts")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Data Factory" });
+    await userEvent.click(screen.getByRole("button", { name: /4Upload/ }));
+    const fileInput = screen.getByLabelText("Workbook file");
+    await userEvent.upload(
+      fileInput,
+      new File(["bad workbook"], "regions_basic_bad.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Upload workbook" }));
+    await screen.findByText("Uploaded workbook does not match the template. Uploaded workbook headers do not match REGIONS.");
+
+    await userEvent.upload(
+      fileInput,
+      new File(["fixed workbook"], "regions_basic_fixed.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Upload workbook" }));
+    await screen.findByText("Workbook uploaded as batch batch_recovered.");
+    expect(screen.getByLabelText("Active batch summary")).toHaveTextContent("PARSED");
+    expect(uploadRequests).toEqual(["POST", "POST"]);
+  }, 60000);
+
   it("authors a dynamic Master Data template through backend-owned contracts", async () => {
     const draftRequests: unknown[] = [];
     const validateDefinitionRequests: unknown[] = [];

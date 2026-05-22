@@ -165,6 +165,11 @@ package export. Repeating `export-csv-package` on an `EXPORTED` batch returns
 the existing client-safe artifact, manifest, and evidence IDs instead of
 creating duplicate packages or returning a lifecycle conflict.
 
+The fourth OTM-119 hardening slice covers invalid upload recovery in the UI.
+Backend `ApiError.details.error` is now surfaced in Data Factory feedback, so a
+failed workbook upload can explain the specific sheet/header issue and the user
+can replace the file and upload successfully without leaving the stage.
+
 ## Validation
 
 ```text
@@ -181,6 +186,7 @@ Focused OTM-119 backend QA:
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_artifacts_marks_missing_file_unavailable -q
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_build_csv_is_idempotent_for_double_click -q
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_export_csv_package_is_idempotent_for_retry -q
+npm run test -- AppFunctionalMasterData.test.tsx -t "shows workbook upload details"
 ```
 
 For isolated local QA against a non-default backend port, the Vite development

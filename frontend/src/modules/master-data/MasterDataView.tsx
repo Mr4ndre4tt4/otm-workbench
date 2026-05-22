@@ -55,6 +55,14 @@ function masterDataTemplateMeta(item: MasterDataTemplate) {
   return [item.catalog_macro_object_code, item.data_category, `${item.sheets.length} sheet(s)`, `${fieldCount} field(s)`];
 }
 
+function masterDataErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    const detail = typeof error.details.error === "string" ? error.details.error : null;
+    return detail ? `${error.message} ${detail}` : error.message;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 const masterDataWorkflowStages = [
   { id: "templates", title: "Templates", status: "1" },
   { id: "author", title: "Author", status: "2" },
@@ -346,7 +354,7 @@ export function MasterDataView({ token }: { token: string }) {
       const result = await action();
       setOperationMessage(onSuccess(result));
     } catch (error) {
-      setOperationError(error instanceof Error ? error.message : "Data Factory action failed.");
+      setOperationError(masterDataErrorMessage(error, "Data Factory action failed."));
     } finally {
       setIsMutating(false);
     }
@@ -630,7 +638,7 @@ export function MasterDataView({ token }: { token: string }) {
       URL.revokeObjectURL(objectUrl);
       setOperationMessage(`Download started: ${result.filename ?? artifact.file_name}.`);
     } catch (error) {
-      setOperationError(error instanceof ApiError ? error.message : "Could not download Master Data artifact.");
+      setOperationError(masterDataErrorMessage(error, "Could not download Master Data artifact."));
     } finally {
       setDownloadingArtifactId(null);
       setIsMutating(false);
