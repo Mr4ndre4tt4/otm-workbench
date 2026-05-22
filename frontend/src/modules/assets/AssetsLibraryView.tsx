@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   archiveAsset,
@@ -100,6 +100,22 @@ function assetDraftPayload(assetDraft: typeof defaultAssetDraft) {
   };
 }
 
+function assetDraftFromAsset(asset: AssetItem) {
+  return {
+    asset_type: asset.asset_type,
+    category: asset.category,
+    description: asset.description,
+    macro_object_code: asset.macro_object_code ?? "",
+    module_id: asset.module_id ?? "",
+    name: asset.name,
+    otm_table_name: asset.otm_table_name ?? "",
+    scope_type: asset.scope_type,
+    sensitivity: asset.sensitivity,
+    tags: asset.tags.join(","),
+    visibility: asset.visibility
+  };
+}
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
@@ -155,6 +171,12 @@ export function AssetsLibraryView({ token }: { token: string }) {
     classificationGroups.find((group) => group.classification_type === "asset_sensitivity")?.items,
     ["PUBLIC", "INTERNAL", "SECRET"]
   );
+
+  useEffect(() => {
+    if (selectedAsset) {
+      setAssetDraft(assetDraftFromAsset(selectedAsset));
+    }
+  }, [selectedAsset]);
 
   const refreshAssetState = async (assetId: string) => {
     await Promise.all([

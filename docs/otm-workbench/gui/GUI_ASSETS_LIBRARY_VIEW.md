@@ -40,6 +40,8 @@ The screen uses shared components:
   visibility, scope, sensitivity, module id, macro object, OTM table, and tags;
 - Update action for the selected asset using the same backend-owned metadata
   payload and `PATCH` contract;
+- Selected-asset synchronization so the metadata form reflects the backend
+  record selected in the Library before an update is submitted;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -57,7 +59,9 @@ keeps lifecycle actions disabled for new uploads and links.
 The create stage no longer creates a fixed hard-coded synthetic asset. It
 authors create and update payloads from visible UI controls, using
 backend-owned classification values where available and conservative fallback
-options where a classification group is not returned yet.
+options where a classification group is not returned yet. Selecting another
+asset in the Library refreshes the authoring form from that selected backend
+record before any update action can be submitted.
 
 ## Safety
 
@@ -72,7 +76,7 @@ options where a classification group is not returned yet.
 Still open:
 
 ```text
-- richer custom metadata validation and dirty-state handling
+- richer custom metadata validation messaging
 - additional filters beyond the first type/category/status/tag controls
 - richer link authoring UX and validation messaging for every supported link type
 - deeper authoring for backend-owned classifications and link target validation

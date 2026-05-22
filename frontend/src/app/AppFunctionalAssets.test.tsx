@@ -88,6 +88,20 @@ function assetFixture(status = "DRAFT", currentVersionId: string | null = null) 
   };
 }
 
+function referenceAssetFixture() {
+  return {
+    ...assetFixture("DRAFT", null),
+    category: "TESTING",
+    description: "Client-safe selected reference asset.",
+    id: "asset_qa_2",
+    macro_object_code: "LOCATION",
+    module_id: "master_data",
+    name: "Synthetic Reference Template",
+    otm_table_name: "LOCATION",
+    tags: ["REFERENCE", "SYNTHETIC"]
+  };
+}
+
 function versionFixture() {
   return {
     asset_id: "asset_qa_1",
@@ -209,6 +223,7 @@ describe("Functional Assets Library journey", () => {
     const archiveRequests: unknown[] = [];
     const listUrls: string[] = [];
     let createdAsset: ReturnType<typeof assetFixture> | null = null;
+    const referenceAsset = referenceAssetFixture();
     let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
     let createdLink: ReturnType<typeof linkFixture> | null = null;
 
@@ -254,7 +269,7 @@ describe("Functional Assets Library journey", () => {
       if (url.endsWith("/api/v1/modules/assets/classifications")) {
         return Promise.resolve(jsonResponse(classificationGroups()));
       }
-      if (url.includes("/api/v1/modules/assets/assets") && !url.includes("/asset_qa_1")) {
+      if (url.includes("/api/v1/modules/assets/assets") && !url.includes("/asset_qa_1") && !url.includes("/asset_qa_2")) {
         if (init?.method === "POST") {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
           const body = JSON.parse(String(init?.body));
@@ -276,7 +291,8 @@ describe("Functional Assets Library journey", () => {
           return Promise.resolve(jsonResponse(createdAsset));
         }
         listUrls.push(url);
-        return Promise.resolve(jsonResponse({ items: createdAsset ? [createdAsset] : [], total: createdAsset ? 1 : 0 }));
+        const items = createdAsset ? [createdAsset, referenceAsset] : [];
+        return Promise.resolve(jsonResponse({ items, total: items.length }));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
         if (init?.method === "PATCH") {
@@ -287,6 +303,9 @@ describe("Functional Assets Library journey", () => {
           return Promise.resolve(jsonResponse(createdAsset));
         }
         return Promise.resolve(jsonResponse(createdAsset ?? assetFixture("DRAFT", null)));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_2")) {
+        return Promise.resolve(jsonResponse(referenceAsset));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
         if (init?.method === "POST") {
@@ -381,6 +400,18 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Update asset" }));
     await screen.findByText("Asset Synthetic Rate Table Notes Updated updated.");
     expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Rate Table Notes Updated");
+
+    await userEvent.click(screen.getByRole("button", { name: /1Library/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Synthetic Reference Template/ }));
+    await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
+    expect(screen.getByLabelText("Asset name")).toHaveValue("Synthetic Reference Template");
+    expect(screen.getByLabelText("Asset description")).toHaveValue("Client-safe selected reference asset.");
+    expect(screen.getByLabelText("Asset module id")).toHaveValue("master_data");
+    expect(screen.getByLabelText("Asset tags")).toHaveValue("REFERENCE,SYNTHETIC");
+    await userEvent.click(screen.getByRole("button", { name: /1Library/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Synthetic Rate Table Notes Updated/ }));
+    await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
+    expect(screen.getByLabelText("Asset name")).toHaveValue("Synthetic Rate Table Notes Updated");
 
     await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
     const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
