@@ -1,4 +1,7 @@
+from sqlalchemy.exc import IntegrityError
+
 from otm_workbench.models import Capability, Role, RoleCapability, SessionToken, UserProjectRole
+from otm_workbench.platform.navigation import seed_modules
 
 
 def test_modules_endpoint_returns_registered_master_data(client, admin_header):
@@ -84,3 +87,26 @@ def test_navigation_filters_required_capability_by_active_project(client, admin_
     assert active_context.status_code == 200
     assert visible.status_code == 200
     assert "rates" in [item["id"] for item in visible.json()["items"]]
+
+
+def test_seed_modules_tolerates_concurrent_unique_insert_race():
+    class RaceSession:
+        rolled_back = False
+
+        def get(self, model, identifier):
+            return None
+
+        def add(self, module):
+            return None
+
+        def commit(self):
+            raise IntegrityError("insert modules", {}, Exception("duplicate module id"))
+
+        def rollback(self):
+            self.rolled_back = True
+
+    db = RaceSession()
+
+    seed_modules(db)
+
+    assert db.rolled_back is True

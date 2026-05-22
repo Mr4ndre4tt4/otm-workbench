@@ -1,9 +1,32 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 
-import { useCatalogMacroObjectDetail, useCatalogMacroObjectLoadPlan, useCatalogMacroObjects, useCatalogMacroObjectTables } from '../../platform/hooks';
-import type { CatalogMacroObject } from '../../platform/types';
+import { ApiError } from '../../platform/api';
+import {
+  useCatalogMacroObjectDetail,
+  useCatalogMacroObjectLoadPlan,
+  useCatalogMacroObjects,
+  useCatalogMacroObjectTables,
+  validateCatalogColumn,
+  validateCatalogReference,
+  validateCatalogTable
+} from '../../platform/hooks';
+import type {
+  CatalogMacroObject,
+  CatalogValidateColumnResult,
+  CatalogValidateReferenceResult,
+  CatalogValidateTableResult
+} from '../../platform/types';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
+import {
+  Button,
+  DetailList,
+  FeedbackMessage,
+  MetricGrid,
+  ModuleObjectList,
+  ModuleWorkspaceLayout,
+  SelectedObjectPanel,
+  StatePanel
+} from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function catalogMacroMeta(item: CatalogMacroObject) {
@@ -15,6 +38,19 @@ function catalogMacroMeta(item: CatalogMacroObject) {
 export function CatalogCoreView({ token }: { token: string }) {
   const macroObjects = useCatalogMacroObjects(token);
   const [selectedMacroCode, setSelectedMacroCode] = useState<string | null>(null);
+  const [tableName, setTableName] = useState("RATE_GEO_COST");
+  const [tableUsage, setTableUsage] = useState("cutover");
+  const [columnTableName, setColumnTableName] = useState("RATE_GEO_COST");
+  const [columnName, setColumnName] = useState("RATE_GEO_COST_GROUP_GID");
+  const [referenceModuleId, setReferenceModuleId] = useState("rates");
+  const [referenceFieldName, setReferenceFieldName] = useState("currency_gid");
+  const [referenceValue, setReferenceValue] = useState("OTM1.BRL");
+  const [referenceDomainName, setReferenceDomainName] = useState("OTM1");
+  const [tableValidation, setTableValidation] = useState<CatalogValidateTableResult | null>(null);
+  const [columnValidation, setColumnValidation] = useState<CatalogValidateColumnResult | null>(null);
+  const [referenceValidation, setReferenceValidation] = useState<CatalogValidateReferenceResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [runningValidation, setRunningValidation] = useState<string | null>(null);
   const macroItems = macroObjects.data?.items ?? [];
   const effectiveMacroCode = selectedMacroCode ?? macroItems[0]?.code ?? null;
   const macroDetail = useCatalogMacroObjectDetail(token, effectiveMacroCode);
@@ -35,6 +71,59 @@ export function CatalogCoreView({ token }: { token: string }) {
     return <StatePanel tone="error">OTM Catalog Core is unavailable.</StatePanel>;
   }
 
+  async function runTableValidation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setValidationError(null);
+    setRunningValidation("table");
+    try {
+      const result = await validateCatalogTable(token, {
+        table_name: tableName.trim(),
+        usage: tableUsage || null
+      });
+      setTableValidation(result);
+    } catch (caught) {
+      setValidationError(caught instanceof ApiError ? caught.message : "Table validation failed.");
+    } finally {
+      setRunningValidation(null);
+    }
+  }
+
+  async function runColumnValidation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setValidationError(null);
+    setRunningValidation("column");
+    try {
+      const result = await validateCatalogColumn(token, {
+        table_name: columnTableName.trim(),
+        column_name: columnName.trim()
+      });
+      setColumnValidation(result);
+    } catch (caught) {
+      setValidationError(caught instanceof ApiError ? caught.message : "Column validation failed.");
+    } finally {
+      setRunningValidation(null);
+    }
+  }
+
+  async function runReferenceValidation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setValidationError(null);
+    setRunningValidation("reference");
+    try {
+      const result = await validateCatalogReference(token, {
+        module_id: referenceModuleId.trim(),
+        field_name: referenceFieldName.trim(),
+        value: referenceValue.trim(),
+        domain_name: referenceDomainName.trim() || null
+      });
+      setReferenceValidation(result);
+    } catch (caught) {
+      setValidationError(caught instanceof ApiError ? caught.message : "Reference validation failed.");
+    } finally {
+      setRunningValidation(null);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -52,6 +141,104 @@ export function CatalogCoreView({ token }: { token: string }) {
           { key: "validated", label: "Validated tables", status: booleanStatus(validatedTableCount), value: validatedTableCount }
         ]}
       />
+
+      <section className="panel catalog-validation-panel" aria-label="Catalog validation">
+        <div className="panel-header">
+          <h2>Catalog validation</h2>
+        </div>
+        {validationError ? <FeedbackMessage tone="error">{validationError}</FeedbackMessage> : null}
+        <div className="catalog-validation-grid">
+          <form className="catalog-validation-form" onSubmit={(event) => void runTableValidation(event)}>
+            <h3>Table</h3>
+            <label>
+              Table name
+              <input required value={tableName} onChange={(event) => setTableName(event.target.value)} />
+            </label>
+            <label>
+              Usage
+              <select value={tableUsage} onChange={(event) => setTableUsage(event.target.value)}>
+                <option value="">Any</option>
+                <option value="csvutil">csvutil</option>
+                <option value="cutover">cutover</option>
+              </select>
+            </label>
+            <Button disabled={runningValidation === "table"} type="submit" variant="primary">
+              {runningValidation === "table" ? "Validating..." : "Validate table"}
+            </Button>
+            {tableValidation ? (
+              <div className="catalog-validation-result" aria-label="Table validation result">
+                <strong>{`Table validation: ${tableValidation.severity}`}</strong>
+                <span>{tableValidation.table_name}</span>
+                <p>{tableValidation.message}</p>
+              </div>
+            ) : null}
+          </form>
+
+          <form className="catalog-validation-form" onSubmit={(event) => void runColumnValidation(event)}>
+            <h3>Column</h3>
+            <label>
+              Column table
+              <input
+                required
+                value={columnTableName}
+                onChange={(event) => setColumnTableName(event.target.value)}
+              />
+            </label>
+            <label>
+              Column name
+              <input required value={columnName} onChange={(event) => setColumnName(event.target.value)} />
+            </label>
+            <Button disabled={runningValidation === "column"} type="submit" variant="primary">
+              {runningValidation === "column" ? "Validating..." : "Validate column"}
+            </Button>
+            {columnValidation ? (
+              <div className="catalog-validation-result" aria-label="Column validation result">
+                <strong>{`Column validation: ${columnValidation.severity}`}</strong>
+                <span>{`${columnValidation.table_name}.${columnValidation.column_name}`}</span>
+                <p>{columnValidation.message}</p>
+              </div>
+            ) : null}
+          </form>
+
+          <form className="catalog-validation-form" onSubmit={(event) => void runReferenceValidation(event)}>
+            <h3>Reference</h3>
+            <label>
+              Module
+              <input
+                required
+                value={referenceModuleId}
+                onChange={(event) => setReferenceModuleId(event.target.value)}
+              />
+            </label>
+            <label>
+              Field
+              <input
+                required
+                value={referenceFieldName}
+                onChange={(event) => setReferenceFieldName(event.target.value)}
+              />
+            </label>
+            <label>
+              Reference value
+              <input required value={referenceValue} onChange={(event) => setReferenceValue(event.target.value)} />
+            </label>
+            <label>
+              Domain
+              <input value={referenceDomainName} onChange={(event) => setReferenceDomainName(event.target.value)} />
+            </label>
+            <Button disabled={runningValidation === "reference"} type="submit" variant="primary">
+              {runningValidation === "reference" ? "Validating..." : "Validate reference"}
+            </Button>
+            {referenceValidation ? (
+              <div className="catalog-validation-result" aria-label="Reference validation result">
+                <strong>{`Reference validation: ${referenceValidation.severity}`}</strong>
+                <span>{`${referenceValidation.object_type}: ${referenceValidation.gid}`}</span>
+                <p>{referenceValidation.message}</p>
+              </div>
+            ) : null}
+          </form>
+        </div>
+      </section>
 
       <ModuleWorkspaceLayout
         ariaLabel="OTM Catalog Core workspace"

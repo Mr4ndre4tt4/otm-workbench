@@ -540,11 +540,15 @@ Delivered follow-up contracts:
   documented in GUI_ASSETS_LIBRARY_VIEW.md
 - Evidence Hub backend-backed view
   documented in GUI_EVIDENCE_HUB_VIEW.md
+- Evidence Hub first filter/detail/download/archive workflow
+  documented in GUI_EVIDENCE_HUB_VIEW.md
 - Load Plan backend-backed view
   documented in GUI_LOAD_PLAN_VIEW.md
 - Catalog Core backend-backed view
   documented in GUI_CATALOG_CORE_VIEW.md
 - Master Data backend-backed view
+  documented in GUI_MASTER_DATA_VIEW.md
+- Master Data first staged Data Factory workflow
   documented in GUI_MASTER_DATA_VIEW.md
 - Order Release Generator backend-backed view
   documented in GUI_ORDER_RELEASE_GENERATOR_VIEW.md
@@ -602,6 +606,10 @@ Delivered follow-up contracts:
   documented in GUI_OPERATIONAL_PANEL_PATTERN_CONTRACT.md
 - GUI module operational surfaces contract
   documented in GUI_MODULE_OPERATIONAL_SURFACES_CONTRACT.md
+- GUI module experience architecture
+  documented in GUI_MODULE_EXPERIENCE_ARCHITECTURE.md
+- GUI module experience roadmap
+  documented in GUI_MODULE_EXPERIENCE_ROADMAP.md
 - GUI page header pattern contract
   documented in GUI_PAGE_HEADER_PATTERN_CONTRACT.md
 - GUI status chip pattern contract
@@ -618,6 +626,8 @@ Delivered follow-up contracts:
   documented in GUI_CONTEXT_SWITCHER_PATTERN_CONTRACT.md
 - GUI preference controls pattern contract
   documented in GUI_PREFERENCE_CONTROLS_PATTERN_CONTRACT.md
+- GUI staged workflow pattern contract
+  documented in GUI_STAGED_WORKFLOW_PATTERN_CONTRACT.md
 - GUI contract index
   documented in GUI_CONTRACT_INDEX.md
 - GUI exceptions register

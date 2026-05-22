@@ -122,6 +122,552 @@ def test_master_data_template_validation_uses_catalog_dictionary(client, admin_h
     }
 
 
+def dynamic_locations_template_payload(code: str = "LOCATIONS_DYNAMIC") -> dict[str, object]:
+    return {
+        "code": code,
+        "name": "Locations Dynamic",
+        "catalog_macro_object_code": "LOCATION",
+        "data_category": "MASTER_DATA",
+        "target_tables": [
+            {"table_name": "LOCATION", "sequence": 10, "required": True},
+        ],
+        "sheets": [
+            {
+                "code": "LOCATIONS",
+                "name": "Locations",
+                "sequence": 10,
+                "field_keys": ["location_gid", "location_name"],
+            },
+        ],
+        "fields": [
+            {
+                "field_key": "location_gid",
+                "label": "Location ID",
+                "data_type": "string",
+                "required": True,
+                "sheet_code": "LOCATIONS",
+            },
+            {
+                "field_key": "location_name",
+                "label": "Location Name",
+                "data_type": "string",
+                "required": False,
+                "sheet_code": "LOCATIONS",
+            },
+        ],
+        "mappings": [
+            {
+                "mapping_key": "location_gid_to_gid",
+                "source_type": "USER_FIELD",
+                "source_field_key": "location_gid",
+                "target_table": "LOCATION",
+                "target_column": "LOCATION_GID",
+                "required": True,
+            },
+            {
+                "mapping_key": "location_gid_to_xid",
+                "source_type": "USER_FIELD",
+                "source_field_key": "location_gid",
+                "target_table": "LOCATION",
+                "target_column": "LOCATION_XID",
+                "required": True,
+            },
+            {
+                "mapping_key": "location_name_to_name",
+                "source_type": "USER_FIELD",
+                "source_field_key": "location_name",
+                "target_table": "LOCATION",
+                "target_column": "LOCATION_NAME",
+                "required": False,
+            },
+            {
+                "mapping_key": "country_default",
+                "source_type": "FIXED_VALUE",
+                "fixed_value": "USA",
+                "target_table": "LOCATION",
+                "target_column": "COUNTRY_CODE3_GID",
+                "required": False,
+            },
+        ],
+        "relationship_rules": [],
+        "documentation_refs": [
+            {
+                "source_type": "DATA_DICTIONARY",
+                "scope": "LOCATION",
+                "note": "Validated against local OTM Data Dictionary.",
+            },
+        ],
+    }
+
+
+def dynamic_locations_with_addresses_payload(code: str = "LOCATIONS_DYNAMIC_REL") -> dict[str, object]:
+    payload = dynamic_locations_template_payload(code)
+    payload["target_tables"].append(
+        {"table_name": "LOCATION_ADDRESS", "sequence": 20, "required": False}
+    )
+    payload["sheets"].append(
+        {
+            "code": "LOCATION_ADDRESSES",
+            "name": "Location Addresses",
+            "sequence": 20,
+            "field_keys": ["address_location_gid", "address_line"],
+        }
+    )
+    payload["fields"].extend(
+        [
+            {
+                "field_key": "address_location_gid",
+                "label": "Address Location ID",
+                "data_type": "string",
+                "required": True,
+                "sheet_code": "LOCATION_ADDRESSES",
+            },
+            {
+                "field_key": "address_line",
+                "label": "Address Line",
+                "data_type": "string",
+                "required": False,
+                "sheet_code": "LOCATION_ADDRESSES",
+            },
+        ]
+    )
+    payload["mappings"].extend(
+        [
+            {
+                "mapping_key": "address_location_gid_to_location_address",
+                "source_type": "USER_FIELD",
+                "source_field_key": "address_location_gid",
+                "target_table": "LOCATION_ADDRESS",
+                "target_column": "LOCATION_GID",
+                "required": True,
+            },
+            {
+                "mapping_key": "address_line_to_location_address",
+                "source_type": "USER_FIELD",
+                "source_field_key": "address_line",
+                "target_table": "LOCATION_ADDRESS",
+                "target_column": "ADDRESS_LINE",
+                "required": False,
+            },
+        ]
+    )
+    payload["relationship_rules"] = [
+        {
+            "rule_key": "dynamic_location_address_parent",
+            "parent_sheet_code": "LOCATIONS",
+            "parent_field_key": "location_gid",
+            "child_sheet_code": "LOCATION_ADDRESSES",
+            "child_field_key": "address_location_gid",
+            "severity": "ERROR",
+        }
+    ]
+    return payload
+
+
+def test_master_data_dynamic_template_draft_create_exposes_v2_definition(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload(),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "LOCATIONS_DYNAMIC"
+    assert payload["status"] == "DRAFT"
+    assert payload["definition"]["schema_version"] == "master-data-template-definition/v2"
+    assert payload["definition"]["mappings"][1]["target_column"] == "LOCATION_XID"
+
+
+def test_master_data_dynamic_template_draft_patch_updates_definition(client, admin_header):
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_PATCH"),
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+    payload = dynamic_locations_template_payload("LOCATIONS_DYNAMIC_PATCH")
+    payload["name"] = "Locations Dynamic Patched"
+    payload["fields"][1]["label"] = "Friendly Location Name"
+
+    response = client.patch(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_PATCH/draft",
+        json=payload,
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    patched = response.json()
+    assert patched["name"] == "Locations Dynamic Patched"
+    assert patched["status"] == "DRAFT"
+    assert patched["definition"]["fields"][1]["label"] == "Friendly Location Name"
+
+
+def test_master_data_dynamic_template_draft_patch_rejects_published_template(client, admin_header):
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_PATCH_PUBLISHED"),
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_PATCH_PUBLISHED/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+
+    response = client.patch(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_PATCH_PUBLISHED/draft",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_PATCH_PUBLISHED"),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "MASTER_DATA_TEMPLATE_DRAFT_NOT_UPDATABLE"
+
+
+def test_master_data_dynamic_template_validation_rejects_invalid_target_column(client, admin_header):
+    payload = dynamic_locations_template_payload("LOCATIONS_BAD_COLUMN")
+    payload["mappings"][0]["target_column"] = "NOT_A_REAL_COLUMN"
+
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=payload,
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_BAD_COLUMN/validate-definition",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    validation = response.json()
+    assert validation["valid"] is False
+    assert validation["severity"] == "ERROR"
+    assert validation["issues"][0]["code"] == "MASTER_DATA_TEMPLATE_MAPPING_COLUMN_INVALID"
+    assert validation["issues"][0]["target_column"] == "NOT_A_REAL_COLUMN"
+
+
+def test_master_data_dynamic_template_validation_requires_documentation_refs(client, admin_header):
+    payload = dynamic_locations_template_payload("LOCATIONS_NO_DOC_REFS")
+    payload["documentation_refs"] = []
+
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=payload,
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_NO_DOC_REFS/validate-definition",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    validation = response.json()
+    assert validation["valid"] is False
+    assert validation["issues"][0]["code"] == "MASTER_DATA_TEMPLATE_DOCUMENTATION_REF_REQUIRED"
+
+
+def test_master_data_dynamic_template_publish_validates_one_to_many_and_fixed_value(
+    client,
+    admin_header,
+):
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_PUBLISH"),
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_PUBLISH/publish",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    published = response.json()
+    assert published["status"] == "PUBLISHED"
+    assert published["validation"]["valid"] is True
+    assert published["validation"]["summary"]["mapping_count"] == 4
+    assert published["definition"]["mappings"][1]["source_field_key"] == "location_gid"
+    assert published["definition"]["mappings"][3]["source_type"] == "FIXED_VALUE"
+
+
+def test_master_data_dynamic_template_create_next_version_as_draft(client, admin_header):
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_VERSION_SOURCE"),
+        headers=admin_header,
+    )
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_VERSION_SOURCE/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_VERSION_SOURCE/versions",
+        json={"new_code": "LOCATIONS_DYNAMIC_VERSION_2"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "LOCATIONS_DYNAMIC_VERSION_2"
+    assert payload["status"] == "DRAFT"
+    assert payload["version"] == 2
+    assert payload["definition"]["template"]["status"] == "DRAFT"
+    assert payload["definition"]["template"]["version"] == 2
+    assert payload["definition"]["mappings"][1]["target_column"] == "LOCATION_XID"
+
+
+def test_master_data_dynamic_template_runtime_rejects_draft_template(client, admin_header):
+    create = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DRAFT_RUNTIME"),
+        headers=admin_header,
+    )
+    assert create.status_code == 200
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DRAFT_RUNTIME/build-workbook",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "MASTER_DATA_TEMPLATE_NOT_PUBLISHED"
+
+
+def test_master_data_dynamic_template_runtime_maps_one_to_many_and_fixed_value(
+    client,
+    admin_header,
+):
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_RUNTIME"),
+        headers=admin_header,
+    )
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_RUNTIME/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(["Location ID", "Location Name"])
+    locations.append(["SYN.LOCATION_001", "Synthetic Location"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_RUNTIME/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_dynamic_runtime.xlsx",
+                workbook_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()["records"][0]["payload"]
+    assert payload["LOCATION_GID"] == "SYN.LOCATION_001"
+    assert payload["LOCATION_XID"] == "SYN.LOCATION_001"
+    assert payload["LOCATION_NAME"] == "Synthetic Location"
+    assert payload["COUNTRY_CODE3_GID"] == "USA"
+
+
+def test_master_data_dynamic_template_runtime_applies_default_value_when_source_is_blank(
+    client,
+    admin_header,
+):
+    payload = dynamic_locations_template_payload("LOCATIONS_DYNAMIC_DEFAULT")
+    payload["mappings"].append(
+        {
+            "mapping_key": "city_default_from_blank_location_name",
+            "source_type": "DEFAULT_VALUE",
+            "source_field_key": "location_name",
+            "default_value": "Fallback City",
+            "target_table": "LOCATION",
+            "target_column": "CITY",
+            "required": False,
+        }
+    )
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=payload,
+        headers=admin_header,
+    )
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_DEFAULT/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(["Location ID", "Location Name"])
+    locations.append(["SYN.LOCATION_001", ""])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_DEFAULT/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_dynamic_default.xlsx",
+                workbook_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()["records"][0]["payload"]
+    assert payload["CITY"] == "Fallback City"
+
+
+def test_master_data_dynamic_template_build_csv_and_export_package_preserves_otm_csv_shape(
+    client,
+    admin_header,
+):
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_DYNAMIC_CSV"),
+        headers=admin_header,
+    )
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_CSV/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(["Location ID", "Location Name"])
+    locations.append(["SYN.LOCATION_001", "Synthetic Location"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_CSV/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_dynamic_csv.xlsx",
+                workbook_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+
+    csv_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/build-csv",
+        headers=admin_header,
+    )
+
+    assert csv_response.status_code == 200
+    csv_payload = csv_response.json()
+    assert csv_payload["csv_file_count"] == 1
+    content_lines = csv_payload["files"][0]["content"].splitlines()
+    assert content_lines[0] == "LOCATION"
+    assert content_lines[1].split(",") == [
+        "LOCATION_GID",
+        "LOCATION_XID",
+        "LOCATION_NAME",
+        "COUNTRY_CODE3_GID",
+    ]
+    assert content_lines[2].split(",") == [
+        "SYN.LOCATION_001",
+        "SYN.LOCATION_001",
+        "Synthetic Location",
+        "USA",
+    ]
+
+    export_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+
+    assert export_response.status_code == 200
+    export_payload = export_response.json()
+    assert export_payload["file_name"].startswith("master_data_batch_")
+    assert export_payload["tables"] == ["LOCATION"]
+
+
+def test_master_data_dynamic_template_relationship_rules_validate_orphans_from_v2_definition(
+    client,
+    admin_header,
+):
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_with_addresses_payload("LOCATIONS_DYNAMIC_RELATIONSHIP"),
+        headers=admin_header,
+    )
+    publish = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_RELATIONSHIP/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(["Location ID", "Location Name"])
+    locations.append(["SYN.LOCATION_001", "Synthetic Location"])
+    addresses = workbook.create_sheet("LOCATION_ADDRESSES")
+    addresses.append(["Address Location ID", "Address Line"])
+    addresses.append(["SYN.LOCATION_999", "Synthetic Address"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_RELATIONSHIP/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_dynamic_relationship.xlsx",
+                workbook_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch_id = batch_response.json()["batch_id"]
+
+    response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "RELATIONSHIP_FAILED"
+    assert payload["issues"][0]["code"] == "MASTER_DATA_RELATIONSHIP_ORPHAN"
+    assert payload["issues"][0]["child_field_name"] == "address_location_gid"
+    assert payload["issues"][0]["missing_value"] == "SYN.LOCATION_999"
+
+
 def test_master_data_items_packaging_template_detail_and_validation(client, admin_header):
     detail = client.get(
         "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD",

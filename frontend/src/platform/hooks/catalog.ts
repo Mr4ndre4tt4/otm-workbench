@@ -1,11 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet } from "../api";
+import { apiGet, apiPost } from "../api";
 import type {
   CatalogMacroObject,
   CatalogMacroObjectLoadPlan,
   CatalogMacroObjectsResponse,
-  CatalogMacroObjectTablesResponse
+  CatalogMacroObjectTablesResponse,
+  CatalogTableColumnsResponse,
+  CatalogValidateColumnPayload,
+  CatalogValidateColumnResult,
+  CatalogValidateReferencePayload,
+  CatalogValidateReferenceResult,
+  CatalogValidateTablePayload,
+  CatalogValidateTableResult
 } from "../types";
 
 export function useCatalogMacroObjects(token: string | null) {
@@ -38,4 +45,24 @@ export function useCatalogMacroObjectLoadPlan(token: string | null, macroObjectC
     queryFn: () => apiGet<CatalogMacroObjectLoadPlan>(`/api/v1/catalog/macro-objects/${macroObjectCode}/load-plan`, { token }),
     enabled: Boolean(token && macroObjectCode)
   });
+}
+
+export function useCatalogTableColumns(token: string | null, tableName: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "tables", tableName, "columns"],
+    queryFn: () => apiGet<CatalogTableColumnsResponse>(`/api/v1/catalog/tables/${tableName}/columns`, { token }),
+    enabled: Boolean(token && tableName)
+  });
+}
+
+export function validateCatalogTable(token: string, payload: CatalogValidateTablePayload) {
+  return apiPost<CatalogValidateTableResult>("/api/v1/catalog/validate/table", payload, { token });
+}
+
+export function validateCatalogColumn(token: string, payload: CatalogValidateColumnPayload) {
+  return apiPost<CatalogValidateColumnResult>("/api/v1/catalog/validate/column", payload, { token });
+}
+
+export function validateCatalogReference(token: string, payload: CatalogValidateReferencePayload) {
+  return apiPost<CatalogValidateReferenceResult>("/api/v1/catalog/validate/reference", payload, { token });
 }

@@ -2,16 +2,18 @@
 
 **Status:** delivered  
 **Branch:** `codex/gui-integration-mapping-view`  
-**Scope:** first read-only, backend-backed Integration Mapping Studio screen.
+**Scope:** staged, backend-backed Integration Mapping Studio workflow.
 
 ## Purpose
 
-Add a table-first Integration Mapping Studio view to the shared Workbench shell
-without introducing module-specific layout patterns.
+Add a staged Integration Mapping Studio workflow to the shared Workbench shell
+without introducing module-specific layout patterns or stacking disconnected
+authoring panels.
 
 This slice keeps the frontend as a renderer of backend-owned mapping contracts:
 definitions, transform types, payload artifact metadata, parsed schema
-documents, and mapping rows.
+documents, mapping rows, validation/preview/spec actions, and generated
+artifact metadata.
 
 ## Backend Contracts Consumed
 
@@ -22,6 +24,12 @@ GET /api/v1/modules/integration-mapping/definitions/{definition_id}
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/payload-artifacts
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/schema-documents
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/mappings
+GET /api/v1/modules/integration-mapping/schema-documents/{schema_document_id}/nodes
+POST /api/v1/modules/integration-mapping/definitions/{definition_id}/validate
+POST /api/v1/modules/integration-mapping/definitions/{definition_id}/preview
+POST /api/v1/modules/integration-mapping/definitions/{definition_id}/generate-spec
+GET /api/v1/modules/integration-mapping/definitions/{definition_id}/artifacts
+GET /api/v1/modules/integration-mapping/definitions/{definition_id}/artifacts/{artifact_id}/download
 ```
 
 The route remains activated by the backend navigation item:
@@ -47,29 +55,35 @@ StatusChip
 Current panels:
 
 ```text
-- Definition list
+- Staged authoring navigation
+- Systems and endpoints
+- Definition authoring
+- Payload and schema authoring
+- Mapping, loop, join, and lookup authoring
 - Selected definition summary
 - Payload artifact metadata
 - Schema document metadata
 - Mapping rows
+- Generated preview/spec artifacts
 ```
 
 ## Safety Boundaries
 
 This slice intentionally does not render raw payload content, local artifact
-paths, manifest internals, client-specific data, or sample payload values.
+paths, manifest internals, client-specific data, sample payload values, or
+external credentials.
 
-It also does not expose validation, preview, spec generation, schema parsing,
-create, edit, or delete actions. Those flows should be added only after the
-backend provides explicit action contracts, lifecycle gates, permissions, and
-evidence behavior for the GUI.
+Generated artifact rows expose only client-safe metadata and download through
+guarded backend URLs. The frontend does not infer artifact paths, hashes,
+ownership, or eligibility.
 
 ## Test Coverage
 
 The GUI test suite now covers a synthetic Integration Mapping Studio contract:
 
 ```text
-npm run test -- App.test.tsx
+npm run qa:functional:integration-mapping
+npm run qa:functional:integration-mapping:browser
 ```
 
 The fixture uses neutral synthetic data and verifies that the screen renders:
@@ -80,9 +94,14 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Payload artifact file name
 - Schema root name
 - Mapping target path
+- Staged workflow navigation
+- Schema node selector usage
+- Validate, preview, and generate-spec actions
+- Generated artifact listing and guarded download
 ```
 
-It also guards against prematurely showing spec generation controls.
+It also guards against disconnected stacked authoring panels through the staged
+workflow contract.
 
 ## Next GUI Planning Notes
 

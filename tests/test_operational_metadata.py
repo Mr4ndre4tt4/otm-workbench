@@ -334,3 +334,20 @@ def test_audit_log_records_feature_flag_change(client, admin_header):
     response = client.get("/api/v1/platform/audit-logs", headers=admin_header)
     assert response.status_code == 200
     assert any(item["action"] == "feature_flag.upsert" for item in response.json()["items"])
+
+
+def test_list_feature_flags_returns_admin_safe_payload(client, admin_header):
+    client.post(
+        "/api/v1/platform/feature-flags",
+        json={"name": "dev_tools", "enabled": True, "scope": "global"},
+        headers=admin_header,
+    )
+
+    response = client.get("/api/v1/platform/feature-flags", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["name"] == "dev_tools"
+    assert payload["items"][0]["enabled"] is True
+    assert payload["items"][0]["scope"] == "global"

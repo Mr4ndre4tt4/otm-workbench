@@ -34,6 +34,8 @@ Para frontend e experiência do usuário:
 3. [Modelo de dados e contratos de API](foundation/modelo_dados_contratos_api_otm_workbench.md)
 4. [Glossário e convenções](foundation/glossario_convencoes_otm_workbench.md)
 5. [GUI MVP1 Plan](gui/GUI_MVP1_PLAN.md)
+6. [GUI Functional QA Journeys](gui/GUI_FUNCTIONAL_QA_JOURNEYS.md)
+7. [GUI Module Completion Acceptance Contract](gui/GUI_MODULE_COMPLETION_ACCEPTANCE_CONTRACT.md)
 
 ## Decisões Base
 

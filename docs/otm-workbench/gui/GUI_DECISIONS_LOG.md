@@ -114,6 +114,48 @@ Tests or guardrails: GUI_DESIGN_SYSTEM_HANDOFF.md, GUI_CONTRACT_INDEX.md, GUI_EX
 Supersedes: None.
 ```
 
+### GUI-DEC-007
+
+```text
+ID: GUI-DEC-007
+Status: Accepted
+Date: 2026-05-21
+Decision: Complex module screens must use staged workflow storytelling instead of stacking disconnected authoring panels.
+Reason: Users need to understand the operational sequence of modules such as Integration Mapping Studio; showing systems, definitions, payloads, rules, and lists at once creates noise and weakens the product model.
+Frontend impact: Complex screens render one primary operational stage at a time, with side panels reserved for selected-object context and backend-owned actions.
+Backend ownership: The staged UI must not invent lifecycle gates; backend contracts remain the source of truth for readiness, validation, permissions, artifacts, jobs, and evidence.
+Tests or guardrails: GUI_STAGED_WORKFLOW_PATTERN_CONTRACT.md and AppFunctionalIntegrationMapping.test.tsx.
+Supersedes: None.
+```
+
+### GUI-DEC-008
+
+```text
+ID: GUI-DEC-008
+Status: Accepted
+Date: 2026-05-21
+Decision: Every module route must choose one primary experience pattern before adding forms, panels, or custom interactions.
+Reason: Module screens need a clear operational story; adding independent panels without a chosen pattern creates dense, disconnected workflows and weakens consistency.
+Frontend impact: New module work must start from Module Overview, Object List/Detail, Staged Workflow, Tabbed Detail, Review Queue, Operational Surface, or a documented exception.
+Backend ownership: Pattern selection does not move lifecycle, permission, readiness, validation, action, artifact, job, evidence, audit, or preference decisions into the frontend.
+Tests or guardrails: GUI_MODULE_EXPERIENCE_ARCHITECTURE.md, GUI_IMPLEMENTATION_CHECKLIST.md, GUI_CONTRACT_INDEX.md, and functional QA journey updates.
+Supersedes: None.
+```
+
+### GUI-DEC-009
+
+```text
+ID: GUI-DEC-009
+Status: Accepted
+Date: 2026-05-22
+Decision: A module is not complete until it satisfies the cross-module completion acceptance contract, including authoring/configuration when applicable, generated artifact parity, durable backend-owned state, negative tests, out-of-order UI/browser QA, security/client-data checks, and documented residual risks.
+Reason: First functional slices prove a narrow workflow, but operational OTM modules need stronger acceptance before we call them complete.
+Frontend impact: Module docs and Linear must distinguish First functional slice done, MVP workflow done, and Module complete. GUI screens must support recovery from realistic human behavior, not only the happy path.
+Backend ownership: Backend remains authoritative for validation, lifecycle, readiness, generated artifacts, evidence, jobs, permissions, and blocked reasons.
+Tests or guardrails: GUI_MODULE_COMPLETION_ACCEPTANCE_CONTRACT.md, GUI_FUNCTIONAL_QA_JOURNEYS.md, GUI_IMPLEMENTATION_CHECKLIST.md, and guiModuleExperienceArchitectureContract.test.ts.
+Supersedes: None.
+```
+
 ## 4. Change Rule
 
 Do not silently replace accepted GUI decisions. Add a new decision with

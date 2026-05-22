@@ -120,7 +120,7 @@ gap instead of inferring it locally.
 | Evidence Hub | Evidence references and safe artifact metadata | Download affordances only through guarded backend URLs |
 | Master Data | Template/sheet/field metadata only | Generated template artifacts and review blockers |
 | Order Release Generator | Template metadata only | XML artifacts, preview jobs, and import jobs |
-| Integration Mapping Studio | Payload/schema/mapping metadata | Payload artifacts, preview jobs, and mapping blockers |
+| Integration Mapping Studio | Payload/schema/mapping metadata and generated preview/spec artifacts through guarded backend downloads | Preview jobs and mapping blockers |
 
 ## 7. Client-Safe Rules
 

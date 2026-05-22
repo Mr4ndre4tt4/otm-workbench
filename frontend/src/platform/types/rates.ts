@@ -31,6 +31,59 @@ export type RateBatchTable = {
   status: string;
 };
 
+export type AddRateBatchTablesPayload = {
+  tables: {
+    table_name: string;
+    rows: Record<string, string | number | null>[];
+  }[];
+};
+
+export type AddRateBatchTablesResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  tables: RateBatchTable[];
+};
+
+export type RateBatchCsvPreview = {
+  table_name: string;
+  content: string;
+};
+
+export type RateBatchCsvPreviewResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  previews: RateBatchCsvPreview[];
+};
+
+export type RateBatchCsvExportResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  artifact_id: string;
+  evidence_id: string;
+  manifest_id: string;
+  file_name: string;
+  file_path: string;
+  sha256: string;
+  size_bytes: number;
+  tables: string[];
+};
+
+export type RateBatchApprovalPayload = {
+  approval_note: string;
+};
+
+export type RateBatchApprovalResponse = {
+  batch_id: string;
+  status: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  evidence_id: string;
+  manifest_id: string;
+};
+
 export type RateBatchDetail = {
   id: string;
   project_id: string | null;
@@ -48,6 +101,17 @@ export type RateBatchDetail = {
   summary_json: string;
   tables: RateBatchTable[];
   available_actions: AvailableAction[];
+};
+
+export type CreateRateBatchPayload = {
+  scenario_code: string;
+  name: string;
+  domain_name: string;
+  project_id?: string | null;
+  environment_id?: string | null;
+  profile_id?: string | null;
+  description?: string;
+  source_type?: string;
 };
 
 export type RateArtifact = {

@@ -37,8 +37,15 @@
   .module-template,
   .module-row,
   .context-switcher,
-  .gallery-selector-preview {
+  .gallery-selector-preview,
+  .catalog-validation-grid,
+  .integration-workflow,
+  .rate-batch-form {
     grid-template-columns: 1fr;
+  }
+
+  .rate-batch-form-actions {
+    display: grid;
   }
 
   .artifact-list-item {

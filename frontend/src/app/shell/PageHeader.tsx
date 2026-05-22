@@ -5,11 +5,13 @@ export function PageHeader({
   actions,
   description,
   label,
+  onAction,
   title
 }: {
   actions?: AvailableAction[];
   description: string;
   label: string;
+  onAction?: (action: AvailableAction) => void;
   title: string;
 }) {
   return (
@@ -19,7 +21,7 @@ export function PageHeader({
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
-      {actions ? <ActionBar actions={actions} /> : null}
+      {actions ? <ActionBar actions={actions} onAction={onAction} /> : null}
     </header>
   );
 }

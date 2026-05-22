@@ -6,6 +6,7 @@ import { isNavigationItemActive } from "./routeUtils";
 import { ContextSummary, ContextSwitcher, PageHeader, ReadinessPanel } from "../shell";
 import {
   AssetsLibraryView,
+  AdminConsoleView,
   CatalogCoreView,
   EvidenceHubView,
   IntegrationMappingView,
@@ -183,6 +184,9 @@ export function WorkbenchRoute({ items, token }: { items: NavigationItem[]; toke
   }
   if (item?.id === "catalog") {
     return <CatalogCoreView token={token} />;
+  }
+  if (item?.id === "admin") {
+    return <AdminConsoleView token={token} />;
   }
   if (item?.id === "master_data") {
     return <MasterDataView token={token} />;

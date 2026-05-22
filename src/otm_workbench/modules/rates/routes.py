@@ -25,7 +25,11 @@ from otm_workbench.modules.rates.batches import (
     create_rate_batch,
     get_batch_table_rows,
 )
-from otm_workbench.modules.rates.approval import approve_rate_batch, get_rate_batch_readiness
+from otm_workbench.modules.rates.approval import (
+    approve_rate_batch,
+    get_existing_approval_evidence,
+    get_rate_batch_readiness,
+)
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
@@ -834,6 +838,9 @@ def list_rates_batch_evidence(
     if batch is None:
         raise HTTPException(status_code=404, detail="Rate batch not found.")
     evidence_items = list_batch_export_evidence(db, batch.id)
+    approval_evidence = get_existing_approval_evidence(db, batch.id)
+    if approval_evidence is not None and all(item.id != approval_evidence.id for item in evidence_items):
+        evidence_items = [approval_evidence, *evidence_items]
     items = [serialize_evidence(evidence) for evidence in evidence_items]
     scenario = get_rate_scenario(batch.scenario_code)
     return {

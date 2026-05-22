@@ -1,34 +1,556 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { useIntegrationDefinitionDetail, useIntegrationDefinitions, useIntegrationMappings, useIntegrationPayloadArtifacts, useIntegrationSchemaDocuments, useIntegrationTransformTypes } from '../../platform/hooks';
-import type { IntegrationDefinition } from '../../platform/types';
+import {
+  createIntegrationDefinition,
+  createIntegrationEndpoint,
+  createIntegrationJoin,
+  createIntegrationLookup,
+  createIntegrationLoop,
+  createIntegrationMapping,
+  createIntegrationPayloadArtifact,
+  createIntegrationSchemaDocument,
+  createIntegrationSystem,
+  downloadBackendArtifact,
+  generateIntegrationSpec,
+  previewIntegrationDefinition,
+  useIntegrationArtifacts,
+  useIntegrationDefinitionDetail,
+  useIntegrationDefinitions,
+  useIntegrationJoins,
+  useIntegrationLookups,
+  useIntegrationLoops,
+  useIntegrationMappings,
+  useIntegrationPayloadArtifacts,
+  useIntegrationSchemaDocuments,
+  useIntegrationSchemaNodes,
+  useIntegrationEndpoints,
+  useIntegrationSystems,
+  useIntegrationTransformTypes,
+  validateIntegrationDefinition
+} from '../../platform/hooks';
+import { ApiError } from '../../platform/api';
+import type { IntegrationDefinition, IntegrationSchemaNode } from '../../platform/types';
 import { MODULE_DESCRIPTIONS } from '../../app/routes/moduleDescriptions';
 import { PageHeader } from '../../app/shell';
-import { DetailList, MetricGrid, ModuleObjectList, ModuleWorkspaceLayout, SelectedObjectPanel, StatePanel } from '../../ui/components';
+import {
+  ArtifactList,
+  Button,
+  DetailList,
+  FeedbackMessage,
+  MetricGrid,
+  ModuleObjectList,
+  ModuleWorkspaceLayout,
+  OperationalPanel,
+  SelectedObjectPanel,
+  StatePanel
+} from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
 function integrationDefinitionMeta(item: IntegrationDefinition) {
   return [item.source_system, `${item.source_format} -> ${item.target_format}`, item.target_system];
 }
 
+const integrationWorkflowStages = [
+  { id: "systems", title: "Systems & endpoints", status: "1" },
+  { id: "definition", title: "Definition", status: "2" },
+  { id: "payloads", title: "Payloads & schemas", status: "3" },
+  { id: "rules", title: "Mapping rules", status: "4" },
+  { id: "definitions", title: "Definitions list", status: "5" }
+] as const;
+
+type IntegrationWorkflowStage = (typeof integrationWorkflowStages)[number]["id"];
+
+function SchemaNodeSelect({
+  label,
+  nodes,
+  onSelect
+}: {
+  label: string;
+  nodes: IntegrationSchemaNode[];
+  onSelect: (path: string) => void;
+}) {
+  return (
+    <label>
+      {label}
+      <select disabled={!nodes.length} onChange={(event) => onSelect(event.target.value)} value="">
+        <option value="">Select schema node</option>
+        {nodes.map((node) => (
+          <option key={node.id} value={node.path}>
+            {node.path}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function IntegrationMappingView({ token }: { token: string }) {
+  const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
+  const systems = useIntegrationSystems(token);
   const transformTypes = useIntegrationTransformTypes(token);
   const [selectedDefinitionId, setSelectedDefinitionId] = useState<string | null>(null);
+  const [activeStage, setActiveStage] = useState<IntegrationWorkflowStage>("systems");
+  const [operationMessage, setOperationMessage] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
+  const [definitionCode, setDefinitionCode] = useState('');
+  const [definitionName, setDefinitionName] = useState('');
+  const [definitionDescription, setDefinitionDescription] = useState('');
+  const [sourceSystem, setSourceSystem] = useState('');
+  const [targetSystem, setTargetSystem] = useState('');
+  const [sourceFormat, setSourceFormat] = useState('XML');
+  const [targetFormat, setTargetFormat] = useState('JSON');
+  const [sourceSchemaId, setSourceSchemaId] = useState('');
+  const [targetSchemaId, setTargetSchemaId] = useState('');
+  const [sourcePath, setSourcePath] = useState('');
+  const [targetPath, setTargetPath] = useState('');
+  const [transformType, setTransformType] = useState('DIRECT');
+  const [mappingDescription, setMappingDescription] = useState('');
+  const [systemCode, setSystemCode] = useState('');
+  const [systemName, setSystemName] = useState('');
+  const [systemType, setSystemType] = useState('EXTERNAL_API');
+  const [systemBaseUrl, setSystemBaseUrl] = useState('');
+  const [systemDescription, setSystemDescription] = useState('');
+  const [endpointSystemId, setEndpointSystemId] = useState('');
+  const [endpointCode, setEndpointCode] = useState('');
+  const [endpointName, setEndpointName] = useState('');
+  const [endpointPath, setEndpointPath] = useState('');
+  const [endpointMethod, setEndpointMethod] = useState('POST');
+  const [endpointPayloadFormat, setEndpointPayloadFormat] = useState('JSON');
+  const [endpointDescription, setEndpointDescription] = useState('');
+  const [payloadRole, setPayloadRole] = useState('SOURCE_SAMPLE');
+  const [payloadFormat, setPayloadFormat] = useState('XML');
+  const [payloadFileName, setPayloadFileName] = useState('');
+  const [payloadDescription, setPayloadDescription] = useState('');
+  const [payloadContent, setPayloadContent] = useState('');
+  const [loopSourceSchemaId, setLoopSourceSchemaId] = useState('');
+  const [loopTargetSchemaId, setLoopTargetSchemaId] = useState('');
+  const [loopName, setLoopName] = useState('');
+  const [loopSourceCollectionPath, setLoopSourceCollectionPath] = useState('');
+  const [loopTargetCollectionPath, setLoopTargetCollectionPath] = useState('');
+  const [loopDescription, setLoopDescription] = useState('');
+  const [joinSourceSchemaId, setJoinSourceSchemaId] = useState('');
+  const [joinName, setJoinName] = useState('');
+  const [joinLeftPath, setJoinLeftPath] = useState('');
+  const [joinRightPath, setJoinRightPath] = useState('');
+  const [joinOperator, setJoinOperator] = useState('EQ');
+  const [joinDescription, setJoinDescription] = useState('');
+  const [lookupSourceSchemaId, setLookupSourceSchemaId] = useState('');
+  const [lookupTargetSchemaId, setLookupTargetSchemaId] = useState('');
+  const [lookupName, setLookupName] = useState('');
+  const [lookupInputPath, setLookupInputPath] = useState('');
+  const [lookupOutputPath, setLookupOutputPath] = useState('');
+  const [lookupType, setLookupType] = useState('MOCK');
+  const [lookupDescription, setLookupDescription] = useState('');
+  const [lookupMockResponseJson, setLookupMockResponseJson] = useState('');
   const definitionItems = definitions.data?.items ?? [];
+  const systemItems = systems.data?.items ?? [];
+  const selectedEndpointSystemId = endpointSystemId || systemItems[0]?.id || null;
+  const endpoints = useIntegrationEndpoints(token, selectedEndpointSystemId);
   const effectiveDefinitionId = selectedDefinitionId ?? definitionItems[0]?.id ?? null;
   const definitionDetail = useIntegrationDefinitionDetail(token, effectiveDefinitionId);
   const payloadArtifacts = useIntegrationPayloadArtifacts(token, effectiveDefinitionId);
   const schemaDocuments = useIntegrationSchemaDocuments(token, effectiveDefinitionId);
+  const sourceSchemaNodes = useIntegrationSchemaNodes(token, sourceSchemaId || null);
+  const targetSchemaNodes = useIntegrationSchemaNodes(token, targetSchemaId || null);
+  const loopSourceSchemaNodes = useIntegrationSchemaNodes(token, loopSourceSchemaId || null);
+  const loopTargetSchemaNodes = useIntegrationSchemaNodes(token, loopTargetSchemaId || null);
+  const joinSourceSchemaNodes = useIntegrationSchemaNodes(token, joinSourceSchemaId || null);
+  const lookupSourceSchemaNodes = useIntegrationSchemaNodes(token, lookupSourceSchemaId || null);
+  const lookupTargetSchemaNodes = useIntegrationSchemaNodes(token, lookupTargetSchemaId || null);
   const mappings = useIntegrationMappings(token, effectiveDefinitionId);
+  const loops = useIntegrationLoops(token, effectiveDefinitionId);
+  const joins = useIntegrationJoins(token, effectiveDefinitionId);
+  const lookups = useIntegrationLookups(token, effectiveDefinitionId);
+  const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
 
-  if (definitions.isLoading || transformTypes.isLoading) {
+  const refreshDefinitionData = async (definitionId = effectiveDefinitionId) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "payload-artifacts"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "schema-documents"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "mappings"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "loops"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "joins"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "lookups"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "artifacts"] })
+    ]);
+  };
+
+  const refreshSystemData = async (systemId = selectedEndpointSystemId) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "systems"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "systems", systemId, "endpoints"] })
+    ]);
+  };
+
+  const handleCreateSystem = async () => {
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const system = await createIntegrationSystem(token, {
+        base_url: systemBaseUrl.trim(),
+        code: systemCode.trim(),
+        description: systemDescription.trim(),
+        name: systemName.trim(),
+        system_type: systemType
+      });
+      setEndpointSystemId(system.id);
+      setSystemCode('');
+      setSystemName('');
+      setSystemBaseUrl('');
+      setSystemDescription('');
+      setOperationMessage(`Created system ${system.code}.`);
+      await refreshSystemData(system.id);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create system.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateEndpoint = async () => {
+    if (!selectedEndpointSystemId) {
+      setOperationError("Select a system before creating an endpoint.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const endpoint = await createIntegrationEndpoint(token, selectedEndpointSystemId, {
+        code: endpointCode.trim(),
+        description: endpointDescription.trim(),
+        method: endpointMethod,
+        name: endpointName.trim(),
+        path: endpointPath.trim(),
+        payload_format: endpointPayloadFormat
+      });
+      setEndpointCode('');
+      setEndpointName('');
+      setEndpointPath('');
+      setEndpointDescription('');
+      setOperationMessage(`Created endpoint ${endpoint.code}.`);
+      await refreshSystemData(selectedEndpointSystemId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create endpoint.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateDefinition = async () => {
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const definition = await createIntegrationDefinition(token, {
+        code: definitionCode.trim(),
+        description: definitionDescription.trim(),
+        name: definitionName.trim(),
+        source_format: sourceFormat,
+        source_system: sourceSystem.trim(),
+        target_format: targetFormat,
+        target_system: targetSystem.trim()
+      });
+      setSelectedDefinitionId(definition.id);
+      setDefinitionCode('');
+      setDefinitionName('');
+      setDefinitionDescription('');
+      setSourceSystem('');
+      setTargetSystem('');
+      setOperationMessage(`Created definition ${definition.code}.`);
+      await refreshDefinitionData(definition.id);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create definition.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateSyntheticPayloadSamples = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating payload samples.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const source = await createIntegrationPayloadArtifact(token, effectiveDefinitionId, {
+        content:
+          "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid><ShipmentStop><StopSequence>1</StopSequence></ShipmentStop></Shipment></Transmission>",
+        description: "Synthetic OTM PlannedShipment source sample.",
+        file_name: "planned_shipment_synthetic.xml",
+        payload_format: "XML",
+        payload_role: "SOURCE_SAMPLE"
+      });
+      const target = await createIntegrationPayloadArtifact(token, effectiveDefinitionId, {
+        content: '{"header":{"shipmentId":"DEMO"},"deliveries":[{"sequence":1}]}',
+        description: "Synthetic external delivery target sample.",
+        file_name: "external_delivery_synthetic.json",
+        payload_format: "JSON",
+        payload_role: "TARGET_SAMPLE"
+      });
+      const sourceSchema = await createIntegrationSchemaDocument(token, source.id);
+      const targetSchema = await createIntegrationSchemaDocument(token, target.id);
+      setSourceSchemaId(sourceSchema.id);
+      setTargetSchemaId(targetSchema.id);
+      setOperationMessage("Synthetic payload samples and schema documents created.");
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create synthetic payload samples.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateManualPayloadAndSchema = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating payload artifacts.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const payloadArtifact = await createIntegrationPayloadArtifact(token, effectiveDefinitionId, {
+        content: payloadContent,
+        description: payloadDescription.trim(),
+        file_name: payloadFileName.trim(),
+        payload_format: payloadFormat,
+        payload_role: payloadRole
+      });
+      const schema = await createIntegrationSchemaDocument(token, payloadArtifact.id);
+      if (payloadRole === "SOURCE_SAMPLE") {
+        setSourceSchemaId(schema.id);
+      }
+      if (payloadRole === "TARGET_SAMPLE") {
+        setTargetSchemaId(schema.id);
+      }
+      setPayloadFileName('');
+      setPayloadDescription('');
+      setPayloadContent('');
+      setOperationMessage(`Payload ${payloadArtifact.file_name} and schema ${schema.root_name} created.`);
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create payload and schema.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateMapping = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a mapping.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const mapping = await createIntegrationMapping(token, effectiveDefinitionId, {
+        description: mappingDescription.trim(),
+        sequence_index: 10,
+        source_path: sourcePath.trim(),
+        source_schema_document_id: sourceSchemaId,
+        target_path: targetPath.trim(),
+        target_schema_document_id: targetSchemaId,
+        transform_type: transformType
+      });
+      setOperationMessage(`Created mapping ${mapping.target_path}.`);
+      setSourcePath('');
+      setTargetPath('');
+      setMappingDescription('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create mapping.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateLoop = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a loop.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const loop = await createIntegrationLoop(token, effectiveDefinitionId, {
+        description: loopDescription.trim(),
+        name: loopName.trim(),
+        sequence_index: 20,
+        source_collection_path: loopSourceCollectionPath.trim(),
+        source_schema_document_id: loopSourceSchemaId,
+        target_collection_path: loopTargetCollectionPath.trim(),
+        target_schema_document_id: loopTargetSchemaId
+      });
+      setOperationMessage(`Created loop ${loop.name}.`);
+      setLoopName('');
+      setLoopSourceCollectionPath('');
+      setLoopTargetCollectionPath('');
+      setLoopDescription('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create loop.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateJoin = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a join.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const join = await createIntegrationJoin(token, effectiveDefinitionId, {
+        description: joinDescription.trim(),
+        left_path: joinLeftPath.trim(),
+        name: joinName.trim(),
+        operator: joinOperator,
+        right_path: joinRightPath.trim(),
+        sequence_index: 30,
+        source_schema_document_id: joinSourceSchemaId
+      });
+      setOperationMessage(`Created join ${join.name}.`);
+      setJoinName('');
+      setJoinLeftPath('');
+      setJoinRightPath('');
+      setJoinDescription('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create join.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateLookup = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a lookup.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const lookup = await createIntegrationLookup(token, effectiveDefinitionId, {
+        description: lookupDescription.trim(),
+        input_path: lookupInputPath.trim(),
+        lookup_type: lookupType,
+        mock_response_json: lookupMockResponseJson,
+        name: lookupName.trim(),
+        output_path: lookupOutputPath.trim(),
+        sequence_index: 40,
+        source_schema_document_id: lookupSourceSchemaId,
+        target_schema_document_id: lookupTargetSchemaId
+      });
+      setOperationMessage(`Created lookup ${lookup.name}.`);
+      setLookupName('');
+      setLookupInputPath('');
+      setLookupOutputPath('');
+      setLookupDescription('');
+      setLookupMockResponseJson('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create lookup.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleValidateDefinition = async () => {
+    if (!effectiveDefinitionId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const validation = await validateIntegrationDefinition(token, effectiveDefinitionId);
+      setOperationMessage(`Validation ${validation.is_valid ? "passed" : "failed"} with ${validation.issue_count} issue(s).`);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not validate definition.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handlePreviewDefinition = async () => {
+    if (!effectiveDefinitionId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const preview = await previewIntegrationDefinition(token, effectiveDefinitionId);
+      setOperationMessage(`Preview artifact ${preview.artifact_id} generated by job ${preview.job_id}.`);
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not preview definition.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleGenerateSpec = async () => {
+    if (!effectiveDefinitionId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const spec = await generateIntegrationSpec(token, effectiveDefinitionId);
+      setOperationMessage(`Spec artifact ${spec.artifact_id} generated by job ${spec.job_id}.`);
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not generate spec.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleDownloadArtifact = async (artifactId: string, href: string, fallbackName: string) => {
+    setIsMutating(true);
+    setDownloadingArtifactId(artifactId);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await downloadBackendArtifact(token, href);
+      const objectUrl = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = result.filename ?? fallbackName;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      setOperationMessage(`Download started: ${result.filename ?? fallbackName}.`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setOperationError(error.message);
+      } else {
+        setOperationError("Could not download artifact.");
+      }
+    } finally {
+      setDownloadingArtifactId(null);
+      setIsMutating(false);
+    }
+  };
+
+  if (definitions.isLoading || systems.isLoading || transformTypes.isLoading) {
     return <StatePanel>Loading Integration Mapping Studio...</StatePanel>;
   }
 
-  if (definitions.isError || transformTypes.isError || !definitions.data || !transformTypes.data) {
+  if (definitions.isError || systems.isError || transformTypes.isError || !definitions.data || !systems.data || !transformTypes.data) {
     return <StatePanel tone="error">Integration Mapping Studio is unavailable.</StatePanel>;
   }
 
@@ -46,9 +568,9 @@ export function IntegrationMappingView({ token }: { token: string }) {
           { key: "definitions", label: "Definitions", status: booleanStatus(definitions.data.total), value: definitions.data.total },
           {
             key: "transform_types",
-            label: "Transform types",
-            status: booleanStatus(transformTypes.data.total),
-            value: transformTypes.data.total
+            label: "Systems",
+            status: booleanStatus(systems.data.total),
+            value: systems.data.total
           },
           {
             key: "payloads",
@@ -64,6 +586,9 @@ export function IntegrationMappingView({ token }: { token: string }) {
           }
         ]}
       />
+
+      {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+      {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
 
       <ModuleWorkspaceLayout
         ariaLabel="Integration Mapping Studio workspace"
@@ -88,6 +613,20 @@ export function IntegrationMappingView({ token }: { token: string }) {
             title={selectedDefinition?.code}
           >
             {selectedDefinition?.description ? <p className="empty-text">{selectedDefinition.description}</p> : null}
+            <div className="integration-action-bar">
+              <Button disabled={!effectiveDefinitionId || isMutating} onClick={handleCreateSyntheticPayloadSamples} variant="primary">
+                Create synthetic payload samples
+              </Button>
+              <Button disabled={!effectiveDefinitionId || isMutating} onClick={handleValidateDefinition}>
+                Validate definition
+              </Button>
+              <Button disabled={!effectiveDefinitionId || isMutating} onClick={handlePreviewDefinition}>
+                Preview definition
+              </Button>
+              <Button disabled={!effectiveDefinitionId || isMutating} onClick={handleGenerateSpec}>
+                Generate spec
+              </Button>
+            </div>
             <DetailList
               ariaLabel="Selected definition payload artifacts"
               emptyText="No payload artifacts linked to this definition."
@@ -118,11 +657,567 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 title: mapping.target_path
               }))}
             />
+            <DetailList
+              ariaLabel="Selected definition loops"
+              emptyText="No loops defined for this definition."
+              items={(loops.data?.items ?? []).map((loop) => ({
+                id: loop.id,
+                meta: [loop.source_collection_path, loop.target_collection_path],
+                status: loop.status,
+                title: loop.name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition joins"
+              emptyText="No joins defined for this definition."
+              items={(joins.data?.items ?? []).map((join) => ({
+                id: join.id,
+                meta: [join.left_path, join.operator, join.right_path],
+                status: join.status,
+                title: join.name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition lookups"
+              emptyText="No lookups defined for this definition."
+              items={(lookups.data?.items ?? []).map((lookup) => ({
+                id: lookup.id,
+                meta: [lookup.input_path, lookup.lookup_type, lookup.output_path],
+                status: lookup.status,
+                title: lookup.name
+              }))}
+            />
+            <section aria-label="Integration mapping generated artifacts" className="integration-generated-artifacts">
+              <h3>Generated artifacts</h3>
+              {artifacts.isLoading && effectiveDefinitionId ? <p className="empty-text">Loading generated artifacts...</p> : null}
+              {!artifacts.isLoading && !(artifacts.data?.items.length ?? 0) ? (
+                <p className="empty-text">No generated artifacts for this definition.</p>
+              ) : null}
+              <ArtifactList
+                items={(artifacts.data?.items ?? []).map((artifact) => ({
+                  action: artifact.download_url ? (
+                    <Button
+                      disabled={downloadingArtifactId === artifact.id}
+                      onClick={() => void handleDownloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
+                    >
+                      {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                    </Button>
+                  ) : undefined,
+                  id: artifact.id,
+                  meta: [artifact.content_type, `${artifact.size_bytes} bytes`],
+                  status: artifact.download_url ? undefined : artifact.sensitivity_level,
+                  subtitle: artifact.artifact_type,
+                  title: artifact.file_name
+                }))}
+              />
+            </section>
           </SelectedObjectPanel>
         }
         status={definitionItems.length ? "ACTIVE" : "EMPTY"}
         title="Definitions"
       >
+        <div className="integration-workflow" aria-label="Integration Mapping workflow">
+          {integrationWorkflowStages.map((stage) => (
+            <button
+              aria-current={activeStage === stage.id ? "step" : undefined}
+              className={`integration-workflow-step${activeStage === stage.id ? " integration-workflow-step-active" : ""}`}
+              key={stage.id}
+              onClick={() => setActiveStage(stage.id)}
+              type="button"
+            >
+              <span>{stage.status}</span>
+              <strong>{stage.title}</strong>
+            </button>
+          ))}
+        </div>
+
+        {activeStage === "systems" ? (
+        <OperationalPanel
+          ariaLabel="Integration system authoring"
+          emptyText="Create non-secret system and endpoint metadata."
+          hasItems
+          status="ACTIVE"
+          title="System authoring"
+        >
+          <form
+            className="integration-system-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateSystem();
+            }}
+          >
+            <label>
+              System code
+              <input onChange={(event) => setSystemCode(event.target.value)} value={systemCode} />
+            </label>
+            <label>
+              System name
+              <input onChange={(event) => setSystemName(event.target.value)} value={systemName} />
+            </label>
+            <label>
+              System type
+              <select onChange={(event) => setSystemType(event.target.value)} value={systemType}>
+                <option value="EXTERNAL_API">EXTERNAL_API</option>
+                <option value="OTM">OTM</option>
+                <option value="FILE">FILE</option>
+              </select>
+            </label>
+            <label>
+              System base URL
+              <input onChange={(event) => setSystemBaseUrl(event.target.value)} value={systemBaseUrl} />
+            </label>
+            <label className="integration-form-wide">
+              System description
+              <input onChange={(event) => setSystemDescription(event.target.value)} value={systemDescription} />
+            </label>
+            <Button disabled={isMutating} type="submit" variant="primary">
+              Create system
+            </Button>
+          </form>
+          <DetailList
+            ariaLabel="Integration systems"
+            emptyText="No integration systems registered."
+            items={systemItems.map((system) => ({
+              id: system.id,
+              meta: [system.name, system.system_type, system.base_url || "No URL"],
+              status: system.status,
+              title: system.code
+            }))}
+          />
+          <form
+            className="integration-endpoint-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateEndpoint();
+            }}
+          >
+            <label>
+              Endpoint system
+              <select onChange={(event) => setEndpointSystemId(event.target.value)} value={selectedEndpointSystemId ?? ""}>
+                <option value="">Select system</option>
+                {systemItems.map((system) => (
+                  <option key={system.id} value={system.id}>
+                    {system.code}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Endpoint code
+              <input onChange={(event) => setEndpointCode(event.target.value)} value={endpointCode} />
+            </label>
+            <label>
+              Endpoint name
+              <input onChange={(event) => setEndpointName(event.target.value)} value={endpointName} />
+            </label>
+            <label>
+              Endpoint path
+              <input onChange={(event) => setEndpointPath(event.target.value)} value={endpointPath} />
+            </label>
+            <label>
+              Endpoint method
+              <select onChange={(event) => setEndpointMethod(event.target.value)} value={endpointMethod}>
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+              </select>
+            </label>
+            <label>
+              Endpoint payload format
+              <select onChange={(event) => setEndpointPayloadFormat(event.target.value)} value={endpointPayloadFormat}>
+                <option value="JSON">JSON</option>
+                <option value="XML">XML</option>
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Endpoint description
+              <input onChange={(event) => setEndpointDescription(event.target.value)} value={endpointDescription} />
+            </label>
+            <Button disabled={!selectedEndpointSystemId || isMutating} type="submit" variant="primary">
+              Create endpoint
+            </Button>
+          </form>
+          <DetailList
+            ariaLabel="Integration endpoints"
+            emptyText="No endpoints registered for the selected system."
+            items={(endpoints.data?.items ?? []).map((endpoint) => ({
+              id: endpoint.id,
+              meta: [endpoint.name, endpoint.method, endpoint.path],
+              status: endpoint.payload_format,
+              title: endpoint.code
+            }))}
+          />
+        </OperationalPanel>
+        ) : null}
+
+        {activeStage === "definition" ? (
+        <OperationalPanel
+          ariaLabel="Integration definition authoring"
+          emptyText="Create a backend-owned integration definition."
+          hasItems
+          status="ACTIVE"
+          title="Definition authoring"
+        >
+          <form
+            className="integration-definition-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateDefinition();
+            }}
+          >
+            <label>
+              Definition code
+              <input onChange={(event) => setDefinitionCode(event.target.value)} value={definitionCode} />
+            </label>
+            <label>
+              Definition name
+              <input onChange={(event) => setDefinitionName(event.target.value)} value={definitionName} />
+            </label>
+            <label>
+              Source system
+              <input onChange={(event) => setSourceSystem(event.target.value)} value={sourceSystem} />
+            </label>
+            <label>
+              Target system
+              <input onChange={(event) => setTargetSystem(event.target.value)} value={targetSystem} />
+            </label>
+            <label>
+              Source format
+              <select onChange={(event) => setSourceFormat(event.target.value)} value={sourceFormat}>
+                <option value="XML">XML</option>
+                <option value="JSON">JSON</option>
+              </select>
+            </label>
+            <label>
+              Target format
+              <select onChange={(event) => setTargetFormat(event.target.value)} value={targetFormat}>
+                <option value="JSON">JSON</option>
+                <option value="XML">XML</option>
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Definition description
+              <input onChange={(event) => setDefinitionDescription(event.target.value)} value={definitionDescription} />
+            </label>
+            <Button disabled={isMutating} type="submit" variant="primary">
+              Create definition
+            </Button>
+          </form>
+        </OperationalPanel>
+        ) : null}
+
+        {activeStage === "payloads" ? (
+        <OperationalPanel
+          ariaLabel="Integration payload and schema authoring"
+          emptyText="Create schema documents before adding mappings."
+          hasItems
+          status={(schemaDocuments.data?.items ?? []).length >= 2 ? "ACTIVE" : "EMPTY"}
+          title="Payloads & schemas"
+        >
+          <form
+            className="integration-payload-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateManualPayloadAndSchema();
+            }}
+          >
+            <label>
+              Payload role
+              <select onChange={(event) => setPayloadRole(event.target.value)} value={payloadRole}>
+                <option value="SOURCE_SAMPLE">SOURCE_SAMPLE</option>
+                <option value="TARGET_SAMPLE">TARGET_SAMPLE</option>
+              </select>
+            </label>
+            <label>
+              Payload format
+              <select onChange={(event) => setPayloadFormat(event.target.value)} value={payloadFormat}>
+                <option value="XML">XML</option>
+                <option value="JSON">JSON</option>
+              </select>
+            </label>
+            <label>
+              Payload file name
+              <input onChange={(event) => setPayloadFileName(event.target.value)} value={payloadFileName} />
+            </label>
+            <label className="integration-form-wide">
+              Payload description
+              <input onChange={(event) => setPayloadDescription(event.target.value)} value={payloadDescription} />
+            </label>
+            <label className="integration-form-full">
+              Payload content
+              <textarea onChange={(event) => setPayloadContent(event.target.value)} value={payloadContent} />
+            </label>
+            <Button disabled={!effectiveDefinitionId || !payloadFileName.trim() || !payloadContent.trim() || isMutating} type="submit" variant="primary">
+              Create payload and schema
+            </Button>
+          </form>
+        </OperationalPanel>
+        ) : null}
+
+        {activeStage === "rules" ? (
+        <OperationalPanel
+          ariaLabel="Integration mapping authoring"
+          emptyText="Create schema documents before adding mappings."
+          hasItems
+          status={(schemaDocuments.data?.items ?? []).length >= 2 ? "ACTIVE" : "EMPTY"}
+          title="Mapping rules"
+        >
+          <form
+            className="integration-mapping-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateMapping();
+            }}
+          >
+            <label>
+              Source schema
+              <select onChange={(event) => setSourceSchemaId(event.target.value)} value={sourceSchemaId}>
+                <option value="">Select source schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Target schema
+              <select onChange={(event) => setTargetSchemaId(event.target.value)} value={targetSchemaId}>
+                <option value="">Select target schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <SchemaNodeSelect
+              label="Mapping source node"
+              nodes={sourceSchemaNodes.data?.items ?? []}
+              onSelect={setSourcePath}
+            />
+            <SchemaNodeSelect
+              label="Mapping target node"
+              nodes={targetSchemaNodes.data?.items ?? []}
+              onSelect={setTargetPath}
+            />
+            <label>
+              Source path
+              <input onChange={(event) => setSourcePath(event.target.value)} value={sourcePath} />
+            </label>
+            <label>
+              Target path
+              <input onChange={(event) => setTargetPath(event.target.value)} value={targetPath} />
+            </label>
+            <label>
+              Transform type
+              <select onChange={(event) => setTransformType(event.target.value)} value={transformType}>
+                {transformTypes.data.items.map((item) => (
+                  <option key={item.id} value={item.code}>
+                    {item.code}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Mapping description
+              <input onChange={(event) => setMappingDescription(event.target.value)} value={mappingDescription} />
+            </label>
+            <Button disabled={!effectiveDefinitionId || !sourceSchemaId || !targetSchemaId || isMutating} type="submit" variant="primary">
+              Create mapping
+            </Button>
+          </form>
+
+          <form
+            className="integration-loop-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateLoop();
+            }}
+          >
+            <label>
+              Loop source schema
+              <select onChange={(event) => setLoopSourceSchemaId(event.target.value)} value={loopSourceSchemaId}>
+                <option value="">Select source schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Loop target schema
+              <select onChange={(event) => setLoopTargetSchemaId(event.target.value)} value={loopTargetSchemaId}>
+                <option value="">Select target schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Loop name
+              <input onChange={(event) => setLoopName(event.target.value)} value={loopName} />
+            </label>
+            <SchemaNodeSelect
+              label="Loop source node"
+              nodes={loopSourceSchemaNodes.data?.items ?? []}
+              onSelect={setLoopSourceCollectionPath}
+            />
+            <SchemaNodeSelect
+              label="Loop target node"
+              nodes={loopTargetSchemaNodes.data?.items ?? []}
+              onSelect={setLoopTargetCollectionPath}
+            />
+            <label>
+              Loop source collection path
+              <input onChange={(event) => setLoopSourceCollectionPath(event.target.value)} value={loopSourceCollectionPath} />
+            </label>
+            <label>
+              Loop target collection path
+              <input onChange={(event) => setLoopTargetCollectionPath(event.target.value)} value={loopTargetCollectionPath} />
+            </label>
+            <label className="integration-form-wide">
+              Loop description
+              <input onChange={(event) => setLoopDescription(event.target.value)} value={loopDescription} />
+            </label>
+            <Button disabled={!effectiveDefinitionId || !loopSourceSchemaId || !loopTargetSchemaId || isMutating} type="submit" variant="primary">
+              Create loop
+            </Button>
+          </form>
+
+          <form
+            className="integration-join-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateJoin();
+            }}
+          >
+            <label>
+              Join source schema
+              <select onChange={(event) => setJoinSourceSchemaId(event.target.value)} value={joinSourceSchemaId}>
+                <option value="">Select source schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Join name
+              <input onChange={(event) => setJoinName(event.target.value)} value={joinName} />
+            </label>
+            <SchemaNodeSelect
+              label="Join left node"
+              nodes={joinSourceSchemaNodes.data?.items ?? []}
+              onSelect={setJoinLeftPath}
+            />
+            <SchemaNodeSelect
+              label="Join right node"
+              nodes={joinSourceSchemaNodes.data?.items ?? []}
+              onSelect={setJoinRightPath}
+            />
+            <label>
+              Join left path
+              <input onChange={(event) => setJoinLeftPath(event.target.value)} value={joinLeftPath} />
+            </label>
+            <label>
+              Join right path
+              <input onChange={(event) => setJoinRightPath(event.target.value)} value={joinRightPath} />
+            </label>
+            <label>
+              Join operator
+              <select onChange={(event) => setJoinOperator(event.target.value)} value={joinOperator}>
+                <option value="EQ">EQ</option>
+                <option value="NE">NE</option>
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Join description
+              <input onChange={(event) => setJoinDescription(event.target.value)} value={joinDescription} />
+            </label>
+            <Button disabled={!effectiveDefinitionId || !joinSourceSchemaId || isMutating} type="submit" variant="primary">
+              Create join
+            </Button>
+          </form>
+
+          <form
+            className="integration-lookup-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateLookup();
+            }}
+          >
+            <label>
+              Lookup source schema
+              <select onChange={(event) => setLookupSourceSchemaId(event.target.value)} value={lookupSourceSchemaId}>
+                <option value="">Select source schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Lookup target schema
+              <select onChange={(event) => setLookupTargetSchemaId(event.target.value)} value={lookupTargetSchemaId}>
+                <option value="">Select target schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Lookup name
+              <input onChange={(event) => setLookupName(event.target.value)} value={lookupName} />
+            </label>
+            <SchemaNodeSelect
+              label="Lookup input node"
+              nodes={lookupSourceSchemaNodes.data?.items ?? []}
+              onSelect={setLookupInputPath}
+            />
+            <SchemaNodeSelect
+              label="Lookup output node"
+              nodes={lookupTargetSchemaNodes.data?.items ?? []}
+              onSelect={setLookupOutputPath}
+            />
+            <label>
+              Lookup input path
+              <input onChange={(event) => setLookupInputPath(event.target.value)} value={lookupInputPath} />
+            </label>
+            <label>
+              Lookup output path
+              <input onChange={(event) => setLookupOutputPath(event.target.value)} value={lookupOutputPath} />
+            </label>
+            <label>
+              Lookup type
+              <select onChange={(event) => setLookupType(event.target.value)} value={lookupType}>
+                <option value="MOCK">MOCK</option>
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Lookup description
+              <input onChange={(event) => setLookupDescription(event.target.value)} value={lookupDescription} />
+            </label>
+            <label className="integration-form-full">
+              Lookup mock response JSON
+              <textarea onChange={(event) => setLookupMockResponseJson(event.target.value)} value={lookupMockResponseJson} />
+            </label>
+            <Button disabled={!effectiveDefinitionId || !lookupSourceSchemaId || !lookupTargetSchemaId || isMutating} type="submit" variant="primary">
+              Create lookup
+            </Button>
+          </form>
+        </OperationalPanel>
+        ) : null}
+
+        {activeStage === "definitions" ? (
         <ModuleObjectList
           ariaLabel="Integration mapping definitions"
           emptyText="No Integration Mapping definitions available for the current context."
@@ -136,6 +1231,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
           onSelect={setSelectedDefinitionId}
           selectedId={effectiveDefinitionId}
         />
+        ) : null}
       </ModuleWorkspaceLayout>
     </>
   );

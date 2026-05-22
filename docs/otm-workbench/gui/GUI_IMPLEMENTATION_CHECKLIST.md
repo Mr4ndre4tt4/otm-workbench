@@ -23,10 +23,20 @@ Confirm the work has:
 - Navigation, permissions, lifecycle, readiness, actions, jobs, artifacts,
   evidence, active context, and preferences remain backend-owned.
 - Existing contracts checked in GUI_CONTRACT_INDEX.md.
+- GUI_MODULE_EXPERIENCE_ARCHITECTURE.md reviewed to choose the route's primary
+  story and pattern before adding panels or forms.
+- GUI_MODULE_COMPLETION_ACCEPTANCE_CONTRACT.md reviewed before using completion
+  language. A first functional slice must not be described as module complete.
 - Existing reusable components checked before adding a new component.
 - GUI_EXCEPTIONS_REGISTER.md reviewed for custom interaction needs.
 - GUI_ACCESSIBILITY_QA_MATRIX.md reviewed for the required visual, keyboard,
   responsive, console, and client-data-safe QA baseline.
+- GUI_FUNCTIONAL_QA_JOURNEYS.md reviewed for the route's primary workflow,
+  backend state transition, navigate-away/return-state expectation, and
+  script coverage.
+- GUI_STAGED_WORKFLOW_PATTERN_CONTRACT.md reviewed when a route has multiple
+  authoring surfaces, so the screen follows a clear story instead of stacked
+  disconnected panels.
 - GUI_DECISIONS_LOG.md reviewed for stack, shell, theme, desktop, and ownership
   decisions.
 - GUI_FOUNDATION_CONSOLIDATION_REVIEW.md checked when the work depends on a
@@ -63,6 +73,10 @@ Use established components before creating new markup:
 
 Custom layouts or interactions require an approved entry in
 `GUI_EXCEPTIONS_REGISTER.md` before implementation.
+
+Complex module screens must not stack unrelated authoring panels one below
+another. Use staged workflow navigation when the user needs to build an object
+through ordered steps, and keep only the current primary stage visible.
 
 ## 4. Required States
 
@@ -107,9 +121,15 @@ Before committing:
 - Add the contract to GUI_CONTRACT_INDEX.md.
 - Update GUI_ACCESSIBILITY_QA_MATRIX.md when the work changes required route,
   viewport, preference, keyboard, or browser evidence coverage.
+- Update GUI_FUNCTIONAL_QA_JOURNEYS.md when the work adds, removes, or changes
+  a route workflow, backend action, generated artifact, or return-state
+  expectation.
 - Update GUI_MVP1_PLAN.md if the work changes delivered scope.
 - Update GUI_DECISIONS_LOG.md only when adding or superseding a decision.
 - Update GUI_EXCEPTIONS_REGISTER.md for approved custom patterns.
+- For module-completion claims, add or update a completion review with
+  generated artifact parity, authoring/configuration coverage, negative QA,
+  out-of-order UI QA, security/client-data checks, and known gaps.
 - Update Linear with branch, delivered scope, validation, and notes.
 ```
 
@@ -127,6 +147,22 @@ git diff --check
 For visual or interaction changes, also run browser visual QA when the local
 environment can launch a browser. If browser QA is blocked by the Windows
 sandbox, document the attempted check instead of claiming it passed.
+
+For functional module work, also run or add the route's functional QA journey.
+The journey must prove the UI action, the backend contract call, the expected
+backend state transition, and the navigate-away/return-state behavior.
+
+For module-completion work, also run or add negative and out-of-order tests:
+
+```text
+- invalid input
+- invalid lifecycle order
+- repeated mutating action
+- changing selection mid-flow
+- clearing/replacing uploads
+- route leave/return at intermediate stage
+- generated artifact content parity
+```
 
 ## 8. Client Data Rule
 

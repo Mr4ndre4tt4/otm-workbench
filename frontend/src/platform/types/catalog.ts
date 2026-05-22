@@ -40,6 +40,17 @@ export type CatalogMacroObjectTable = {
 
 export type CatalogMacroObjectTablesResponse = PageResponse<CatalogMacroObjectTable>;
 
+export type CatalogTableColumn = {
+  column_name: string;
+  data_type: string;
+  is_nullable: boolean;
+  is_constraint: boolean;
+  constraint_values?: string;
+  default_value?: string;
+};
+
+export type CatalogTableColumnsResponse = PageResponse<CatalogTableColumn>;
+
 export type CatalogLoadPlanItem = {
   macro_object_code: string;
   macro_object_name: string;
@@ -60,4 +71,52 @@ export type CatalogMacroObjectLoadPlan = {
     target_table_count: number;
     all_target_tables_validated: boolean;
   };
+};
+
+export type CatalogValidateTablePayload = {
+  table_name: string;
+  usage?: string | null;
+};
+
+export type CatalogValidateTableResult = {
+  table_name: string;
+  exists: boolean;
+  allow_cutover?: boolean;
+  allow_csvutil?: boolean;
+  severity: string;
+  message: string;
+};
+
+export type CatalogValidateColumnPayload = {
+  table_name: string;
+  column_name: string;
+};
+
+export type CatalogValidateColumnResult = {
+  table_name: string;
+  column_name: string;
+  exists: boolean;
+  severity: string;
+  message: string;
+};
+
+export type CatalogValidateReferencePayload = {
+  module_id: string;
+  field_name: string;
+  value: string;
+  domain_name?: string | null;
+  project_id?: string | null;
+  environment_id?: string | null;
+  profile_id?: string | null;
+  can_view_all_domains?: boolean;
+};
+
+export type CatalogValidateReferenceResult = {
+  valid: boolean;
+  severity: string;
+  policy: string;
+  object_type: string;
+  gid: string;
+  domain_name: string;
+  message: string;
 };

@@ -1,4 +1,5 @@
 export { AssetsLibraryView } from './assets/AssetsLibraryView';
+export { AdminConsoleView } from './admin/AdminConsoleView';
 export { CatalogCoreView } from './catalog/CatalogCoreView';
 export { EvidenceHubView } from './evidence/EvidenceHubView';
 export { IntegrationMappingView } from './integration-mapping/IntegrationMappingView';

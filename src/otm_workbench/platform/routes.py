@@ -472,6 +472,16 @@ def upsert_feature_flag(
     return {"id": flag.id, "name": flag.name, "enabled": flag.enabled, "scope": flag.scope}
 
 
+@router.get("/feature-flags")
+def list_feature_flags(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    flags = db.query(FeatureFlag).order_by(FeatureFlag.name).all()
+    items = [{"id": flag.id, "name": flag.name, "enabled": flag.enabled, "scope": flag.scope} for flag in flags]
+    return PageResponse(items=items, total=len(items))
+
+
 @router.post("/workspaces", response_model=IdNameResponse)
 def create_workspace(
     payload: WorkspaceCreate,

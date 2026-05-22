@@ -16,6 +16,7 @@ function moduleDescriptionKeys(source: string) {
 }
 
 const activeModuleRoutes: ActiveModuleRoute[] = [
+  { id: "admin", viewName: "AdminConsoleView" },
   { id: "assets", viewName: "AssetsLibraryView" },
   { id: "catalog", viewName: "CatalogCoreView" },
   { id: "evidence", viewName: "EvidenceHubView" },
@@ -26,7 +27,7 @@ const activeModuleRoutes: ActiveModuleRoute[] = [
   { id: "rates", viewName: "RatesSummaryView" }
 ];
 
-const placeholderOnlyModuleIds = ["admin", "dev_tools"];
+const placeholderOnlyModuleIds = ["dev_tools"];
 
 describe("GUI module navigation contract", () => {
   it("documents every active GUI module id", () => {

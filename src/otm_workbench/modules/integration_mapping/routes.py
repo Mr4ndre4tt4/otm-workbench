@@ -1,4 +1,8 @@
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -8,6 +12,7 @@ from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.config import get_settings
 from otm_workbench.models import (
     Artifact,
+    AuditLog,
     IntegrationDefinition,
     IntegrationEndpoint,
     IntegrationJoinRule,
@@ -18,8 +23,10 @@ from otm_workbench.models import (
     IntegrationSchemaDocument,
     IntegrationSchemaNode,
     IntegrationSystem,
+    Job,
     User,
 )
+from otm_workbench.modules.rates.exports import file_sha256
 from otm_workbench.modules.integration_mapping.definitions import (
     create_integration_definition,
     serialize_integration_definition,
@@ -70,6 +77,54 @@ from otm_workbench.modules.integration_mapping.validation import validate_integr
 
 
 router = APIRouter(prefix="/api/v1/modules/integration-mapping", tags=["integration-mapping"])
+
+
+def serialize_integration_artifact(artifact: Artifact, definition_id: str) -> dict[str, object]:
+    return {
+        "id": artifact.id,
+        "definition_id": definition_id,
+        "source_module": artifact.source_module,
+        "artifact_type": artifact.artifact_type,
+        "file_name": artifact.file_name,
+        "content_type": artifact.content_type,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "sensitivity_level": artifact.sensitivity_level,
+        "download_url": (
+            f"/api/v1/modules/integration-mapping/definitions/{definition_id}/artifacts/{artifact.id}/download"
+        ),
+    }
+
+
+def artifact_ids_for_definition_jobs(db: Session, definition_id: str) -> list[str]:
+    artifact_ids: list[str] = []
+    jobs = (
+        db.query(Job)
+        .filter(Job.source_module == "integration_mapping")
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+    for job in jobs:
+        try:
+            input_payload = json.loads(job.input_json or "{}")
+            result_payload = json.loads(job.result_json or "{}")
+        except json.JSONDecodeError:
+            continue
+        if input_payload.get("definition_id") != definition_id:
+            continue
+        artifact_id = result_payload.get("artifact_id")
+        if isinstance(artifact_id, str) and artifact_id not in artifact_ids:
+            artifact_ids.append(artifact_id)
+    return artifact_ids
+
+
+def list_definition_generated_artifacts(db: Session, definition_id: str) -> list[Artifact]:
+    artifacts: list[Artifact] = []
+    for artifact_id in artifact_ids_for_definition_jobs(db, definition_id):
+        artifact = db.get(Artifact, artifact_id)
+        if artifact is not None and artifact.source_module == "integration_mapping":
+            artifacts.append(artifact)
+    return artifacts
 
 
 class IntegrationDefinitionCreateRequest(BaseModel):
@@ -336,6 +391,76 @@ def generate_definition_spec(
     )
     db.commit()
     return payload
+
+
+@router.get("/definitions/{definition_id}/artifacts")
+def list_definition_artifacts(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    artifacts = list_definition_generated_artifacts(db, definition.id)
+    return {
+        "definition_id": definition.id,
+        "items": [serialize_integration_artifact(artifact, definition.id) for artifact in artifacts],
+        "total": len(artifacts),
+    }
+
+
+@router.get("/definitions/{definition_id}/artifacts/{artifact_id}/download")
+def download_definition_artifact(
+    definition_id: str,
+    artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    artifact = next(
+        (item for item in list_definition_generated_artifacts(db, definition.id) if item.id == artifact_id),
+        None,
+    )
+    if artifact is None:
+        raise api_error(404, "INTEGRATION_ARTIFACT_NOT_FOUND", "Integration Mapping artifact not found.")
+
+    path = Path(artifact.file_path)
+    if not path.exists() or not path.is_file():
+        raise api_error(404, "INTEGRATION_ARTIFACT_FILE_NOT_FOUND", "Integration Mapping artifact file not found.")
+
+    actual_sha256, actual_size = file_sha256(path)
+    if actual_sha256 != artifact.sha256:
+        raise api_error(409, "INTEGRATION_ARTIFACT_HASH_MISMATCH", "Integration Mapping artifact hash mismatch.")
+
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="integration_mapping.artifact.download",
+            target_type="artifact",
+            target_id=artifact.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "artifact_type": artifact.artifact_type,
+                    "definition_id": definition.id,
+                    "source_module": artifact.source_module,
+                    "sha256": artifact.sha256,
+                    "size_bytes": actual_size,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+    return FileResponse(
+        path,
+        media_type=artifact.content_type,
+        filename=artifact.file_name,
+        headers={"X-Artifact-SHA256": artifact.sha256},
+    )
 
 
 @router.post("/systems")

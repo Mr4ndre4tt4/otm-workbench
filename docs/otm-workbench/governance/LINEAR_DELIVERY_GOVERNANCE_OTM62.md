@@ -71,6 +71,26 @@ Done
 Do not leave issues In Progress after their scope has been superseded. Mark
 them Done with a superseded/completed note pointing to the follow-up evidence.
 
+For module work, distinguish issue completion from module completion:
+
+```text
+First functional slice done
+  The issue delivered one validated story.
+
+MVP workflow done
+  The issue delivered the principal happy path plus obvious blocked/error
+  states.
+
+Module complete
+  The module satisfies GUI_MODULE_COMPLETION_ACCEPTANCE_CONTRACT.md, including
+  authoring/configuration where applicable, generated artifact parity, durable
+  state, negative tests, out-of-order UI QA, security/client-data checks, and
+  documented residual risks.
+```
+
+Do not close a broad module umbrella as complete just because a child delivery
+slice is Done.
+
 ## 6. Comment Cadence
 
 Add a Linear comment when:

@@ -363,6 +363,8 @@ MASTER_DATA_TEMPLATE_SEEDS = [
     LOCATIONS_BASIC_TEMPLATE,
 ]
 
+MASTER_DATA_TEMPLATE_DEFINITION_SCHEMA_VERSION = "master-data-template-definition/v2"
+
 MASTER_DATA_RELATIONSHIP_RULES = {
     "REGIONS_BASIC": [
         {
@@ -424,6 +426,459 @@ def seed_master_data_templates(db: Session) -> None:
         db.commit()
 
 
+def master_data_template_definition_from_seed(seed: dict[str, object]) -> dict[str, object]:
+    target_tables = [
+        {"table_name": table_name, "sequence": (index + 1) * 10, "required": True}
+        for index, table_name in enumerate(seed["target_tables"])
+    ]
+    fields = []
+    mappings = []
+    sheets = []
+    for sheet_index, sheet in enumerate(seed["sheets"]):
+        field_keys = []
+        for field in sheet["fields"]:
+            field_key = field["name"]
+            field_keys.append(field_key)
+            fields.append(
+                {
+                    "field_key": field_key,
+                    "label": field["label"],
+                    "data_type": field.get("data_type", "string"),
+                    "required": bool(field.get("required", False)),
+                    "sheet_code": sheet["code"],
+                }
+            )
+            mappings.append(
+                {
+                    "mapping_key": f"{sheet['code'].lower()}_{field_key}_to_{field['target_column'].lower()}",
+                    "source_type": "USER_FIELD",
+                    "sheet_code": sheet["code"],
+                    "source_field_key": field_key,
+                    "target_table": sheet["target_table"],
+                    "target_column": field["target_column"],
+                    "required": bool(field.get("required", False)),
+                }
+            )
+        sheets.append(
+            {
+                "code": sheet["code"],
+                "name": sheet["name"],
+                "sequence": (sheet_index + 1) * 10,
+                "field_keys": field_keys,
+            }
+        )
+
+    return {
+        "schema_version": MASTER_DATA_TEMPLATE_DEFINITION_SCHEMA_VERSION,
+        "template": {
+            "code": seed["code"],
+            "name": seed["name"],
+            "version": seed["version"],
+            "status": seed["status"],
+            "catalog_macro_object_code": seed["catalog_macro_object_code"],
+            "data_category": seed["data_category"],
+        },
+        "target_tables": target_tables,
+        "sheets": sheets,
+        "fields": fields,
+        "mappings": mappings,
+        "relationship_rules": MASTER_DATA_RELATIONSHIP_RULES.get(seed["code"], []),
+        "documentation_refs": [
+            {
+                "source_type": "DATA_DICTIONARY",
+                "scope": seed["catalog_macro_object_code"],
+                "note": "Validated against local OTM Data Dictionary.",
+            }
+        ],
+    }
+
+
+def master_data_template_definition(template: MasterDataTemplate) -> dict[str, object]:
+    if template.definition_json and template.definition_json != "{}":
+        return json.loads(template.definition_json)
+    seed = {
+        "code": template.code,
+        "name": template.name,
+        "version": template.version,
+        "status": template.status,
+        "catalog_macro_object_code": template.catalog_macro_object_code,
+        "data_category": template.data_category,
+        "target_tables": json.loads(template.target_tables_json),
+        "sheets": json.loads(template.sheets_json),
+    }
+    return master_data_template_definition_from_seed(seed)
+
+
+def normalize_master_data_template_definition(payload: dict[str, object], status: str = "DRAFT") -> dict[str, object]:
+    code = str(payload["code"]).strip().upper()
+    target_tables = []
+    for index, table in enumerate(payload.get("target_tables", [])):
+        table_name = str(table["table_name"]).strip().upper()
+        target_tables.append(
+            {
+                "table_name": table_name,
+                "sequence": int(table.get("sequence", (index + 1) * 10)),
+                "required": bool(table.get("required", True)),
+            }
+        )
+    sheets = []
+    for index, sheet in enumerate(payload.get("sheets", [])):
+        sheets.append(
+            {
+                "code": str(sheet["code"]).strip().upper(),
+                "name": str(sheet["name"]).strip(),
+                "sequence": int(sheet.get("sequence", (index + 1) * 10)),
+                "field_keys": [str(field_key).strip() for field_key in sheet.get("field_keys", [])],
+            }
+        )
+    fields = []
+    for field in payload.get("fields", []):
+        fields.append(
+            {
+                "field_key": str(field["field_key"]).strip(),
+                "label": str(field["label"]).strip(),
+                "data_type": str(field.get("data_type", "string")).strip().lower(),
+                "required": bool(field.get("required", False)),
+                "sheet_code": str(field["sheet_code"]).strip().upper(),
+            }
+        )
+    mappings = []
+    for mapping in payload.get("mappings", []):
+        normalized_mapping = {
+            "mapping_key": str(mapping["mapping_key"]).strip(),
+            "source_type": str(mapping["source_type"]).strip().upper(),
+            "target_table": str(mapping["target_table"]).strip().upper(),
+            "target_column": str(mapping["target_column"]).strip().upper(),
+            "required": bool(mapping.get("required", False)),
+        }
+        if mapping.get("source_field_key") is not None:
+            normalized_mapping["source_field_key"] = str(mapping["source_field_key"]).strip()
+        if mapping.get("sheet_code") is not None:
+            normalized_mapping["sheet_code"] = str(mapping["sheet_code"]).strip().upper()
+        if mapping.get("fixed_value") is not None:
+            normalized_mapping["fixed_value"] = mapping["fixed_value"]
+        if mapping.get("default_value") is not None:
+            normalized_mapping["default_value"] = mapping["default_value"]
+        mappings.append(normalized_mapping)
+
+    return {
+        "schema_version": MASTER_DATA_TEMPLATE_DEFINITION_SCHEMA_VERSION,
+        "template": {
+            "code": code,
+            "name": str(payload["name"]).strip(),
+            "version": int(payload.get("version", 1)),
+            "status": status,
+            "catalog_macro_object_code": str(payload["catalog_macro_object_code"]).strip().upper(),
+            "data_category": str(payload.get("data_category", "MASTER_DATA")).strip().upper(),
+        },
+        "target_tables": target_tables,
+        "sheets": sheets,
+        "fields": fields,
+        "mappings": mappings,
+        "relationship_rules": payload.get("relationship_rules", []),
+        "documentation_refs": payload.get("documentation_refs", []),
+    }
+
+
+def v2_definition_to_legacy_sheets(definition: dict[str, object]) -> list[dict[str, object]]:
+    fields_by_key = {field["field_key"]: field for field in definition.get("fields", [])}
+    first_mapping_by_field: dict[str, dict[str, object]] = {}
+    for mapping in definition.get("mappings", []):
+        if mapping.get("source_type") != "USER_FIELD":
+            continue
+        field_key = mapping.get("source_field_key")
+        if field_key and field_key not in first_mapping_by_field:
+            first_mapping_by_field[field_key] = mapping
+
+    sheets = []
+    for sheet in definition.get("sheets", []):
+        legacy_fields = []
+        target_table = None
+        for field_key in sheet.get("field_keys", []):
+            field = fields_by_key.get(field_key)
+            mapping = first_mapping_by_field.get(field_key)
+            if field is None or mapping is None:
+                continue
+            target_table = target_table or mapping["target_table"]
+            legacy_fields.append(
+                {
+                    "name": field["field_key"],
+                    "label": field["label"],
+                    "target_column": mapping["target_column"],
+                    "required": bool(field.get("required", False)),
+                    "data_type": field.get("data_type", "string"),
+                }
+            )
+        sheets.append(
+            {
+                "code": sheet["code"],
+                "name": sheet["name"],
+                "target_table": target_table or definition["target_tables"][0]["table_name"],
+                "fields": legacy_fields,
+            }
+        )
+    return sheets
+
+
+def create_master_data_template_draft(
+    db: Session,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    definition = normalize_master_data_template_definition(payload, status="DRAFT")
+    template_meta = definition["template"]
+    code = template_meta["code"]
+    existing = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == code).first()
+    if existing is not None:
+        raise ValueError("Master Data template code already exists.")
+
+    target_tables = [table["table_name"] for table in definition["target_tables"]]
+    legacy_sheets = v2_definition_to_legacy_sheets(definition)
+    template = MasterDataTemplate(
+        code=code,
+        name=template_meta["name"],
+        version=template_meta["version"],
+        status="DRAFT",
+        catalog_macro_object_code=template_meta["catalog_macro_object_code"],
+        data_category=template_meta["data_category"],
+        target_tables_json=json.dumps(target_tables),
+        sheets_json=json.dumps(legacy_sheets),
+        definition_json=json.dumps(definition, sort_keys=True),
+        description=str(payload.get("description", "")),
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return serialize_master_data_template(template)
+
+
+def update_master_data_template_draft(
+    db: Session,
+    template: MasterDataTemplate,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    if template.status != "DRAFT":
+        raise ValueError("Only draft Master Data templates can be updated.")
+    definition = normalize_master_data_template_definition(payload, status="DRAFT")
+    template_meta = definition["template"]
+    if template_meta["code"] != template.code:
+        raise ValueError("Draft template code cannot be changed.")
+
+    target_tables = [table["table_name"] for table in definition["target_tables"]]
+    template.name = template_meta["name"]
+    template.version = template_meta["version"]
+    template.catalog_macro_object_code = template_meta["catalog_macro_object_code"]
+    template.data_category = template_meta["data_category"]
+    template.target_tables_json = json.dumps(target_tables)
+    template.sheets_json = json.dumps(v2_definition_to_legacy_sheets(definition))
+    template.definition_json = json.dumps(definition, sort_keys=True)
+    template.description = str(payload.get("description", template.description))
+    db.commit()
+    db.refresh(template)
+    return serialize_master_data_template(template)
+
+
+def create_master_data_template_version(
+    db: Session,
+    source_template: MasterDataTemplate,
+    new_code: str | None = None,
+) -> dict[str, object]:
+    code = (new_code or f"{source_template.code}_V{source_template.version + 1}").strip().upper()
+    existing = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == code).first()
+    if existing is not None:
+        raise ValueError("Master Data template version code already exists.")
+
+    definition = master_data_template_definition(source_template)
+    definition = json.loads(json.dumps(definition))
+    definition["template"]["code"] = code
+    definition["template"]["version"] = int(source_template.version) + 1
+    definition["template"]["status"] = "DRAFT"
+
+    target_tables = [table["table_name"] for table in definition["target_tables"]]
+    template = MasterDataTemplate(
+        code=code,
+        name=source_template.name,
+        version=int(source_template.version) + 1,
+        status="DRAFT",
+        catalog_macro_object_code=source_template.catalog_macro_object_code,
+        data_category=source_template.data_category,
+        target_tables_json=json.dumps(target_tables),
+        sheets_json=json.dumps(v2_definition_to_legacy_sheets(definition)),
+        definition_json=json.dumps(definition, sort_keys=True),
+        description=source_template.description,
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return serialize_master_data_template(template)
+
+
+def validate_master_data_template_definition(
+    template: MasterDataTemplate,
+    dictionary_root: Path,
+) -> dict[str, object]:
+    definition = master_data_template_definition(template)
+    issues = []
+    target_tables = {table["table_name"] for table in definition.get("target_tables", [])}
+    field_keys = {field["field_key"] for field in definition.get("fields", [])}
+    sheet_codes = {sheet["code"] for sheet in definition.get("sheets", [])}
+    documentation_refs = definition.get("documentation_refs", [])
+    allowed_documentation_sources = {"DATA_DICTIONARY", "ORACLE_OFFICIAL", "USER_CONFIRMED"}
+
+    if not documentation_refs:
+        issues.append(
+            {
+                "code": "MASTER_DATA_TEMPLATE_DOCUMENTATION_REF_REQUIRED",
+                "severity": "ERROR",
+                "message": "Dynamic Master Data templates must record Data Dictionary, Oracle official, or user-confirmed documentation references.",
+            }
+        )
+    for reference in documentation_refs:
+        source_type = str(reference.get("source_type", "")).strip().upper()
+        if source_type not in allowed_documentation_sources:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_DOCUMENTATION_REF_INVALID",
+                    "severity": "ERROR",
+                    "source_type": source_type,
+                    "message": "Documentation reference source_type must be DATA_DICTIONARY, ORACLE_OFFICIAL, or USER_CONFIRMED.",
+                }
+            )
+
+    validated_tables = set()
+    for table_name in target_tables:
+        table_result = validate_table(dictionary_root, table_name, usage="cutover")
+        if table_result["exists"] and table_result["severity"] != "ERROR":
+            validated_tables.add(table_name)
+        else:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_TARGET_TABLE_INVALID",
+                    "severity": "ERROR",
+                    "target_table": table_name,
+                    "message": table_result["message"],
+                }
+            )
+
+    seen_targets = set()
+    for mapping in definition.get("mappings", []):
+        target_table = mapping["target_table"]
+        target_column = mapping["target_column"]
+        target_key = (target_table, target_column)
+        if target_key in seen_targets:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_MAPPING_TARGET_AMBIGUOUS",
+                    "severity": "ERROR",
+                    "target_table": target_table,
+                    "target_column": target_column,
+                    "message": "Target column has more than one unconditional mapping.",
+                }
+            )
+        seen_targets.add(target_key)
+
+        if target_table not in target_tables:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_MAPPING_TABLE_NOT_DECLARED",
+                    "severity": "ERROR",
+                    "target_table": target_table,
+                    "message": "Mapping target table must be declared in target_tables.",
+                }
+            )
+            continue
+        column_result = validate_column(dictionary_root, target_table, target_column)
+        if not column_result["exists"]:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_MAPPING_COLUMN_INVALID",
+                    "severity": "ERROR",
+                    "target_table": target_table,
+                    "target_column": target_column,
+                    "message": column_result["message"],
+                }
+            )
+        source_type = mapping["source_type"]
+        if source_type == "USER_FIELD" and mapping.get("source_field_key") not in field_keys:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_MAPPING_FIELD_INVALID",
+                    "severity": "ERROR",
+                    "mapping_key": mapping["mapping_key"],
+                    "source_field_key": mapping.get("source_field_key"),
+                    "message": "Mapping references an unknown template field.",
+                }
+            )
+        if source_type in {"FIXED_VALUE", "DEFAULT_VALUE"} and (
+            mapping.get("fixed_value") is None and mapping.get("default_value") is None
+        ):
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_MAPPING_VALUE_REQUIRED",
+                    "severity": "ERROR",
+                    "mapping_key": mapping["mapping_key"],
+                    "message": "Fixed/default mappings must include a value.",
+                }
+            )
+
+    for field in definition.get("fields", []):
+        if field["sheet_code"] not in sheet_codes:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_FIELD_SHEET_INVALID",
+                    "severity": "ERROR",
+                    "field_key": field["field_key"],
+                    "sheet_code": field["sheet_code"],
+                    "message": "Field references an unknown sheet.",
+                }
+            )
+
+    for sheet in definition.get("sheets", []):
+        for field_key in sheet.get("field_keys", []):
+            if field_key not in field_keys:
+                issues.append(
+                    {
+                        "code": "MASTER_DATA_TEMPLATE_SHEET_FIELD_INVALID",
+                        "severity": "ERROR",
+                        "sheet_code": sheet["code"],
+                        "field_key": field_key,
+                        "message": "Sheet references an unknown field.",
+                    }
+                )
+
+    return {
+        "template_code": template.code,
+        "valid": not issues,
+        "severity": "INFO" if not issues else "ERROR",
+        "issues": issues,
+        "summary": {
+            "target_table_count": len(target_tables),
+            "validated_table_count": len(validated_tables),
+            "sheet_count": len(definition.get("sheets", [])),
+            "field_count": len(definition.get("fields", [])),
+            "mapping_count": len(definition.get("mappings", [])),
+        },
+    }
+
+
+def publish_master_data_template(
+    db: Session,
+    template: MasterDataTemplate,
+    dictionary_root: Path,
+) -> dict[str, object]:
+    validation = validate_master_data_template_definition(template, dictionary_root)
+    if not validation["valid"]:
+        raise ValueError(json.dumps(validation, sort_keys=True))
+    definition = master_data_template_definition(template)
+    definition["template"]["status"] = "PUBLISHED"
+    template.status = "PUBLISHED"
+    template.definition_json = json.dumps(definition, sort_keys=True)
+    db.commit()
+    db.refresh(template)
+    payload = serialize_master_data_template(template)
+    payload["validation"] = validation
+    return payload
+
+
 def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, object]:
     return {
         "id": template.id,
@@ -435,6 +890,7 @@ def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, ob
         "data_category": template.data_category,
         "target_tables": json.loads(template.target_tables_json),
         "sheets": json.loads(template.sheets_json),
+        "definition": master_data_template_definition(template),
         "description": template.description,
         "created_at": template.created_at.isoformat() if template.created_at else None,
         "updated_at": template.updated_at.isoformat() if template.updated_at else None,
@@ -663,30 +1119,41 @@ def validate_master_data_batch_relationships(
         raise ValueError("Only parsed Master Data batches can be relationship-validated.")
 
     parsed_rows = json.loads(batch.parsed_rows_json)
+    template = (
+        db.query(MasterDataTemplate)
+        .filter(MasterDataTemplate.code == batch.template_code)
+        .first()
+    )
+    relationship_rules = MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code, [])
+    if template is not None:
+        relationship_rules = master_data_template_definition(template).get("relationship_rules", relationship_rules)
     issues = []
-    for rule in MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code, []):
+    for rule in relationship_rules:
+        parent_field_name = rule.get("parent_field_name") or rule.get("parent_field_key")
+        child_field_name = rule.get("child_field_name") or rule.get("child_field_key")
         parent_values = {
-            row.get(rule["parent_field_name"])
+            row.get(parent_field_name)
             for row in parsed_rows.get(rule["parent_sheet_code"], [])
-            if row.get(rule["parent_field_name"]) not in {None, ""}
+            if row.get(parent_field_name) not in {None, ""}
         }
         for row_index, child_row in enumerate(parsed_rows.get(rule["child_sheet_code"], []), start=2):
-            child_value = child_row.get(rule["child_field_name"])
+            child_value = child_row.get(child_field_name)
             if child_value in {None, ""} or child_value in parent_values:
                 continue
-            issues.append(
-                {
+            issue = {
                     "code": "MASTER_DATA_RELATIONSHIP_ORPHAN",
                     "severity": "ERROR",
                     "sheet_code": rule["child_sheet_code"],
-                    "field_name": rule["child_field_name"],
+                    "field_name": child_field_name,
                     "row_number": child_row.get("_row_number", row_index),
                     "message": "Child row references a parent key that does not exist in the same batch.",
                     "parent_sheet_code": rule["parent_sheet_code"],
-                    "parent_field_name": rule["parent_field_name"],
+                    "parent_field_name": parent_field_name,
                     "missing_value": child_value,
-                }
-            )
+            }
+            if "child_field_key" in rule:
+                issue["child_field_name"] = child_field_name
+            issues.append(issue)
 
     batch.status = "RELATIONSHIP_FAILED" if issues else "RELATIONSHIP_VALIDATED"
     batch.issues_json = json.dumps(issues, sort_keys=True)
@@ -715,6 +1182,11 @@ def map_master_data_batch_to_canonical_records(
         raise ValueError("Only parsed Master Data batches can be mapped.")
 
     sheets = json.loads(template.sheets_json)
+    definition = master_data_template_definition(template)
+    definition_mappings = definition.get("mappings", [])
+    definition_fields_by_sheet: dict[str, set[str]] = {}
+    for field in definition.get("fields", []):
+        definition_fields_by_sheet.setdefault(field["sheet_code"], set()).add(field["field_key"])
     parsed_rows = json.loads(batch.parsed_rows_json)
     db.query(MasterDataCanonicalRecord).filter(
         MasterDataCanonicalRecord.batch_id == batch.id
@@ -722,31 +1194,49 @@ def map_master_data_batch_to_canonical_records(
 
     response_records = []
     for sheet in sheets:
-        fields = sheet["fields"]
         rows = parsed_rows.get(sheet["code"], [])
         for index, parsed_row in enumerate(rows, start=1):
-            payload = {
-                field["target_column"]: parsed_row.get(field["name"])
-                for field in fields
-                if field["name"] in parsed_row
-            }
-            canonical_record = MasterDataCanonicalRecord(
-                batch_id=batch.id,
-                template_code=batch.template_code,
-                sheet_code=sheet["code"],
-                target_table=sheet["target_table"],
-                record_index=index,
-                payload_json=json.dumps(payload, sort_keys=True),
-            )
-            db.add(canonical_record)
-            response_records.append(
-                {
-                    "sheet_code": sheet["code"],
-                    "target_table": sheet["target_table"],
-                    "record_index": index,
-                    "payload": payload,
-                }
-            )
+            field_keys_for_sheet = definition_fields_by_sheet.get(sheet["code"], set())
+            payloads_by_table: dict[str, dict[str, object]] = {}
+            for mapping in definition_mappings:
+                mapping_sheet_code = mapping.get("sheet_code")
+                if mapping_sheet_code and mapping_sheet_code != sheet["code"]:
+                    continue
+                source_type = mapping["source_type"]
+                source_field_key = mapping.get("source_field_key")
+                if source_type == "USER_FIELD":
+                    if source_field_key not in field_keys_for_sheet:
+                        continue
+                    value = parsed_row.get(source_field_key)
+                elif source_type == "FIXED_VALUE":
+                    value = mapping.get("fixed_value")
+                elif source_type == "DEFAULT_VALUE":
+                    if source_field_key and source_field_key not in field_keys_for_sheet:
+                        continue
+                    source_value = parsed_row.get(source_field_key) if source_field_key else None
+                    value = source_value if source_value not in {None, ""} else mapping.get("default_value")
+                else:
+                    continue
+                payloads_by_table.setdefault(mapping["target_table"], {})[mapping["target_column"]] = value
+
+            for target_table, payload in payloads_by_table.items():
+                canonical_record = MasterDataCanonicalRecord(
+                    batch_id=batch.id,
+                    template_code=batch.template_code,
+                    sheet_code=sheet["code"],
+                    target_table=target_table,
+                    record_index=index,
+                    payload_json=json.dumps(payload, sort_keys=True),
+                )
+                db.add(canonical_record)
+                response_records.append(
+                    {
+                        "sheet_code": sheet["code"],
+                        "target_table": target_table,
+                        "record_index": index,
+                        "payload": payload,
+                    }
+                )
 
     batch.status = "MAPPED"
     db.commit()
@@ -832,13 +1322,21 @@ def build_master_data_csv_files(
     )
     template_columns_by_table: dict[str, list[str]] = {}
     if template is not None:
-        for sheet in json.loads(template.sheets_json):
-            target_table = sheet["target_table"]
+        definition = master_data_template_definition(template)
+        for mapping in definition.get("mappings", []):
+            target_table = mapping["target_table"]
             table_columns = template_columns_by_table.setdefault(target_table, [])
-            for field in sheet["fields"]:
-                target_column = field["target_column"]
-                if target_column not in table_columns:
-                    table_columns.append(target_column)
+            target_column = mapping["target_column"]
+            if target_column not in table_columns:
+                table_columns.append(target_column)
+        if not template_columns_by_table:
+            for sheet in json.loads(template.sheets_json):
+                target_table = sheet["target_table"]
+                table_columns = template_columns_by_table.setdefault(target_table, [])
+                for field in sheet["fields"]:
+                    target_column = field["target_column"]
+                    if target_column not in table_columns:
+                        table_columns.append(target_column)
 
     response_files = []
     for index, table_name in enumerate(records_by_table, start=1):

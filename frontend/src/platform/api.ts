@@ -77,6 +77,32 @@ export async function apiPut<T>(
   return parseResponse<T>(response);
 }
 
+export async function apiPatch<T>(
+  path: string,
+  body: Record<string, unknown>,
+  options: RequestOptions = {}
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: headersFor(options, "application/json"),
+    body: JSON.stringify(body)
+  });
+  return parseResponse<T>(response);
+}
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: RequestOptions = {}
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: headersFor(options),
+    body: formData
+  });
+  return parseResponse<T>(response);
+}
+
 export type DownloadResponse = {
   blob: Blob;
   filename: string | null;

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -854,7 +854,9 @@ describe("App shell", () => {
     await screen.findByRole("heading", { name: "Rates Studio" });
     expect(screen.getByLabelText("Rates summary metrics")).toBeInTheDocument();
     expect(screen.getByText("Synthetic ready batch")).toBeInTheDocument();
-    expect(await screen.findByText("ACCESSORIAL_COST")).toBeInTheDocument();
+    expect(
+      await within(await screen.findByLabelText("Selected batch tables")).findByText("ACCESSORIAL_COST")
+    ).toBeInTheDocument();
     expect(await screen.findByText("rates_export.zip")).toBeInTheDocument();
     expect(screen.getByText("rates_export")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
@@ -1529,7 +1531,7 @@ describe("App shell", () => {
     expect(screen.getAllByText("Rate Record").length).toBeGreaterThan(0);
     expect(screen.getByText("RATE_GEO")).toBeInTheDocument();
     expect(screen.getByText("LOCATION")).toBeInTheDocument();
-    expect(screen.queryByText(/validate table/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Validate table" })).toBeInTheDocument();
   });
 
   it("renders Master Data from backend template list and detail contracts", async () => {

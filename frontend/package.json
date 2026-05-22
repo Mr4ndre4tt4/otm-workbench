@@ -8,17 +8,34 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "qa:functional": "vitest run src/app/AppFunctionalShell.test.tsx src/app/AppFunctionalRates.test.tsx src/app/AppFunctionalCatalog.test.tsx src/app/AppFunctionalAdmin.test.tsx src/app/AppFunctionalIntegrationMapping.test.tsx src/app/AppFunctionalLoadPlan.test.tsx src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalEvidenceHub.test.tsx",
+    "qa:functional:admin": "vitest run src/app/AppFunctionalAdmin.test.tsx",
+    "qa:functional:catalog": "vitest run src/app/AppFunctionalCatalog.test.tsx",
+    "qa:functional:evidence": "vitest run src/app/AppFunctionalEvidenceHub.test.tsx",
+    "qa:functional:integration-mapping": "vitest run src/app/AppFunctionalIntegrationMapping.test.tsx",
+    "qa:functional:master-data": "vitest run src/app/AppFunctionalMasterData.test.tsx",
+    "qa:functional:rates": "vitest run src/app/AppFunctionalRates.test.tsx",
+    "qa:functional:shell": "vitest run src/app/AppFunctionalShell.test.tsx",
+    "qa:functional:browser": "node scripts/functional-shell-browser.mjs",
+    "qa:functional:admin:browser": "node scripts/functional-admin-browser.mjs",
+    "qa:functional:catalog:browser": "node scripts/functional-catalog-browser.mjs",
+    "qa:functional:evidence:browser": "node scripts/functional-evidence-browser.mjs",
+    "qa:functional:integration-mapping:browser": "node scripts/functional-integration-mapping-browser.mjs",
+    "qa:functional:load-plan:browser": "node scripts/functional-load-plan-browser.mjs",
+    "qa:functional:master-data:browser": "node scripts/functional-master-data-browser.mjs",
+    "qa:functional:rates:browser": "node scripts/functional-rates-browser.mjs",
+    "qa:functional:shell:browser": "node scripts/functional-shell-browser.mjs",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.12",
     "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.3.1",
-    "typescript": "^5.9.3",
+    "lucide-react": "^0.561.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-router-dom": "^7.10.1",
-    "@tanstack/react-query": "^5.90.12",
-    "lucide-react": "^0.561.0"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -32,6 +49,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^27.3.0",
+    "playwright": "^1.60.0",
     "typescript-eslint": "^8.50.0",
     "vitest": "^4.0.15"
   }

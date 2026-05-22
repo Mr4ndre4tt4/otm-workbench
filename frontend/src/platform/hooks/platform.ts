@@ -4,10 +4,25 @@ import { apiDownload, apiGet, apiPost, apiPut } from "../api";
 import type {
   ActiveContextResponse,
   ActiveContextUpdate,
+  AuditLogItem,
   CockpitSummary,
+  CurrentUser,
+  EffectiveCapabilities,
+  EnvironmentCreate,
+  FeatureFlag,
+  FeatureFlagUpdate,
+  IdName,
   IdNameResponse,
   LoginResponse,
   NavigationResponse,
+  PageResponse,
+  PlatformJob,
+  PlatformJobCreate,
+  ProfileCreate,
+  ProjectCreate,
+  PlatformJobEvent,
+  ProjectSetupStatus,
+  WorkspaceCreate,
   UserPreferences
 } from "../types";
 
@@ -23,12 +38,108 @@ export function useNavigation(token: string | null) {
   });
 }
 
+export function useCurrentUser(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "session", "me"],
+    queryFn: () => apiGet<CurrentUser>("/api/v1/platform/session/me", { token }),
+    enabled: Boolean(token)
+  });
+}
+
 export function useProjects(token: string | null) {
   return useQuery({
     queryKey: ["platform", "projects"],
     queryFn: () => apiGet<IdNameResponse>("/api/v1/platform/projects", { token }),
     enabled: Boolean(token)
   });
+}
+
+export function useWorkspaces(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "workspaces"],
+    queryFn: () => apiGet<IdName[]>("/api/v1/platform/workspaces", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function createWorkspace(token: string, payload: WorkspaceCreate) {
+  return apiPost<IdName>("/api/v1/platform/workspaces", payload, { token });
+}
+
+export function createProject(token: string, payload: ProjectCreate) {
+  return apiPost<IdName>("/api/v1/platform/projects", payload, { token });
+}
+
+export function createProfile(token: string, payload: ProfileCreate) {
+  return apiPost<IdName>("/api/v1/platform/profiles", payload, { token });
+}
+
+export function createEnvironment(token: string, payload: EnvironmentCreate) {
+  return apiPost<IdName>("/api/v1/platform/environments", payload, { token });
+}
+
+export function useProjectSetupStatus(token: string | null, projectId: string | null) {
+  return useQuery({
+    queryKey: ["platform", "projects", projectId, "setup-status"],
+    queryFn: () => apiGet<ProjectSetupStatus>(`/api/v1/platform/projects/${projectId}/setup-status`, { token }),
+    enabled: Boolean(token && projectId)
+  });
+}
+
+export function useActiveContextCapabilities(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "active-context", "capabilities"],
+    queryFn: () => apiGet<EffectiveCapabilities>("/api/v1/platform/active-context/capabilities", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function usePlatformJobs(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "jobs"],
+    queryFn: () => apiGet<PageResponse<PlatformJob>>("/api/v1/platform/jobs", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function usePlatformJobEvents(token: string | null, jobId: string | null) {
+  return useQuery({
+    queryKey: ["platform", "jobs", jobId, "events"],
+    queryFn: () => apiGet<PageResponse<PlatformJobEvent>>(`/api/v1/platform/jobs/${jobId}/events`, { token }),
+    enabled: Boolean(token && jobId)
+  });
+}
+
+export function createPlatformJob(token: string, payload: PlatformJobCreate) {
+  return apiPost<PlatformJob>("/api/v1/platform/jobs", payload, { token });
+}
+
+export function runPlatformJob(token: string, jobId: string) {
+  return apiPost<PlatformJob>(`/api/v1/platform/jobs/${jobId}/run`, {}, { token });
+}
+
+export function cancelPlatformJob(token: string, jobId: string) {
+  return apiPost<PlatformJob>(`/api/v1/platform/jobs/${jobId}/cancel`, {}, { token });
+}
+
+export function useAuditLogs(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "audit-logs"],
+    queryFn: () => apiGet<PageResponse<AuditLogItem>>("/api/v1/platform/audit-logs", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useFeatureFlags(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "feature-flags"],
+    queryFn: () => apiGet<PageResponse<FeatureFlag>>("/api/v1/platform/feature-flags", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function upsertFeatureFlag(token: string, payload: FeatureFlagUpdate) {
+  return apiPost<FeatureFlag>("/api/v1/platform/feature-flags", payload, { token });
 }
 
 export function useProfiles(token: string | null, projectId: string | null) {

@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from otm_workbench.models import (
@@ -83,7 +84,10 @@ def seed_modules(db: Session) -> None:
     for module in modules:
         if not db.get(Module, module.id):
             db.add(module)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
 
 
 def flag_enabled(db: Session, name: str | None) -> bool:

@@ -36,3 +36,37 @@ export type EvidenceItem = {
 };
 
 export type EvidenceHubResponse = PageResponse<EvidenceItem>;
+
+export type EvidenceHubFilters = {
+  artifact_id?: string;
+  client_safe?: boolean;
+  evidence_type?: string;
+  manifest_id?: string;
+  project_id?: string;
+  sensitivity_level?: string;
+  source_module?: string;
+  status?: string;
+};
+
+export type EvidenceArchivePackageRequest = {
+  evidence_type?: string;
+  project_id?: string;
+  sensitivity_level?: string;
+  source_module?: string;
+  status?: string;
+};
+
+export type EvidenceArchivePackageResponse = {
+  archive_id: string;
+  artifact_id: string;
+  evidence_id: string;
+  file_name: string;
+  manifest_id: string;
+  sha256: string;
+  size_bytes: number;
+  summary: {
+    artifact_ref_count: number;
+    evidence_count: number;
+    manifest_ref_count: number;
+  };
+};

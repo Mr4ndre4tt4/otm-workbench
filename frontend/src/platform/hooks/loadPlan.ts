@@ -1,7 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet } from "../api";
-import type { LoadPlanPackage, LoadPlanPackagesResponse, LoadPlanSummary } from "../types";
+import { apiGet, apiPatch, apiPost } from "../api";
+import type {
+  CutoverChecklist,
+  CutoverChecklistReadiness,
+  CutoverHandoffEligibility,
+  LoadPlanPackage,
+  LoadPlanPackagesResponse,
+  LoadPlanSummary
+} from "../types";
 
 export function useLoadPlanSummary(token: string | null) {
   return useQuery({
@@ -23,6 +30,37 @@ export function useLoadPlanPackageDetail(token: string | null, packageId: string
   return useQuery({
     queryKey: ["modules", "load-plan", "packages", packageId],
     queryFn: () => apiGet<LoadPlanPackage>(`/api/v1/modules/load-plan/packages/${packageId}`, { token }),
+    enabled: Boolean(token && packageId)
+  });
+}
+
+export function createCutoverChecklistFromPackage(token: string, packageId: string) {
+  return apiPost<CutoverChecklist>(`/api/v1/modules/load-plan/cutover-checklists/from-package/${packageId}`, {}, { token });
+}
+
+export function updateCutoverChecklistItem(
+  token: string,
+  itemId: string,
+  payload: { evidence_id?: string | null; method?: string; status?: string }
+) {
+  return apiPatch<CutoverChecklist>(`/api/v1/modules/load-plan/cutover-checklists/items/${itemId}`, payload, { token });
+}
+
+export function generateCutoverChecklistReadiness(token: string, checklistId: string) {
+  return apiPost<CutoverChecklistReadiness>(
+    `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/readiness`,
+    {},
+    { token }
+  );
+}
+
+export function useCutoverHandoffEligibility(token: string | null, packageId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "load-plan", "cutover-handoff", "eligibility", packageId],
+    queryFn: () =>
+      apiGet<CutoverHandoffEligibility>(`/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=${packageId}`, {
+        token
+      }),
     enabled: Boolean(token && packageId)
   });
 }

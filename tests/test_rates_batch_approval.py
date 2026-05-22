@@ -234,6 +234,33 @@ def test_approval_creates_evidence_audit_and_event(client, admin_header, db_sess
     assert event.status == "PENDING"
 
 
+def test_batch_evidence_endpoint_includes_approval_evidence(client, admin_header):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+    export = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/export-csv",
+        headers=admin_header,
+    )
+    approval = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/approve",
+        json={"approval_note": "Reviewed for synthetic package"},
+        headers=admin_header,
+    )
+
+    response = client.get(f"/api/v1/modules/rates/batches/{batch['id']}/evidence", headers=admin_header)
+
+    assert export.status_code == 200
+    assert approval.status_code == 200
+    assert response.status_code == 200
+    payload = response.json()
+    evidence_types = [item["evidence_type"] for item in payload["items"]]
+    assert evidence_types == ["rates_batch_approval", "rates_csv_export"]
+    assert payload["items"][0]["id"] == approval.json()["evidence_id"]
+    assert payload["items"][1]["id"] == export.json()["evidence_id"]
+    assert payload["total"] == 2
+
+
 def test_repeated_approval_is_idempotent(client, admin_header, db_session):
     batch = create_batch(client, admin_header)
     add_accessorial_table(client, admin_header, batch["id"])
