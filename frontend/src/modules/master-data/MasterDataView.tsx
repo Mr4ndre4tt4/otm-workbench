@@ -11,8 +11,9 @@ import {
   publishMasterDataTemplate,
   updateMasterDataTemplateDraft,
   uploadMasterDataWorkbook,
+  useCatalogColumnsByTable,
   useCatalogMacroObjectTables,
-  useCatalogTableColumns,
+  useCatalogMacroObjects,
   useMasterDataTemplateDetail,
   useMasterDataTemplates,
   validateMasterDataTemplateDefinition,
@@ -162,6 +163,7 @@ function authorStateFromTemplate(template: MasterDataTemplate) {
 function locationDraftPayload(
   code: string,
   name: string,
+  macroObjectCode: string,
   selectedTables: string[],
   selectedColumnsByTable: Record<string, string[]>,
   mappingConfigByKey: Record<string, AuthorMappingConfig>,
@@ -257,7 +259,7 @@ function locationDraftPayload(
   return {
     code,
     name,
-    catalog_macro_object_code: "LOCATION",
+    catalog_macro_object_code: macroObjectCode,
     data_category: "MASTER_DATA",
     target_tables: targetTables,
     sheets,
@@ -267,7 +269,7 @@ function locationDraftPayload(
     documentation_refs: [
       {
         source_type: "DATA_DICTIONARY",
-        scope: "LOCATION",
+        scope: macroObjectCode,
         note: "Validated against local OTM Data Dictionary."
       }
     ]
@@ -276,9 +278,9 @@ function locationDraftPayload(
 
 export function MasterDataView({ token }: { token: string }) {
   const templates = useMasterDataTemplates(token);
-  const catalogLocationTables = useCatalogMacroObjectTables(token, "LOCATION");
-  const catalogLocationColumns = useCatalogTableColumns(token, "LOCATION");
-  const catalogLocationAddressColumns = useCatalogTableColumns(token, "LOCATION_ADDRESS");
+  const catalogMacroObjects = useCatalogMacroObjects(token);
+  const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
+  const catalogAuthorTables = useCatalogMacroObjectTables(token, authorMacroObjectCode);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<MasterDataWorkflowStage>("templates");
   const [templateValidation, setTemplateValidation] = useState<MasterDataTemplateValidation | null>(null);
@@ -315,9 +317,11 @@ export function MasterDataView({ token }: { token: string }) {
     selectedTemplate?.sheets.reduce((total, sheet) => total + sheet.fields.length, 0) ??
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
   const authorSelectedColumns = selectedAuthorColumns(authorTables, authorColumnsByTable);
+  const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
   const authorDraftPreview = locationDraftPayload(
     authorTemplateCode.trim().toUpperCase() || "LOCATIONS_DYNAMIC_UI",
     authorTemplateName.trim() || "Locations Dynamic UI",
+    authorMacroObjectCode,
     authorTables,
     authorColumnsByTable,
     authorMappingConfigByKey,
@@ -360,6 +364,7 @@ export function MasterDataView({ token }: { token: string }) {
           locationDraftPayload(
             code,
             authorTemplateName.trim(),
+            authorMacroObjectCode,
             authorTables,
             authorColumnsByTable,
             authorMappingConfigByKey,
@@ -375,12 +380,12 @@ export function MasterDataView({ token }: { token: string }) {
     );
   };
 
-  const handleToggleAuthorColumn = (columnName: string) => {
+  const handleToggleAuthorTableColumn = (tableName: string, columnName: string) => {
     setAuthorColumnsByTable((current) => {
-      const columns = current.LOCATION ?? [];
+      const columns = current[tableName] ?? [];
       return {
         ...current,
-        LOCATION: columns.includes(columnName)
+        [tableName]: columns.includes(columnName)
           ? columns.filter((column) => column !== columnName)
           : [...columns, columnName]
       };
@@ -392,30 +397,28 @@ export function MasterDataView({ token }: { token: string }) {
       if (!current.includes(tableName)) return [...current, tableName];
       if (tableName === "LOCATION_ADDRESS") {
         setIncludeLocationAddressRelationship(false);
-        setAuthorColumnsByTable((columnsByTable) => ({
-          ...columnsByTable,
-          LOCATION_ADDRESS: []
-        }));
-        setAuthorMappingConfigByKey((currentConfig) =>
-          Object.fromEntries(
-            Object.entries(currentConfig).filter(([key]) => !key.startsWith("LOCATION_ADDRESS."))
-          )
-        );
       }
+      setAuthorColumnsByTable((columnsByTable) => ({
+        ...columnsByTable,
+        [tableName]: []
+      }));
+      setAuthorMappingConfigByKey((currentConfig) =>
+        Object.fromEntries(Object.entries(currentConfig).filter(([key]) => !key.startsWith(`${tableName}.`)))
+      );
       return current.filter((table) => table !== tableName);
     });
   };
 
-  const handleToggleAuthorAddressColumn = (columnName: string) => {
-    setAuthorColumnsByTable((current) => {
-      const columns = current.LOCATION_ADDRESS ?? [];
-      return {
-        ...current,
-        LOCATION_ADDRESS: columns.includes(columnName)
-          ? columns.filter((column) => column !== columnName)
-          : [...columns, columnName]
-      };
-    });
+  const handleAuthorMacroObjectChange = (macroObjectCode: string) => {
+    const primaryTable = macroObjectCode === "LOCATION" ? "LOCATION" : "";
+    setAuthorMacroObjectCode(macroObjectCode);
+    setAuthorTables(primaryTable ? [primaryTable] : []);
+    setAuthorColumnsByTable(primaryTable === "LOCATION" ? { LOCATION: defaultAuthorColumns } : {});
+    setAuthorMappingConfigByKey({});
+    setIncludeLocationAddressRelationship(false);
+    setAuthorTemplate(null);
+    setAuthorValidation(null);
+    setAuthorVersion(null);
   };
 
   const updateAuthorMappingConfig = (key: string, patch: AuthorMappingConfig) => {
@@ -434,6 +437,7 @@ export function MasterDataView({ token }: { token: string }) {
     if (!recoveredState) return;
     setAuthorTemplateCode(selectedTemplate.code);
     setAuthorTemplateName(selectedTemplate.name);
+    setAuthorMacroObjectCode(selectedTemplate.catalog_macro_object_code);
     setAuthorTables(recoveredState.tables);
     setAuthorColumnsByTable(recoveredState.columnsByTable);
     setAuthorMappingConfigByKey(recoveredState.mappingConfigByKey);
@@ -456,6 +460,7 @@ export function MasterDataView({ token }: { token: string }) {
           locationDraftPayload(
             code,
             authorTemplateName.trim(),
+            authorMacroObjectCode,
             authorTables,
             authorColumnsByTable,
             authorMappingConfigByKey,
@@ -735,14 +740,28 @@ export function MasterDataView({ token }: { token: string }) {
                   value={authorTemplateName}
                 />
               </label>
+              <label>
+                Catalog macro-object
+                <select
+                  aria-label="Catalog macro-object"
+                  onChange={(event) => handleAuthorMacroObjectChange(event.target.value)}
+                  value={authorMacroObjectCode}
+                >
+                  {(catalogMacroObjects.data?.items ?? []).map((macroObject) => (
+                    <option key={macroObject.code} value={macroObject.code}>
+                      {macroObject.code} - {macroObject.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <div aria-label="Catalog tables for LOCATION" className="master-data-column-picker">
-              {(catalogLocationTables.data?.items ?? []).map((table) => (
+            <div aria-label={`Catalog tables for ${authorMacroObjectCode}`} className="master-data-column-picker">
+              {(catalogAuthorTables.data?.items ?? []).map((table) => (
                 <label key={table.table_name}>
                   <input
                     aria-label={table.table_name}
                     checked={authorTables.includes(table.table_name)}
-                    disabled={table.table_name === "LOCATION"}
+                    disabled={table.is_primary_table && authorTables.includes(table.table_name)}
                     onChange={() => handleToggleAuthorTable(table.table_name)}
                     type="checkbox"
                   />
@@ -751,28 +770,14 @@ export function MasterDataView({ token }: { token: string }) {
                 </label>
               ))}
             </div>
-            <div aria-label="Catalog columns for LOCATION" className="master-data-column-picker">
-              {(catalogLocationColumns.data?.items ?? []).map((column) => (
-                <label key={column.column_name}>
-                  <input
-                    aria-label={column.column_name}
-                    checked={(authorColumnsByTable.LOCATION ?? []).includes(column.column_name)}
-                    onChange={() => handleToggleAuthorColumn(column.column_name)}
-                    type="checkbox"
-                  />
-                  <span>{column.column_name}</span>
-                  <small>{column.data_type}</small>
-                </label>
-              ))}
-            </div>
-            {authorTables.includes("LOCATION_ADDRESS") ? (
-              <div aria-label="Catalog columns for LOCATION_ADDRESS" className="master-data-column-picker">
-                {(catalogLocationAddressColumns.data?.items ?? []).map((column) => (
+            {authorTables.map((tableName) => (
+              <div aria-label={`Catalog columns for ${tableName}`} className="master-data-column-picker" key={tableName}>
+                {(authorColumnsCatalog.byTable[tableName] ?? []).map((column) => (
                   <label key={column.column_name}>
                     <input
                       aria-label={column.column_name}
-                      checked={(authorColumnsByTable.LOCATION_ADDRESS ?? []).includes(column.column_name)}
-                      onChange={() => handleToggleAuthorAddressColumn(column.column_name)}
+                      checked={(authorColumnsByTable[tableName] ?? []).includes(column.column_name)}
+                      onChange={() => handleToggleAuthorTableColumn(tableName, column.column_name)}
                       type="checkbox"
                     />
                     <span>{column.column_name}</span>
@@ -780,7 +785,7 @@ export function MasterDataView({ token }: { token: string }) {
                   </label>
                 ))}
               </div>
-            ) : null}
+            ))}
             <div aria-label="Authoring mapping editor" className="master-data-mapping-editor">
               {authorSelectedColumns.map(({ columnName, key, tableName }) => {
                 const config = authorMappingConfigByKey[key] ?? {};
@@ -855,7 +860,7 @@ export function MasterDataView({ token }: { token: string }) {
               ariaLabel="Authoring mapping preview"
               items={[
                 {
-                  id: "location-draft-preview",
+                  id: "author-draft-preview",
                   meta: [
                     `${authorDraftPreview.fields.length} user field(s)`,
                     `${authorDraftPreview.mappings.length} OTM mapping(s)`,

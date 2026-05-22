@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { apiGet, apiPost } from "../api";
 import type {
@@ -52,6 +52,23 @@ export function useCatalogTableColumns(token: string | null, tableName: string |
     queryKey: ["catalog", "tables", tableName, "columns"],
     queryFn: () => apiGet<CatalogTableColumnsResponse>(`/api/v1/catalog/tables/${tableName}/columns`, { token }),
     enabled: Boolean(token && tableName)
+  });
+}
+
+export function useCatalogColumnsByTable(token: string | null, tableNames: string[]) {
+  const uniqueTableNames = Array.from(new Set(tableNames.filter(Boolean)));
+  return useQueries({
+    queries: uniqueTableNames.map((tableName) => ({
+      queryKey: ["catalog", "tables", tableName, "columns"],
+      queryFn: () => apiGet<CatalogTableColumnsResponse>(`/api/v1/catalog/tables/${tableName}/columns`, { token }),
+      enabled: Boolean(token && tableName)
+    })),
+    combine: (results) => ({
+      byTable: Object.fromEntries(
+        results.map((result, index) => [uniqueTableNames[index], result.data?.items ?? []])
+      ),
+      isLoading: results.some((result) => result.isLoading)
+    })
   });
 }
 

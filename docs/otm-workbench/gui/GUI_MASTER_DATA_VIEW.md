@@ -1,6 +1,6 @@
 # GUI Master Data View
 
-**Status:** authoring multi-table slice in progress
+**Status:** authoring multi-table slice delivered; completion hardening remains
 **Linear:** OTM-114, OTM-117
 **Scope:** `/master-data` Data Factory staged workflow.
 
@@ -78,20 +78,14 @@ publish, and next-version creation through backend contracts. The module is not
 yet complete because arbitrary table/field picking and destructive/out-of-order
 browser QA remain open.
 
-The second OTM-117 slice connects the authoring stage to the Catalog table
-columns endpoint for `LOCATION`. The user can include/exclude Data
-Dictionary-backed target columns before creating the draft. This still remains
-an MVP slice because arbitrary N-table selection and full mapping editing are
-not yet implemented.
+The second OTM-117 slice connects the authoring stage to Catalog table column
+contracts. The user can include/exclude Data Dictionary-backed target columns
+before creating the draft.
 
-The third OTM-117 slice connects authoring to the Catalog macro-object tables
-endpoint for the `LOCATION` macro object. The UI now keeps `LOCATION` as the
-required root table and lets the user add `LOCATION_ADDRESS`, then pick columns
-per table before creating the backend-owned draft. This proves the first
-multi-table template-authoring path, but it is still not the final generic
-N-table mapping designer: editable labels, relationship-rule authoring,
-source-type editing, fixed/default value editing, and destructive/out-of-order
-browser QA remain open.
+The third OTM-117 slice connects authoring to Catalog macro-object contracts.
+The UI started with the `LOCATION` macro object, then expanded to allow the
+author to choose the Catalog macro-object, select its tables, and pick columns
+per selected table before creating the backend-owned draft.
 
 The fourth OTM-117 slice adds the first mapping editor controls inside the
 Author stage. Selected table columns now expose backend-bound controls for a
@@ -134,6 +128,14 @@ preview now derives its target-table story, user-field count, OTM mapping count,
 relationship-rule count, and documentation reference source from the same
 backend draft payload used by create/update actions. This keeps the user-facing
 summary aligned with the backend-owned definition before the draft is saved.
+
+The tenth OTM-117 slice removes the last hardcoded Catalog table picker from
+the Author stage. Macro-object selection now comes from
+`GET /api/v1/catalog/macro-objects`, target tables from
+`GET /api/v1/catalog/macro-objects/{macro_object_code}/tables`, and columns are
+loaded per selected table through `GET /api/v1/catalog/tables/{table}/columns`.
+The draft payload persists the selected `catalog_macro_object_code` and uses it
+as the Data Dictionary documentation scope.
 
 ## Validation
 
