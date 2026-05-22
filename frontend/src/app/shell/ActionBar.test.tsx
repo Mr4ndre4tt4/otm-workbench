@@ -32,6 +32,13 @@ describe("ActionBar", () => {
     expect(selected).toEqual([runAction]);
   });
 
+  it("renders action icons from backend-owned icon keys", () => {
+    render(<ActionBar actions={[action({ icon_key: "download", key: "download", label: "Download" })]} />);
+
+    expect(screen.getByTestId("action-icon-download")).toHaveAttribute("data-icon-key", "download");
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+  });
+
   it("keeps disabled and running action states centralized", () => {
     render(
       <ActionBar

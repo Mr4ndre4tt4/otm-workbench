@@ -80,3 +80,6 @@ Those extensions should continue consuming backend-owned action metadata.
 Icon mapping must follow `GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md`: action and
 navigation icon keys are backend-owned metadata, while the frontend only maps an
 approved key to an approved renderer or sanitized asset.
+
+`ActionBar` must render backend-provided `icon_key` through the shared UI icon
+registry. It must not contain local action-specific icon branching.

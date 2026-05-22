@@ -27,4 +27,12 @@ describe("backend-owned icon and label registry contract", () => {
     expect(sidebarSource).not.toContain("function navIcon");
     expect(sidebarSource).not.toContain("if (iconKey ===");
   });
+
+  it("keeps ActionBar consuming backend icon_key through the shared registry", () => {
+    const actionBarSource = readSource("app/shell/ActionBar.tsx");
+
+    expect(actionBarSource).toContain("action.icon_key");
+    expect(actionBarSource).toContain("renderIcon");
+    expect(actionBarSource).not.toContain("if (iconKey ===");
+  });
 });

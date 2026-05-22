@@ -94,12 +94,13 @@ icon_dark_ref
 sort_order
 ```
 
-Sidebar rendering consumes `icon_key` from the backend navigation payload. The
+Sidebar and action rendering consume `icon_key` from backend payloads. The
 current renderer still maps approved keys to Lucide fallback icons until an
 Iconly export/sanitization pipeline exists.
 
-The sidebar must not contain module-specific icon decisions. Approved fallback
-rendering belongs in the shared UI icon registry, currently:
+The sidebar and action bar must not contain module-specific or action-specific
+icon decisions. Approved fallback rendering belongs in the shared UI icon
+registry, currently:
 
 ```text
 frontend/src/ui/icons.tsx
@@ -199,8 +200,7 @@ Recommended next slice:
 1. Add backend migration/model/seed data for UI icon and label registry. Done.
 2. Extend platform navigation response with icon_key and label_key metadata.
    Done.
-3. Update frontend sidebar/action rendering to consume backend icon_key. Sidebar
-   done; action icon registry remains a follow-up.
+3. Update frontend sidebar/action rendering to consume backend icon_key. Done.
 4. Add tests proving module labels/icons come from backend payloads. Done for
    navigation/sidebar.
 5. Add static guardrail blocking module-specific sidebar icon maps. Done.
