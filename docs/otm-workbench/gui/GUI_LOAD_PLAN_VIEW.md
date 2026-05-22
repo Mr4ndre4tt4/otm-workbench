@@ -27,9 +27,11 @@ POST /api/v1/modules/load-plan/zip-analysis
 POST /api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis_id}
 GET /api/v1/modules/load-plan/review-queue?package_id={package_id}
 POST /api/v1/modules/load-plan/review-queue/{item_id}/decide
+POST /api/v1/modules/load-plan/sequence/snapshots
 POST /api/v1/modules/load-plan/cutover-readiness/generate
 POST /api/v1/modules/load-plan/cutover-readiness/{readiness_id}/export
 POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/export-package
+POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/go-no-go
 GET /api/v1/modules/load-plan/cutover-handoff/eligibility?package_id={package_id}
 ```
 
@@ -47,9 +49,10 @@ First delivered story:
 select package -> create checklist -> mark item CSVUTIL-ready with evidence ->
 generate checklist readiness -> build CSVUTIL CTL/CL artifacts from checklist ->
 run ZIP analysis -> generate review queue -> decide review item when present ->
+generate sequence snapshot and inspect blockers/next actions ->
 generate package readiness -> export readiness ZIP -> export cutover package ->
-inspect handoff eligibility -> leave route -> return with backend-owned package
-state visible
+inspect handoff eligibility -> record Go/No-Go decision -> leave route ->
+return with backend-owned package state visible
 ```
 
 The screen uses shared components:
@@ -59,7 +62,8 @@ The screen uses shared components:
 - ModuleObjectList for selectable Load Plan packages in the package stage;
 - SelectedObjectPanel for selected package metadata;
 - DetailList for the selected package load sequence, readiness counts,
-  CSVUTIL artifact ids, ZIP findings, export artifact ids, and handoff facts;
+  CSVUTIL artifact ids, ZIP findings, sequence blockers, export artifact ids,
+  Go/No-Go decision, and handoff facts;
 - OperationalPanel, FeedbackMessage, Button, and BlockerPanel for checklist,
   readiness, CSVUTIL, ZIP review, exports, and handoff stages.
 ```
@@ -77,6 +81,8 @@ another package updates the detail query through backend-owned ids.
   artifact/evidence/manifest ids.
 - ZIP review uses backend-owned analysis, review queue, decision, evidence, and
   Data Dictionary findings.
+- Sequence snapshots and Go/No-Go decisions use backend-owned endpoints and
+  returned evidence/blocker state.
 - Exports use backend-owned readiness export and cutover package artifacts; the
   frontend only displays returned artifact/evidence/manifest ids.
 - No local artifact path rendering.
@@ -86,7 +92,6 @@ another package updates the detail query through backend-owned ids.
 Out of current scope:
 
 ```text
-- go/no-go commit;
 - handoff commit;
 - artifact download from Load Plan.
 ```

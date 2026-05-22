@@ -259,6 +259,21 @@ export type LoadPlanCutoverReadiness = {
   generated_at: string | null;
 };
 
+export type LoadPlanSequenceSnapshot = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  status: string;
+  sequence: Array<Record<string, unknown>>;
+  blockers: CutoverReadinessBlocker[];
+  summary: Record<string, unknown>;
+  evidence_id: string | null;
+  generated_by: string | null;
+  generated_at: string | null;
+};
+
 export type LoadPlanCutoverReadinessGeneration = {
   items: LoadPlanCutoverReadiness[];
   summary: Record<string, unknown>;
@@ -296,6 +311,22 @@ export type CutoverPackageExport = {
   evidence_id: string | null;
   file_name: string | null;
   content_type: string | null;
+};
+
+export type CutoverGoNoGoDecision = {
+  decision: string;
+  checklist_id: string;
+  package_id: string;
+  readiness_status: string | null;
+  readiness_evidence_id: string | null;
+  cutover_package_evidence_id: string | null;
+  blocker_count: number;
+  evidence_id: string | null;
+  blockers: CutoverReadinessBlocker[];
+  decided_at?: string | null;
+  decided_by?: string | null;
+  catalog_macro_object_code?: string;
+  catalog_load_plan_path?: string;
 };
 
 export type CutoverHandoffEligibility = {

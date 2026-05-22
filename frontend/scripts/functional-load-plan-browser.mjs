@@ -249,6 +249,11 @@ async function run() {
     await page.getByText(/^Review queue generated with [0-9]+ new item\(s\)\.$/).waitFor();
     await page.getByLabel("Load Plan review queue").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Sequence" }).click();
+    await page.getByRole("button", { name: "Generate sequence snapshot" }).click();
+    await page.getByText(/^Sequence snapshot .* is .*\.$/).waitFor();
+    await page.getByLabel("Load Plan sequence snapshot").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Exports" }).click();
     await page.getByRole("button", { name: "Generate package readiness" }).click();
     await page.getByText(/^Package readiness .* is .*\.$/).waitFor();
@@ -264,6 +269,9 @@ async function run() {
       .getByText(/CUTOVER_READINESS_NOT_READY|EVIDENCE_ARCHIVE_MISSING|READINESS_EXPORT_MISSING|CUTOVER_READINESS_MISSING/)
       .first()
       .waitFor();
+    await page.getByRole("button", { name: "Decide Go/No-Go" }).click();
+    await page.getByText(/^Go\/No-Go decision is .*\.$/).waitFor();
+    await page.getByLabel("Cutover go no-go decision").waitFor();
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -287,7 +295,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "load-plan-cutover-checklist-readiness-csvutil-zip-review-exports-return",
+          journey: "load-plan-cutover-checklist-readiness-csvutil-zip-review-sequence-exports-go-no-go-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,

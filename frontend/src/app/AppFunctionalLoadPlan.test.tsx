@@ -311,6 +311,77 @@ function cutoverPackageExport() {
   };
 }
 
+function sequenceSnapshot() {
+  return {
+    blockers: [
+      {
+        code: "PACKAGE_PARENT_TABLE_MISSING",
+        details: { parent_table_name: "RATE_GEO_COST_GROUP" },
+        message: "A Data Dictionary parent table is not present in this package sequence.",
+        severity: "ERROR",
+        source_id: "RATE_GEO_COST_GROUP",
+        source_type: "otm_data_dictionary",
+        table_name: "RATE_GEO_COST"
+      }
+    ],
+    environment_id: null,
+    evidence_id: "evidence_sequence_snapshot",
+    generated_at: "2026-05-22T00:12:30",
+    generated_by: "admin@example.test",
+    id: "sequence_snapshot_1",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    sequence: [
+      {
+        dictionary_table_found: true,
+        missing_parent_tables_in_package: ["RATE_GEO_COST_GROUP"],
+        parent_tables: ["RATE_GEO_COST_GROUP"],
+        position: 10,
+        requirement_level: "REQUIRED",
+        review: { confirmed_count: 1, pending_count: 0 },
+        row_count: 2,
+        table_name: "RATE_GEO_COST",
+        zip_analysis: {
+          error_count: 0,
+          finding_count: 0,
+          latest_analysis_id: "zip_analysis_1",
+          warning_count: 0
+        }
+      }
+    ],
+    status: "BLOCKED",
+    summary: {
+      blocker_count: 1,
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+      catalog_macro_object_code: "RATE_RECORD",
+      error_count: 1,
+      next_actions: ["review_package_dependencies"],
+      row_count: 2,
+      table_count: 1,
+      warning_count: 0
+    }
+  };
+}
+
+function goNoGoDecision() {
+  return {
+    blocker_count: 0,
+    blockers: [],
+    catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan",
+    catalog_macro_object_code: "RATE_RECORD",
+    checklist_id: "checklist_1",
+    cutover_package_evidence_id: "evidence_cutover_package",
+    decided_at: "2026-05-22T00:16:00",
+    decided_by: "admin@example.test",
+    decision: "GO",
+    evidence_id: "evidence_go_no_go",
+    package_id: "package_1",
+    readiness_evidence_id: "evidence_readiness",
+    readiness_status: "READY"
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -333,6 +404,8 @@ describe("Functional Load Plan journey", () => {
     const readinessExportRequests: unknown[] = [];
     const reviewDecisionRequests: unknown[] = [];
     const reviewQueueRequests: unknown[] = [];
+    const sequenceSnapshotRequests: unknown[] = [];
+    const goNoGoRequests: unknown[] = [];
     const zipAnalysisRequests: unknown[] = [];
 
     const fetchMock = vi.fn((input, init) => {
@@ -489,6 +562,11 @@ describe("Functional Load Plan journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/sequence/snapshots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        sequenceSnapshotRequests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(jsonResponse(sequenceSnapshot()));
+      }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-readiness/generate")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         packageReadinessRequests.push(JSON.parse(String(init?.body)));
@@ -514,6 +592,11 @@ describe("Functional Load Plan journey", () => {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         cutoverPackageRequests.push({ method: init?.method });
         return Promise.resolve(jsonResponse(cutoverPackageExport()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/checklist_1/go-no-go")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        goNoGoRequests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(jsonResponse(goNoGoDecision()));
       }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
@@ -593,7 +676,14 @@ describe("Functional Load Plan journey", () => {
     await screen.findByText("Review item review_item_1 decided as CONFIRMED.");
     expect(reviewPanel).toHaveTextContent("CONFIRMED");
 
-    await userEvent.click(screen.getByRole("button", { name: /6Exports/ }));
+    await userEvent.click(screen.getByRole("button", { name: /6Sequence/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Generate sequence snapshot" }));
+    await screen.findByText("Sequence snapshot sequence_snapshot_1 is BLOCKED.");
+    const sequencePanel = await screen.findByLabelText("Load Plan sequence snapshot");
+    expect(sequencePanel).toHaveTextContent("PACKAGE_PARENT_TABLE_MISSING");
+    expect(sequencePanel).toHaveTextContent("review_package_dependencies");
+
+    await userEvent.click(screen.getByRole("button", { name: /7Exports/ }));
     await userEvent.click(screen.getByRole("button", { name: "Generate package readiness" }));
     await screen.findByText("Package readiness package_readiness_1 is MISSING_SEQUENCE.");
     await userEvent.click(screen.getByRole("button", { name: "Export readiness" }));
@@ -605,9 +695,12 @@ describe("Functional Load Plan journey", () => {
     expect(exportsPanel).toHaveTextContent("artifact_cutover_package");
     expect(exportsPanel).toHaveTextContent("evidence_cutover_package");
 
-    await userEvent.click(screen.getByRole("button", { name: /7Handoff/ }));
+    await userEvent.click(screen.getByRole("button", { name: /8Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
     expect(await screen.findByText("CUTOVER_READINESS_NOT_READY")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Decide Go/No-Go" }));
+    await screen.findByText("Go/No-Go decision is GO.");
+    expect(screen.getByLabelText("Cutover go no-go decision")).toHaveTextContent("evidence_go_no_go");
 
     expect(checklistRequests).toEqual([{ method: "POST" }]);
     expect(csvutilRequests).toEqual([
@@ -631,6 +724,8 @@ describe("Functional Load Plan journey", () => {
     expect(packageReadinessRequests).toEqual([{ package_id: "package_1" }]);
     expect(readinessExportRequests).toEqual([{ method: "POST" }]);
     expect(cutoverPackageRequests).toEqual([{ method: "POST" }]);
+    expect(sequenceSnapshotRequests).toEqual([{ package_id: "package_1" }]);
+    expect(goNoGoRequests).toEqual([{ decision_note: "Synthetic UI go/no-go review." }]);
     expect(itemDone).toBe(true);
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "../api";
 import type {
   CsvutilBuild,
+  CutoverGoNoGoDecision,
   CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
@@ -12,6 +13,7 @@ import type {
   LoadPlanReviewDecision,
   LoadPlanReviewQueueGeneration,
   LoadPlanReviewQueueResponse,
+  LoadPlanSequenceSnapshot,
   LoadPlanPackage,
   LoadPlanPackagesResponse,
   LoadPlanSummary,
@@ -70,6 +72,10 @@ export function generateLoadPlanCutoverReadiness(token: string, packageId: strin
   );
 }
 
+export function generateLoadPlanSequenceSnapshot(token: string, packageId: string) {
+  return apiPost<LoadPlanSequenceSnapshot>("/api/v1/modules/load-plan/sequence/snapshots", { package_id: packageId }, { token });
+}
+
 export function exportLoadPlanCutoverReadiness(token: string, readinessId: string) {
   return apiPost<LoadPlanReadinessExport>(`/api/v1/modules/load-plan/cutover-readiness/${readinessId}/export`, {}, { token });
 }
@@ -78,6 +84,14 @@ export function exportCutoverChecklistPackage(token: string, checklistId: string
   return apiPost<CutoverPackageExport>(
     `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/export-package`,
     {},
+    { token }
+  );
+}
+
+export function decideCutoverGoNoGo(token: string, checklistId: string) {
+  return apiPost<CutoverGoNoGoDecision>(
+    `/api/v1/modules/load-plan/cutover-checklists/${checklistId}/go-no-go`,
+    { decision_note: "Synthetic UI go/no-go review." },
     { token }
   );
 }

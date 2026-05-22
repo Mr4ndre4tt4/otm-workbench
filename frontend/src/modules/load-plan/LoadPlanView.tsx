@@ -4,11 +4,13 @@ import { useState } from 'react';
 import {
   buildCsvutilFromCutoverChecklist,
   createCutoverChecklistFromPackage,
+  decideCutoverGoNoGo,
   decideLoadPlanReviewItem,
   exportCutoverChecklistPackage,
   exportLoadPlanCutoverReadiness,
   generateCutoverChecklistReadiness,
   generateLoadPlanCutoverReadiness,
+  generateLoadPlanSequenceSnapshot,
   generateReviewQueueFromZipAnalysis,
   runLoadPlanZipAnalysis,
   updateCutoverChecklistItem,
@@ -20,6 +22,7 @@ import {
 } from '../../platform/hooks';
 import type {
   CsvutilBuild,
+  CutoverGoNoGoDecision,
   CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
@@ -27,6 +30,7 @@ import type {
   LoadPlanPackage,
   LoadPlanReadinessExport,
   LoadPlanReviewItem,
+  LoadPlanSequenceSnapshot,
   LoadPlanZipAnalysis
 } from '../../platform/types';
 import { PageHeader } from '../../app/shell';
@@ -57,8 +61,9 @@ const loadPlanWorkflowStages = [
   { id: "readiness", title: "Readiness", status: "3" },
   { id: "csvutil", title: "CSVUTIL", status: "4" },
   { id: "zip-review", title: "ZIP review", status: "5" },
-  { id: "exports", title: "Exports", status: "6" },
-  { id: "handoff", title: "Handoff", status: "7" }
+  { id: "sequence", title: "Sequence", status: "6" },
+  { id: "exports", title: "Exports", status: "7" },
+  { id: "handoff", title: "Handoff", status: "8" }
 ] as const;
 
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
@@ -74,9 +79,11 @@ export function LoadPlanView({ token }: { token: string }) {
   const [csvutilBuild, setCsvutilBuild] = useState<CsvutilBuild | null>(null);
   const [zipAnalysis, setZipAnalysis] = useState<LoadPlanZipAnalysis | null>(null);
   const [reviewItems, setReviewItems] = useState<LoadPlanReviewItem[]>([]);
+  const [sequenceSnapshot, setSequenceSnapshot] = useState<LoadPlanSequenceSnapshot | null>(null);
   const [packageReadiness, setPackageReadiness] = useState<LoadPlanCutoverReadiness | null>(null);
   const [readinessExport, setReadinessExport] = useState<LoadPlanReadinessExport | null>(null);
   const [cutoverPackageExport, setCutoverPackageExport] = useState<CutoverPackageExport | null>(null);
+  const [goNoGoDecision, setGoNoGoDecision] = useState<CutoverGoNoGoDecision | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -95,6 +102,9 @@ export function LoadPlanView({ token }: { token: string }) {
     selectedPackage?.load_sequence.reduce((total, sequenceItem) => total + sequenceItem.row_count, 0) ??
     0;
   const effectiveReviewItems = reviewItems.length ? reviewItems : reviewQueue.data?.items ?? [];
+  const sequenceNextActions = Array.isArray(sequenceSnapshot?.summary.next_actions)
+    ? sequenceSnapshot.summary.next_actions.map(String)
+    : [];
 
   const handleCreateChecklist = async () => {
     if (!effectivePackageId) return;
@@ -246,6 +256,23 @@ export function LoadPlanView({ token }: { token: string }) {
     }
   };
 
+  const handleGenerateSequenceSnapshot = async () => {
+    if (!effectivePackageId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await generateLoadPlanSequenceSnapshot(token, effectivePackageId);
+      setSequenceSnapshot(result);
+      setOperationMessage(`Sequence snapshot ${result.id} is ${result.status}.`);
+      setActiveStage("sequence");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not generate sequence snapshot.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const handleExportReadiness = async () => {
     if (!packageReadiness) return;
     setIsMutating(true);
@@ -278,6 +305,23 @@ export function LoadPlanView({ token }: { token: string }) {
       setActiveStage("exports");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not export cutover package.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleDecideGoNoGo = async () => {
+    if (!checklist) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await decideCutoverGoNoGo(token, checklist.id);
+      setGoNoGoDecision(result);
+      setOperationMessage(`Go/No-Go decision is ${result.decision}.`);
+      setActiveStage("handoff");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not decide Go/No-Go.");
     } finally {
       setIsMutating(false);
     }
@@ -589,6 +633,44 @@ export function LoadPlanView({ token }: { token: string }) {
           </OperationalPanel>
         ) : null}
 
+        {activeStage === "sequence" ? (
+          <OperationalPanel
+            ariaLabel="Load Plan sequence snapshot"
+            emptyText="Generate a sequence snapshot before export and handoff."
+            hasItems
+            status={sequenceSnapshot?.status ?? "PENDING"}
+            title="Sequence"
+          >
+            <div className="load-plan-action-bar">
+              <Button disabled={!effectivePackageId || isMutating} onClick={() => void handleGenerateSequenceSnapshot()} variant="primary">
+                Generate sequence snapshot
+              </Button>
+            </div>
+            <DetailList
+              ariaLabel="Load Plan sequence blockers"
+              emptyText="No sequence blockers found for the selected package."
+              items={[
+                ...(sequenceSnapshot?.blockers ?? []).map((blocker, index) => ({
+                  id: `${blocker.code}-${blocker.table_name ?? "package"}-${index}`,
+                  meta: [blocker.table_name ?? "Package", blocker.message],
+                  status: blocker.severity,
+                  title: blocker.code
+                })),
+                ...(sequenceNextActions.length
+                  ? [
+                      {
+                        id: "sequence-next-actions",
+                        meta: sequenceNextActions,
+                        status: "NEXT",
+                        title: "Next actions"
+                      }
+                    ]
+                  : [])
+              ]}
+            />
+          </OperationalPanel>
+        ) : null}
+
         {activeStage === "exports" ? (
           <OperationalPanel
             ariaLabel="Load Plan export artifacts"
@@ -665,6 +747,11 @@ export function LoadPlanView({ token }: { token: string }) {
             status={handoffEligibility.data?.status ?? "PENDING"}
             title="Handoff eligibility"
           >
+            <div className="load-plan-action-bar">
+              <Button disabled={!checklist || isMutating} onClick={() => void handleDecideGoNoGo()} variant="primary">
+                Decide Go/No-Go
+              </Button>
+            </div>
             {handoffEligibility.data ? (
               <>
                 <DetailList
@@ -690,6 +777,23 @@ export function LoadPlanView({ token }: { token: string }) {
                   }))}
                   title="Handoff blockers"
                 />
+                {goNoGoDecision ? (
+                  <DetailList
+                    ariaLabel="Cutover go no-go decision"
+                    items={[
+                      {
+                        id: "go-no-go-decision",
+                        meta: [
+                          goNoGoDecision.evidence_id ?? "Missing decision evidence",
+                          goNoGoDecision.readiness_status ?? "No checklist readiness",
+                          goNoGoDecision.cutover_package_evidence_id ?? "No cutover package evidence"
+                        ],
+                        status: goNoGoDecision.decision,
+                        title: "Decision"
+                      }
+                    ]}
+                  />
+                ) : null}
               </>
             ) : null}
           </OperationalPanel>
