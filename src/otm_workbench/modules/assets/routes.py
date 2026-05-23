@@ -11,6 +11,7 @@ from otm_workbench.dependencies import api_error, get_db, require_admin, require
 from otm_workbench.catalog.services import get_macro_object
 from otm_workbench.models import Artifact, Asset, AssetLink, AssetVersion, Evidence, User
 from otm_workbench.modules.assets.assets import (
+    AssetValidationError,
     archive_asset,
     create_asset_link,
     create_draft_asset,
@@ -103,6 +104,8 @@ def create_asset(
 ):
     try:
         asset = create_draft_asset(db, payload=payload.model_dump(), user=user)
+    except AssetValidationError as exc:
+        raise api_error(400, "ASSET_CLASSIFICATION_INVALID", str(exc), details=exc.details) from exc
     except ValueError as exc:
         if "secret-like" in str(exc):
             raise api_error(400, "ASSET_SECRET_RISK", str(exc)) from exc
@@ -174,6 +177,8 @@ def patch_asset(
             payload=payload.model_dump(exclude_unset=True),
             updated_by=user.email,
         )
+    except AssetValidationError as exc:
+        raise api_error(400, "ASSET_METADATA_INVALID", str(exc), details=exc.details) from exc
     except ValueError as exc:
         if "secret-like" in str(exc):
             raise api_error(400, "ASSET_SECRET_RISK", str(exc)) from exc

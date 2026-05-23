@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
+| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, structured metadata validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
@@ -174,6 +174,8 @@ Required GUI work:
 - Add backend-owned create metadata fields for name, description, type,
   category, visibility, scope, sensitivity, module id, macro object, OTM table,
   and tags.
+- Add structured backend validation details for invalid metadata
+  classifications, including field, classification type, and allowed codes.
 - Add selected asset metadata update through the backend `PATCH` contract.
 - Sync the authoring form from the selected backend asset before update.
 - Preserve backend error codes/messages for invalid link targets, including Data

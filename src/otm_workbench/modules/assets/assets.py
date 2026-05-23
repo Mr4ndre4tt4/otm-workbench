@@ -21,6 +21,12 @@ CLASSIFICATION_FIELDS = {
 }
 
 
+class AssetValidationError(ValueError):
+    def __init__(self, message: str, *, details: dict[str, object] | None = None):
+        super().__init__(message)
+        self.details = details or {}
+
+
 def parse_tags(tags_json: str) -> list[str]:
     try:
         value = json.loads(tags_json)
@@ -86,8 +92,22 @@ def serialize_asset_link(link: AssetLink) -> dict[str, object]:
     }
 
 
-def ensure_classification(db: Session, classification_type: str, code: str) -> None:
+def allowed_classification_codes(db: Session, classification_type: str) -> list[str]:
     seed_asset_classifications(db)
+    return [
+        item.code
+        for item in (
+            db.query(AssetClassification)
+            .filter(AssetClassification.classification_type == classification_type)
+            .filter(AssetClassification.is_active.is_(True))
+            .order_by(AssetClassification.sort_order.asc(), AssetClassification.code.asc())
+            .all()
+        )
+    ]
+
+
+def ensure_classification(db: Session, classification_type: str, code: str, field_name: str | None = None) -> None:
+    allowed_codes = allowed_classification_codes(db, classification_type)
     classification = (
         db.query(AssetClassification)
         .filter(AssetClassification.classification_type == classification_type)
@@ -96,7 +116,15 @@ def ensure_classification(db: Session, classification_type: str, code: str) -> N
         .first()
     )
     if classification is None:
-        raise ValueError(f"Unknown asset classification: {classification_type}/{code}.")
+        safe_field_name = field_name or classification_type
+        raise AssetValidationError(
+            f"Invalid asset metadata classification for {safe_field_name}.",
+            details={
+                "allowed_codes": allowed_codes,
+                "classification_type": classification_type,
+                "field_name": safe_field_name,
+            },
+        )
 
 
 def ensure_link_type(db: Session, link_type: str) -> None:
@@ -117,7 +145,7 @@ def create_draft_asset(
         "sensitivity": str(payload["sensitivity"]).strip().upper(),
     }
     for field_name, classification_type in CLASSIFICATION_FIELDS.items():
-        ensure_classification(db, classification_type, normalized[field_name])
+        ensure_classification(db, classification_type, normalized[field_name], field_name)
     assert_global_asset_without_secret_risk(normalized["scope_type"], payload)
 
     raw_tags = payload.get("tags") or []
@@ -268,7 +296,7 @@ def update_asset_metadata(
             classification_field = "category" if field_name == "category" else field_name
             classification_type = CLASSIFICATION_FIELDS[classification_field]
             normalized_value = str(value).strip().upper()
-            ensure_classification(db, classification_type, normalized_value)
+            ensure_classification(db, classification_type, normalized_value, field_name)
             if getattr(asset, field_name) != normalized_value:
                 setattr(asset, field_name, normalized_value)
                 changed_fields.append(field_name)

@@ -64,7 +64,13 @@ def test_create_draft_asset_rejects_unknown_classification(client, admin_header)
     )
 
     assert response.status_code == 400
-    assert "classification" in response.json()["message"].lower()
+    payload = response.json()
+    assert payload["code"] == "ASSET_CLASSIFICATION_INVALID"
+    assert "asset_type" in payload["message"]
+    assert payload["details"]["field_name"] == "asset_type"
+    assert payload["details"]["classification_type"] == "asset_type"
+    assert "SPEC" in payload["details"]["allowed_codes"]
+    assert "UNKNOWN" not in json.dumps(payload)
 
 
 def test_create_global_asset_rejects_secret_like_metadata(client, admin_header):
@@ -229,7 +235,13 @@ def test_update_asset_metadata_rejects_unknown_classification(client, admin_head
     )
 
     assert response.status_code == 400
-    assert "classification" in response.json()["message"].lower()
+    payload = response.json()
+    assert payload["code"] == "ASSET_METADATA_INVALID"
+    assert "category" in payload["message"]
+    assert payload["details"]["field_name"] == "category"
+    assert payload["details"]["classification_type"] == "asset_category"
+    assert "INTEGRATION" in payload["details"]["allowed_codes"]
+    assert "UNKNOWN" not in json.dumps(payload)
 
 
 def test_update_global_asset_rejects_secret_like_metadata(client, admin_header):

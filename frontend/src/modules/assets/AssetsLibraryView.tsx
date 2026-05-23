@@ -135,7 +135,14 @@ function assetDraftFromAsset(asset: AssetItem) {
 
 function formatAssetsError(error: unknown) {
   if (error instanceof ApiError) {
-    return `${error.code}: ${error.message}`;
+    const allowedCodes = Array.isArray(error.details.allowed_codes)
+      ? error.details.allowed_codes.filter((item): item is string => typeof item === "string")
+      : [];
+    const fieldName = typeof error.details.field_name === "string" ? error.details.field_name : "";
+    const detailSuffix = allowedCodes.length
+      ? ` Allowed ${fieldName || "values"}: ${allowedCodes.join(", ")}.`
+      : "";
+    return `${error.code}: ${error.message}${detailSuffix}`;
   }
   return error instanceof Error ? error.message : "Assets Library action failed.";
 }

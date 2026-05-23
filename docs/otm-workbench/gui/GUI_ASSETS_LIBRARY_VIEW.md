@@ -47,6 +47,9 @@ The screen uses shared components:
 - Backend error code preservation in action feedback, including Data
   Dictionary validation failures for `OTM_TABLE` asset links and Catalog Core
   validation failures for `MACRO_OBJECT` asset links;
+- Structured asset metadata validation feedback for invalid backend-owned
+  classifications, including the invalid field name, classification type, and
+  allowed codes without echoing the submitted value;
 - Guided link target selector for backend-owned `MODULE` targets from platform
   navigation, `MACRO_OBJECT` targets from Catalog Core, and `OTM_TABLE`
   targets from Catalog Core Data Dictionary search;
@@ -96,7 +99,6 @@ record before any update action can be submitted.
 Still open:
 
 ```text
-- richer custom metadata validation messaging
 - deeper authoring for backend-owned classifications
 - pagination or search-result virtualization if Evidence Hub target volumes
   become large enough to need it
