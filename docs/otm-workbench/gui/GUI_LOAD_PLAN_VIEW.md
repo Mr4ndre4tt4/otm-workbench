@@ -48,10 +48,11 @@ First delivered story:
 ```text
 select package -> create checklist -> mark item CSVUTIL-ready with evidence ->
 generate checklist readiness -> build CSVUTIL CTL/CL artifacts from checklist ->
-run ZIP analysis -> generate review queue -> decide review item when present ->
-generate sequence snapshot and inspect blockers/next actions ->
+download generated CSVUTIL artifact -> run ZIP analysis -> generate review queue ->
+decide review item when present -> generate sequence snapshot and inspect blockers/next actions ->
 generate package readiness -> export readiness ZIP -> export cutover package ->
-inspect handoff eligibility -> record Go/No-Go decision -> leave route ->
+download exported artifact through Evidence Hub -> inspect handoff eligibility ->
+record Go/No-Go decision -> leave route ->
 return with backend-owned package state visible
 ```
 
@@ -64,6 +65,7 @@ The screen uses shared components:
 - DetailList for the selected package load sequence, readiness counts,
   CSVUTIL artifact ids, ZIP findings, sequence blockers, export artifact ids,
   Go/No-Go decision, and handoff facts;
+- ArtifactList for downloadable CSVUTIL and exported Load Plan artifacts;
 - OperationalPanel, FeedbackMessage, Button, and BlockerPanel for checklist,
   readiness, CSVUTIL, ZIP review, exports, and handoff stages.
 ```
@@ -86,6 +88,7 @@ another package updates the detail query through backend-owned ids.
 - Exports use backend-owned readiness export and cutover package artifacts; the
   frontend only displays returned artifact/evidence/manifest ids.
 - No local artifact path rendering.
+- Artifact downloads use the guarded Evidence Hub artifact download endpoint.
 - Package status, catalog macro, evidence references, artifact references, and load sequence come from backend contracts.
 ```
 
@@ -93,7 +96,6 @@ Out of current scope:
 
 ```text
 - handoff commit;
-- artifact download from Load Plan.
 ```
 
 Those actions stay follow-up slices and must continue through backend-owned

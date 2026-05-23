@@ -407,6 +407,11 @@ describe("Functional Load Plan journey", () => {
     const sequenceSnapshotRequests: unknown[] = [];
     const goNoGoRequests: unknown[] = [];
     const zipAnalysisRequests: unknown[] = [];
+    const artifactDownloadRequests: string[] = [];
+    const createObjectURL = vi.fn(() => "blob:load-plan-artifact");
+    const revokeObjectURL = vi.fn();
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -593,6 +598,20 @@ describe("Functional Load Plan journey", () => {
         cutoverPackageRequests.push({ method: init?.method });
         return Promise.resolve(jsonResponse(cutoverPackageExport()));
       }
+      if (url.includes("/api/v1/evidence-hub/artifacts/") && url.endsWith("/download")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        artifactDownloadRequests.push(url);
+        const artifactId = url.split("/artifacts/")[1]?.split("/download")[0] ?? "artifact";
+        return Promise.resolve(
+          new Response("synthetic load plan artifact", {
+            headers: {
+              "Content-Disposition": `attachment; filename="${artifactId}.zip"`,
+              "Content-Type": "application/zip"
+            },
+            status: 200
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/checklist_1/go-no-go")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         goNoGoRequests.push(JSON.parse(String(init?.body)));
@@ -662,6 +681,8 @@ describe("Functional Load Plan journey", () => {
     expect(csvutilPanel).toHaveTextContent("artifact_csvutil_cl");
     expect(csvutilPanel).toHaveTextContent("manifest_csvutil");
     expect(csvutilPanel).toHaveTextContent("evidence_csvutil");
+    await userEvent.click(within(csvutilPanel).getAllByRole("button", { name: "Download" })[0]);
+    await screen.findByText("Download started: artifact_csvutil_ctl.zip.");
 
     await userEvent.click(screen.getByRole("button", { name: /5ZIP review/ }));
     await userEvent.click(screen.getByRole("button", { name: "Run ZIP analysis" }));
@@ -694,6 +715,8 @@ describe("Functional Load Plan journey", () => {
     expect(exportsPanel).toHaveTextContent("artifact_readiness_export");
     expect(exportsPanel).toHaveTextContent("artifact_cutover_package");
     expect(exportsPanel).toHaveTextContent("evidence_cutover_package");
+    await userEvent.click(within(exportsPanel).getAllByRole("button", { name: "Download" })[0]);
+    await screen.findByText("Download started: artifact_readiness_export.zip.");
 
     await userEvent.click(screen.getByRole("button", { name: /8Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
@@ -726,6 +749,13 @@ describe("Functional Load Plan journey", () => {
     expect(cutoverPackageRequests).toEqual([{ method: "POST" }]);
     expect(sequenceSnapshotRequests).toEqual([{ package_id: "package_1" }]);
     expect(goNoGoRequests).toEqual([{ decision_note: "Synthetic UI go/no-go review." }]);
+    expect(artifactDownloadRequests).toEqual([
+      "/api/v1/evidence-hub/artifacts/artifact_csvutil_ctl/download",
+      "/api/v1/evidence-hub/artifacts/artifact_readiness_export/download"
+    ]);
+    expect(createObjectURL).toHaveBeenCalledTimes(2);
+    expect(anchorClick).toHaveBeenCalledTimes(2);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:load-plan-artifact");
     expect(itemDone).toBe(true);
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));

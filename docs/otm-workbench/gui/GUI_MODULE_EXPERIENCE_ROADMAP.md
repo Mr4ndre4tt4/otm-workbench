@@ -43,7 +43,7 @@ For each module:
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice. |
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
-| Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
+| Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit follow-up. |
 | Master Data / Data Factory | MVP workflow done plus first preview, batch-history, Coordinate Quality, and Load Plan handoff slices | Backend flows ready for template authoring, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, spreadsheet editing, deeper Load Plan export/handoff, richer batch history dimensions, and advanced Coordinate Quality diagnostics remain follow-ups. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
@@ -65,15 +65,15 @@ evidence/status -> run checklist readiness -> build CSVUTIL from checklist ->
 inspect generated CTL/CL/manifest/evidence ids -> run ZIP analysis -> generate
 review queue -> decide review items when present -> inspect handoff eligibility.
 Then generate sequence snapshot, generate package readiness, export readiness
-ZIP, export the cutover package from the checklist, and record Go/No-Go.
+ZIP, export the cutover package from the checklist, download generated artifacts
+through the guarded Evidence Hub endpoint, and record Go/No-Go.
 ```
 
 Remaining GUI work:
 
 ```text
-- Add guarded artifact download.
 - Add handoff commit workflow after readiness export/archive evidence exists.
-- Keep go/no-go, handoff eligibility, and artifact generation backend-owned.
+- Keep go/no-go, handoff eligibility, artifact generation, and artifact downloads backend-owned.
 ```
 
 ### 4.2 Master Data / Data Factory

@@ -6,6 +6,7 @@ import {
   createCutoverChecklistFromPackage,
   decideCutoverGoNoGo,
   decideLoadPlanReviewItem,
+  downloadEvidenceArtifact,
   exportCutoverChecklistPackage,
   exportLoadPlanCutoverReadiness,
   generateCutoverChecklistReadiness,
@@ -38,6 +39,7 @@ import {
   BlockerPanel,
   Button,
   DetailList,
+  ArtifactList,
   FeedbackMessage,
   MetricGrid,
   ModuleObjectList,
@@ -87,6 +89,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [evidenceId, setEvidenceId] = useState("SYN_EVIDENCE_001");
   const packageItems = packages.data?.items ?? [];
   const effectivePackageId = selectedPackageId ?? packageItems[0]?.id ?? null;
@@ -310,6 +313,29 @@ export function LoadPlanView({ token }: { token: string }) {
     }
   };
 
+  const handleDownloadArtifact = async (artifactId: string | null, fallbackName: string) => {
+    if (!artifactId) return;
+    setIsMutating(true);
+    setDownloadingArtifactId(artifactId);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await downloadEvidenceArtifact(token, artifactId);
+      const objectUrl = URL.createObjectURL(result.blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = result.filename ?? fallbackName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+      setOperationMessage(`Download started: ${result.filename ?? fallbackName}.`);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not download Load Plan artifact.");
+    } finally {
+      setDownloadingArtifactId(null);
+      setIsMutating(false);
+    }
+  };
+
   const handleDecideGoNoGo = async () => {
     if (!checklist) return;
     setIsMutating(true);
@@ -529,35 +555,81 @@ export function LoadPlanView({ token }: { token: string }) {
               </Button>
             </div>
             {csvutilBuild ? (
-              <DetailList
-                ariaLabel="CSVUTIL artifact ids"
-                items={[
-                  {
-                    id: "csvutil-ctl",
-                    meta: [csvutilBuild.ctl_artifact_id ?? "Missing CTL artifact"],
-                    status: csvutilBuild.ctl_artifact_id ? "READY" : "MISSING",
-                    title: "CTL artifact"
-                  },
-                  {
-                    id: "csvutil-cl",
-                    meta: [csvutilBuild.cl_artifact_id ?? "Missing CL artifact"],
-                    status: csvutilBuild.cl_artifact_id ? "READY" : "MISSING",
-                    title: "CL artifact"
-                  },
-                  {
-                    id: "csvutil-manifest",
-                    meta: [csvutilBuild.manifest_id ?? "Missing manifest"],
-                    status: csvutilBuild.manifest_id ? "READY" : "MISSING",
-                    title: "Manifest"
-                  },
-                  {
-                    id: "csvutil-evidence",
-                    meta: [csvutilBuild.evidence_id ?? "Missing evidence"],
-                    status: csvutilBuild.evidence_id ? "READY" : "MISSING",
-                    title: "Evidence"
-                  }
-                ]}
-              />
+              <>
+                <DetailList
+                  ariaLabel="CSVUTIL artifact ids"
+                  items={[
+                    {
+                      id: "csvutil-ctl",
+                      meta: [csvutilBuild.ctl_artifact_id ?? "Missing CTL artifact"],
+                      status: csvutilBuild.ctl_artifact_id ? "READY" : "MISSING",
+                      title: "CTL artifact"
+                    },
+                    {
+                      id: "csvutil-cl",
+                      meta: [csvutilBuild.cl_artifact_id ?? "Missing CL artifact"],
+                      status: csvutilBuild.cl_artifact_id ? "READY" : "MISSING",
+                      title: "CL artifact"
+                    },
+                    {
+                      id: "csvutil-manifest",
+                      meta: [csvutilBuild.manifest_id ?? "Missing manifest"],
+                      status: csvutilBuild.manifest_id ? "READY" : "MISSING",
+                      title: "Manifest"
+                    },
+                    {
+                      id: "csvutil-evidence",
+                      meta: [csvutilBuild.evidence_id ?? "Missing evidence"],
+                      status: csvutilBuild.evidence_id ? "READY" : "MISSING",
+                      title: "Evidence"
+                    }
+                  ]}
+                />
+                <ArtifactList
+                  items={[
+                    ...(csvutilBuild.ctl_artifact_id
+                      ? [
+                          {
+                            action: (
+                              <Button
+                                disabled={downloadingArtifactId === csvutilBuild.ctl_artifact_id}
+                                onClick={() =>
+                                  void handleDownloadArtifact(csvutilBuild.ctl_artifact_id, "csvutil_control_file.ctl")
+                                }
+                              >
+                                {downloadingArtifactId === csvutilBuild.ctl_artifact_id ? "Downloading..." : "Download"}
+                              </Button>
+                            ),
+                            id: csvutilBuild.ctl_artifact_id,
+                            meta: [csvutilBuild.ctl_artifact_id],
+                            subtitle: "CSVUTIL control file",
+                            title: "CTL artifact"
+                          }
+                        ]
+                      : []),
+                    ...(csvutilBuild.cl_artifact_id
+                      ? [
+                          {
+                            action: (
+                              <Button
+                                disabled={downloadingArtifactId === csvutilBuild.cl_artifact_id}
+                                onClick={() =>
+                                  void handleDownloadArtifact(csvutilBuild.cl_artifact_id, "csvutil_command_line.cl")
+                                }
+                              >
+                                {downloadingArtifactId === csvutilBuild.cl_artifact_id ? "Downloading..." : "Download"}
+                              </Button>
+                            ),
+                            id: csvutilBuild.cl_artifact_id,
+                            meta: [csvutilBuild.cl_artifact_id],
+                            subtitle: "CSVUTIL command file",
+                            title: "CL artifact"
+                          }
+                        ]
+                      : [])
+                  ]}
+                />
+              </>
             ) : null}
           </OperationalPanel>
         ) : null}
@@ -729,6 +801,56 @@ export function LoadPlanView({ token }: { token: string }) {
                         ],
                         status: cutoverPackageExport.status,
                         title: "Cutover package"
+                      }
+                    ]
+                  : [])
+              ]}
+            />
+            <ArtifactList
+              items={[
+                ...(readinessExport?.artifact_id
+                  ? [
+                      {
+                        action: (
+                          <Button
+                            disabled={downloadingArtifactId === readinessExport.artifact_id}
+                            onClick={() =>
+                              void handleDownloadArtifact(readinessExport.artifact_id, "load_plan_readiness_export.zip")
+                            }
+                          >
+                            {downloadingArtifactId === readinessExport.artifact_id ? "Downloading..." : "Download"}
+                          </Button>
+                        ),
+                        id: readinessExport.artifact_id,
+                        meta: [readinessExport.evidence_id ?? "Missing evidence", readinessExport.status],
+                        subtitle: "Readiness ZIP",
+                        title: "Readiness export"
+                      }
+                    ]
+                  : []),
+                ...(cutoverPackageExport?.artifact_id
+                  ? [
+                      {
+                        action: (
+                          <Button
+                            disabled={downloadingArtifactId === cutoverPackageExport.artifact_id}
+                            onClick={() =>
+                              void handleDownloadArtifact(
+                                cutoverPackageExport.artifact_id,
+                                cutoverPackageExport.file_name ?? "load_plan_cutover_package.zip"
+                              )
+                            }
+                          >
+                            {downloadingArtifactId === cutoverPackageExport.artifact_id ? "Downloading..." : "Download"}
+                          </Button>
+                        ),
+                        id: cutoverPackageExport.artifact_id,
+                        meta: [
+                          cutoverPackageExport.evidence_id ?? "Missing evidence",
+                          cutoverPackageExport.content_type ?? "application/octet-stream"
+                        ],
+                        subtitle: "Cutover package",
+                        title: cutoverPackageExport.file_name ?? "Cutover package"
                       }
                     ]
                   : [])

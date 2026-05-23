@@ -191,7 +191,7 @@ async function run() {
   const seeded = await seedLoadPlanPackage(token, suffix);
 
   const browser = await playwright.chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1360, height: 980 } });
+  const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1360, height: 980 } });
   const consoleErrors = [];
   const failedResponses = [];
   page.on("console", (message) => {
@@ -236,10 +236,17 @@ async function run() {
     await page.getByRole("button", { name: "Build CSVUTIL" }).click();
     await waitForCsvutilBuildResult(page);
     const csvutilPanel = page.getByLabel("CSVUTIL build artifacts");
-    await csvutilPanel.getByText("CTL artifact").waitFor();
-    await csvutilPanel.getByText("CL artifact").waitFor();
+    await page.getByLabel("CSVUTIL artifact ids").getByText("CTL artifact").waitFor();
+    await page.getByLabel("CSVUTIL artifact ids").getByText("CL artifact").waitFor();
     await csvutilPanel.getByText("Manifest").waitFor();
     await csvutilPanel.getByText("Evidence").waitFor();
+    const csvutilDownloadPromise = page.waitForEvent("download");
+    await csvutilPanel.locator(".artifact-list-item").filter({ hasText: "CTL artifact" }).getByRole("button", { name: "Download" }).click();
+    const csvutilDownload = await csvutilDownloadPromise;
+    if (!csvutilDownload.suggestedFilename()) {
+      throw new Error("Expected a CSVUTIL artifact download filename.");
+    }
+    await page.getByText(/^Download started: .+\.$/).waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "ZIP review" }).click();
     await page.getByRole("button", { name: "Run ZIP analysis" }).click();
@@ -261,7 +268,15 @@ async function run() {
     await page.getByText(/^Readiness export .* is EXPORTED\.$/).waitFor();
     await page.getByRole("button", { name: "Export cutover package" }).click();
     await page.getByText("Cutover package export is EXPORTED.").waitFor();
-    await page.getByLabel("Load Plan export artifacts").waitFor();
+    const exportsPanel = page.getByLabel("Load Plan export artifacts");
+    await exportsPanel.waitFor();
+    const exportDownloadPromise = page.waitForEvent("download");
+    await exportsPanel.locator(".artifact-list-item").filter({ hasText: "Readiness export" }).getByRole("button", { name: "Download" }).click();
+    const exportDownload = await exportDownloadPromise;
+    if (!exportDownload.suggestedFilename().endsWith(".zip")) {
+      throw new Error(`Expected readiness ZIP download, received ${exportDownload.suggestedFilename()}`);
+    }
+    await page.getByText(/^Download started: .+\.zip\.$/).waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Handoff" }).click();
     await page.getByLabel("Cutover handoff eligibility", { exact: true }).waitFor();
