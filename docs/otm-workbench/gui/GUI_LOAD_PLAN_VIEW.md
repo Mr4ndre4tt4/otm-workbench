@@ -52,8 +52,8 @@ download generated CSVUTIL artifact -> run ZIP analysis -> generate review queue
 decide review item when present -> generate sequence snapshot and inspect blockers/next actions ->
 generate package readiness -> export readiness ZIP -> export cutover package ->
 download exported artifact through Evidence Hub -> inspect handoff eligibility ->
-record Go/No-Go decision -> commit cutover handoff when backend eligibility allows ->
-leave route ->
+archive readiness export through Evidence Hub -> record Go/No-Go decision ->
+commit cutover handoff when backend eligibility allows -> leave route ->
 return with backend-owned package state visible
 ```
 
@@ -88,6 +88,9 @@ another package updates the detail query through backend-owned ids.
   returned evidence/blocker state.
 - Cutover handoff commit uses backend-owned eligibility and commit endpoints;
   the button remains disabled while eligibility has blockers.
+- Readiness export archive convenience calls the Evidence Hub archive endpoint
+  with load-plan readiness-export filters; Evidence Hub still owns archive
+  creation, evidence, audit, and event records.
 - Exports use backend-owned readiness export and cutover package artifacts; the
   frontend only displays returned artifact/evidence/manifest ids.
 - No local artifact path rendering.

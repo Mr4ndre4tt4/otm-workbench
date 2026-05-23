@@ -277,6 +277,9 @@ async function run() {
       throw new Error(`Expected readiness ZIP download, received ${exportDownload.suggestedFilename()}`);
     }
     await page.getByText(/^Download started: .+\.zip\.$/).waitFor();
+    await page.getByRole("button", { name: "Archive readiness export" }).click();
+    await page.getByText(/^Readiness export archive .+\.zip created\.$/).waitFor();
+    await page.getByLabel("Load Plan readiness archive package").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Handoff" }).click();
     await page.getByLabel("Cutover handoff eligibility", { exact: true }).waitFor();

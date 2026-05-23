@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   buildCsvutilFromCutoverChecklist,
   commitCutoverHandoff,
+  createEvidenceArchivePackage,
   createCutoverChecklistFromPackage,
   decideCutoverGoNoGo,
   decideLoadPlanReviewItem,
@@ -29,6 +30,7 @@ import type {
   CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
+  EvidenceArchivePackageResponse,
   LoadPlanCutoverReadiness,
   LoadPlanPackage,
   LoadPlanReadinessExport,
@@ -89,6 +91,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [cutoverPackageExport, setCutoverPackageExport] = useState<CutoverPackageExport | null>(null);
   const [goNoGoDecision, setGoNoGoDecision] = useState<CutoverGoNoGoDecision | null>(null);
   const [handoffCommit, setHandoffCommit] = useState<CutoverHandoffCommit | null>(null);
+  const [readinessArchivePackage, setReadinessArchivePackage] = useState<EvidenceArchivePackageResponse | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -311,6 +314,30 @@ export function LoadPlanView({ token }: { token: string }) {
       setActiveStage("exports");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not export cutover package.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleArchiveReadinessExport = async () => {
+    if (!readinessExport) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await createEvidenceArchivePackage(token, {
+        evidence_type: "load_plan_readiness_export",
+        sensitivity_level: "client_safe",
+        source_module: "load_plan",
+        status: "CREATED"
+      });
+      setReadinessArchivePackage(result);
+      await queryClient.invalidateQueries({
+        queryKey: ["modules", "load-plan", "cutover-handoff", "eligibility", effectivePackageId]
+      });
+      setOperationMessage(`Readiness export archive ${result.file_name} created.`);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not archive readiness export evidence.");
     } finally {
       setIsMutating(false);
     }
@@ -791,6 +818,9 @@ export function LoadPlanView({ token }: { token: string }) {
               <Button disabled={!checklist || isMutating} onClick={() => void handleExportCutoverPackage()} variant="secondary">
                 Export cutover package
               </Button>
+              <Button disabled={!readinessExport || isMutating} onClick={() => void handleArchiveReadinessExport()} variant="secondary">
+                Archive readiness export
+              </Button>
             </div>
             <DetailList
               ariaLabel="Load Plan export ids"
@@ -836,6 +866,23 @@ export function LoadPlanView({ token }: { token: string }) {
                   : [])
               ]}
             />
+            {readinessArchivePackage ? (
+              <DetailList
+                ariaLabel="Load Plan readiness archive package"
+                items={[
+                  {
+                    id: readinessArchivePackage.archive_id,
+                    meta: [
+                      readinessArchivePackage.evidence_id,
+                      readinessArchivePackage.manifest_id,
+                      `${readinessArchivePackage.summary.evidence_count ?? 0} evidence item(s)`
+                    ],
+                    status: "CREATED",
+                    title: readinessArchivePackage.file_name
+                  }
+                ]}
+              />
+            ) : null}
             <ArtifactList
               items={[
                 ...(readinessExport?.artifact_id

@@ -406,6 +406,23 @@ function cutoverHandoffCommit() {
   };
 }
 
+function readinessArchivePackage() {
+  return {
+    archive_id: "artifact_archive_1",
+    artifact_id: "artifact_archive_1",
+    evidence_id: "evidence_archive_1",
+    file_name: "evidence_hub_archive.zip",
+    manifest_id: "manifest_archive_1",
+    sha256: "c".repeat(64),
+    size_bytes: 512,
+    summary: {
+      artifact_ref_count: 1,
+      evidence_count: 1,
+      manifest_ref_count: 1
+    }
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -419,6 +436,7 @@ describe("Functional Load Plan journey", () => {
     let reviewQueueGenerated = false;
     let reviewItemConfirmed = false;
     let readinessExported = false;
+    let readinessArchived = false;
     let goNoGoDecided = false;
     const checklistRequests: unknown[] = [];
     const cutoverPackageRequests: unknown[] = [];
@@ -427,6 +445,7 @@ describe("Functional Load Plan journey", () => {
     const packageReadinessRequests: unknown[] = [];
     const readinessRequests: unknown[] = [];
     const readinessExportRequests: unknown[] = [];
+    const archiveRequests: unknown[] = [];
     const reviewDecisionRequests: unknown[] = [];
     const reviewQueueRequests: unknown[] = [];
     const sequenceSnapshotRequests: unknown[] = [];
@@ -624,6 +643,12 @@ describe("Functional Load Plan journey", () => {
         cutoverPackageRequests.push({ method: init?.method });
         return Promise.resolve(jsonResponse(cutoverPackageExport()));
       }
+      if (url.endsWith("/api/v1/evidence-hub/archive-packages")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        archiveRequests.push(JSON.parse(String(init?.body)));
+        readinessArchived = true;
+        return Promise.resolve(jsonResponse(readinessArchivePackage()));
+      }
       if (url.includes("/api/v1/evidence-hub/artifacts/") && url.endsWith("/download")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactDownloadRequests.push(url);
@@ -652,8 +677,8 @@ describe("Functional Load Plan journey", () => {
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
           jsonResponse({
-            archive_evidence_id: goNoGoDecided ? "evidence_archive_1" : null,
-            blockers: goNoGoDecided
+            archive_evidence_id: readinessArchived ? "evidence_archive_1" : null,
+            blockers: goNoGoDecided && readinessArchived
               ? []
               : readinessExported
                 ? [{ code: "CUTOVER_READINESS_NOT_READY", message: "Latest readiness is not READY.", severity: "ERROR" }]
@@ -663,9 +688,9 @@ describe("Functional Load Plan journey", () => {
             checklist_id: checklistCreated ? "checklist_1" : null,
             checklist_readiness_evidence_id: readinessGenerated ? "evidence_readiness" : null,
             checklist_readiness_status: readinessGenerated ? "READY" : null,
-            eligible: goNoGoDecided,
+            eligible: goNoGoDecided && readinessArchived,
             next_actions: readinessExported
-              ? goNoGoDecided
+              ? goNoGoDecided && readinessArchived
                 ? ["commit_cutover_handoff"]
                 : ["CUTOVER_READINESS_NOT_READY"]
               : readinessGenerated
@@ -753,6 +778,9 @@ describe("Functional Load Plan journey", () => {
     expect(exportsPanel).toHaveTextContent("evidence_cutover_package");
     await userEvent.click(within(exportsPanel).getAllByRole("button", { name: "Download" })[0]);
     await screen.findByText("Download started: artifact_readiness_export.zip.");
+    await userEvent.click(screen.getByRole("button", { name: "Archive readiness export" }));
+    await screen.findByText("Readiness export archive evidence_hub_archive.zip created.");
+    expect(screen.getByLabelText("Load Plan readiness archive package")).toHaveTextContent("evidence_archive_1");
 
     await userEvent.click(screen.getByRole("button", { name: /8Handoff/ }));
     await screen.findByLabelText("Cutover handoff eligibility");
@@ -787,6 +815,14 @@ describe("Functional Load Plan journey", () => {
     expect(reviewDecisionRequests).toEqual([{ decision_note: "Synthetic UI review.", decision_status: "CONFIRMED" }]);
     expect(packageReadinessRequests).toEqual([{ package_id: "package_1" }]);
     expect(readinessExportRequests).toEqual([{ method: "POST" }]);
+    expect(archiveRequests).toEqual([
+      {
+        evidence_type: "load_plan_readiness_export",
+        sensitivity_level: "client_safe",
+        source_module: "load_plan",
+        status: "CREATED"
+      }
+    ]);
     expect(cutoverPackageRequests).toEqual([{ method: "POST" }]);
     expect(sequenceSnapshotRequests).toEqual([{ package_id: "package_1" }]);
     expect(goNoGoRequests).toEqual([{ decision_note: "Synthetic UI go/no-go review." }]);
