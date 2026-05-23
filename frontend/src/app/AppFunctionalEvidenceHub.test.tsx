@@ -264,15 +264,15 @@ describe("Functional Evidence Hub journey", () => {
     expect(screen.getByLabelText("Evidence entries")).toHaveTextContent("rates_csv_export");
     await screen.findByText("synthetic_rates_export.zip");
     expect(screen.getByLabelText("Selected evidence")).toHaveTextContent("synthetic_rates_export.zip");
-
-    await userEvent.clear(screen.getByLabelText("Source module"));
-    await userEvent.type(screen.getByLabelText("Source module"), "rates");
-    await userEvent.clear(screen.getByLabelText("Evidence type"));
-    await userEvent.type(screen.getByLabelText("Evidence type"), "rates_csv_export");
-    await userEvent.clear(screen.getByLabelText("Status"));
-    await userEvent.type(screen.getByLabelText("Status"), "CREATED");
-    await userEvent.clear(screen.getByLabelText("Sensitivity"));
-    await userEvent.type(screen.getByLabelText("Sensitivity"), "client_safe");
+    const resetEvidenceFilters = within(screen.getByLabelText("Evidence filters"));
+    await userEvent.clear(resetEvidenceFilters.getByLabelText("Source module"));
+    await userEvent.type(resetEvidenceFilters.getByLabelText("Source module"), "rates");
+    await userEvent.clear(resetEvidenceFilters.getByLabelText("Evidence type"));
+    await userEvent.type(resetEvidenceFilters.getByLabelText("Evidence type"), "rates_csv_export");
+    await userEvent.clear(resetEvidenceFilters.getByLabelText("Status"));
+    await userEvent.type(resetEvidenceFilters.getByLabelText("Status"), "CREATED");
+    await userEvent.clear(resetEvidenceFilters.getByLabelText("Sensitivity"));
+    await userEvent.type(resetEvidenceFilters.getByLabelText("Sensitivity"), "client_safe");
     await userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
     await screen.findByText("Evidence filters applied.");
     await waitFor(() => {
@@ -280,6 +280,34 @@ describe("Functional Evidence Hub journey", () => {
     });
     expect(evidenceRequests.some((request) => request.includes("evidence_type=rates_csv_export"))).toBe(true);
     expect(evidenceRequests.some((request) => request.includes("sensitivity_level=client_safe"))).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    await screen.findByText("Evidence filters reset.");
+    await waitFor(() => {
+      const resetEvidenceFilters = within(screen.getByLabelText("Evidence filters"));
+      expect(resetEvidenceFilters.getByLabelText("Source module")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Evidence type")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Status")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Project")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Sensitivity")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Artifact")).toHaveValue("");
+      expect(resetEvidenceFilters.getByLabelText("Manifest")).toHaveValue("");
+    });
+    await waitFor(() => {
+      expect(evidenceRequests.at(-1)?.endsWith("/api/v1/evidence-hub/evidence")).toBe(true);
+    });
+
+    const reappliedEvidenceFilters = within(screen.getByLabelText("Evidence filters"));
+    await userEvent.clear(reappliedEvidenceFilters.getByLabelText("Source module"));
+    await userEvent.type(reappliedEvidenceFilters.getByLabelText("Source module"), "rates");
+    await userEvent.clear(reappliedEvidenceFilters.getByLabelText("Evidence type"));
+    await userEvent.type(reappliedEvidenceFilters.getByLabelText("Evidence type"), "rates_csv_export");
+    await userEvent.clear(reappliedEvidenceFilters.getByLabelText("Status"));
+    await userEvent.type(reappliedEvidenceFilters.getByLabelText("Status"), "CREATED");
+    await userEvent.clear(reappliedEvidenceFilters.getByLabelText("Sensitivity"));
+    await userEvent.type(reappliedEvidenceFilters.getByLabelText("Sensitivity"), "client_safe");
+    await userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    await screen.findByText("Evidence filters applied.");
 
     await userEvent.click(screen.getByRole("button", { name: "Download artifact" }));
     await screen.findByText("Artifact synthetic_rates_export.zip downloaded through Evidence Hub.");

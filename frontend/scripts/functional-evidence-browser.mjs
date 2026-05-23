@@ -1,8 +1,7 @@
 /* global console, fetch, process */
 
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const baseUrl = process.env.OTM_WORKBENCH_BASE_URL ?? "http://127.0.0.1:5173";
 const apiBaseUrl = process.env.OTM_WORKBENCH_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -42,7 +41,8 @@ async function apiRequest(path, { method = "GET", token, body } = {}) {
 }
 
 function createSyntheticArtifactFile(runId) {
-  const dir = mkdtempSync(join(tmpdir(), "otm-evidence-qa-"));
+  const dir = resolve(process.cwd(), "..", "var", "artifacts", "evidence-browser-qa");
+  mkdirSync(dir, { recursive: true });
   const filePath = join(dir, `synthetic_evidence_${runId}.zip`);
   writeFileSync(filePath, "synthetic evidence browser artifact\n", "utf-8");
   return filePath;
@@ -100,6 +100,13 @@ async function seedEvidence(token) {
   };
 }
 
+async function assertControlValue(locator, expected, description) {
+  const value = await locator.inputValue();
+  if (value !== expected) {
+    throw new Error(`${description} expected value "${expected}" but received "${value}".`);
+  }
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -146,11 +153,31 @@ async function run() {
     await page.locator('a[href="/evidence"]').click();
     await page.getByRole("heading", { name: "Evidence Hub" }).waitFor();
     await page.getByLabel("Evidence Hub workflow").waitFor();
+    const evidenceFilters = page.getByLabel("Evidence filters");
 
-    await page.getByLabel("Source module").fill("rates");
-    await page.getByLabel("Evidence type").fill(seeded.evidenceType);
-    await page.getByLabel("Status").fill("CREATED");
-    await page.getByLabel("Sensitivity").fill("client_safe");
+    await evidenceFilters.getByLabel("Source module").fill("rates");
+    await evidenceFilters.getByLabel("Evidence type").fill(seeded.evidenceType);
+    await evidenceFilters.getByLabel("Status").fill("CREATED");
+    await evidenceFilters.getByLabel("Sensitivity").fill("client_safe");
+    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.getByText("Evidence filters applied.").waitFor();
+    await page.getByLabel("Evidence entries").getByText(seeded.evidenceType, { exact: true }).waitFor();
+    await page.getByLabel("Selected evidence").getByText(seeded.artifact.file_name, { exact: true }).first().waitFor();
+
+    await page.getByRole("button", { name: "Reset filters" }).click();
+    await page.getByText("Evidence filters reset.").waitFor();
+    await assertControlValue(evidenceFilters.getByLabel("Source module"), "", "Source module after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Evidence type"), "", "Evidence type after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Status"), "", "Status after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Project"), "", "Project after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Sensitivity"), "", "Sensitivity after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Artifact"), "", "Artifact after reset");
+    await assertControlValue(evidenceFilters.getByLabel("Manifest"), "", "Manifest after reset");
+
+    await evidenceFilters.getByLabel("Source module").fill("rates");
+    await evidenceFilters.getByLabel("Evidence type").fill(seeded.evidenceType);
+    await evidenceFilters.getByLabel("Status").fill("CREATED");
+    await evidenceFilters.getByLabel("Sensitivity").fill("client_safe");
     await page.getByRole("button", { name: "Apply filters" }).click();
     await page.getByText("Evidence filters applied.").waitFor();
     await page.getByLabel("Evidence entries").getByText(seeded.evidenceType, { exact: true }).waitFor();

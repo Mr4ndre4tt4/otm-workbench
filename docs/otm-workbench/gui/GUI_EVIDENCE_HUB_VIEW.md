@@ -1,7 +1,7 @@
 # GUI Evidence Hub View
 
-**Status:** functional slice delivered plus archive history
-**Branch:** `codex/gui-evidence-hub-view`
+**Status:** functional slice delivered plus archive history and filter reset recovery
+**Branch:** `codex/master-data-hardening-next`
 **Linear:** OTM-94
 
 ## Objective
@@ -35,6 +35,9 @@ The screen uses shared components:
 - MetricGrid for evidence, artifact, manifest, and client-safe counters;
 - a compact workflow strip for Find, Inspect, Download, Archive;
 - filter controls backed by evidence list query parameters;
+- reset recovery for filter controls, clearing draft/applied filter state,
+  selected evidence, archive preview state, and reloading the backend evidence
+  list without query parameters;
 - ModuleObjectList for selectable evidence records;
 - SelectedObjectPanel for selected evidence metadata and actions;
 - DetailList for artifact, manifest, and latest archive references.
@@ -60,6 +63,11 @@ frontend does not display artifact local paths or raw manifest payloads.
 Archive package history is also backend-owned. The GUI reads
 `evidence_hub_archive` evidence records created by Evidence Hub instead of
 keeping a frontend-only archive list.
+
+The filter bar uses `Apply filters` and `Reset filters` instead of silently
+relying on route reloads. React and browser QA both assert that reset clears all
+filter inputs and returns to the unfiltered backend list before continuing the
+download/archive workflow.
 
 ## Validation
 

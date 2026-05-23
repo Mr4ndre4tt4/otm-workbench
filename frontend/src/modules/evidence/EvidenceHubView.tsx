@@ -90,13 +90,13 @@ export function EvidenceHubView({ token }: { token: string }) {
     setOperationMessage("Evidence filters applied.");
   };
 
-  const handleClearFilters = () => {
-    setDraftFilters(emptyFilters);
+  const handleResetFilters = () => {
+    setDraftFilters({ ...emptyFilters });
     setAppliedFilters({});
     setSelectedEvidenceId(null);
     setArchivePackage(null);
     setOperationError(null);
-    setOperationMessage("Evidence filters cleared.");
+    setOperationMessage("Evidence filters reset.");
   };
 
   const handleDownloadArtifact = async () => {
@@ -291,6 +291,7 @@ export function EvidenceHubView({ token }: { token: string }) {
           <label>
             Source module
             <input
+              aria-label="Source module"
               onChange={(event) => updateDraftFilter("source_module", event.target.value)}
               value={draftFilters.source_module}
             />
@@ -298,17 +299,23 @@ export function EvidenceHubView({ token }: { token: string }) {
           <label>
             Evidence type
             <input
+              aria-label="Evidence type"
               onChange={(event) => updateDraftFilter("evidence_type", event.target.value)}
               value={draftFilters.evidence_type}
             />
           </label>
           <label>
             Status
-            <input onChange={(event) => updateDraftFilter("status", event.target.value)} value={draftFilters.status} />
+            <input
+              aria-label="Status"
+              onChange={(event) => updateDraftFilter("status", event.target.value)}
+              value={draftFilters.status}
+            />
           </label>
           <label>
             Project
             <input
+              aria-label="Project"
               onChange={(event) => updateDraftFilter("project_id", event.target.value)}
               value={draftFilters.project_id}
             />
@@ -316,6 +323,7 @@ export function EvidenceHubView({ token }: { token: string }) {
           <label>
             Sensitivity
             <input
+              aria-label="Sensitivity"
               onChange={(event) => updateDraftFilter("sensitivity_level", event.target.value)}
               value={draftFilters.sensitivity_level}
             />
@@ -323,6 +331,7 @@ export function EvidenceHubView({ token }: { token: string }) {
           <label>
             Artifact
             <input
+              aria-label="Artifact"
               onChange={(event) => updateDraftFilter("artifact_id", event.target.value)}
               value={draftFilters.artifact_id}
             />
@@ -330,6 +339,7 @@ export function EvidenceHubView({ token }: { token: string }) {
           <label>
             Manifest
             <input
+              aria-label="Manifest"
               onChange={(event) => updateDraftFilter("manifest_id", event.target.value)}
               value={draftFilters.manifest_id}
             />
@@ -338,7 +348,7 @@ export function EvidenceHubView({ token }: { token: string }) {
             <Button onClick={handleApplyFilters} variant="primary">
               Apply filters
             </Button>
-            <Button onClick={handleClearFilters}>Clear</Button>
+            <Button onClick={handleResetFilters}>Reset filters</Button>
           </div>
         </div>
 
