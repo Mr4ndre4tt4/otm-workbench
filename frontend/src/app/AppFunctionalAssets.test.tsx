@@ -297,6 +297,35 @@ describe("Functional Assets Library journey", () => {
           })
         );
       }
+      if (url.includes("/api/v1/catalog/tables")) {
+        const parsedUrl = new URL(url, "http://localhost");
+        const query = (parsedUrl.searchParams.get("query") ?? "").toUpperCase();
+        const items = query.includes("RATE_GEO")
+          ? [
+              {
+                allow_csvutil: true,
+                allow_cutover: true,
+                column_count: 12,
+                data_category: "RATES_SETUP",
+                description: "Rate geo table.",
+                is_transactional: false,
+                schema_name: "GLOGOWNER",
+                table_name: "RATE_GEO"
+              },
+              {
+                allow_csvutil: true,
+                allow_cutover: true,
+                column_count: 18,
+                data_category: "RATES_SETUP",
+                description: "Rate geo cost table.",
+                is_transactional: false,
+                schema_name: "GLOGOWNER",
+                table_name: "RATE_GEO_COST"
+              }
+            ]
+          : [];
+        return Promise.resolve(jsonResponse({ items, page: 1, page_size: items.length, total: items.length }));
+      }
       if (url.endsWith("/api/v1/platform/session/me")) {
         return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
       }
@@ -512,7 +541,6 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("Integration Mapping Studio");
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "OTM_TABLE");
-    expect(screen.queryByLabelText("Asset guided link target")).not.toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Asset link target id"));
     await userEvent.type(screen.getByLabelText("Asset link target id"), "NOT_A_REAL_OTM_TABLE");
     await userEvent.clear(screen.getByLabelText("Asset link target label"));
@@ -522,12 +550,12 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("4Link");
     expect(linkRequests).toEqual([]);
     await userEvent.clear(screen.getByLabelText("Asset link target id"));
-    await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_GEO_COST");
-    await userEvent.clear(screen.getByLabelText("Asset link target label"));
-    await userEvent.type(screen.getByLabelText("Asset link target label"), "Rate Geo Cost table");
+    await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_GEO");
+    await screen.findByRole("option", { name: "RATE_GEO_COST" });
+    await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "RATE_GEO_COST");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
     await screen.findByText("Asset link RATE_GEO_COST created.");
-    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Geo Cost table");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("RATE_GEO_COST table");
 
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "MACRO_OBJECT");
@@ -598,7 +626,7 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(linkRequests).toEqual([
-      { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "Rate Geo Cost table" },
+      { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "RATE_GEO_COST table" },
       { link_type: "MACRO_OBJECT", target_id: "RATE_RECORD", target_label: "Rate Record macro object" }
     ]);
     expect(downloadRequests).toEqual([{ method: "GET" }]);

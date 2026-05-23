@@ -13,6 +13,7 @@ import {
   useAssetLinks,
   useAssets,
   useCatalogMacroObjects,
+  useCatalogTables,
   useNavigation,
   useAssetVersions
 } from '../../platform/hooks';
@@ -153,6 +154,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [linkType, setLinkType] = useState("MODULE");
   const [linkTargetId, setLinkTargetId] = useState("integration_mapping");
   const [linkTargetLabel, setLinkTargetLabel] = useState("Integration Mapping Studio");
+  const catalogTables = useCatalogTables(token, linkType === "OTM_TABLE" ? linkTargetId : "", 25);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -209,6 +211,13 @@ export function AssetsLibraryView({ token }: { token: string }) {
             targetId: item.code,
             targetLabel: `${item.name} macro object`
           }))
+        : linkType === "OTM_TABLE"
+          ? (catalogTables.data?.items ?? []).map((item) => ({
+              description: item.description,
+              label: item.table_name,
+              targetId: item.table_name,
+              targetLabel: `${item.table_name} table`
+            }))
         : [];
 
   const handleGuidedLinkTargetChange = (targetId: string) => {

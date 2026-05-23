@@ -48,7 +48,8 @@ The screen uses shared components:
   Dictionary validation failures for `OTM_TABLE` asset links and Catalog Core
   validation failures for `MACRO_OBJECT` asset links;
 - Guided link target selector for backend-owned `MODULE` targets from platform
-  navigation and `MACRO_OBJECT` targets from Catalog Core;
+  navigation, `MACRO_OBJECT` targets from Catalog Core, and `OTM_TABLE`
+  targets from Catalog Core Data Dictionary search;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -88,8 +89,6 @@ Still open:
 - richer custom metadata validation messaging
 - richer guided link authoring UX for `ARTIFACT` and `EVIDENCE` once those
   target search contracts are exposed
-- Data Dictionary-backed table search/list contract for guided `OTM_TABLE`
-  selection; current table target entry remains manual and backend-validated
 - deeper authoring for backend-owned classifications
 ```
 

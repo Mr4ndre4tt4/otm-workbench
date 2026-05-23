@@ -10,6 +10,7 @@ from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import ActiveContext, User
 from otm_workbench.catalog.services import (
     get_macro_object,
+    list_dictionary_tables,
     list_macro_objects,
     macro_object_tables,
     reference_options_payload,
@@ -77,6 +78,16 @@ def effective_reference_context(
 @router.get("/health")
 def catalog_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "catalog"}
+
+
+@router.get("/tables")
+def list_catalog_tables(
+    query: str | None = None,
+    limit: int = 50,
+    user: User = Depends(require_user),
+):
+    items, total = list_dictionary_tables(dictionary_root(), query=query, limit=limit)
+    return PageResponse(items=items, total=total, page=1, page_size=len(items))
 
 
 @router.get("/tables/{table_name}")

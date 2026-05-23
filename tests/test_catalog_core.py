@@ -50,6 +50,19 @@ def test_catalog_table_detail_and_columns_use_data_dictionary(client, admin_head
     assert "file_path" not in str(detail.json())
 
 
+def test_catalog_tables_list_supports_data_dictionary_search(client, admin_header):
+    response = client.get("/api/v1/catalog/tables?query=rate_geo&limit=10", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    table_names = [item["table_name"] for item in payload["items"]]
+    assert "RATE_GEO" in table_names
+    assert "RATE_GEO_COST" in table_names
+    assert payload["total"] >= len(payload["items"])
+    assert all("file_path" not in item for item in payload["items"])
+    assert all("data_category" in item for item in payload["items"])
+
+
 def test_catalog_reference_options_filter_public_and_profile_domain(client, admin_header, db_session):
     seed_reference_options(db_session)
 

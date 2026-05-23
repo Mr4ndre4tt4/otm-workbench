@@ -40,6 +40,19 @@ export type CatalogMacroObjectTable = {
 
 export type CatalogMacroObjectTablesResponse = PageResponse<CatalogMacroObjectTable>;
 
+export type CatalogTableSummary = {
+  table_name: string;
+  schema_name: string;
+  description: string;
+  column_count: number;
+  data_category: string;
+  is_transactional: boolean;
+  allow_cutover: boolean;
+  allow_csvutil: boolean;
+};
+
+export type CatalogTablesResponse = PageResponse<CatalogTableSummary>;
+
 export type CatalogTableColumn = {
   column_name: string;
   data_type: string;

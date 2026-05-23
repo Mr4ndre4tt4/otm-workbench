@@ -6,6 +6,7 @@ import type {
   CatalogMacroObjectLoadPlan,
   CatalogMacroObjectsResponse,
   CatalogMacroObjectTablesResponse,
+  CatalogTablesResponse,
   CatalogTableColumnsResponse,
   CatalogValidateColumnPayload,
   CatalogValidateColumnResult,
@@ -44,6 +45,18 @@ export function useCatalogMacroObjectLoadPlan(token: string | null, macroObjectC
     queryKey: ["catalog", "macro-objects", macroObjectCode, "load-plan"],
     queryFn: () => apiGet<CatalogMacroObjectLoadPlan>(`/api/v1/catalog/macro-objects/${macroObjectCode}/load-plan`, { token }),
     enabled: Boolean(token && macroObjectCode)
+  });
+}
+
+export function useCatalogTables(token: string | null, query = "", limit = 50) {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("query", query.trim());
+  params.set("limit", String(limit));
+  const queryString = params.toString();
+  return useQuery({
+    queryKey: ["catalog", "tables", "search", query.trim(), limit],
+    queryFn: () => apiGet<CatalogTablesResponse>(`/api/v1/catalog/tables?${queryString}`, { token }),
+    enabled: Boolean(token)
   });
 }
 

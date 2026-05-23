@@ -106,6 +106,42 @@ def safe_load_table(dictionary_root: Path, table_name: str) -> TableDefinition |
         return None
 
 
+def list_dictionary_tables(dictionary_root: Path, query: str | None = None, limit: int = 50) -> tuple[list[dict[str, object]], int]:
+    normalized_query = (query or "").strip().upper()
+    max_items = max(1, min(limit, 200))
+    items: list[dict[str, object]] = []
+    total = 0
+    if not dictionary_root.exists():
+        return [], 0
+
+    for path in sorted(dictionary_root.glob("*.json")):
+        table_name = path.stem.upper()
+        try:
+            definition = load_table_definition(dictionary_root, table_name)
+        except (FileNotFoundError, AttributeError, KeyError, TypeError, json.JSONDecodeError):
+            continue
+        searchable = f"{definition.table_name} {definition.description}".upper()
+        if normalized_query and normalized_query not in searchable:
+            continue
+        total += 1
+        if len(items) >= max_items:
+            continue
+        classification = classify_table(definition.table_name)
+        items.append(
+            {
+                "table_name": definition.table_name,
+                "schema_name": definition.schema_name,
+                "description": definition.description,
+                "column_count": len(definition.columns),
+                "data_category": classification.data_category,
+                "is_transactional": classification.is_transactional,
+                "allow_cutover": classification.allow_cutover,
+                "allow_csvutil": classification.allow_csvutil,
+            }
+        )
+    return items, total
+
+
 def validate_table(dictionary_root: Path, table_name: str, usage: str | None = None) -> dict[str, object]:
     normalized = table_name.upper()
     definition = safe_load_table(dictionary_root, normalized)

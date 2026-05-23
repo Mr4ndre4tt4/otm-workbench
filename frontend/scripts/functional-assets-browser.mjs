@@ -178,11 +178,11 @@ async function run() {
     await page.getByLabel("Asset link target label").fill("Invalid OTM table");
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText("ASSET_LINK_INVALID_TABLE: OTM table not found in Data Dictionary.").waitFor();
-    await page.getByLabel("Asset link target id").fill("RATE_GEO_COST");
-    await page.getByLabel("Asset link target label").fill("Rate Geo Cost table");
+    await page.getByLabel("Asset link target id").fill("RATE_GEO");
+    await page.getByLabel("Asset guided link target").selectOption("RATE_GEO_COST");
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText("Asset link RATE_GEO_COST created.").waitFor();
-    await page.getByLabel("Selected asset links").getByText("Rate Geo Cost table").waitFor();
+    await page.getByLabel("Selected asset links").getByText("RATE_GEO_COST table").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
     await page.getByLabel("Asset link type").selectOption("MACRO_OBJECT");
