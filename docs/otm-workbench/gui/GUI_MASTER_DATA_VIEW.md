@@ -259,6 +259,11 @@ metadata. The backend marks the next action that advances the template or batch
 workflow, while leaving repeatable/idempotent actions available without making
 the UI infer priority from local lifecycle rules.
 
+The Output stage now includes a reset control for durable batch-history filters.
+It clears template, status, file-name, minimum-row, page-size, and page state so
+operators can recover quickly from over-filtered or stale history views during
+QA and repeated upload/export cycles.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

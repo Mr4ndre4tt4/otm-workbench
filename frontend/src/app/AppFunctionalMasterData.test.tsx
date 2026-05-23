@@ -758,6 +758,30 @@ describe("Functional Master Data journey", () => {
       status: "EXPORTED",
       template_code: "REGIONS_BASIC"
     });
+    await userEvent.click(screen.getByRole("button", { name: "Reset batch filters" }));
+    expect(screen.getByLabelText("Template filter")).toHaveValue("");
+    expect(screen.getByLabelText("Batch status filter")).toHaveValue("");
+    expect(screen.getByLabelText("Batch file name filter")).toHaveValue("");
+    expect(screen.getByLabelText("Batch minimum row count")).toHaveValue(null);
+    expect(screen.getByLabelText("Batch page size")).toHaveValue("50");
+    await screen.findByLabelText("Master Data batch history metrics");
+    expect(batchListRequests).toContainEqual({
+      file_name_contains: null,
+      min_row_count: null,
+      method: "GET",
+      page_size: null,
+      status: null,
+      template_code: null
+    });
+    expect(batchSummaryRequests).toContainEqual({
+      file_name_contains: null,
+      min_row_count: null,
+      method: "GET",
+      page: null,
+      page_size: null,
+      status: null,
+      template_code: null
+    });
     expect(batchListRequests.length).toBeGreaterThan(0);
     expect(artifactListRequests.length).toBeGreaterThan(0);
     expect(artifactDownloadRequests).toEqual([

@@ -454,6 +454,18 @@ export function MasterDataView({ token }: { token: string }) {
     status: batchStatusFilter || undefined,
     template_code: batchTemplateFilter || undefined
   };
+  const hasBatchHistoryFilters =
+    Boolean(batchTemplateFilter || batchStatusFilter || batchFileNameFilter || batchMinRowCountFilter) ||
+    batchPageSize !== 50 ||
+    batchPage !== 1;
+  function resetBatchHistoryFilters() {
+    setBatchTemplateFilter("");
+    setBatchStatusFilter("");
+    setBatchFileNameFilter("");
+    setBatchMinRowCountFilter("");
+    setBatchPageSize(50);
+    setBatchPage(1);
+  }
   const batches = useMasterDataBatches(token, batchFilters);
   const batchSummary = useMasterDataBatchSummary(token, batchFilters);
   const targetTableCount = new Set(templateItems.flatMap((item) => item.target_tables)).size;
@@ -1716,6 +1728,9 @@ export function MasterDataView({ token }: { token: string }) {
                 onClick={() => setBatchPage((page) => page + 1)}
               >
                 Next
+              </Button>
+              <Button disabled={!hasBatchHistoryFilters || batches.isFetching} onClick={resetBatchHistoryFilters}>
+                Reset batch filters
               </Button>
             </div>
             <MetricGrid
