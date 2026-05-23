@@ -45,7 +45,8 @@ The screen uses shared components:
 - Selected-asset synchronization so the metadata form reflects the backend
   record selected in the Library before an update is submitted;
 - Backend error code preservation in action feedback, including Data
-  Dictionary validation failures for `OTM_TABLE` asset links;
+  Dictionary validation failures for `OTM_TABLE` asset links and Catalog Core
+  validation failures for `MACRO_OBJECT` asset links;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -55,8 +56,9 @@ The first selected asset defaults to the first backend item. Selecting another
 asset updates detail, versions, and links through backend-owned ids. The current
 functional slice follows a staged story: review the Library with backend
 filters, create a client-safe synthetic support asset, edit its metadata, upload
-a file version, create a selected link type such as `OTM_TABLE`, recover from a
-backend Data Dictionary validation error when the target table is invalid,
+a file version, create selected link types such as `OTM_TABLE` and
+`MACRO_OBJECT`, recover from backend validation errors when the target table or
+macro object is invalid,
 download the current version through the guarded backend download endpoint, and
 archive the asset. Once the backend returns `ARCHIVED`, the UI keeps lifecycle
 actions disabled for new uploads and links.
@@ -82,7 +84,8 @@ Still open:
 
 ```text
 - richer custom metadata validation messaging
-- richer link authoring UX for every supported link type
+- richer guided link authoring UX for supported link types beyond table and
+  macro object validation
 - deeper authoring for backend-owned classifications
 ```
 

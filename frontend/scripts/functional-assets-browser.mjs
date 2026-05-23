@@ -184,6 +184,18 @@ async function run() {
     await page.getByText("Asset link RATE_GEO_COST created.").waitFor();
     await page.getByLabel("Selected asset links").getByText("Rate Geo Cost table").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    await page.getByLabel("Asset link type").selectOption("MACRO_OBJECT");
+    await page.getByLabel("Asset link target id").fill("NOT_A_MACRO_OBJECT");
+    await page.getByLabel("Asset link target label").fill("Invalid macro object");
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText("ASSET_LINK_INVALID_MACRO_OBJECT: OTM macro object not found in Catalog Core.").waitFor();
+    await page.getByLabel("Asset link target id").fill("RATE_RECORD");
+    await page.getByLabel("Asset link target label").fill("Rate Record macro object");
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText("Asset link RATE_RECORD created.").waitFor();
+    await page.getByLabel("Selected asset links").getByText("Rate Record macro object").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Lifecycle" }).click();
     await page.getByRole("button", { name: "Download current version" }).click();
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();

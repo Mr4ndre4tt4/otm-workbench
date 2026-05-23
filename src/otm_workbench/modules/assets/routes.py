@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
+from otm_workbench.catalog.services import get_macro_object
 from otm_workbench.models import Asset, AssetLink, AssetVersion, User
 from otm_workbench.modules.assets.assets import (
     archive_asset,
@@ -189,6 +190,8 @@ def create_asset_link_endpoint(
             load_table_definition(Path(get_settings().otm_data_dictionary_root), target_id)
         except FileNotFoundError as exc:
             raise api_error(400, "ASSET_LINK_INVALID_TABLE", "OTM table not found in Data Dictionary.") from exc
+    if link_type == "MACRO_OBJECT" and get_macro_object(db, Path(get_settings().otm_data_dictionary_root), target_id) is None:
+        raise api_error(400, "ASSET_LINK_INVALID_MACRO_OBJECT", "OTM macro object not found in Catalog Core.")
     try:
         link = create_asset_link(
             db,

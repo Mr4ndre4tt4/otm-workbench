@@ -199,9 +199,18 @@ function classificationGroups() {
             name: "OTM Table",
             sort_order: 30,
             system_protected: true
+          },
+          {
+            code: "MACRO_OBJECT",
+            description: "Links an asset to a Catalog Core macro object.",
+            id: "asset_link_macro_object",
+            is_active: true,
+            name: "Macro Object",
+            sort_order: 40,
+            system_protected: true
           }
         ],
-        total: 2
+        total: 3
       }
     ],
     total: 4
@@ -219,6 +228,7 @@ describe("Functional Assets Library journey", () => {
     const updateRequests: unknown[] = [];
     const uploadRequests: unknown[] = [];
     const invalidLinkRequests: unknown[] = [];
+    const invalidMacroLinkRequests: unknown[] = [];
     const linkRequests: unknown[] = [];
     const downloadRequests: unknown[] = [];
     const archiveRequests: unknown[] = [];
@@ -330,6 +340,18 @@ describe("Functional Assets Library journey", () => {
                 {
                   code: "ASSET_LINK_INVALID_TABLE",
                   message: "OTM table not found in Data Dictionary."
+                },
+                400
+              )
+            );
+          }
+          if (body.target_id === "NOT_A_MACRO_OBJECT") {
+            invalidMacroLinkRequests.push(body);
+            return Promise.resolve(
+              jsonResponse(
+                {
+                  code: "ASSET_LINK_INVALID_MACRO_OBJECT",
+                  message: "OTM macro object not found in Catalog Core."
                 },
                 400
               )
@@ -464,6 +486,22 @@ describe("Functional Assets Library journey", () => {
     await screen.findByText("Asset link RATE_GEO_COST created.");
     expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Geo Cost table");
 
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "MACRO_OBJECT");
+    await userEvent.clear(screen.getByLabelText("Asset link target id"));
+    await userEvent.type(screen.getByLabelText("Asset link target id"), "NOT_A_MACRO_OBJECT");
+    await userEvent.clear(screen.getByLabelText("Asset link target label"));
+    await userEvent.type(screen.getByLabelText("Asset link target label"), "Invalid macro object");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("ASSET_LINK_INVALID_MACRO_OBJECT: OTM macro object not found in Catalog Core.");
+    await userEvent.clear(screen.getByLabelText("Asset link target id"));
+    await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_RECORD");
+    await userEvent.clear(screen.getByLabelText("Asset link target label"));
+    await userEvent.type(screen.getByLabelText("Asset link target label"), "Rate Record macro object");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("Asset link RATE_RECORD created.");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Record macro object");
+
     await userEvent.click(screen.getByRole("button", { name: /5Lifecycle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
     await screen.findByText("Download started: synthetic_mapping_spec.md.");
@@ -500,6 +538,9 @@ describe("Functional Assets Library journey", () => {
     expect(invalidLinkRequests).toEqual([
       { link_type: "OTM_TABLE", target_id: "NOT_A_REAL_OTM_TABLE", target_label: "Invalid OTM table" }
     ]);
+    expect(invalidMacroLinkRequests).toEqual([
+      { link_type: "MACRO_OBJECT", target_id: "NOT_A_MACRO_OBJECT", target_label: "Invalid macro object" }
+    ]);
     expect(updateRequests).toEqual([
       {
         asset_type: "SPEC",
@@ -516,10 +557,11 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(linkRequests).toEqual([
-      { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "Rate Geo Cost table" }
+      { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "Rate Geo Cost table" },
+      { link_type: "MACRO_OBJECT", target_id: "RATE_RECORD", target_label: "Rate Record macro object" }
     ]);
     expect(downloadRequests).toEqual([{ method: "GET" }]);
     expect(archiveRequests).toEqual([{ method: "POST" }]);
-    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("OTM_TABLE").length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("MACRO_OBJECT").length).toBeGreaterThan(0);
   }, 60000);
 });

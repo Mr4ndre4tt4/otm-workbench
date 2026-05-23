@@ -70,6 +70,27 @@ def test_create_asset_otm_table_link_validates_data_dictionary(client, admin_hea
     assert "table" in invalid.json()["message"].lower()
 
 
+def test_create_asset_macro_object_link_validates_catalog(client, admin_header):
+    asset = create_asset(client, admin_header)
+
+    valid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "MACRO_OBJECT", "target_id": "RATE_RECORD"},
+        headers=admin_header,
+    )
+    invalid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "MACRO_OBJECT", "target_id": "NOT_A_MACRO_OBJECT"},
+        headers=admin_header,
+    )
+
+    assert valid.status_code == 200
+    assert valid.json()["target_id"] == "RATE_RECORD"
+    assert invalid.status_code == 400
+    assert invalid.json()["code"] == "ASSET_LINK_INVALID_MACRO_OBJECT"
+    assert "macro object" in invalid.json()["message"].lower()
+
+
 def test_list_asset_links(client, admin_header):
     asset = create_asset(client, admin_header)
     first = client.post(
@@ -79,16 +100,18 @@ def test_list_asset_links(client, admin_header):
     ).json()
     second = client.post(
         f"/api/v1/modules/assets/assets/{asset['id']}/links",
-        json={"link_type": "MACRO_OBJECT", "target_id": "ORDER_RELEASE"},
+        json={"link_type": "MACRO_OBJECT", "target_id": "RATE_RECORD"},
         headers=admin_header,
-    ).json()
+    )
 
     response = client.get(f"/api/v1/modules/assets/assets/{asset['id']}/links", headers=admin_header)
 
+    assert second.status_code == 200
+    second_payload = second.json()
     assert response.status_code == 200
     payload = response.json()
     assert payload["total"] == 2
-    assert [item["id"] for item in payload["items"]] == [second["id"], first["id"]]
+    assert [item["id"] for item in payload["items"]] == [second_payload["id"], first["id"]]
 
 
 def test_create_asset_link_rejects_unknown_link_type(client, admin_header):
