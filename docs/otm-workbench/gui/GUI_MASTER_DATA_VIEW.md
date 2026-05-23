@@ -264,6 +264,12 @@ It clears template, status, file-name, minimum-row, page-size, and page state so
 operators can recover quickly from over-filtered or stale history views during
 QA and repeated upload/export cycles.
 
+Durable batch-history rows can now be inspected directly. Selecting a historical
+batch fetches its backend detail, makes it the active batch, refreshes the
+selected-object action guidance, and loads that batch's output/artifact surfaces.
+This lets QA and cutover operators return to a previous upload/export cycle
+without re-running the whole workflow.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

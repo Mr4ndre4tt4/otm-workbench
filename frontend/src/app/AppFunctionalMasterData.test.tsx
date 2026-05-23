@@ -350,9 +350,20 @@ describe("Functional Master Data journey", () => {
                 ],
                 status: "EXPORTED",
                 template_code: "REGIONS_BASIC"
+              },
+              {
+                batch_id: "batch_history",
+                csv_file_count: 1,
+                file_name: "regions_history_upload.xlsx",
+                issue_count: 0,
+                row_count: 1,
+                sheet_count: 1,
+                sheet_summaries: [{ row_count: 1, sheet_code: "REGIONS", target_table: "REGION" }],
+                status: "CSV_BUILT",
+                template_code: "REGIONS_BASIC"
               }
             ],
-            total: 1
+            total: 2
           })
         );
       }
@@ -466,6 +477,24 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (parsedUrl.pathname === "/api/v1/modules/master-data/batches/batch_history") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        batchDetailRequests.push({ method: init?.method ?? "GET", batch_id: "batch_history" });
+        return Promise.resolve(
+          jsonResponse({
+            available_actions: [
+              { disabled: true, disabled_reason: "OUTPUT_BUILT_STATUS_REQUIRED", href: "", icon_key: "file-text", key: "build_csv", label: "Build CSV", method: "POST", recommended: false, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "package", key: "export_csv_package", label: "Export package", method: "POST", recommended: true, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
+            ],
+            batch_id: "batch_history",
+            file_name: "regions_history_upload.xlsx",
+            row_count: 1,
+            sheet_count: 1,
+            status: "CSV_BUILT",
+            template_code: "REGIONS_BASIC"
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/output-records")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         outputRecordListRequests.push({ method: init?.method ?? "GET" });
@@ -484,6 +513,11 @@ describe("Functional Master Data journey", () => {
             total: 1
           })
         );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_history/output-records")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        outputRecordListRequests.push({ method: init?.method ?? "GET", batch_id: "batch_history" });
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/csv-files")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -505,6 +539,11 @@ describe("Functional Master Data journey", () => {
             total: 1
           })
         );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_history/csv-files")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        csvFileListRequests.push({ method: init?.method ?? "GET", batch_id: "batch_history" });
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/load-plan/packages/from-master-data/batch_1")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -636,6 +675,28 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_history/artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        artifactListRequests.push({ method: init?.method ?? "GET", batch_id: "batch_history" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                artifact_type: "master_data_csv_file",
+                content_type: "text/csv",
+                download_url: "/api/v1/modules/master-data/batches/batch_history/artifacts/artifact_history_csv/download",
+                evidence_id: "evidence_history_csv",
+                file_name: "001_REGION_HISTORY.csv",
+                id: "artifact_history_csv",
+                sensitivity_level: "client_safe",
+                sha256: "def456",
+                size_bytes: 64
+              }
+            ],
+            total: 1
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts/artifact_csv_package/download")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactDownloadRequests.push(url);
@@ -723,9 +784,13 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByLabelText("Master Data batch history metrics")).toHaveTextContent("Matching rows");
     await screen.findByLabelText("Durable Master Data batches");
     expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
+    expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_history");
     expect(screen.getByLabelText("Master Data export artifacts")).toHaveTextContent("master_data_regions_basic.zip");
     await userEvent.click(within(screen.getByLabelText("Master Data export artifacts")).getByRole("button", { name: "Download" }));
     await screen.findByText("Download started: master_data_regions_basic.zip.");
+    await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
+    await screen.findByText("001_REGION_HISTORY.csv");
 
     expect(templateValidationRequests).toEqual([{ method: "POST" }]);
     expect(workbookRequests).toEqual([{ method: "POST" }]);

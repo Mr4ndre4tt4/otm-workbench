@@ -466,6 +466,16 @@ export function MasterDataView({ token }: { token: string }) {
     setBatchPageSize(50);
     setBatchPage(1);
   }
+  function clearBatchWorkflowState() {
+    setRelationshipValidation(null);
+    setMappingResult(null);
+    setOutputResult(null);
+    setCsvResult(null);
+    setExportResult(null);
+    setLoadPlanPackage(null);
+    setCutoverChecklist(null);
+    setCutoverChecklistReadiness(null);
+  }
   const batches = useMasterDataBatches(token, batchFilters);
   const batchSummary = useMasterDataBatchSummary(token, batchFilters);
   const targetTableCount = new Set(templateItems.flatMap((item) => item.target_tables)).size;
@@ -740,18 +750,23 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await uploadMasterDataWorkbook(token, effectiveTemplateCode, selectedUploadFile);
         setUploadedBatch(result);
-        setRelationshipValidation(null);
-        setMappingResult(null);
-        setOutputResult(null);
-        setCsvResult(null);
-        setExportResult(null);
-        setLoadPlanPackage(null);
-        setCutoverChecklist(null);
-        setCutoverChecklistReadiness(null);
+        clearBatchWorkflowState();
         await batches.refetch();
         return result;
       },
       (result) => `Workbook uploaded as batch ${result.batch_id}.`
+    );
+  };
+
+  const handleInspectBatch = (batch: MasterDataBatch) => {
+    void runAction(
+      async () => {
+        const result = await getMasterDataBatch(token, batch.batch_id);
+        setUploadedBatch(result);
+        clearBatchWorkflowState();
+        return result;
+      },
+      (result) => `Inspecting batch ${result.batch_id}.`
     );
   };
 
@@ -1762,21 +1777,32 @@ export function MasterDataView({ token }: { token: string }) {
                 }
               ]}
             />
-            <DetailList
-              ariaLabel="Durable Master Data batches"
-              emptyText="No backend batches match the current filters."
-              items={(batches.data?.items ?? []).map((batch) => ({
-                id: batch.batch_id,
-                meta: [
-                  batch.template_code,
-                  batch.file_name ?? "Uploaded workbook",
-                  `${batch.row_count ?? 0} row(s)`,
-                  `${batch.csv_file_count ?? 0} CSV file(s)`
-                ],
-                status: batch.status,
-                title: batch.batch_id
-              }))}
-            />
+            {(batches.data?.items ?? []).length ? (
+              <div className="table-list" aria-label="Durable Master Data batches">
+                {(batches.data?.items ?? []).map((batch) => (
+                  <div className="table-list-item" key={batch.batch_id}>
+                    <strong className="table-list-main">{batch.batch_id}</strong>
+                    <div className="table-list-meta">
+                      <span>{batch.template_code}</span>
+                      <span>{batch.file_name ?? "Uploaded workbook"}</span>
+                      <span>{batch.row_count ?? 0} row(s)</span>
+                      <span>{batch.csv_file_count ?? 0} CSV file(s)</span>
+                    </div>
+                    <div className="table-list-status">
+                      <span>{batch.status}</span>
+                      <Button
+                        disabled={isMutating || activeBatch?.batch_id === batch.batch_id}
+                        onClick={() => handleInspectBatch(batch)}
+                      >
+                        Inspect batch {batch.batch_id}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-text">No backend batches match the current filters.</p>
+            )}
             <section aria-label="Master Data export artifacts" className="master-data-generated-artifacts">
               <h3>Export artifacts</h3>
               {batchArtifacts.isLoading && activeBatch ? <p className="empty-text">Loading export artifacts...</p> : null}
