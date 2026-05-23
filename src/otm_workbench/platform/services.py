@@ -4,6 +4,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from otm_workbench.config import get_settings
 from otm_workbench.models import SessionToken, User
 from otm_workbench.security import hash_password, new_session_token, session_expiry, verify_password
 
@@ -37,3 +38,13 @@ def create_session(db: Session, user: User) -> SessionToken:
 def file_sha256(path: str) -> tuple[str, int]:
     data = Path(path).read_bytes()
     return sha256(data).hexdigest(), len(data)
+
+
+def resolve_artifact_storage_path(path: str | Path) -> Path:
+    artifact_root = get_settings().artifact_root.resolve()
+    candidate = Path(path).resolve()
+    try:
+        candidate.relative_to(artifact_root)
+    except ValueError as exc:
+        raise ValueError("Artifact file must be inside the configured artifact root.") from exc
+    return candidate

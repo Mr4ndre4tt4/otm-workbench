@@ -71,6 +71,6 @@ FUTURE       Purpose is known, but work should wait for explicit new scope or go
 ## Current Open Follow-Ups
 
 ```text
-OTM-92 can be reviewed for closure against the current Load Plan READY state.
-OTM-98 remains valid as a dedicated security/trust-boundary review.
+OTM-92 closed after Load Plan READY validation.
+OTM-98 implemented artifact trust-boundary hardening for platform helpers and Evidence Hub downloads.
 ```

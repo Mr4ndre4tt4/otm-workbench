@@ -3,6 +3,7 @@ from pathlib import Path
 import zipfile
 
 from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence
+from otm_workbench.config import get_settings
 
 
 def test_evidence_hub_list_requires_authentication(client):
@@ -20,7 +21,7 @@ def test_evidence_hub_list_returns_empty_page(client, admin_header):
 
 
 def create_platform_evidence(client, admin_header):
-    artifact_dir = Path("var/test-artifacts/evidence-hub")
+    artifact_dir = get_settings().artifact_root / "test-artifacts" / "evidence-hub"
     artifact_dir.mkdir(parents=True, exist_ok=True)
     artifact_file = artifact_dir / "demo.txt"
     artifact_file.write_text("OTM1.ACC_COST_001 should not be exposed", encoding="utf-8")
@@ -164,7 +165,7 @@ def test_evidence_hub_artifact_download_rejects_artifact_without_client_safe_evi
     admin_header,
     db_session,
 ):
-    artifact_path = Path("var/test-artifacts/evidence-hub/no-safe-evidence.txt")
+    artifact_path = get_settings().artifact_root / "test-artifacts" / "evidence-hub" / "no-safe-evidence.txt"
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     artifact_path.write_text("synthetic internal artifact", encoding="utf-8")
     artifact = Artifact(
@@ -187,6 +188,69 @@ def test_evidence_hub_artifact_download_rejects_artifact_without_client_safe_evi
 
     assert response.status_code == 404
     assert str(artifact_path) not in str(response.json())
+
+
+def test_platform_artifact_create_rejects_file_outside_artifact_root(client, admin_header):
+    outside_path = Path("var/outside-artifact-root.txt")
+    outside_path.parent.mkdir(parents=True, exist_ok=True)
+    outside_path.write_text("synthetic outside artifact root", encoding="utf-8")
+
+    response = client.post(
+        "/api/v1/platform/artifacts",
+        json={
+            "source_module": "platform",
+            "artifact_type": "unsafe_path",
+            "file_path": str(outside_path),
+            "file_name": "outside.txt",
+            "content_type": "text/plain",
+            "sensitivity_level": "internal",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ARTIFACT_PATH_OUTSIDE_ROOT"
+    assert str(outside_path) not in str(response.json())
+
+
+def test_evidence_hub_download_rejects_stored_artifact_path_outside_root(
+    client,
+    admin_header,
+    db_session,
+):
+    outside_path = Path("var/outside-evidence-download.txt")
+    outside_path.parent.mkdir(parents=True, exist_ok=True)
+    outside_path.write_text("synthetic outside evidence download", encoding="utf-8")
+    artifact = Artifact(
+        source_module="platform",
+        artifact_type="unsafe_path",
+        file_path=str(outside_path),
+        file_name="outside.txt",
+        content_type="text/plain",
+        sha256="0" * 64,
+        size_bytes=outside_path.stat().st_size,
+        sensitivity_level="internal",
+    )
+    db_session.add(artifact)
+    db_session.flush()
+    evidence = Evidence(
+        source_module="platform",
+        evidence_type="unsafe_path",
+        summary_json='{"status":"unsafe"}',
+        artifact_id=artifact.id,
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db_session.add(evidence)
+    db_session.commit()
+
+    response = client.get(
+        f"/api/v1/evidence-hub/artifacts/{artifact.id}/download",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 404
+    assert str(outside_path) not in str(response.json())
 
 
 def test_evidence_hub_artifact_download_returns_file_and_audit(client, admin_header, db_session):

@@ -37,7 +37,7 @@ from otm_workbench.platform.jobs import (
     serialize_job_event,
 )
 from otm_workbench.platform.navigation import navigation_items, registered_modules
-from otm_workbench.platform.services import authenticate, create_session, file_sha256
+from otm_workbench.platform.services import authenticate, create_session, file_sha256, resolve_artifact_storage_path
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
 
@@ -865,13 +865,23 @@ def list_job_events(
 def create_artifact(
     payload: ArtifactCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
-    digest, size = file_sha256(payload.file_path)
+    try:
+        artifact_path = resolve_artifact_storage_path(payload.file_path)
+    except ValueError as exc:
+        raise api_error(
+            400,
+            "ARTIFACT_PATH_OUTSIDE_ROOT",
+            "Artifact file must be inside the configured artifact root.",
+        ) from exc
+    if not artifact_path.exists() or not artifact_path.is_file():
+        raise api_error(404, "ARTIFACT_FILE_NOT_FOUND", "Artifact file not found.")
+    digest, size = file_sha256(str(artifact_path))
     artifact = Artifact(
         source_module=payload.source_module,
         artifact_type=payload.artifact_type,
-        file_path=payload.file_path,
+        file_path=str(artifact_path),
         file_name=payload.file_name,
         content_type=payload.content_type,
         sha256=digest,
@@ -888,7 +898,7 @@ def create_artifact(
 def create_manifest(
     payload: ManifestCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     manifest = Manifest(
         source_module=payload.source_module,
@@ -905,7 +915,7 @@ def create_manifest(
 def create_evidence(
     payload: EvidenceCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_user),
+    user: User = Depends(require_admin),
 ):
     evidence = Evidence(
         source_module=payload.source_module,

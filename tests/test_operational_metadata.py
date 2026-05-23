@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 
+from otm_workbench.config import get_settings
 from otm_workbench.models import AuditLog, Job, JobEvent
 
 
@@ -289,7 +289,7 @@ def test_missing_job_handler_fails_safely(client, admin_header, db_session):
 
 
 def test_artifact_hash_metadata_and_evidence_are_client_safe(client, admin_header):
-    artifact_dir = Path("var/test-artifacts")
+    artifact_dir = get_settings().artifact_root / "test-artifacts"
     artifact_dir.mkdir(parents=True, exist_ok=True)
     artifact_file = artifact_dir / "sample.txt"
     artifact_file.write_text("safe sample", encoding="utf-8")

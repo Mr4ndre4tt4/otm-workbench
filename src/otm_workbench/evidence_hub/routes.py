@@ -1,6 +1,5 @@
 import hashlib
 import json
-from pathlib import Path
 import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence, Manifest, User, utcnow
-from otm_workbench.platform.services import file_sha256
+from otm_workbench.platform.services import file_sha256, resolve_artifact_storage_path
 
 
 router = APIRouter(prefix="/api/v1/evidence-hub", tags=["evidence-hub"])
@@ -348,7 +347,10 @@ def download_artifact(
     user: User = Depends(require_user),
 ):
     artifact, evidence = downloadable_artifact(db, artifact_id)
-    path = Path(artifact.file_path)
+    try:
+        path = resolve_artifact_storage_path(artifact.file_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Artifact not found.") from exc
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="Artifact file not found.")
 

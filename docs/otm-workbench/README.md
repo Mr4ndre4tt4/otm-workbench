@@ -26,6 +26,7 @@ Para iniciar o desenvolvimento:
 4. [Guia de desenvolvimento modular](foundation/guia_desenvolvimento_modular_otm_workbench.md)
 5. [Plano MVP e roadmap de execução](foundation/plano_mvp_roadmap_execucao_otm_workbench.md)
 6. [Linear delivery governance](governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md)
+7. [Artifact trust boundary review](governance/ARTIFACT_TRUST_BOUNDARY_REVIEW_OTM98.md)
 
 Para frontend e experiência do usuário:
 

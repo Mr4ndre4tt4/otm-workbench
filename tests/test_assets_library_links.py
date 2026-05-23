@@ -1,8 +1,8 @@
 import json
-from pathlib import Path
 
 from sqlalchemy import inspect
 
+from otm_workbench.config import get_settings
 from otm_workbench.models import AuditLog, DomainEvent, Evidence
 from tests.test_evidence_hub_index import create_platform_evidence
 from tests.test_assets_library_assets import draft_asset_payload
@@ -96,7 +96,7 @@ def test_create_asset_macro_object_link_validates_catalog(client, admin_header):
 def test_create_asset_artifact_link_validates_client_safe_evidence(client, admin_header, db_session):
     asset = create_asset(client, admin_header)
     _evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
-    unsafe_file = Path("var/test-artifacts/evidence-hub/unsafe.txt")
+    unsafe_file = get_settings().artifact_root / "test-artifacts" / "evidence-hub" / "unsafe.txt"
     unsafe_file.parent.mkdir(parents=True, exist_ok=True)
     unsafe_file.write_text("unsafe evidence fixture", encoding="utf-8")
     unsafe_artifact = client.post(
