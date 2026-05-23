@@ -14,6 +14,10 @@ Keep the GUI foundation stable before deeper component and screen-level CSS spli
 - Density and sidebar mode must continue to update `.app-shell` data attributes.
 - Expanded sidebar must show backend navigation status chips.
 - Collapsed sidebar must keep navigation links available while omitting status chips from the compact rail.
+- Backend shell companion coverage lives in `tests/test_gui_shell_backend_contracts.py`.
+- The backend companion covers login/session, navigation label/icon metadata,
+  active context persistence, user preference persistence, cockpit summary,
+  active-context capabilities, and unauthenticated read guards.
 
 ## Manual Visual QA Checklist
 
