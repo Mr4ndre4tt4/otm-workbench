@@ -96,7 +96,8 @@ async function run() {
   const context = await seedSyntheticContext(token);
 
   const browser = await playwright.chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const browserContext = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 900 } });
+  const page = await browserContext.newPage();
   const consoleErrors = [];
   const failedResponses = [];
   page.on("console", (message) => {
@@ -148,6 +149,9 @@ async function run() {
     await page.getByRole("button", { name: "Generate XML artifact" }).click();
     await page.getByText(/Order Release XML artifact .* generated\./).waitFor();
     await page.getByLabel("Order Release XML artifact").getByText(/db\.xml/).waitFor();
+    await page.getByRole("button", { name: "Download" }).click();
+    await page.getByText(/Order Release artifact .*db\.xml downloaded\./).waitFor();
+    const downloadedFile = "db.xml";
 
     await page.getByRole("button", { name: /5Submit/ }).click();
     await page.getByRole("button", { name: "Verify OTM submit guard" }).click();
@@ -182,13 +186,15 @@ async function run() {
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id,
-          batch_id: batchId
+          batch_id: batchId,
+          downloaded_file: downloadedFile
         },
         null,
         2
       )
     );
   } finally {
+    await browserContext.close();
     await browser.close();
   }
 }

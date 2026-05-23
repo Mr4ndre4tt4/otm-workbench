@@ -64,6 +64,8 @@ export type OrderReleaseXmlPreview = {
 export type OrderReleaseXmlArtifact = {
   artifact_id: string;
   batch_id: string;
+  content_type?: string;
+  download_url?: string | null;
   evidence_id: string;
   file_name: string;
   job_id: string;
@@ -72,4 +74,23 @@ export type OrderReleaseXmlArtifact = {
   sha256: string;
   size_bytes: number;
   status?: string;
+};
+
+export type OrderReleaseArtifact = {
+  id: string;
+  batch_id: string;
+  source_module: string;
+  artifact_type: string;
+  file_name: string;
+  content_type: string;
+  sha256: string;
+  size_bytes: number;
+  sensitivity_level: string;
+  download_url: string | null;
+};
+
+export type OrderReleaseArtifactsResponse = {
+  batch_id: string;
+  items: OrderReleaseArtifact[];
+  total: number;
 };

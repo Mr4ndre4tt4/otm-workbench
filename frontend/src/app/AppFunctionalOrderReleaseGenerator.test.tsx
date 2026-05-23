@@ -31,6 +31,13 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function downloadResponse(body: string, filename: string, contentType = "application/xml") {
+  return new Response(new Blob([body], { type: contentType }), {
+    headers: { "Content-Disposition": `attachment; filename="${filename}"` },
+    status: 200
+  });
+}
+
 function platformPreferences() {
   return {
     density: "comfortable",
@@ -129,8 +136,13 @@ describe("Functional Order Release Generator journey", () => {
     const createBatchRequests: unknown[] = [];
     const previewRequests: unknown[] = [];
     const artifactRequests: unknown[] = [];
+    const downloadRequests: unknown[] = [];
     const submitRequests: unknown[] = [];
     let batchCreated = false;
+    let artifactGenerated = false;
+    const createObjectURL = vi.fn(() => "blob:order-release-xml");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -209,10 +221,13 @@ describe("Functional Order Release Generator journey", () => {
       if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/generate-xml-artifact")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactRequests.push({ method: init?.method });
+        artifactGenerated = true;
         return Promise.resolve(
           jsonResponse({
             artifact_id: "artifact_or_xml",
             batch_id: "or_batch_1",
+            content_type: "application/xml",
+            download_url: "/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts/artifact_or_xml/download",
             evidence_id: "evidence_or_xml",
             file_name: "or_batch_1.db.xml",
             job_id: "job_artifact_1",
@@ -223,6 +238,35 @@ describe("Functional Order Release Generator journey", () => {
             status: "GENERATED"
           })
         );
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts")) {
+        return Promise.resolve(
+          jsonResponse({
+            batch_id: "or_batch_1",
+            items: artifactGenerated
+              ? [
+                  {
+                    artifact_type: "order_release_xml",
+                    batch_id: "or_batch_1",
+                    content_type: "application/xml",
+                    download_url: "/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts/artifact_or_xml/download",
+                    file_name: "or_batch_1.db.xml",
+                    id: "artifact_or_xml",
+                    sensitivity_level: "internal",
+                    sha256: "abc123",
+                    size_bytes: 512,
+                    source_module: "order_release_generator"
+                  }
+                ]
+              : [],
+            total: artifactGenerated ? 1 : 0
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts/artifact_or_xml/download")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        downloadRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(downloadResponse("<Transmission />", "or_batch_1.db.xml"));
       }
       if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/submit-otm")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -268,6 +312,8 @@ describe("Functional Order Release Generator journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Generate XML artifact" }));
     await screen.findByText("Order Release XML artifact artifact_or_xml generated.");
     expect(screen.getByLabelText("Order Release XML artifact")).toHaveTextContent("or_batch_1.db.xml");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    await screen.findByText("Order Release artifact or_batch_1.db.xml downloaded.");
 
     await userEvent.click(screen.getByRole("button", { name: /5Submit/ }));
     await userEvent.click(screen.getByRole("button", { name: "Verify OTM submit guard" }));
@@ -282,6 +328,8 @@ describe("Functional Order Release Generator journey", () => {
     expect(createBatchRequests).toEqual([{ file_name: "synthetic_order_release_rows.json", row_count: 3, template_id: "template_or_tl" }]);
     expect(previewRequests).toEqual([{ method: "POST" }]);
     expect(artifactRequests).toEqual([{ method: "POST" }]);
+    expect(downloadRequests).toEqual([{ method: "GET" }]);
+    expect(createObjectURL).toHaveBeenCalledOnce();
     expect(submitRequests).toEqual([{ method: "POST" }]);
   }, 60000);
 });

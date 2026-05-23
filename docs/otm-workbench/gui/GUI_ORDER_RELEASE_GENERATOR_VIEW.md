@@ -25,6 +25,8 @@ GET /api/v1/modules/order-release-generator/batches
 POST /api/v1/modules/order-release-generator/batches
 POST /api/v1/modules/order-release-generator/batches/{batch_id}/preview-xml
 POST /api/v1/modules/order-release-generator/batches/{batch_id}/generate-xml-artifact
+GET /api/v1/modules/order-release-generator/batches/{batch_id}/artifacts
+GET /api/v1/modules/order-release-generator/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/order-release-generator/batches/{batch_id}/submit-otm
 ```
 
@@ -45,8 +47,9 @@ The screen uses shared components:
 The first selected template defaults to the first backend item. The batch stage
 creates a client-safe synthetic batch from JSON rows. The preview stage asks the
 backend to build XML. The artifact stage asks the backend to generate the DB XML
-artifact and evidence. The submit stage calls the guarded MVP0 endpoint and
-renders the backend reason/capability required for future direct OTM submit.
+artifact and evidence, then lists generated artifacts with a guarded backend
+download action. The submit stage calls the guarded MVP0 endpoint and renders
+the backend reason/capability required for future direct OTM submit.
 
 Recent batches are read from the backend `/batches` list, so leaving the route
 and returning can recover the created batch without frontend-only persistence.
@@ -57,6 +60,8 @@ and returning can recover the created batch without frontend-only persistence.
 - No client-specific sample data in tests or docs.
 - No frontend-only batch recovery.
 - No local artifact path rendering.
+- XML artifact downloads go through the backend download endpoint with hash
+  verification and audit logging.
 - Direct OTM submit remains guarded and disabled in MVP0.
 - Template status, macro object linkage, columns, defaults, batches, XML preview,
   artifact metadata, evidence id, and submit guard details come from backend
@@ -66,7 +71,6 @@ and returning can recover the created batch without frontend-only persistence.
 Still open:
 
 ```text
-- guarded XML artifact download affordance
 - richer row/template authoring UX
 - governed direct OTM submit capability after MVP0
 ```

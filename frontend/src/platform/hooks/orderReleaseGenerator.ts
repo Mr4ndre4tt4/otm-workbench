@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet, apiPost } from "../api";
+import { apiDownload, apiGet, apiPost, type DownloadResponse } from "../api";
 import type {
+  OrderReleaseArtifactsResponse,
   OrderReleaseBatch,
   OrderReleaseBatchCreateRequest,
   OrderReleaseBatchesResponse,
@@ -26,6 +27,17 @@ export function useOrderReleaseBatches(token: string | null) {
   });
 }
 
+export function useOrderReleaseArtifacts(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "order-release-generator", "batches", batchId, "artifacts"],
+    queryFn: () =>
+      apiGet<OrderReleaseArtifactsResponse>(`/api/v1/modules/order-release-generator/batches/${batchId}/artifacts`, {
+        token
+      }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
 export function createOrderReleaseBatch(token: string | null, payload: OrderReleaseBatchCreateRequest) {
   return apiPost<OrderReleaseBatch>("/api/v1/modules/order-release-generator/batches", payload, { token });
 }
@@ -44,4 +56,8 @@ export function generateOrderReleaseXmlArtifact(token: string | null, batchId: s
 
 export function submitOrderReleaseToOtm(token: string | null, batchId: string) {
   return apiPost<Record<string, unknown>>(`/api/v1/modules/order-release-generator/batches/${batchId}/submit-otm`, {}, { token });
+}
+
+export function downloadOrderReleaseArtifact(token: string | null, href: string): Promise<DownloadResponse> {
+  return apiDownload(href, { token });
 }

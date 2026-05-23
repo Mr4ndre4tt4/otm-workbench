@@ -48,7 +48,7 @@ For each module:
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
-| Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
+| Order Release Generator | First functional slice done | Template/batch/XML artifact/list/download APIs ready | Staged workflow | Guarded XML artifact download is delivered; richer row/template authoring and governed direct OTM submit remain follow-ups. |
 
 ## 4. Recommended Next GUI Queue
 
@@ -151,6 +151,8 @@ Required GUI work:
 - Add batch authoring.
 - Add XML preview surface as a documented exception if raw preview is needed.
 - Add generated artifact list/download.
+- Guard generated artifact download through backend hash verification and audit
+  logging.
 - Keep submit-to-OTM guarded by backend action contract.
 ```
 
@@ -273,7 +275,8 @@ Reason:
 ```
 
 First GUI functional slice is now implemented: select template, create batch,
-preview XML, generate XML artifact, inspect guarded OTM submit state, and return
-with backend-owned recent batch state. Browser QA is covered by
-`qa:functional:order-release:browser`. Next Order Release hardening should add a
-governed artifact download affordance.
+preview XML, generate XML artifact, download the generated XML through the
+backend artifact endpoint, inspect guarded OTM submit state, and return with
+backend-owned recent batch state. Browser QA is covered by
+`qa:functional:order-release:browser`. Next Order Release hardening should focus
+on richer row/template authoring rather than direct OTM submit.

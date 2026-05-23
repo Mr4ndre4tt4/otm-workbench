@@ -3,13 +3,16 @@ import { useState } from 'react';
 
 import {
   createOrderReleaseBatch,
+  downloadOrderReleaseArtifact,
   generateOrderReleaseXmlArtifact,
   previewOrderReleaseXml,
   submitOrderReleaseToOtm,
+  useOrderReleaseArtifacts,
   useOrderReleaseBatches,
   useOrderReleaseTemplates
 } from '../../platform/hooks';
 import type {
+  OrderReleaseArtifact,
   OrderReleaseBatch,
   OrderReleaseTemplate,
   OrderReleaseXmlArtifact,
@@ -18,6 +21,7 @@ import type {
 import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
 import {
+  ArtifactList,
   Button,
   DetailList,
   FeedbackMessage,
@@ -114,6 +118,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
   const [xmlPreview, setXmlPreview] = useState<OrderReleaseXmlPreview | null>(null);
   const [xmlArtifact, setXmlArtifact] = useState<OrderReleaseXmlArtifact | null>(null);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [submitGuard, setSubmitGuard] = useState<Record<string, unknown> | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
@@ -130,6 +135,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const optionalColumnCount = selectedTemplate?.optional_columns.length ?? 0;
   const defaultCount = selectedTemplate ? Object.keys(selectedTemplate.defaults).length : 0;
   const activeBatch = selectedBatch ?? createdBatch;
+  const artifacts = useOrderReleaseArtifacts(token, activeBatch?.id ?? null);
 
   if (templates.isLoading) {
     return <StatePanel>Loading Order Release Generator...</StatePanel>;
@@ -174,6 +180,9 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         setXmlArtifact(null);
         setSubmitGuard(null);
         await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "batches"] });
+        await queryClient.invalidateQueries({
+          queryKey: ["modules", "order-release-generator", "batches", result.id, "artifacts"]
+        });
         return result;
       },
       (result) => `Order Release batch ${result.id} created.`
@@ -198,11 +207,38 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
       async () => {
         const result = await generateOrderReleaseXmlArtifact(token, activeBatch.id);
         setXmlArtifact(result);
-        await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "batches"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "batches"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["modules", "order-release-generator", "batches", activeBatch.id, "artifacts"]
+          })
+        ]);
         return result;
       },
       (result) => `Order Release XML artifact ${result.artifact_id} generated.`
     );
+  };
+
+  const handleDownloadArtifact = async (artifactId: string, href: string, fallbackName: string) => {
+    setDownloadingArtifactId(artifactId);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await downloadOrderReleaseArtifact(token, href);
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename ?? fallbackName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setOperationMessage(`Order Release artifact ${link.download} downloaded.`);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not download Order Release artifact.");
+    } finally {
+      setDownloadingArtifactId(null);
+    }
   };
 
   const handleSubmitGuard = () => {
@@ -212,6 +248,25 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
       () => "Order Release submitted to OTM."
     );
   };
+
+  const generatedArtifacts: OrderReleaseArtifact[] = artifacts.data?.items.length
+    ? artifacts.data.items
+    : xmlArtifact
+      ? [
+          {
+            artifact_type: "order_release_xml",
+            batch_id: xmlArtifact.batch_id,
+            content_type: xmlArtifact.content_type ?? "application/xml",
+            download_url: xmlArtifact.download_url ?? null,
+            file_name: xmlArtifact.file_name,
+            id: xmlArtifact.artifact_id,
+            sensitivity_level: "internal",
+            sha256: xmlArtifact.sha256,
+            size_bytes: xmlArtifact.size_bytes,
+            source_module: "order_release_generator"
+          }
+        ]
+      : [];
 
   return (
     <>
@@ -417,23 +472,32 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
                 Generate XML artifact
               </Button>
             </div>
-            {xmlArtifact ? (
-              <DetailList
-                ariaLabel="Order Release XML artifact"
-                items={[
-                  {
-                    id: xmlArtifact.artifact_id,
-                    meta: [
-                      xmlArtifact.file_name,
-                      xmlArtifact.evidence_id,
-                      `${xmlArtifact.size_bytes} byte(s)`,
-                      xmlArtifact.sha256
-                    ],
-                    status: xmlArtifact.status ?? "GENERATED",
-                    title: xmlArtifact.artifact_id
-                  }
-                ]}
-              />
+            {generatedArtifacts.length ? (
+              <section aria-label="Order Release XML artifact" className="integration-generated-artifacts">
+                <ArtifactList
+                  items={generatedArtifacts.map((artifact) => ({
+                  action: artifact.download_url ? (
+                    <Button
+                      disabled={downloadingArtifactId === artifact.id}
+                      onClick={() => void handleDownloadArtifact(artifact.id, artifact.download_url!, artifact.file_name)}
+                      variant="secondary"
+                    >
+                      {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                    </Button>
+                  ) : undefined,
+                  id: artifact.id,
+                  meta: [
+                    artifact.file_name,
+                    artifact.content_type,
+                    `${artifact.size_bytes} byte(s)`,
+                    artifact.sha256
+                  ],
+                  status: artifact.download_url ? "READY" : "UNAVAILABLE",
+                  subtitle: artifact.artifact_type,
+                  title: artifact.id
+                }))}
+                />
+              </section>
             ) : null}
           </OperationalPanel>
         ) : null}
