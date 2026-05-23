@@ -248,6 +248,7 @@ describe("Functional Master Data journey", () => {
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
+      const parsedUrl = new URL(url, "http://local.test");
       if (url.endsWith("/api/v1/platform/session/login")) {
         return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
       }
@@ -291,9 +292,14 @@ describe("Functional Master Data journey", () => {
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
         return Promise.resolve(jsonResponse(regionsTemplate()));
       }
-      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+      if (parsedUrl.pathname === "/api/v1/modules/master-data/batches") {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        batchListRequests.push({ method: init?.method ?? "GET" });
+        batchListRequests.push({
+          method: init?.method ?? "GET",
+          page_size: parsedUrl.searchParams.get("page_size"),
+          status: parsedUrl.searchParams.get("status"),
+          template_code: parsedUrl.searchParams.get("template_code")
+        });
         return Promise.resolve(
           jsonResponse({
             items: [
@@ -564,6 +570,10 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Register for Load Plan" }));
     await screen.findByText("Load Plan package load_plan_master_data_package_1 registered.");
     expect(screen.getByLabelText("Load Plan package registration")).toHaveTextContent("master_data_csv_zip");
+    await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
+    await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
+    await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");
+    await screen.findByLabelText("Durable Master Data batches");
     expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
     expect(screen.getByLabelText("Master Data export artifacts")).toHaveTextContent("master_data_regions_basic.zip");
     await userEvent.click(within(screen.getByLabelText("Master Data export artifacts")).getByRole("button", { name: "Download" }));
@@ -580,6 +590,12 @@ describe("Functional Master Data journey", () => {
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
     expect(outputRecordListRequests.length).toBeGreaterThan(0);
     expect(csvFileListRequests.length).toBeGreaterThan(0);
+    expect(batchListRequests).toContainEqual({
+      method: "GET",
+      page_size: "10",
+      status: "EXPORTED",
+      template_code: "REGIONS_BASIC"
+    });
     expect(batchListRequests.length).toBeGreaterThan(0);
     expect(artifactListRequests.length).toBeGreaterThan(0);
     expect(artifactDownloadRequests).toEqual([

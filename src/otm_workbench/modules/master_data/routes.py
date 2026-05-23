@@ -321,12 +321,29 @@ def get_master_data_template(
 
 @router.get("/batches")
 def list_master_data_batches(
+    template_code: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batches = db.query(MasterDataBatch).order_by(MasterDataBatch.created_at.desc()).all()
+    safe_page = max(page, 1)
+    safe_page_size = max(1, min(page_size, 100))
+    query = db.query(MasterDataBatch)
+    if template_code:
+        query = query.filter(MasterDataBatch.template_code == template_code.upper())
+    if status:
+        query = query.filter(MasterDataBatch.status == status.upper())
+    total = query.count()
+    batches = (
+        query.order_by(MasterDataBatch.created_at.desc())
+        .offset((safe_page - 1) * safe_page_size)
+        .limit(safe_page_size)
+        .all()
+    )
     items = [serialize_master_data_batch(db, batch) for batch in batches]
-    return PageResponse(items=items, total=len(items))
+    return PageResponse(items=items, total=total, page=safe_page, page_size=safe_page_size)
 
 
 @router.get("/batches/{batch_id}")

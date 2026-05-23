@@ -1404,6 +1404,48 @@ def test_master_data_batch_csv_files_endpoint_returns_preview_only(client, admin
     assert "content" not in payload["items"][0]
 
 
+def test_master_data_batch_list_filters_and_paginates(client, admin_header):
+    for index in range(2):
+        workbook = Workbook()
+        regions = workbook.active
+        regions.title = "REGIONS"
+        regions.append(["Region GID", "Region XID", "Region Name"])
+        regions.append([f"SYN.REGION_FILTER_{index}", f"REGION_FILTER_{index}", "Synthetic Filter Region"])
+        details = workbook.create_sheet("REGION_DETAILS")
+        details.append(["Region GID", "Location GID"])
+        details.append([f"SYN.REGION_FILTER_{index}", f"SYN.LOCATION_FILTER_{index}"])
+        workbook_bytes = BytesIO()
+        workbook.save(workbook_bytes)
+        workbook_bytes.seek(0)
+        response = client.post(
+            "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+            headers=admin_header,
+            files={
+                "file": (
+                    f"regions_basic_upload_{index}.xlsx",
+                    workbook_bytes.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+        assert response.status_code == 200
+
+    response = client.get(
+        "/api/v1/modules/master-data/batches",
+        params={"template_code": "REGIONS_BASIC", "status": "PARSED", "page": 1, "page_size": 1},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 2
+    assert payload["page"] == 1
+    assert payload["page_size"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["template_code"] == "REGIONS_BASIC"
+    assert payload["items"][0]["status"] == "PARSED"
+
+
 def test_master_data_batch_build_csv_is_idempotent_for_double_click(
     client,
     admin_header,

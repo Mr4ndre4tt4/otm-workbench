@@ -247,6 +247,10 @@ async function run() {
     await outputPanel.getByRole("button", { name: "Register for Load Plan" }).click();
     await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
     await page.getByLabel("Load Plan package registration").getByText("master_data_csv_zip").waitFor();
+    await page.getByLabel("Template filter").selectOption("REGIONS_BASIC");
+    await page.getByLabel("Batch status filter").selectOption("EXPORTED");
+    await page.getByLabel("Batch page size").selectOption("10");
+    await page.getByLabel("Durable Master Data batches").getByText("REGIONS_BASIC", { exact: true }).first().waitFor();
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();

@@ -352,7 +352,6 @@ function locationDraftPayload(
 
 export function MasterDataView({ token }: { token: string }) {
   const templates = useMasterDataTemplates(token);
-  const batches = useMasterDataBatches(token);
   const coordinateQualityBatches = useCoordinateQualityBatches(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
   const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
@@ -377,6 +376,10 @@ export function MasterDataView({ token }: { token: string }) {
   const [coordinatePreview, setCoordinatePreview] = useState<CoordinateQualityPreview | null>(null);
   const [coordinateBatch, setCoordinateBatch] = useState<CoordinateQualityBatch | null>(null);
   const [coordinateExport, setCoordinateExport] = useState<CoordinateQualityExport | null>(null);
+  const [batchTemplateFilter, setBatchTemplateFilter] = useState("");
+  const [batchStatusFilter, setBatchStatusFilter] = useState("");
+  const [batchPageSize, setBatchPageSize] = useState(50);
+  const [batchPage, setBatchPage] = useState(1);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [authorTemplateCode, setAuthorTemplateCode] = useState("LOCATIONS_DYNAMIC_UI");
   const [authorTemplateName, setAuthorTemplateName] = useState("Locations Dynamic UI");
@@ -398,6 +401,13 @@ export function MasterDataView({ token }: { token: string }) {
   const effectiveTemplateCode = selectedTemplateCode ?? templateItems[0]?.code ?? null;
   const templateDetail = useMasterDataTemplateDetail(token, effectiveTemplateCode);
   const selectedTemplate = templateDetail.data;
+  const batchFilters = {
+    page: batchPage,
+    page_size: batchPageSize,
+    status: batchStatusFilter || undefined,
+    template_code: batchTemplateFilter || undefined
+  };
+  const batches = useMasterDataBatches(token, batchFilters);
   const targetTableCount = new Set(templateItems.flatMap((item) => item.target_tables)).size;
   const sheetCount = templateItems.reduce((total, item) => total + item.sheets.length, 0);
   const fieldCount =
@@ -1399,9 +1409,72 @@ export function MasterDataView({ token }: { token: string }) {
                 title: file.file_name
               }))}
             />
+            <div className="master-data-action-bar" aria-label="Master Data batch history filters">
+              <label>
+                Template filter
+                <select
+                  aria-label="Template filter"
+                  onChange={(event) => {
+                    setBatchTemplateFilter(event.target.value);
+                    setBatchPage(1);
+                  }}
+                  value={batchTemplateFilter}
+                >
+                  <option value="">All templates</option>
+                  {templateItems.map((template) => (
+                    <option key={template.code} value={template.code}>
+                      {template.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Batch status filter
+                <select
+                  aria-label="Batch status filter"
+                  onChange={(event) => {
+                    setBatchStatusFilter(event.target.value);
+                    setBatchPage(1);
+                  }}
+                  value={batchStatusFilter}
+                >
+                  <option value="">All statuses</option>
+                  <option value="PARSED">PARSED</option>
+                  <option value="RELATIONSHIP_VALIDATED">RELATIONSHIP VALIDATED</option>
+                  <option value="MAPPED">MAPPED</option>
+                  <option value="OUTPUT_BUILT">OUTPUT BUILT</option>
+                  <option value="CSV_BUILT">CSV BUILT</option>
+                  <option value="EXPORTED">EXPORTED</option>
+                </select>
+              </label>
+              <label>
+                Page size
+                <select
+                  aria-label="Batch page size"
+                  onChange={(event) => {
+                    setBatchPageSize(Number(event.target.value));
+                    setBatchPage(1);
+                  }}
+                  value={batchPageSize}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+              <Button disabled={batchPage <= 1 || batches.isFetching} onClick={() => setBatchPage((page) => Math.max(1, page - 1))}>
+                Previous
+              </Button>
+              <Button
+                disabled={(batches.data?.total ?? 0) <= batchPage * batchPageSize || batches.isFetching}
+                onClick={() => setBatchPage((page) => page + 1)}
+              >
+                Next
+              </Button>
+            </div>
             <DetailList
               ariaLabel="Durable Master Data batches"
-              emptyText="No backend batches available yet."
+              emptyText="No backend batches match the current filters."
               items={(batches.data?.items ?? []).map((batch) => ({
                 id: batch.batch_id,
                 meta: [

@@ -77,7 +77,7 @@ POST /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export
 - free-form template authoring from arbitrary N OTM tables
 - browser spreadsheet editor
 - direct OTM import
-- advanced batch history filters/pagination
+- advanced batch history filters beyond template/status/page size
 - Coordinate Quality advanced map diagnostics and external geocoder setup
 ```
 
@@ -204,11 +204,17 @@ payloads, and `GET /csv-files` returns generated CSV file metadata plus a short
 preview. The UI does not edit workbook cells or CSV content; editing remains
 future scope until a backend-owned mutation contract exists.
 
+The first batch-history slice adds backend-owned filtering and pagination to
+`GET /api/v1/modules/master-data/batches`. The Output stage can filter durable
+batches by template and lifecycle status, adjust page size, and page through
+results without holding a frontend-only history list.
+
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
-advanced Coordinate Quality map diagnostics, deeper Load Plan handoff flows, and
-broader negative/out-of-order QA are tracked as follow-up scope.
+advanced Coordinate Quality map diagnostics, deeper Load Plan handoff flows,
+broader batch history dimensions, and broader negative/out-of-order QA are
+tracked as follow-up scope.
 
 ## Validation
 

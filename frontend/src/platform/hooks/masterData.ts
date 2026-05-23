@@ -38,10 +38,27 @@ export function useMasterDataTemplateDetail(token: string | null, templateCode: 
   });
 }
 
-export function useMasterDataBatches(token: string | null) {
+export type MasterDataBatchFilters = {
+  page?: number;
+  page_size?: number;
+  status?: string;
+  template_code?: string;
+};
+
+function masterDataBatchQuery(filters: MasterDataBatchFilters = {}) {
+  const params = new URLSearchParams();
+  if (filters.template_code) params.set("template_code", filters.template_code);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
+  if (filters.page_size && filters.page_size !== 50) params.set("page_size", String(filters.page_size));
+  const query = params.toString();
+  return query ? `/api/v1/modules/master-data/batches?${query}` : "/api/v1/modules/master-data/batches";
+}
+
+export function useMasterDataBatches(token: string | null, filters: MasterDataBatchFilters = {}) {
   return useQuery({
-    queryKey: ["modules", "master-data", "batches"],
-    queryFn: () => apiGet<MasterDataBatchesResponse>("/api/v1/modules/master-data/batches", { token }),
+    queryKey: ["modules", "master-data", "batches", filters],
+    queryFn: () => apiGet<MasterDataBatchesResponse>(masterDataBatchQuery(filters), { token }),
     enabled: Boolean(token)
   });
 }
