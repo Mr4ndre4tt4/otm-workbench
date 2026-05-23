@@ -9,7 +9,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.catalog.services import get_macro_object
-from otm_workbench.models import Asset, AssetLink, AssetVersion, User
+from otm_workbench.models import Artifact, Asset, AssetLink, AssetVersion, Evidence, User
 from otm_workbench.modules.assets.assets import (
     archive_asset,
     create_asset_link,
@@ -59,6 +59,26 @@ class AssetLinkCreateRequest(BaseModel):
     link_type: str
     target_id: str
     target_label: str = ""
+
+
+def artifact_has_client_safe_evidence(db: Session, artifact_id: str) -> bool:
+    return (
+        db.query(Evidence)
+        .filter(Evidence.artifact_id == artifact_id)
+        .filter(Evidence.client_safe.is_(True))
+        .first()
+        is not None
+    )
+
+
+def client_safe_evidence_exists(db: Session, evidence_id: str) -> bool:
+    return (
+        db.query(Evidence)
+        .filter(Evidence.id == evidence_id)
+        .filter(Evidence.client_safe.is_(True))
+        .first()
+        is not None
+    )
 
 
 @router.get("/health")
@@ -192,6 +212,20 @@ def create_asset_link_endpoint(
             raise api_error(400, "ASSET_LINK_INVALID_TABLE", "OTM table not found in Data Dictionary.") from exc
     if link_type == "MACRO_OBJECT" and get_macro_object(db, Path(get_settings().otm_data_dictionary_root), target_id) is None:
         raise api_error(400, "ASSET_LINK_INVALID_MACRO_OBJECT", "OTM macro object not found in Catalog Core.")
+    if link_type == "ARTIFACT":
+        artifact = db.query(Artifact).filter(Artifact.id == target_id).first()
+        if artifact is None or not artifact_has_client_safe_evidence(db, target_id):
+            raise api_error(
+                400,
+                "ASSET_LINK_INVALID_ARTIFACT",
+                "Evidence Hub artifact not found or not backed by client-safe evidence.",
+            )
+    if link_type == "EVIDENCE" and not client_safe_evidence_exists(db, target_id):
+        raise api_error(
+            400,
+            "ASSET_LINK_INVALID_EVIDENCE",
+            "Evidence Hub evidence not found or not client-safe.",
+        )
     try:
         link = create_asset_link(
             db,

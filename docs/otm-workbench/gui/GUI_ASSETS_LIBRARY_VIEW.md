@@ -52,6 +52,9 @@ The screen uses shared components:
   targets from Catalog Core Data Dictionary search;
 - Guided link target selector for `ARTIFACT` and `EVIDENCE` targets from
   Evidence Hub client-safe evidence and artifact summaries;
+- Backend validation for `ARTIFACT` and `EVIDENCE` link targets: artifacts must
+  exist and be backed by client-safe Evidence Hub evidence, and evidence links
+  must point to client-safe evidence records;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -83,6 +86,8 @@ record before any update action can be submitted.
 - No frontend-only lifecycle or permission decisions.
 - Asset status, classifications, table linkage, version status, links, download
   permission/audit, and archive state come from backend contracts.
+- `ARTIFACT` and `EVIDENCE` links cannot be created against unsafe or missing
+  Evidence Hub records.
 ```
 
 Still open:
@@ -106,4 +111,5 @@ npm run test -- src/app/AppFunctionalAssets.test.tsx
 npm run lint
 npm run build
 python -m pytest tests/test_assets_library_foundation.py tests/test_assets_library_assets.py tests/test_assets_library_versions.py tests/test_assets_library_links.py tests/test_assets_library_permissions.py
+python -m pytest tests/test_assets_library_links.py tests/test_evidence_hub_index.py -q
 ```

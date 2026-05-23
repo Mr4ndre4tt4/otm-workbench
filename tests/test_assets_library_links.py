@@ -1,8 +1,10 @@
 import json
+from pathlib import Path
 
 from sqlalchemy import inspect
 
-from otm_workbench.models import AuditLog, DomainEvent
+from otm_workbench.models import AuditLog, DomainEvent, Evidence
+from tests.test_evidence_hub_index import create_platform_evidence
 from tests.test_assets_library_assets import draft_asset_payload
 
 
@@ -89,6 +91,77 @@ def test_create_asset_macro_object_link_validates_catalog(client, admin_header):
     assert invalid.status_code == 400
     assert invalid.json()["code"] == "ASSET_LINK_INVALID_MACRO_OBJECT"
     assert "macro object" in invalid.json()["message"].lower()
+
+
+def test_create_asset_artifact_link_validates_client_safe_evidence(client, admin_header, db_session):
+    asset = create_asset(client, admin_header)
+    _evidence_id, artifact_id, _manifest_id = create_platform_evidence(client, admin_header)
+    unsafe_file = Path("var/test-artifacts/evidence-hub/unsafe.txt")
+    unsafe_file.parent.mkdir(parents=True, exist_ok=True)
+    unsafe_file.write_text("unsafe evidence fixture", encoding="utf-8")
+    unsafe_artifact = client.post(
+        "/api/v1/platform/artifacts",
+        json={
+            "source_module": "rates",
+            "artifact_type": "rates_csv_zip",
+            "file_path": str(unsafe_file),
+            "file_name": "unsafe.txt",
+            "content_type": "text/plain",
+            "sensitivity_level": "internal",
+        },
+        headers=admin_header,
+    )
+
+    valid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "ARTIFACT", "target_id": artifact_id},
+        headers=admin_header,
+    )
+    invalid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "ARTIFACT", "target_id": unsafe_artifact.json()["id"]},
+        headers=admin_header,
+    )
+
+    assert unsafe_artifact.status_code == 200
+    assert valid.status_code == 200
+    assert valid.json()["target_id"] == artifact_id
+    assert invalid.status_code == 400
+    assert invalid.json()["code"] == "ASSET_LINK_INVALID_ARTIFACT"
+    assert "artifact" in invalid.json()["message"].lower()
+
+
+def test_create_asset_evidence_link_validates_client_safe_evidence(client, admin_header, db_session):
+    asset = create_asset(client, admin_header)
+    evidence_id, artifact_id, manifest_id = create_platform_evidence(client, admin_header)
+    unsafe = Evidence(
+        source_module="rates",
+        evidence_type="rates_csv_export",
+        summary_json='{"status":"unsafe"}',
+        artifact_id=artifact_id,
+        manifest_id=manifest_id,
+        client_safe=False,
+        sensitivity_level="internal",
+    )
+    db_session.add(unsafe)
+    db_session.commit()
+
+    valid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "EVIDENCE", "target_id": evidence_id},
+        headers=admin_header,
+    )
+    invalid = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "EVIDENCE", "target_id": unsafe.id},
+        headers=admin_header,
+    )
+
+    assert valid.status_code == 200
+    assert valid.json()["target_id"] == evidence_id
+    assert invalid.status_code == 400
+    assert invalid.json()["code"] == "ASSET_LINK_INVALID_EVIDENCE"
+    assert "evidence" in invalid.json()["message"].lower()
 
 
 def test_list_asset_links(client, admin_header):
