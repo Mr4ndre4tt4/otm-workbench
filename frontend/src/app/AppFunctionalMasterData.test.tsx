@@ -659,9 +659,9 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByLabelText("Data Factory workflow")).toBeInTheDocument();
     expect(screen.getByLabelText("Master Data templates")).toHaveTextContent("REGIONS_BASIC");
     await screen.findByText("Synthetic starter template for region master data.");
-    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Template next actions");
-    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Build workbook");
-    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Template blocked actions");
+    expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Build workbook");
+    expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Ready now");
+    expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("TEMPLATE_ALREADY_PUBLISHED");
 
     await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));
     await userEvent.click(screen.getByRole("button", { name: "Validate template" }));

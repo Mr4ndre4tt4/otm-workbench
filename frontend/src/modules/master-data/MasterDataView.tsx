@@ -50,7 +50,8 @@ import type {
   MasterDataTemplateDraftRequest,
   MasterDataTemplateValidation,
   MasterDataWorkbookArtifact,
-  LoadPlanPackage
+  LoadPlanPackage,
+  AvailableAction
 } from '../../platform/types';
 import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
@@ -104,13 +105,13 @@ function masterDataTemplateActionReason(template: MasterDataTemplate | null | un
   return template?.available_actions?.find((item) => item.key === key)?.disabled_reason ?? undefined;
 }
 
-function masterDataEnabledActionLabels(actions: { disabled: boolean; label: string }[] | undefined) {
-  const labels = (actions ?? []).filter((action) => !action.disabled).map((action) => action.label);
-  return labels.length ? labels.join(", ") : "No backend action available";
-}
-
-function masterDataBlockedActionCount(actions: { disabled: boolean }[] | undefined) {
-  return (actions ?? []).filter((action) => action.disabled).length;
+function masterDataActionGuidanceItems(scope: string, actions: AvailableAction[] | undefined) {
+  return (actions ?? []).map((action) => ({
+    id: `${scope}-${action.key}`,
+    meta: [scope, action.disabled ? action.disabled_reason ?? "Blocked by backend rule" : "Ready now"],
+    status: action.disabled ? "BLOCKED" : "AVAILABLE",
+    title: action.label
+  }));
 }
 
 const masterDataWorkflowStages = [
@@ -918,11 +919,7 @@ export function MasterDataView({ token }: { token: string }) {
                     { label: "Target tables", value: selectedTemplate.target_tables.length },
                     { label: "Fields", value: fieldCount },
                     { label: "Active batch", value: activeBatch?.batch_id ?? "None" },
-                    { label: "Batch status", value: activeBatch?.status ?? "No batch" },
-                    { label: "Template next actions", value: masterDataEnabledActionLabels(selectedTemplate.available_actions) },
-                    { label: "Template blocked actions", value: masterDataBlockedActionCount(selectedTemplate.available_actions) },
-                    { label: "Batch next actions", value: masterDataEnabledActionLabels(activeBatch?.available_actions) },
-                    { label: "Batch blocked actions", value: masterDataBlockedActionCount(activeBatch?.available_actions) }
+                    { label: "Batch status", value: activeBatch?.status ?? "No batch" }
                   ]
                 : []
             }
@@ -933,6 +930,14 @@ export function MasterDataView({ token }: { token: string }) {
             title={selectedTemplate?.code}
           >
             {selectedTemplate?.description ? <p className="empty-text">{selectedTemplate.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected Master Data action guidance"
+              emptyText="No backend action guidance is available for the selected template or active batch."
+              items={[
+                ...masterDataActionGuidanceItems("Template", selectedTemplate?.available_actions),
+                ...masterDataActionGuidanceItems("Batch", activeBatch?.available_actions)
+              ]}
+            />
             <DetailList
               ariaLabel="Selected template sheets"
               emptyText="No sheets defined for this template."
