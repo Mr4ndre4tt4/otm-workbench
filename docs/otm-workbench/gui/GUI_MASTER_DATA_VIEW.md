@@ -248,6 +248,10 @@ definition validation, template publish, workbook generation, and version
 creation. The Author and Workbook stages read those states with frontend
 fallbacks for older payloads.
 
+The selected object panel now surfaces enabled and blocked backend actions for
+the selected template and active batch. This makes the real next step visible
+without forcing users to infer readiness from disabled buttons alone.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

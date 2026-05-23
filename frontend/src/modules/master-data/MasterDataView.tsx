@@ -104,6 +104,15 @@ function masterDataTemplateActionReason(template: MasterDataTemplate | null | un
   return template?.available_actions?.find((item) => item.key === key)?.disabled_reason ?? undefined;
 }
 
+function masterDataEnabledActionLabels(actions: { disabled: boolean; label: string }[] | undefined) {
+  const labels = (actions ?? []).filter((action) => !action.disabled).map((action) => action.label);
+  return labels.length ? labels.join(", ") : "No backend action available";
+}
+
+function masterDataBlockedActionCount(actions: { disabled: boolean }[] | undefined) {
+  return (actions ?? []).filter((action) => action.disabled).length;
+}
+
 const masterDataWorkflowStages = [
   { id: "templates", title: "Templates", status: "1" },
   { id: "author", title: "Author", status: "2" },
@@ -909,7 +918,11 @@ export function MasterDataView({ token }: { token: string }) {
                     { label: "Target tables", value: selectedTemplate.target_tables.length },
                     { label: "Fields", value: fieldCount },
                     { label: "Active batch", value: activeBatch?.batch_id ?? "None" },
-                    { label: "Batch status", value: activeBatch?.status ?? "No batch" }
+                    { label: "Batch status", value: activeBatch?.status ?? "No batch" },
+                    { label: "Template next actions", value: masterDataEnabledActionLabels(selectedTemplate.available_actions) },
+                    { label: "Template blocked actions", value: masterDataBlockedActionCount(selectedTemplate.available_actions) },
+                    { label: "Batch next actions", value: masterDataEnabledActionLabels(activeBatch?.available_actions) },
+                    { label: "Batch blocked actions", value: masterDataBlockedActionCount(activeBatch?.available_actions) }
                   ]
                 : []
             }

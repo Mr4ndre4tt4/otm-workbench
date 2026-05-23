@@ -65,6 +65,12 @@ function cockpitSummary() {
 
 function regionsTemplate() {
   return {
+    available_actions: [
+      { disabled: false, disabled_reason: null, href: "", icon_key: "check-circle", key: "validate_definition", label: "Validate definition", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: true, disabled_reason: "TEMPLATE_ALREADY_PUBLISHED", href: "", icon_key: "upload-cloud", key: "publish_template", label: "Publish template", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: false, disabled_reason: null, href: "", icon_key: "file-spreadsheet", key: "build_workbook", label: "Build workbook", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: false, disabled_reason: null, href: "", icon_key: "copy", key: "create_version", label: "Create next version", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
+    ],
     catalog_macro_object_code: "REGION",
     code: "REGIONS_BASIC",
     created_at: "2026-05-22T00:00:00",
@@ -652,6 +658,10 @@ describe("Functional Master Data journey", () => {
     await screen.findByRole("heading", { name: "Data Factory" });
     expect(screen.getByLabelText("Data Factory workflow")).toBeInTheDocument();
     expect(screen.getByLabelText("Master Data templates")).toHaveTextContent("REGIONS_BASIC");
+    await screen.findByText("Synthetic starter template for region master data.");
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Template next actions");
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Build workbook");
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("Template blocked actions");
 
     await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));
     await userEvent.click(screen.getByRole("button", { name: "Validate template" }));
@@ -884,6 +894,12 @@ describe("Functional Master Data journey", () => {
     const columnRequests: unknown[] = [];
     const dynamicTemplate = {
       ...regionsTemplate(),
+      available_actions: [
+        { disabled: false, disabled_reason: null, href: "", icon_key: "check-circle", key: "validate_definition", label: "Validate definition", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+        { disabled: false, disabled_reason: null, href: "", icon_key: "upload-cloud", key: "publish_template", label: "Publish template", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+        { disabled: true, disabled_reason: "PUBLISHED_TEMPLATE_REQUIRED", href: "", icon_key: "file-spreadsheet", key: "build_workbook", label: "Build workbook", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+        { disabled: true, disabled_reason: "PUBLISHED_TEMPLATE_REQUIRED", href: "", icon_key: "copy", key: "create_version", label: "Create next version", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
+      ],
       catalog_macro_object_code: "LOCATION",
       code: "LOCATIONS_DYNAMIC_UI",
       data_category: "MASTER_DATA",
@@ -1050,7 +1066,13 @@ describe("Functional Master Data journey", () => {
       if (url.endsWith("/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_UI/publish")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         publishRequests.push({ method: init?.method });
-        return Promise.resolve(jsonResponse({ ...dynamicTemplate, status: "PUBLISHED" }));
+        return Promise.resolve(
+          jsonResponse({
+            ...dynamicTemplate,
+            available_actions: regionsTemplate().available_actions,
+            status: "PUBLISHED"
+          })
+        );
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/LOCATIONS_DYNAMIC_UI/versions")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
