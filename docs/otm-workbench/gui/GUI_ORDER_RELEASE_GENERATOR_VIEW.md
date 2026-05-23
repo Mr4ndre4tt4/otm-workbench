@@ -1,6 +1,6 @@
 # GUI Order Release Generator View
 
-**Status:** first functional slice implemented; first row-authoring hardening slice delivered
+**Status:** first functional slice implemented; row and template authoring hardening delivered
 **Branch:** `codex/gui-foundation-integration-pr-plan`
 
 ## Objective
@@ -21,6 +21,7 @@ The GUI consumes:
 
 ```text
 GET /api/v1/modules/order-release-generator/templates
+POST /api/v1/modules/order-release-generator/templates
 GET /api/v1/modules/order-release-generator/batches
 POST /api/v1/modules/order-release-generator/batches
 POST /api/v1/modules/order-release-generator/batches/{batch_id}/preview-xml
@@ -44,15 +45,18 @@ The screen uses shared components:
 - FeedbackMessage for backend action results and guarded submit errors.
 ```
 
-The first selected template defaults to the first backend item. The batch stage
-creates a client-safe synthetic batch from template-guided row fields instead of
-raw JSON editing. The row editor is generated from backend template
-`required_columns`, `optional_columns`, and `defaults`, then submits the same
-structured `rows` payload to the backend batch contract. The preview stage asks
-the backend to build XML. The artifact stage asks the backend to generate the DB
-XML artifact and evidence, then lists generated artifacts with a guarded backend
-download action. The submit stage calls the guarded MVP0 endpoint and renders
-the backend reason/capability required for future direct OTM submit.
+The first selected template defaults to the first backend item. The Templates
+stage can now create a reusable backend-owned `ACTIVE` v1 template from a code,
+name, required column list, optional column list, and default values expressed as
+`field=value` lines. The batch stage creates a client-safe synthetic batch from
+template-guided row fields instead of raw JSON editing. The row editor is
+generated from backend template `required_columns`, `optional_columns`, and
+`defaults`, then submits the same structured `rows` payload to the backend batch
+contract. The preview stage asks the backend to build XML. The artifact stage
+asks the backend to generate the DB XML artifact and evidence, then lists
+generated artifacts with a guarded backend download action. The submit stage
+calls the guarded MVP0 endpoint and renders the backend reason/capability
+required for future direct OTM submit.
 
 Recent batches are read from the backend `/batches` list, so leaving the route
 and returning can recover the created batch without frontend-only persistence.
@@ -69,6 +73,8 @@ and returning can recover the created batch without frontend-only persistence.
 - Template status, macro object linkage, columns, defaults, batches, XML preview,
   artifact metadata, evidence id, and submit guard details come from backend
   contracts.
+- Custom template creation is backend-owned, validates contract shape, rejects
+  duplicate/overlapping columns, and avoids frontend-only template state.
 ```
 
 Delivered hardening:
@@ -83,12 +89,16 @@ Delivered hardening:
 - Preview and Artifact actions are disabled while the active batch is not VALID;
 - the user can correct the row fields and recreate a valid batch without
   leaving the staged workflow.
+- the Templates stage can create a custom reusable template through
+  `POST /templates`;
+- newly created templates are selected and immediately drive the backend-guided
+  row editor.
 ```
 
 Still open:
 
 ```text
-- richer reusable template authoring/versioning UX
+- template versioning beyond initial custom v1 records
 - governed direct OTM submit capability after MVP0
 ```
 
@@ -121,4 +131,11 @@ npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx -t "shows invalid ba
 npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx
 npm run build
 python -m pytest tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+```
+
+Third OTM-125 validation:
+
+```text
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx
 ```

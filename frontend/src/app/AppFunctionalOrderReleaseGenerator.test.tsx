@@ -474,4 +474,107 @@ describe("Functional Order Release Generator journey", () => {
       { attempt: 2, release_gid: "OTM1.OR_SYN_001" }
     ]);
   }, 60000);
+
+  it("creates a backend-owned custom template from the Templates stage", async () => {
+    const createTemplateRequests: unknown[] = [];
+    let templates = [orderReleaseTemplate()];
+    const customTemplate = {
+      ...orderReleaseTemplate(),
+      code: "TL_OR_CUSTOM_MVP0",
+      created_by: "admin@example.test",
+      description: "Synthetic custom template.",
+      id: "template_or_custom",
+      name: "Custom TL Order Release",
+      optional_columns: ["remarks"],
+      required_columns: ["release_gid", "source_location_gid", "destination_location_gid"],
+      version: 1
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              {
+                id: "order_release_generator",
+                label: "Order Release Generator",
+                path: "/order-release-generator",
+                status: "ACTIVE"
+              }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/templates")) {
+        if (init?.method === "POST") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          const body = JSON.parse(String(init?.body));
+          createTemplateRequests.push(body);
+          templates = [orderReleaseTemplate(), customTemplate];
+          return Promise.resolve(jsonResponse(customTemplate));
+        }
+        return Promise.resolve(jsonResponse({ items: templates, total: templates.length }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Order Release Generator" });
+    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
+    await userEvent.type(screen.getByLabelText("Template code"), "TL_OR_CUSTOM_MVP0");
+    await userEvent.type(screen.getByLabelText("Template name"), "Custom TL Order Release");
+    await userEvent.type(screen.getByLabelText("Required columns"), "release_gid, source_location_gid, destination_location_gid");
+    await userEvent.type(screen.getByLabelText("Optional columns"), "remarks");
+    await userEvent.type(screen.getByLabelText("Default values"), "domain_name=OTM1\ntransport_mode=TL");
+    await userEvent.click(screen.getByRole("button", { name: "Create template" }));
+
+    await screen.findByText("Order Release template TL_OR_CUSTOM_MVP0 created.");
+    expect(screen.getByLabelText("Order Release templates")).toHaveTextContent("TL_OR_CUSTOM_MVP0");
+    expect(createTemplateRequests).toEqual([
+      {
+        code: "TL_OR_CUSTOM_MVP0",
+        defaults: { domain_name: "OTM1", transport_mode: "TL" },
+        description: "",
+        name: "Custom TL Order Release",
+        optional_columns: ["remarks"],
+        required_columns: ["release_gid", "source_location_gid", "destination_location_gid"]
+      }
+    ]);
+  }, 60000);
 });

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import {
   createOrderReleaseBatch,
+  createOrderReleaseTemplate,
   downloadOrderReleaseArtifact,
   generateOrderReleaseXmlArtifact,
   previewOrderReleaseXml,
@@ -152,6 +153,27 @@ function serializeDraftRows(rows: DraftOrderReleaseRow[]) {
   );
 }
 
+function parseColumnList(value: string) {
+  return value
+    .split(",")
+    .map((column) => column.trim())
+    .filter(Boolean);
+}
+
+function parseDefaultLines(value: string) {
+  return Object.fromEntries(
+    value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [key, ...rest] = line.split("=");
+        return [key.trim(), rest.join("=").trim()];
+      })
+      .filter(([key]) => key)
+  );
+}
+
 export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const templates = useOrderReleaseTemplates(token);
@@ -159,6 +181,11 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<OrderReleaseWorkflowStage>("templates");
+  const [templateCode, setTemplateCode] = useState("");
+  const [templateName, setTemplateName] = useState("");
+  const [templateRequiredColumns, setTemplateRequiredColumns] = useState("");
+  const [templateOptionalColumns, setTemplateOptionalColumns] = useState("");
+  const [templateDefaults, setTemplateDefaults] = useState("");
   const [fileName, setFileName] = useState("synthetic_order_release_rows.json");
   const [draftRows, setDraftRows] = useState<DraftOrderReleaseRow[]>(normalizeDraftRows(syntheticOrderReleaseRows));
   const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
@@ -234,6 +261,26 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         return result;
       },
       (result) => `Order Release batch ${result.id} created.`
+    );
+  };
+
+  const handleCreateTemplate = () => {
+    void runAction(
+      async () => {
+        const result = await createOrderReleaseTemplate(token, {
+          code: templateCode.trim(),
+          defaults: parseDefaultLines(templateDefaults),
+          description: "",
+          name: templateName.trim(),
+          optional_columns: parseColumnList(templateOptionalColumns),
+          required_columns: parseColumnList(templateRequiredColumns)
+        });
+        setSelectedTemplateId(result.id);
+        setDraftRows([emptyDraftRow(result)]);
+        await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "templates"] });
+        return result;
+      },
+      (result) => `Order Release template ${result.code} created.`
     );
   };
 
@@ -434,6 +481,58 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             status={templateItems.length ? "ACTIVE" : "EMPTY"}
             title="Templates"
           >
+            <section aria-label="Order Release template authoring" className="template-author-table-card">
+              <div className="template-author-table-card__header">
+                <h4>Template authoring</h4>
+              </div>
+              <div className="master-data-author-grid">
+                <label>
+                  Template code
+                  <input
+                    aria-label="Template code"
+                    onChange={(event) => setTemplateCode(event.target.value)}
+                    value={templateCode}
+                  />
+                </label>
+                <label>
+                  Template name
+                  <input
+                    aria-label="Template name"
+                    onChange={(event) => setTemplateName(event.target.value)}
+                    value={templateName}
+                  />
+                </label>
+                <label>
+                  Required columns
+                  <input
+                    aria-label="Required columns"
+                    onChange={(event) => setTemplateRequiredColumns(event.target.value)}
+                    value={templateRequiredColumns}
+                  />
+                </label>
+                <label>
+                  Optional columns
+                  <input
+                    aria-label="Optional columns"
+                    onChange={(event) => setTemplateOptionalColumns(event.target.value)}
+                    value={templateOptionalColumns}
+                  />
+                </label>
+              </div>
+              <label className="template-author-textarea">
+                Default values
+                <textarea
+                  aria-label="Default values"
+                  onChange={(event) => setTemplateDefaults(event.target.value)}
+                  value={templateDefaults}
+                />
+              </label>
+              <div className="master-data-action-bar">
+                <Button disabled={isMutating || !templateCode.trim() || !templateName.trim()} onClick={handleCreateTemplate} variant="primary">
+                  Create template
+                </Button>
+              </div>
+            </section>
             <ModuleObjectList
               ariaLabel="Order Release templates"
               emptyText="No Order Release templates available for the current context."

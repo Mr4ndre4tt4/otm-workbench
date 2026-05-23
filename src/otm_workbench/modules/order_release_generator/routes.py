@@ -16,6 +16,7 @@ from otm_workbench.modules.order_release_generator.batches import (
 )
 from otm_workbench.modules.order_release_generator.job_tracking import record_completed_order_release_job
 from otm_workbench.modules.order_release_generator.templates import (
+    create_order_release_template,
     seed_order_release_templates,
     serialize_order_release_template,
 )
@@ -84,6 +85,15 @@ class OrderReleaseBatchCreateRequest(BaseModel):
     rows: list[dict[str, object]]
 
 
+class OrderReleaseTemplateCreateRequest(BaseModel):
+    code: str
+    name: str
+    description: str = ""
+    required_columns: list[str]
+    optional_columns: list[str] = []
+    defaults: dict[str, object] = {}
+
+
 @router.get("/health")
 def order_release_generator_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "order_release_generator"}
@@ -102,6 +112,33 @@ def list_order_release_templates(
     )
     items = [serialize_order_release_template(template) for template in templates]
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/templates")
+def create_template(
+    payload: OrderReleaseTemplateCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_order_release_templates(db)
+    template, issues = create_order_release_template(
+        db,
+        code=payload.code,
+        name=payload.name,
+        description=payload.description,
+        required_columns=payload.required_columns,
+        optional_columns=payload.optional_columns,
+        defaults=payload.defaults,
+        created_by=user.email,
+    )
+    if template is None:
+        raise api_error(
+            422,
+            "ORDER_RELEASE_TEMPLATE_INVALID",
+            "Order Release template contract is invalid.",
+            {"issues": issues},
+        )
+    return serialize_order_release_template(template)
 
 
 @router.get("/batches")

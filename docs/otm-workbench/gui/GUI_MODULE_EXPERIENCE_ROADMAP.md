@@ -51,7 +51,7 @@ For each module:
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | Functional slice plus archive history done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. |
-| Order Release Generator | First functional slice plus row-authoring and invalid-batch recovery hardening done | Template/batch/XML artifact/list/download APIs ready | Staged workflow | Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; richer reusable template authoring and governed direct OTM submit remain follow-ups. |
+| Order Release Generator | First functional slice plus row, invalid-batch recovery, and template authoring hardening done | Template list/create, batch, XML artifact/list/download APIs ready | Staged workflow | Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; the Templates stage can create reusable backend-owned custom v1 templates; template versioning and governed direct OTM submit remain follow-ups. |
 
 ## 4. Recommended Next GUI Queue
 
@@ -291,11 +291,12 @@ Reason:
   by template, batch, XML artifact, and submit-guard APIs.
 ```
 
-First GUI functional slice is now implemented: select template, create batch,
-preview XML, generate XML artifact, download the generated XML through the
-backend artifact endpoint, inspect guarded OTM submit state, and return with
-backend-owned recent batch state. OTM-125 started module-completion hardening by
-replacing raw JSON batch input with a backend-template-guided row editor that
-submits the same structured rows contract. Browser QA is covered by
-`qa:functional:order-release:browser`. Next Order Release hardening should focus
-on reusable template authoring/versioning rather than direct OTM submit.
+First GUI functional slice is now implemented: create/select template, create
+batch, preview XML, generate XML artifact, download the generated XML through
+the backend artifact endpoint, inspect guarded OTM submit state, and return with
+backend-owned recent batch state. OTM-125 module-completion hardening replaced
+raw JSON batch input with a backend-template-guided row editor, added invalid
+batch recovery, and added backend-owned custom template authoring for reusable
+v1 templates. Browser QA is covered by `qa:functional:order-release:browser`.
+Next Order Release hardening should focus on template versioning rather than
+direct OTM submit.

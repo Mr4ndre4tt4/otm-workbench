@@ -6,6 +6,8 @@ import type {
   OrderReleaseBatch,
   OrderReleaseBatchCreateRequest,
   OrderReleaseBatchesResponse,
+  OrderReleaseTemplate,
+  OrderReleaseTemplateCreateRequest,
   OrderReleaseTemplatesResponse,
   OrderReleaseXmlArtifact,
   OrderReleaseXmlPreview
@@ -36,6 +38,10 @@ export function useOrderReleaseArtifacts(token: string | null, batchId: string |
       }),
     enabled: Boolean(token && batchId)
   });
+}
+
+export function createOrderReleaseTemplate(token: string | null, payload: OrderReleaseTemplateCreateRequest) {
+  return apiPost<OrderReleaseTemplate>("/api/v1/modules/order-release-generator/templates", payload, { token });
 }
 
 export function createOrderReleaseBatch(token: string | null, payload: OrderReleaseBatchCreateRequest) {

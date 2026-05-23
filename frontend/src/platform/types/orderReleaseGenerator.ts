@@ -18,6 +18,15 @@ export type OrderReleaseTemplate = {
 
 export type OrderReleaseTemplatesResponse = PageResponse<OrderReleaseTemplate>;
 
+export type OrderReleaseTemplateCreateRequest = {
+  code: string;
+  name: string;
+  description: string;
+  required_columns: string[];
+  optional_columns: string[];
+  defaults: Record<string, unknown>;
+};
+
 export type OrderReleaseBatchRow = {
   id: string;
   batch_id: string;
