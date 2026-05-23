@@ -1814,6 +1814,15 @@ describe("App shell", () => {
           )
         );
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/systems")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [], total: 0, page: 1, page_size: 50 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(
@@ -1933,6 +1942,6 @@ describe("App shell", () => {
     expect(screen.getByText("planned_shipment.xml")).toBeInTheDocument();
     expect(screen.getByText("PlannedShipment")).toBeInTheDocument();
     expect(screen.getByText("$.numeroViagem")).toBeInTheDocument();
-    expect(screen.queryByText(/generate spec/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate spec" })).toBeInTheDocument();
   });
 });

@@ -248,10 +248,51 @@ describe("Functional Assets Library journey", () => {
           jsonResponse({
             items: [
               { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
-              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" },
+              {
+                id: "integration_mapping",
+                label: "Integration Mapping Studio",
+                path: "/integration-mapping",
+                status: "ACTIVE"
+              }
             ],
             page: 1,
             page_size: 50,
+            total: 3
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                allow_csvutil: true,
+                allow_cutover: true,
+                category: "RATES",
+                code: "RATE_RECORD",
+                default_load_order: 10,
+                default_method: "CSVUTIL",
+                description: "Rate record macro object.",
+                evidence_required_default: true,
+                id: "macro_rate_record",
+                method_options: ["CSVUTIL"],
+                name: "Rate Record"
+              },
+              {
+                allow_csvutil: true,
+                allow_cutover: true,
+                category: "MASTER_DATA",
+                code: "LOCATION",
+                default_load_order: 20,
+                default_method: "CSVUTIL",
+                description: "Location macro object.",
+                evidence_required_default: true,
+                id: "macro_location",
+                method_options: ["CSVUTIL"],
+                name: "Location"
+              }
+            ],
             total: 2
           })
         );
@@ -469,7 +510,9 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Selected asset versions")).toHaveTextContent("synthetic_mapping_spec.md");
 
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("Integration Mapping Studio");
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "OTM_TABLE");
+    expect(screen.queryByLabelText("Asset guided link target")).not.toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Asset link target id"));
     await userEvent.type(screen.getByLabelText("Asset link target id"), "NOT_A_REAL_OTM_TABLE");
     await userEvent.clear(screen.getByLabelText("Asset link target label"));
@@ -488,16 +531,14 @@ describe("Functional Assets Library journey", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "MACRO_OBJECT");
+    expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("Rate Record");
     await userEvent.clear(screen.getByLabelText("Asset link target id"));
     await userEvent.type(screen.getByLabelText("Asset link target id"), "NOT_A_MACRO_OBJECT");
     await userEvent.clear(screen.getByLabelText("Asset link target label"));
     await userEvent.type(screen.getByLabelText("Asset link target label"), "Invalid macro object");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
     await screen.findByText("ASSET_LINK_INVALID_MACRO_OBJECT: OTM macro object not found in Catalog Core.");
-    await userEvent.clear(screen.getByLabelText("Asset link target id"));
-    await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_RECORD");
-    await userEvent.clear(screen.getByLabelText("Asset link target label"));
-    await userEvent.type(screen.getByLabelText("Asset link target label"), "Rate Record macro object");
+    await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "RATE_RECORD");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
     await screen.findByText("Asset link RATE_RECORD created.");
     expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Record macro object");

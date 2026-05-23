@@ -190,8 +190,7 @@ async function run() {
     await page.getByLabel("Asset link target label").fill("Invalid macro object");
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText("ASSET_LINK_INVALID_MACRO_OBJECT: OTM macro object not found in Catalog Core.").waitFor();
-    await page.getByLabel("Asset link target id").fill("RATE_RECORD");
-    await page.getByLabel("Asset link target label").fill("Rate Record macro object");
+    await page.getByLabel("Asset guided link target").selectOption("RATE_RECORD");
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText("Asset link RATE_RECORD created.").waitFor();
     await page.getByLabel("Selected asset links").getByText("Rate Record macro object").waitFor();

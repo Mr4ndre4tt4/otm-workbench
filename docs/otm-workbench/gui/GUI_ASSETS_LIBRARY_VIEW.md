@@ -47,6 +47,8 @@ The screen uses shared components:
 - Backend error code preservation in action feedback, including Data
   Dictionary validation failures for `OTM_TABLE` asset links and Catalog Core
   validation failures for `MACRO_OBJECT` asset links;
+- Guided link target selector for backend-owned `MODULE` targets from platform
+  navigation and `MACRO_OBJECT` targets from Catalog Core;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -57,8 +59,8 @@ asset updates detail, versions, and links through backend-owned ids. The current
 functional slice follows a staged story: review the Library with backend
 filters, create a client-safe synthetic support asset, edit its metadata, upload
 a file version, create selected link types such as `OTM_TABLE` and
-`MACRO_OBJECT`, recover from backend validation errors when the target table or
-macro object is invalid,
+`MACRO_OBJECT`, use backend-owned target suggestions where available, recover
+from backend validation errors when the target table or macro object is invalid,
 download the current version through the guarded backend download endpoint, and
 archive the asset. Once the backend returns `ARCHIVED`, the UI keeps lifecycle
 actions disabled for new uploads and links.
@@ -84,8 +86,10 @@ Still open:
 
 ```text
 - richer custom metadata validation messaging
-- richer guided link authoring UX for supported link types beyond table and
-  macro object validation
+- richer guided link authoring UX for `ARTIFACT` and `EVIDENCE` once those
+  target search contracts are exposed
+- Data Dictionary-backed table search/list contract for guided `OTM_TABLE`
+  selection; current table target entry remains manual and backend-validated
 - deeper authoring for backend-owned classifications
 ```
 

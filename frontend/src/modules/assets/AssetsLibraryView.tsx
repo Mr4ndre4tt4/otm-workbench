@@ -12,6 +12,8 @@ import {
   useAssetDetail,
   useAssetLinks,
   useAssets,
+  useCatalogMacroObjects,
+  useNavigation,
   useAssetVersions
 } from '../../platform/hooks';
 import type { AssetClassification, AssetFilters, AssetItem } from '../../platform/types';
@@ -128,12 +130,21 @@ function formatAssetsError(error: unknown) {
   return error instanceof Error ? error.message : "Assets Library action failed.";
 }
 
+type GuidedLinkTarget = {
+  description: string;
+  label: string;
+  targetId: string;
+  targetLabel: string;
+};
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
   const classifications = useAssetClassifications(token);
+  const navigation = useNavigation(token);
+  const catalogMacroObjects = useCatalogMacroObjects(token);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
@@ -183,6 +194,29 @@ export function AssetsLibraryView({ token }: { token: string }) {
     classificationGroups.find((group) => group.classification_type === "asset_sensitivity")?.items,
     ["PUBLIC", "INTERNAL", "SECRET"]
   );
+  const guidedLinkTargets: GuidedLinkTarget[] =
+    linkType === "MODULE"
+      ? (navigation.data?.items ?? []).map((item) => ({
+          description: item.description ?? item.path,
+          label: item.label,
+          targetId: item.id,
+          targetLabel: item.label
+        }))
+      : linkType === "MACRO_OBJECT"
+        ? (catalogMacroObjects.data?.items ?? []).map((item) => ({
+            description: item.description,
+            label: item.name,
+            targetId: item.code,
+            targetLabel: `${item.name} macro object`
+          }))
+        : [];
+
+  const handleGuidedLinkTargetChange = (targetId: string) => {
+    const target = guidedLinkTargets.find((item) => item.targetId === targetId);
+    if (!target) return;
+    setLinkTargetId(target.targetId);
+    setLinkTargetLabel(target.targetLabel);
+  };
 
   useEffect(() => {
     if (selectedAsset) {
@@ -716,6 +750,23 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   ))}
                 </select>
               </label>
+              {guidedLinkTargets.length ? (
+                <label>
+                  Asset guided link target
+                  <select
+                    aria-label="Asset guided link target"
+                    onChange={(event) => handleGuidedLinkTargetChange(event.target.value)}
+                    value={guidedLinkTargets.some((item) => item.targetId === linkTargetId) ? linkTargetId : ""}
+                  >
+                    <option value="">Select backend-owned target</option>
+                    {guidedLinkTargets.map((item) => (
+                      <option key={item.targetId} value={item.targetId}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label>
                 Asset link target id
                 <input
