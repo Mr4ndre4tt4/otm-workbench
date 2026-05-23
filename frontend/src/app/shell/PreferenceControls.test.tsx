@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { updateUserPreferences } from "../../platform/hooks";
 import type { UserPreferences } from "../../platform/types";
 import { PreferenceControls } from "./PreferenceControls";
 
@@ -19,6 +21,10 @@ function renderWithQueryClient(preferences: UserPreferences | undefined, token: 
 }
 
 describe("PreferenceControls", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders backend-owned preference controls with active state", () => {
     renderWithQueryClient({
       density: "comfortable",
@@ -39,5 +45,43 @@ describe("PreferenceControls", () => {
 
     expect(screen.getByRole("button", { name: "Use light mode" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Follow system theme" })).toBeDisabled();
+  });
+
+  it("prevents overlapping preference writes while one update is saving", async () => {
+    let resolveUpdate: (value: UserPreferences) => void = () => undefined;
+    vi.mocked(updateUserPreferences).mockImplementation(
+      () =>
+        new Promise<UserPreferences>((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+
+    renderWithQueryClient({
+      density: "comfortable",
+      follow_system_theme: false,
+      sidebar_mode: "expanded",
+      theme_mode: "light"
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Use compact density" }));
+
+    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    expect(updateUserPreferences).toHaveBeenCalledTimes(1);
+    expect(updateUserPreferences).toHaveBeenCalledWith("token", {
+      density: "compact",
+      follow_system_theme: false,
+      sidebar_mode: "expanded",
+      theme_mode: "light"
+    });
+
+    resolveUpdate({
+      density: "compact",
+      follow_system_theme: false,
+      sidebar_mode: "expanded",
+      theme_mode: "light"
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeEnabled());
   });
 });

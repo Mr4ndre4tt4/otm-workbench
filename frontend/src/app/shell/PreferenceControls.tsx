@@ -16,13 +16,15 @@ export function PreferenceControls({
 }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const currentMode = preferences?.theme_mode ?? "light";
   const currentDensity = preferences?.density ?? "comfortable";
   const currentSidebarMode = preferences?.sidebar_mode ?? "expanded";
 
   async function applyPreferences(nextValues: Partial<UserPreferences>) {
-    if (!token) return;
+    if (!token || isSaving) return;
     setError(null);
+    setIsSaving(true);
     const nextPreferences: UserPreferences = {
       theme_mode: preferences?.theme_mode ?? "light",
       follow_system_theme: preferences?.follow_system_theme ?? false,
@@ -46,15 +48,19 @@ export function PreferenceControls({
       } else {
         setError("Unable to update preference.");
       }
+    } finally {
+      setIsSaving(false);
     }
   }
+
+  const controlsDisabled = !token || isSaving;
 
   return (
     <div className="preference-controls" aria-label="Workbench preferences">
       <IconButton
         aria-pressed={currentMode === "light"}
         className={currentMode === "light" ? "icon-button-active" : ""}
-        disabled={!token}
+        disabled={controlsDisabled}
         label="Use light mode"
         onClick={() => void applyPreferences({ theme_mode: "light" })}
       >
@@ -63,7 +69,7 @@ export function PreferenceControls({
       <IconButton
         aria-pressed={currentMode === "dark"}
         className={currentMode === "dark" ? "icon-button-active" : ""}
-        disabled={!token}
+        disabled={controlsDisabled}
         label="Use dark mode"
         onClick={() => void applyPreferences({ theme_mode: "dark" })}
       >
@@ -72,7 +78,7 @@ export function PreferenceControls({
       <IconButton
         aria-pressed={currentMode === "system"}
         className={currentMode === "system" ? "icon-button-active" : ""}
-        disabled={!token}
+        disabled={controlsDisabled}
         label="Follow system theme"
         onClick={() => void applyPreferences({ theme_mode: "system" })}
       >
@@ -81,7 +87,7 @@ export function PreferenceControls({
       <IconButton
         aria-pressed={currentDensity === "compact"}
         className={currentDensity === "compact" ? "icon-button-active" : ""}
-        disabled={!token}
+        disabled={controlsDisabled}
         label={currentDensity === "compact" ? "Use comfortable density" : "Use compact density"}
         onClick={() =>
           void applyPreferences({ density: currentDensity === "compact" ? "comfortable" : "compact" })
@@ -92,7 +98,7 @@ export function PreferenceControls({
       <IconButton
         aria-pressed={currentSidebarMode === "collapsed"}
         className={currentSidebarMode === "collapsed" ? "icon-button-active" : ""}
-        disabled={!token}
+        disabled={controlsDisabled}
         label={currentSidebarMode === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
         onClick={() =>
           void applyPreferences({ sidebar_mode: currentSidebarMode === "collapsed" ? "expanded" : "collapsed" })

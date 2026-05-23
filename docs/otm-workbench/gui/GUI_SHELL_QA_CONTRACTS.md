@@ -13,6 +13,8 @@ Keep the GUI foundation stable before deeper component and screen-level CSS spli
 - System theme must store `theme_mode=system` with `follow_system_theme=true`.
 - Non-system themes must not persist with `follow_system_theme=true`.
 - Density and sidebar mode must continue to update `.app-shell` data attributes.
+- Preference controls must not issue overlapping backend writes while a previous
+  preference update is still saving.
 - Expanded sidebar must show backend navigation status chips.
 - Collapsed sidebar must keep navigation links available while omitting status chips from the compact rail.
 - Backend shell companion coverage lives in `tests/test_gui_shell_backend_contracts.py`.
