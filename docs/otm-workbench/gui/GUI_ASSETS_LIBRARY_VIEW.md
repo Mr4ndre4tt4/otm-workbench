@@ -15,6 +15,8 @@ The GUI consumes:
 ```text
 GET /api/v1/modules/assets/assets
 GET /api/v1/modules/assets/classifications
+POST /api/v1/modules/assets/classifications
+PATCH /api/v1/modules/assets/classifications/{classification_id}
 POST /api/v1/modules/assets/assets
 GET /api/v1/modules/assets/assets/{asset_id}
 PATCH /api/v1/modules/assets/assets/{asset_id}
@@ -38,6 +40,9 @@ The screen uses shared components:
 - Backend-owned classification-driven filters and link type options, including
   asset type, category, status, tag, scope, module id, macro object, and OTM
   table filters;
+- Create-stage classification authoring for custom backend-owned metadata
+  values such as asset categories, types, visibility, scope, sensitivity, and
+  link types;
 - Create-stage metadata authoring for asset name, description, type, category,
   visibility, scope, sensitivity, module id, macro object, OTM table, and tags;
 - Update action for the selected asset using the same backend-owned metadata
@@ -102,6 +107,9 @@ record before any update action can be submitted.
   permission/audit, and archive state come from backend contracts.
 - Asset action availability and disabled reasons come from backend
   `available_actions`, with frontend fallbacks only for older payloads.
+- Custom asset classifications are persisted through backend contracts and
+  reused by the same backend-owned dropdowns; system-protected rows are guarded
+  from mutation by the backend.
 - Asset macro-object and OTM-table metadata references are checked against
   Catalog Core and the Data Dictionary before create/update commits.
 - `ARTIFACT` and `EVIDENCE` links cannot be created against unsafe or missing
@@ -113,7 +121,6 @@ record before any update action can be submitted.
 Still open:
 
 ```text
-- deeper authoring for backend-owned classifications
 - pagination or search-result virtualization if Evidence Hub target volumes
   become large enough to need it
 ```

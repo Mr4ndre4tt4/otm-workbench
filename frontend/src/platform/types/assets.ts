@@ -72,6 +72,21 @@ export type AssetLinkCreateRequest = {
   target_label: string;
 };
 
+export type AssetClassificationCreateRequest = {
+  classification_type: string;
+  code: string;
+  name: string;
+  description: string;
+  sort_order: number;
+};
+
+export type AssetClassificationUpdateRequest = Partial<{
+  name: string;
+  description: string;
+  sort_order: number;
+  is_active: boolean;
+}>;
+
 export type AssetFilters = {
   asset_type?: string;
   category?: string;

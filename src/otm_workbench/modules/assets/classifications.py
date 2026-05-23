@@ -29,6 +29,8 @@ DEFAULT_CLASSIFICATIONS = [
     ("asset_link_type", "EVIDENCE", "Evidence", "Links an asset to evidence.", 50),
 ]
 
+ALLOWED_CLASSIFICATION_TYPES = {item[0] for item in DEFAULT_CLASSIFICATIONS}
+
 
 def seed_asset_classifications(db: Session) -> None:
     existing = {
@@ -63,6 +65,58 @@ def serialize_asset_classification(classification: AssetClassification) -> dict[
         "system_protected": classification.system_protected,
         "is_active": classification.is_active,
     }
+
+
+def create_asset_classification(db: Session, payload: dict[str, object]) -> AssetClassification:
+    seed_asset_classifications(db)
+    classification_type = str(payload["classification_type"]).strip().lower()
+    code = str(payload["code"]).strip().upper()
+    if classification_type not in ALLOWED_CLASSIFICATION_TYPES:
+        raise ValueError("Unsupported asset classification type.")
+    if not code:
+        raise ValueError("Asset classification code is required.")
+    existing = (
+        db.query(AssetClassification)
+        .filter(AssetClassification.classification_type == classification_type)
+        .filter(AssetClassification.code == code)
+        .first()
+    )
+    if existing is not None:
+        raise ValueError("Asset classification already exists.")
+    classification = AssetClassification(
+        classification_type=classification_type,
+        code=code,
+        name=str(payload["name"]).strip(),
+        description=str(payload.get("description") or "").strip(),
+        sort_order=int(payload.get("sort_order") or 0),
+        system_protected=False,
+        is_active=True,
+    )
+    db.add(classification)
+    db.commit()
+    db.refresh(classification)
+    return classification
+
+
+def update_asset_classification(
+    db: Session,
+    *,
+    classification: AssetClassification,
+    payload: dict[str, object],
+) -> AssetClassification:
+    if classification.system_protected:
+        raise PermissionError("System-protected asset classifications cannot be changed.")
+    if "name" in payload and payload["name"] is not None:
+        classification.name = str(payload["name"]).strip()
+    if "description" in payload and payload["description"] is not None:
+        classification.description = str(payload["description"]).strip()
+    if "sort_order" in payload and payload["sort_order"] is not None:
+        classification.sort_order = int(payload["sort_order"])
+    if "is_active" in payload and payload["is_active"] is not None:
+        classification.is_active = bool(payload["is_active"])
+    db.commit()
+    db.refresh(classification)
+    return classification
 
 
 def grouped_asset_classifications(db: Session) -> list[dict[str, object]]:

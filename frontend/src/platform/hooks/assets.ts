@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { apiDownload, apiGet, apiPatch, apiPost, apiUpload, type DownloadResponse } from "../api";
 import type {
   AssetClassificationsResponse,
+  AssetClassification,
+  AssetClassificationCreateRequest,
+  AssetClassificationUpdateRequest,
   AssetCreateRequest,
   AssetFilters,
   AssetItem,
@@ -69,6 +72,18 @@ export function useAssetLinks(token: string | null, assetId: string | null) {
 
 export function createAsset(token: string | null, payload: AssetCreateRequest) {
   return apiPost<AssetItem>("/api/v1/modules/assets/assets", payload, { token });
+}
+
+export function createAssetClassification(token: string | null, payload: AssetClassificationCreateRequest) {
+  return apiPost<AssetClassification>("/api/v1/modules/assets/classifications", payload, { token });
+}
+
+export function updateAssetClassification(
+  token: string | null,
+  classificationId: string,
+  payload: AssetClassificationUpdateRequest
+) {
+  return apiPatch<AssetClassification>(`/api/v1/modules/assets/classifications/${classificationId}`, payload, { token });
 }
 
 export function updateAsset(token: string | null, assetId: string, payload: AssetUpdateRequest) {

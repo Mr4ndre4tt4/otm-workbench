@@ -9,7 +9,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.catalog.services import get_macro_object
-from otm_workbench.models import Artifact, Asset, AssetLink, AssetVersion, Evidence, User
+from otm_workbench.models import Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
 from otm_workbench.modules.assets.assets import (
     AssetValidationError,
     archive_asset,
@@ -22,7 +22,12 @@ from otm_workbench.modules.assets.assets import (
     update_asset_metadata,
     upload_asset_version,
 )
-from otm_workbench.modules.assets.classifications import grouped_asset_classifications
+from otm_workbench.modules.assets.classifications import (
+    create_asset_classification,
+    grouped_asset_classifications,
+    serialize_asset_classification,
+    update_asset_classification,
+)
 from otm_workbench.modules.rates.dictionary import load_table_definition
 
 
@@ -60,6 +65,21 @@ class AssetLinkCreateRequest(BaseModel):
     link_type: str
     target_id: str
     target_label: str = ""
+
+
+class AssetClassificationCreateRequest(BaseModel):
+    classification_type: str
+    code: str
+    name: str
+    description: str = ""
+    sort_order: int = 0
+
+
+class AssetClassificationUpdateRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
 
 
 def reject_archived_asset(asset: Asset) -> None:
@@ -122,6 +142,40 @@ def list_asset_classifications(
 ):
     items = grouped_asset_classifications(db)
     return PageResponse(items=items, total=len(items))
+
+
+@router.post("/classifications")
+def create_classification(
+    payload: AssetClassificationCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    try:
+        classification = create_asset_classification(db, payload.model_dump())
+    except ValueError as exc:
+        raise api_error(400, "ASSET_CLASSIFICATION_INVALID", str(exc)) from exc
+    return serialize_asset_classification(classification)
+
+
+@router.patch("/classifications/{classification_id}")
+def patch_classification(
+    classification_id: str,
+    payload: AssetClassificationUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    classification = db.query(AssetClassification).filter(AssetClassification.id == classification_id).first()
+    if classification is None:
+        raise api_error(404, "ASSET_CLASSIFICATION_NOT_FOUND", "Asset classification not found.")
+    try:
+        updated = update_asset_classification(
+            db,
+            classification=classification,
+            payload=payload.model_dump(exclude_unset=True),
+        )
+    except PermissionError as exc:
+        raise api_error(409, "ASSET_CLASSIFICATION_PROTECTED", str(exc)) from exc
+    return serialize_asset_classification(updated)
 
 
 @router.post("/assets")

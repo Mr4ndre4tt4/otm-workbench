@@ -131,8 +131,8 @@ function linkFixture() {
   };
 }
 
-function classificationGroups() {
-  return {
+function classificationGroups(customClassifications: unknown[] = []) {
+  const groups = {
     items: [
       {
         classification_type: "asset_type",
@@ -233,6 +233,31 @@ function classificationGroups() {
     ],
     total: 4
   };
+  customClassifications.forEach((customClassification) => {
+    if (
+      typeof customClassification !== "object" ||
+      customClassification === null ||
+      !("classification_type" in customClassification)
+    ) {
+      return;
+    }
+    const classification = customClassification as {
+      classification_type: string;
+    };
+    const group = groups.items.find((item) => item.classification_type === classification.classification_type);
+    if (group) {
+      group.items.push(customClassification as never);
+      group.total += 1;
+    } else {
+      groups.items.push({
+        classification_type: classification.classification_type,
+        items: [customClassification as never],
+        total: 1
+      });
+    }
+  });
+  groups.total = groups.items.length;
+  return groups;
 }
 
 describe("Functional Assets Library journey", () => {
@@ -243,6 +268,7 @@ describe("Functional Assets Library journey", () => {
 
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
     const createRequests: unknown[] = [];
+    const classificationRequests: unknown[] = [];
     const updateRequests: unknown[] = [];
     const uploadRequests: unknown[] = [];
     const invalidLinkRequests: unknown[] = [];
@@ -256,6 +282,7 @@ describe("Functional Assets Library journey", () => {
     const referenceAsset = referenceAssetFixture();
     let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
     let createdLink: ReturnType<typeof linkFixture> | null = null;
+    let customClassification: unknown | null = null;
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -425,7 +452,20 @@ describe("Functional Assets Library journey", () => {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/assets/classifications")) {
-        return Promise.resolve(jsonResponse(classificationGroups()));
+        if (init?.method === "POST") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+          const body = JSON.parse(String(init?.body));
+          classificationRequests.push(body);
+          customClassification = {
+            ...body,
+            code: String(body.code).toUpperCase(),
+            id: `asset_classification_${String(body.code).toLowerCase()}`,
+            is_active: true,
+            system_protected: false
+          };
+          return Promise.resolve(jsonResponse(customClassification));
+        }
+        return Promise.resolve(jsonResponse(classificationGroups(customClassification ? [customClassification] : [])));
       }
       if (url.includes("/api/v1/modules/assets/assets") && !url.includes("/asset_qa_1") && !url.includes("/asset_qa_2")) {
         if (init?.method === "POST") {
@@ -564,12 +604,20 @@ describe("Functional Assets Library journey", () => {
     ).toBe(true);
 
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset classification type"), "asset_category");
+    await userEvent.clear(screen.getByLabelText("Asset classification code"));
+    await userEvent.type(screen.getByLabelText("Asset classification code"), "PLAYBOOK");
+    await userEvent.clear(screen.getByLabelText("Asset classification name"));
+    await userEvent.type(screen.getByLabelText("Asset classification name"), "Playbook");
+    await userEvent.click(screen.getByRole("button", { name: "Create classification" }));
+    await screen.findByText("Classification PLAYBOOK created.");
+    await screen.findByRole("option", { name: "Playbook" });
+    await userEvent.selectOptions(screen.getByLabelText("Asset category"), "PLAYBOOK");
     await userEvent.clear(screen.getByLabelText("Asset name"));
     await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Rate Table Notes");
     await userEvent.clear(screen.getByLabelText("Asset description"));
     await userEvent.type(screen.getByLabelText("Asset description"), "Client-safe rate table support asset.");
     await userEvent.selectOptions(screen.getByLabelText("Asset type"), "SPEC");
-    await userEvent.selectOptions(screen.getByLabelText("Asset category"), "INTEGRATION");
     await userEvent.selectOptions(screen.getByLabelText("Asset visibility"), "PROJECT");
     await userEvent.selectOptions(screen.getByLabelText("Asset scope"), "MODULE");
     await userEvent.selectOptions(screen.getByLabelText("Asset sensitivity"), "INTERNAL");
@@ -695,7 +743,7 @@ describe("Functional Assets Library journey", () => {
     expect(createRequests).toEqual([
       {
         asset_type: "SPEC",
-        category: "INTEGRATION",
+        category: "PLAYBOOK",
         description: "Client-safe rate table support asset.",
         macro_object_code: "RATE_GEO",
         module_id: "rates",
@@ -708,6 +756,15 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
+    expect(classificationRequests).toEqual([
+      {
+        classification_type: "asset_category",
+        code: "PLAYBOOK",
+        description: "Client-safe reusable implementation playbook.",
+        name: "Playbook",
+        sort_order: 90
+      }
+    ]);
     expect(invalidLinkRequests).toEqual([
       { link_type: "OTM_TABLE", target_id: "NOT_A_REAL_OTM_TABLE", target_label: "Invalid OTM table" }
     ]);
@@ -717,7 +774,7 @@ describe("Functional Assets Library journey", () => {
     expect(updateRequests).toEqual([
       {
         asset_type: "SPEC",
-        category: "INTEGRATION",
+        category: "PLAYBOOK",
         description: "Updated client-safe rate table support asset.",
         macro_object_code: "RATE_GEO",
         module_id: "rates",

@@ -870,6 +870,19 @@
   padding: 8px 10px;
 }
 
+.assets-classification-authoring {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+}
+
+.assets-classification-authoring h3 {
+  font-size: 13px;
+  margin: 0;
+}
+
 .master-data-author-grid {
   display: grid;
   gap: 12px;

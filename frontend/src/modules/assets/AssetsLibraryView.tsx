@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   archiveAsset,
   createAsset,
+  createAssetClassification,
   createAssetLink,
   downloadCurrentAssetVersion,
   updateAsset,
@@ -72,6 +73,23 @@ const defaultAssetDraft = {
   sensitivity: "INTERNAL",
   tags: "SYNTHETIC,MVP0",
   visibility: "PROJECT"
+};
+
+const classificationTypeOptions = [
+  { code: "asset_type", name: "Asset type", targetField: "asset_type" },
+  { code: "asset_category", name: "Asset category", targetField: "category" },
+  { code: "asset_visibility", name: "Asset visibility", targetField: "visibility" },
+  { code: "asset_scope", name: "Asset scope", targetField: "scope_type" },
+  { code: "asset_sensitivity", name: "Asset sensitivity", targetField: "sensitivity" },
+  { code: "asset_link_type", name: "Asset link type", targetField: null }
+] as const;
+
+const defaultClassificationDraft = {
+  classification_type: "asset_category",
+  code: "PLAYBOOK",
+  description: "Client-safe reusable implementation playbook.",
+  name: "Playbook",
+  sort_order: "90"
 };
 
 const emptyEvidenceTargetFilters: EvidenceHubFilters = {
@@ -176,6 +194,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
   const [assetDraft, setAssetDraft] = useState(defaultAssetDraft);
+  const [classificationDraft, setClassificationDraft] = useState(defaultClassificationDraft);
   const [linkType, setLinkType] = useState("MODULE");
   const [linkTargetId, setLinkTargetId] = useState("integration_mapping");
   const [linkTargetLabel, setLinkTargetLabel] = useState("Integration Mapping Studio");
@@ -294,6 +313,8 @@ export function AssetsLibraryView({ token }: { token: string }) {
 
   useEffect(() => {
     if (selectedAsset) {
+      // Draft mirrors the backend-selected asset so updates never use stale row metadata.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAssetDraft(assetDraftFromAsset(selectedAsset));
     }
   }, [selectedAsset]);
@@ -335,6 +356,30 @@ export function AssetsLibraryView({ token }: { token: string }) {
     );
   };
 
+  const handleCreateClassification = () => {
+    void runAction(
+      async () => {
+        const created = await createAssetClassification(token, {
+          classification_type: classificationDraft.classification_type,
+          code: classificationDraft.code.trim(),
+          name: classificationDraft.name.trim(),
+          description: classificationDraft.description.trim(),
+          sort_order: Number(classificationDraft.sort_order) || 0
+        });
+        await queryClient.invalidateQueries({ queryKey: ["modules", "assets", "classifications"] });
+        const option = classificationTypeOptions.find((item) => item.code === created.classification_type);
+        if (option?.targetField) {
+          setAssetDraft((current) => ({ ...current, [option.targetField]: created.code }));
+        }
+        if (created.classification_type === "asset_link_type") {
+          setLinkType(created.code);
+        }
+        return created;
+      },
+      (result) => `Classification ${result.code} created.`
+    );
+  };
+
   const handleUpdateAsset = () => {
     if (!effectiveAssetId || updateDisabled) return;
     void runAction(
@@ -356,7 +401,8 @@ export function AssetsLibraryView({ token }: { token: string }) {
         const version = await uploadAssetVersion(token, effectiveAssetId, selectedVersionFile);
         setOperationAsset((current) => {
           if (current?.id !== effectiveAssetId) return current;
-          const { available_actions, ...rest } = current;
+          const rest = { ...current };
+          delete rest.available_actions;
           return { ...rest, current_version_id: version.id };
         });
         setSelectedVersionFile(null);
@@ -646,6 +692,73 @@ export function AssetsLibraryView({ token }: { token: string }) {
             title="Create asset"
           >
             <div className="master-data-action-bar">
+              <div className="assets-classification-authoring" aria-label="Asset classification authoring">
+                <h3>Classification authoring</h3>
+                <label>
+                  Classification type
+                  <select
+                    aria-label="Asset classification type"
+                    onChange={(event) =>
+                      setClassificationDraft((current) => ({ ...current, classification_type: event.target.value }))
+                    }
+                    value={classificationDraft.classification_type}
+                  >
+                    {classificationTypeOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Classification code
+                  <input
+                    aria-label="Asset classification code"
+                    onChange={(event) =>
+                      setClassificationDraft((current) => ({ ...current, code: event.target.value.toUpperCase() }))
+                    }
+                    value={classificationDraft.code}
+                  />
+                </label>
+                <label>
+                  Classification name
+                  <input
+                    aria-label="Asset classification name"
+                    onChange={(event) => setClassificationDraft((current) => ({ ...current, name: event.target.value }))}
+                    value={classificationDraft.name}
+                  />
+                </label>
+                <label>
+                  Classification description
+                  <input
+                    aria-label="Asset classification description"
+                    onChange={(event) =>
+                      setClassificationDraft((current) => ({ ...current, description: event.target.value }))
+                    }
+                    value={classificationDraft.description}
+                  />
+                </label>
+                <label>
+                  Classification sort order
+                  <input
+                    aria-label="Asset classification sort order"
+                    onChange={(event) =>
+                      setClassificationDraft((current) => ({ ...current, sort_order: event.target.value }))
+                    }
+                    type="number"
+                    value={classificationDraft.sort_order}
+                  />
+                </label>
+                <Button
+                  disabled={
+                    isMutating || !classificationDraft.code.trim() || !classificationDraft.name.trim()
+                  }
+                  onClick={handleCreateClassification}
+                  variant="secondary"
+                >
+                  Create classification
+                </Button>
+              </div>
               <label>
                 Asset name
                 <input
