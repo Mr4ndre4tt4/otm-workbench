@@ -253,6 +253,7 @@ async function run() {
     await outputPanel.getByRole("button", { name: "Generate checklist readiness" }).click();
     await page.getByText(/^Cutover checklist readiness is .+\.$/).waitFor();
     await page.getByLabel("Cutover checklist readiness handoff").waitFor();
+    await page.getByText("Cutover checklist readiness blockers").waitFor();
     await page.getByLabel("Template filter").selectOption("REGIONS_BASIC");
     await page.getByLabel("Batch status filter").selectOption("EXPORTED");
     await page.getByLabel("Batch page size").selectOption("10");

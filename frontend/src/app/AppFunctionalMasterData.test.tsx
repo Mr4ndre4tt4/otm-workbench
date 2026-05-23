@@ -652,6 +652,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Generate checklist readiness" }));
     await screen.findByText("Cutover checklist readiness is REVIEW.");
     expect(screen.getByLabelText("Cutover checklist readiness handoff")).toHaveTextContent("1 blocker");
+    expect(screen.getByText("Cutover checklist readiness blockers")).toBeInTheDocument();
+    expect(screen.getByText("ITEM_PENDING, PACKAGE_REGISTERED")).toBeInTheDocument();
+    expect(screen.getByText("Checklist item is still pending.")).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
     await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
     await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");

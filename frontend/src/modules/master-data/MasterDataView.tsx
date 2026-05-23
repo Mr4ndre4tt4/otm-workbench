@@ -1455,21 +1455,32 @@ export function MasterDataView({ token }: { token: string }) {
               </Button>
             </div>
             {cutoverChecklistReadiness ? (
-              <DetailList
-                ariaLabel="Cutover checklist readiness handoff"
-                items={[
-                  {
-                    id: cutoverChecklistReadiness.checklist_id,
-                    meta: [
-                      `${cutoverChecklistReadiness.summary.item_count} item(s)`,
-                      `${cutoverChecklistReadiness.summary.blocker_count} blocker(s)`,
-                      cutoverChecklistReadiness.evidence_id ?? "No evidence"
-                    ],
-                    status: cutoverChecklistReadiness.status,
-                    title: cutoverChecklistReadiness.summary.ready ? "READY" : "REVIEW"
-                  }
-                ]}
-              />
+              <>
+                <DetailList
+                  ariaLabel="Cutover checklist readiness handoff"
+                  items={[
+                    {
+                      id: cutoverChecklistReadiness.checklist_id,
+                      meta: [
+                        `${cutoverChecklistReadiness.summary.item_count} item(s)`,
+                        `${cutoverChecklistReadiness.summary.blocker_count} blocker(s)`,
+                        cutoverChecklistReadiness.evidence_id ?? "No evidence"
+                      ],
+                      status: cutoverChecklistReadiness.status,
+                      title: cutoverChecklistReadiness.summary.ready ? "READY" : "REVIEW"
+                    }
+                  ]}
+                />
+                <BlockerPanel
+                  emptyText="No readiness blockers returned by the backend."
+                  items={cutoverChecklistReadiness.blockers.map((blocker, index) => ({
+                    codes: [blocker.code, blocker.item_code ?? blocker.table_name ?? ""].filter(Boolean),
+                    id: `${blocker.code}-${index}`,
+                    message: blocker.message
+                  }))}
+                  title="Cutover checklist readiness blockers"
+                />
+              </>
             ) : null}
             <DetailList
               ariaLabel="Master Data output record preview"

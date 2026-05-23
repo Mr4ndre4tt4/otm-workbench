@@ -32,6 +32,7 @@ select template
 -> register exported package for Load Plan
 -> create cutover checklist from registered package
 -> generate cutover checklist readiness
+-> inspect backend-returned readiness blockers
 -> filter durable batch history by template/status/page size
 -> recover batch/artifact state after route navigation
 ```
@@ -152,7 +153,7 @@ Delivered hardening:
 - export-csv-package retry/double-click returns existing artifact/manifest/evidence
 - Load Plan registration is backend-idempotent and returns existing package on retry
 - cutover checklist creation is delegated to the Load Plan backend contract
-- cutover checklist readiness is delegated to the Load Plan backend contract
+- cutover checklist readiness and blockers are delegated to the Load Plan backend contract
 - invalid workbook upload surfaces backend details and allows replacing the file
 - route leave/return validates durable backend batch and artifact visibility
 - child table removal clears dependent authoring state before re-add

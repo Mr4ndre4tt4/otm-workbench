@@ -210,7 +210,8 @@ The third Load Plan handoff slice lets Data Factory generate checklist readiness
 from the created checklist. The Output stage calls
 `POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/readiness`
 and renders the backend status, ready/review result, blocker count, item count,
-and evidence id. Data Factory does not decide readiness or edit item evidence.
+evidence id, and backend-returned readiness blockers. Data Factory does not
+decide readiness or edit item evidence.
 
 The first backend-owned preview slice adds read-only output and CSV previews to
 the Output stage. `GET /output-records` returns generated OTM target-table
