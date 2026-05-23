@@ -10,6 +10,10 @@ from sqlalchemy import text
 from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest
 
 
+def action_by_key(actions, key):
+    return next(action for action in actions if action["key"] == key)
+
+
 def test_master_data_health(client, admin_header):
     response = client.get("/api/v1/modules/master-data/health", headers=admin_header)
 
@@ -949,6 +953,73 @@ def test_master_data_template_batch_upload_parses_workbook(client, admin_header,
     assert row.file_name == "regions_basic_upload.xlsx"
     assert row.row_count == 2
     assert row.issue_count == 0
+
+
+def test_master_data_batch_detail_exposes_backend_owned_available_actions(client, admin_header):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_ACTION", "REGION_ACTION", "Synthetic Action Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_ACTION", "SYN.LOCATION_ACTION"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_actions_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+
+    parsed_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(parsed_actions, "validate_relationships")["disabled"] is False
+    assert action_by_key(parsed_actions, "map_records")["disabled"] is True
+    assert action_by_key(parsed_actions, "map_records")["disabled_reason"] == "RELATIONSHIP_VALIDATION_REQUIRED"
+    assert action_by_key(parsed_actions, "register_load_plan_package")["disabled_reason"] == "EXPORT_REQUIRED"
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships", headers=admin_header)
+    validated_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(validated_actions, "validate_relationships")["disabled"] is True
+    assert action_by_key(validated_actions, "map_records")["disabled"] is False
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    mapped_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(mapped_actions, "build_output")["disabled"] is False
+    assert action_by_key(mapped_actions, "build_csv")["disabled"] is True
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    output_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(output_actions, "build_csv")["disabled"] is False
+    assert action_by_key(output_actions, "export_csv_package")["disabled"] is True
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+    csv_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(csv_actions, "export_csv_package")["disabled"] is False
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package", headers=admin_header)
+    exported_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
+        "available_actions"
+    ]
+    assert action_by_key(exported_actions, "register_load_plan_package")["disabled"] is False
 
 
 def test_master_data_template_batch_upload_skips_generated_metadata_rows(

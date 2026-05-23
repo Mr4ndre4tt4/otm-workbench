@@ -28,6 +28,7 @@ from otm_workbench.modules.master_data.templates import (
     create_master_data_template_version,
     map_master_data_batch_to_canonical_records,
     export_master_data_csv_package,
+    master_data_template_definition,
     publish_master_data_template,
     parse_master_data_template_workbook,
     seed_master_data_templates,
@@ -73,6 +74,116 @@ def _json_loads(value: str, fallback):
         return fallback
 
 
+def master_data_batch_action(
+    *,
+    batch_id: str,
+    key: str,
+    label: str,
+    path_suffix: str,
+    variant: str,
+    icon_key: str,
+    disabled: bool,
+    disabled_reason: str | None,
+    result_hint: str,
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": "POST",
+        "href": f"/api/v1/modules/master-data/batches/{batch_id}{path_suffix}",
+        "variant": variant,
+        "icon_key": icon_key,
+        "requires_confirmation": False,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "permission": f"master_data.batch.{key}",
+        "result_hint": result_hint,
+    }
+
+
+def build_master_data_batch_available_actions(db: Session, batch: MasterDataBatch) -> list[dict[str, object]]:
+    template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == batch.template_code).first()
+    has_relationship_rules = False
+    if template is not None:
+        has_relationship_rules = bool(master_data_template_definition(template).get("relationship_rules", []))
+    can_validate = batch.status == "PARSED"
+    can_map = batch.status == "RELATIONSHIP_VALIDATED" or (batch.status == "PARSED" and not has_relationship_rules)
+    can_build_output = batch.status == "MAPPED"
+    can_build_csv = batch.status in {"OUTPUT_BUILT", "CSV_BUILT"}
+    can_export = batch.status in {"CSV_BUILT", "EXPORTED"}
+    can_register = batch.status == "EXPORTED"
+    return [
+        master_data_batch_action(
+            batch_id=batch.id,
+            key="validate_relationships",
+            label="Validate relationships",
+            path_suffix="/validate-relationships",
+            variant="primary",
+            icon_key="check-circle",
+            disabled=not can_validate,
+            disabled_reason=None if can_validate else "PARSED_STATUS_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        master_data_batch_action(
+            batch_id=batch.id,
+            key="map_records",
+            label="Map records",
+            path_suffix="/map",
+            variant="primary",
+            icon_key="map",
+            disabled=not can_map,
+            disabled_reason=None if can_map else "RELATIONSHIP_VALIDATION_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        master_data_batch_action(
+            batch_id=batch.id,
+            key="build_output",
+            label="Build output",
+            path_suffix="/build-output",
+            variant="primary",
+            icon_key="database",
+            disabled=not can_build_output,
+            disabled_reason=None if can_build_output else "MAPPED_STATUS_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        master_data_batch_action(
+            batch_id=batch.id,
+            key="build_csv",
+            label="Build CSV",
+            path_suffix="/build-csv",
+            variant="secondary",
+            icon_key="file-text",
+            disabled=not can_build_csv,
+            disabled_reason=None if can_build_csv else "OUTPUT_BUILT_STATUS_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        master_data_batch_action(
+            batch_id=batch.id,
+            key="export_csv_package",
+            label="Export package",
+            path_suffix="/export-csv-package",
+            variant="secondary",
+            icon_key="package",
+            disabled=not can_export,
+            disabled_reason=None if can_export else "CSV_BUILT_STATUS_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        {
+            "key": "register_load_plan_package",
+            "label": "Register for Load Plan",
+            "method": "POST",
+            "href": f"/api/v1/modules/load-plan/packages/from-master-data/{batch.id}",
+            "variant": "secondary",
+            "icon_key": "send",
+            "requires_confirmation": False,
+            "disabled": not can_register,
+            "disabled_reason": None if can_register else "EXPORT_REQUIRED",
+            "permission": "load_plan.package.create_from_master_data",
+            "result_hint": "refresh_object",
+        },
+    ]
+
+
 def serialize_master_data_batch(db: Session, batch: MasterDataBatch) -> dict[str, object]:
     csv_file_count = (
         db.query(MasterDataCsvFile)
@@ -91,6 +202,7 @@ def serialize_master_data_batch(db: Session, batch: MasterDataBatch) -> dict[str
         "sheet_summaries": _json_loads(batch.sheet_summaries_json, []),
         "issues": _json_loads(batch.issues_json, []),
         "csv_file_count": csv_file_count,
+        "available_actions": build_master_data_batch_available_actions(db, batch),
         "created_at": batch.created_at.isoformat() if batch.created_at else None,
         "updated_at": batch.updated_at.isoformat() if batch.updated_at else None,
     }

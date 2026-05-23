@@ -239,6 +239,7 @@ describe("Functional Master Data journey", () => {
     const outputRequests: unknown[] = [];
     const csvRequests: unknown[] = [];
     const exportRequests: unknown[] = [];
+    const batchDetailRequests: unknown[] = [];
     const loadPlanRegistrationRequests: unknown[] = [];
     const cutoverChecklistRequests: unknown[] = [];
     const cutoverChecklistReadinessRequests: unknown[] = [];
@@ -434,6 +435,28 @@ describe("Functional Master Data journey", () => {
             manifest_id: "manifest_csv_package",
             status: "EXPORTED",
             summary: { file_count: 2 }
+          })
+        );
+      }
+      if (parsedUrl.pathname === "/api/v1/modules/master-data/batches/batch_1") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        batchDetailRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            available_actions: [
+              { disabled: false, disabled_reason: null, href: "", icon_key: "check-circle", key: "validate_relationships", label: "Validate relationships", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "primary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "map", key: "map_records", label: "Map records", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "primary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "database", key: "build_output", label: "Build output", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "primary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "file-text", key: "build_csv", label: "Build CSV", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "package", key: "export_csv_package", label: "Export package", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+              { disabled: false, disabled_reason: null, href: "", icon_key: "send", key: "register_load_plan_package", label: "Register for Load Plan", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
+            ],
+            batch_id: "batch_1",
+            file_name: "regions_basic_upload.xlsx",
+            row_count: 2,
+            sheet_count: 2,
+            status: "EXPORTED",
+            template_code: "REGIONS_BASIC"
           })
         );
       }
@@ -702,6 +725,7 @@ describe("Functional Master Data journey", () => {
     expect(outputRequests).toEqual([{ method: "POST" }]);
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
+    expect(batchDetailRequests.length).toBeGreaterThanOrEqual(5);
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
     expect(cutoverChecklistRequests).toEqual([{ method: "POST" }]);
     expect(cutoverChecklistReadinessRequests).toEqual([{ method: "POST" }]);

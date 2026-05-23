@@ -237,6 +237,11 @@ The summary contract intentionally ignores pagination; `page` and `page_size`
 belong to the durable batch list only, while summary metrics cover the full
 filtered result set.
 
+Master Data batches now expose backend-owned `available_actions` for the staged
+workflow: relationship validation, mapping, output build, CSV build, package
+export, and Load Plan registration. The UI reads those disabled states instead
+of inferring action eligibility only from local status checks.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

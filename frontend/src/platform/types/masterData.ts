@@ -1,4 +1,5 @@
 import type { PageResponse } from "./shared";
+import type { AvailableAction } from "./shared";
 
 export type MasterDataTemplateField = {
   name: string;
@@ -79,6 +80,7 @@ export type MasterDataBatch = {
     row_count: number;
   }>;
   csv_file_count?: number;
+  available_actions?: AvailableAction[];
   summary?: Record<string, unknown>;
 };
 

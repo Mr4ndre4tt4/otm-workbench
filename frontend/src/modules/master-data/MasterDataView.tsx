@@ -12,6 +12,7 @@ import {
   exportCoordinateQualityBatch,
   exportMasterDataCsvPackage,
   generateCutoverChecklistReadiness,
+  getMasterDataBatch,
   mapMasterDataBatch,
   previewCoordinateQuality,
   publishMasterDataTemplate,
@@ -79,6 +80,11 @@ function masterDataErrorMessage(error: unknown, fallback: string) {
     return detail ? `${error.message} ${detail}` : error.message;
   }
   return error instanceof Error ? error.message : fallback;
+}
+
+function masterDataActionDisabled(batch: MasterDataBatch | null, key: string, fallbackDisabled: boolean) {
+  const action = batch?.available_actions?.find((item) => item.key === key);
+  return action ? action.disabled : fallbackDisabled;
 }
 
 const masterDataWorkflowStages = [
@@ -713,6 +719,8 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await validateMasterDataRelationships(token, activeBatch.batch_id);
         setRelationshipValidation(result);
+        setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
+        await batches.refetch();
         return result;
       },
       (result) => `Relationship validation is ${result.valid ? "VALID" : result.status}.`
@@ -725,6 +733,8 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await mapMasterDataBatch(token, activeBatch.batch_id);
         setMappingResult(result);
+        setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
+        await batches.refetch();
         return result;
       },
       (result) => `Batch mapping is ${result.status}.`
@@ -737,6 +747,8 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await buildMasterDataOutput(token, activeBatch.batch_id);
         setOutputResult(result);
+        setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
+        await batches.refetch();
         await outputRecords.refetch();
         return result;
       },
@@ -750,6 +762,8 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await buildMasterDataCsv(token, activeBatch.batch_id);
         setCsvResult(result);
+        setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
+        await batches.refetch();
         await csvFiles.refetch();
         return result;
       },
@@ -763,6 +777,7 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await exportMasterDataCsvPackage(token, activeBatch.batch_id);
         setExportResult(result);
+        setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
         setLoadPlanPackage(null);
         setCutoverChecklist(null);
         setCutoverChecklistReadiness(null);
@@ -1290,7 +1305,11 @@ export function MasterDataView({ token }: { token: string }) {
             title="Validate"
           >
             <div className="master-data-action-bar">
-              <Button disabled={!activeBatch || isMutating} onClick={handleValidateRelationships} variant="primary">
+              <Button
+                disabled={isMutating || masterDataActionDisabled(activeBatch, "validate_relationships", !activeBatch)}
+                onClick={handleValidateRelationships}
+                variant="primary"
+              >
                 Validate relationships
               </Button>
             </div>
@@ -1330,7 +1349,11 @@ export function MasterDataView({ token }: { token: string }) {
             title="Map"
           >
             <div className="master-data-action-bar">
-              <Button disabled={!activeBatch || isMutating} onClick={handleMapBatch} variant="primary">
+              <Button
+                disabled={isMutating || masterDataActionDisabled(activeBatch, "map_records", !activeBatch)}
+                onClick={handleMapBatch}
+                variant="primary"
+              >
                 Map records
               </Button>
             </div>
@@ -1359,16 +1382,35 @@ export function MasterDataView({ token }: { token: string }) {
             title="Output"
           >
             <div className="master-data-action-bar master-data-output-actions">
-              <Button disabled={!activeBatch || isMutating} onClick={handleBuildOutput} variant="primary">
+              <Button
+                disabled={isMutating || masterDataActionDisabled(activeBatch, "build_output", !activeBatch)}
+                onClick={handleBuildOutput}
+                variant="primary"
+              >
                 Build output
               </Button>
-              <Button disabled={!activeBatch || isMutating} onClick={handleBuildCsv} variant="secondary">
+              <Button
+                disabled={isMutating || masterDataActionDisabled(activeBatch, "build_csv", !activeBatch)}
+                onClick={handleBuildCsv}
+                variant="secondary"
+              >
                 Build CSV
               </Button>
-              <Button disabled={!activeBatch || isMutating} onClick={handleExportCsvPackage} variant="secondary">
+              <Button
+                disabled={isMutating || masterDataActionDisabled(activeBatch, "export_csv_package", !activeBatch)}
+                onClick={handleExportCsvPackage}
+                variant="secondary"
+              >
                 Export package
               </Button>
-              <Button disabled={!canRegisterLoadPlanPackage || isMutating} onClick={handleRegisterLoadPlanPackage} variant="secondary">
+              <Button
+                disabled={
+                  isMutating ||
+                  masterDataActionDisabled(activeBatch, "register_load_plan_package", !canRegisterLoadPlanPackage)
+                }
+                onClick={handleRegisterLoadPlanPackage}
+                variant="secondary"
+              >
                 Register for Load Plan
               </Button>
             </div>

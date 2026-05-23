@@ -68,6 +68,10 @@ export function useMasterDataBatches(token: string | null, filters: MasterDataBa
   });
 }
 
+export function getMasterDataBatch(token: string, batchId: string) {
+  return apiGet<MasterDataBatch>(`/api/v1/modules/master-data/batches/${batchId}`, { token });
+}
+
 export function useMasterDataBatchSummary(token: string | null, filters: MasterDataBatchFilters = {}) {
   const query = masterDataBatchQuery(filters, false).replace(
     "/api/v1/modules/master-data/batches",
