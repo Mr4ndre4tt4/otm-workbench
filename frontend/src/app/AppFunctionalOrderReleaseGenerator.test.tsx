@@ -197,6 +197,8 @@ describe("Functional Order Release Generator journey", () => {
           const body = JSON.parse(String(init?.body));
           createBatchRequests.push({
             file_name: body.file_name,
+            first_release_gid: body.rows[0].release_gid,
+            first_weight: body.rows[0].weight,
             row_count: body.rows.length,
             template_id: body.template_id
           });
@@ -299,6 +301,10 @@ describe("Functional Order Release Generator journey", () => {
     expect(screen.getByLabelText("Order Release templates")).toHaveTextContent("SYN_TL_ORDER_RELEASE");
 
     await userEvent.click(screen.getByRole("button", { name: /2Batch/ }));
+    expect(screen.getByLabelText("Order Release row editor")).toHaveTextContent("release_gid");
+    expect(screen.queryByLabelText("Batch rows JSON")).not.toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText("Row 1 weight"));
+    await userEvent.type(screen.getByLabelText("Row 1 weight"), "125");
     await userEvent.click(screen.getByRole("button", { name: "Create batch" }));
     await screen.findByText("Order Release batch or_batch_1 created.");
     expect(screen.getByLabelText("Active Order Release batch")).toHaveTextContent("VALID");
@@ -325,7 +331,15 @@ describe("Functional Order Release Generator journey", () => {
     await screen.findByRole("heading", { name: "Order Release Generator" });
     expect(await screen.findByLabelText("Recent Order Release batches")).toHaveTextContent("or_batch_1");
 
-    expect(createBatchRequests).toEqual([{ file_name: "synthetic_order_release_rows.json", row_count: 3, template_id: "template_or_tl" }]);
+    expect(createBatchRequests).toEqual([
+      {
+        file_name: "synthetic_order_release_rows.json",
+        first_release_gid: "OTM1.OR_SYN_001",
+        first_weight: "125",
+        row_count: 3,
+        template_id: "template_or_tl"
+      }
+    ]);
     expect(previewRequests).toEqual([{ method: "POST" }]);
     expect(artifactRequests).toEqual([{ method: "POST" }]);
     expect(downloadRequests).toEqual([{ method: "GET" }]);

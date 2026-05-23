@@ -1,6 +1,6 @@
 # GUI Order Release Generator View
 
-**Status:** first functional slice implemented
+**Status:** first functional slice implemented; first row-authoring hardening slice delivered
 **Branch:** `codex/gui-foundation-integration-pr-plan`
 
 ## Objective
@@ -45,9 +45,12 @@ The screen uses shared components:
 ```
 
 The first selected template defaults to the first backend item. The batch stage
-creates a client-safe synthetic batch from JSON rows. The preview stage asks the
-backend to build XML. The artifact stage asks the backend to generate the DB XML
-artifact and evidence, then lists generated artifacts with a guarded backend
+creates a client-safe synthetic batch from template-guided row fields instead of
+raw JSON editing. The row editor is generated from backend template
+`required_columns`, `optional_columns`, and `defaults`, then submits the same
+structured `rows` payload to the backend batch contract. The preview stage asks
+the backend to build XML. The artifact stage asks the backend to generate the DB
+XML artifact and evidence, then lists generated artifacts with a guarded backend
 download action. The submit stage calls the guarded MVP0 endpoint and renders
 the backend reason/capability required for future direct OTM submit.
 
@@ -68,10 +71,20 @@ and returning can recover the created batch without frontend-only persistence.
   contracts.
 ```
 
+Delivered hardening:
+
+```text
+- batch row authoring is now field-based and template-guided;
+- raw JSON row editing was removed from the GUI;
+- add/remove row controls keep batch input in backend contract shape;
+- frontend functional QA verifies edited field payloads before batch creation.
+```
+
 Still open:
 
 ```text
-- richer row/template authoring UX
+- richer reusable template authoring/versioning UX
+- deeper row validation/recovery UX for invalid batches
 - governed direct OTM submit capability after MVP0
 ```
 
@@ -86,4 +99,13 @@ npm run qa:functional:order-release:browser
 npm run lint
 npm run build
 python -m pytest tests/test_order_release_generator_batches.py
+```
+
+Recent OTM-125 validation:
+
+```text
+npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx
+npm run lint
+npm run build
+python -m pytest tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
 ```

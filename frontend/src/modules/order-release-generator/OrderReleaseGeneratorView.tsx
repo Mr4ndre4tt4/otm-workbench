@@ -89,6 +89,8 @@ const syntheticOrderReleaseRows = [
   }
 ];
 
+type DraftOrderReleaseRow = Record<string, string>;
+
 function batchMeta(batch: OrderReleaseBatch) {
   return [
     batch.file_name,
@@ -98,12 +100,45 @@ function batchMeta(batch: OrderReleaseBatch) {
   ];
 }
 
-function parseRows(text: string) {
-  const parsed = JSON.parse(text) as unknown;
-  if (!Array.isArray(parsed) || parsed.some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
-    throw new Error("Batch rows must be a JSON array of objects.");
+function normalizeDraftRows(rows: Array<Record<string, unknown>>): DraftOrderReleaseRow[] {
+  return rows.map((row) =>
+    Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value ?? "")]))
+  );
+}
+
+function templateColumns(template: OrderReleaseTemplate | null) {
+  if (!template) return [];
+  return Array.from(new Set([...template.required_columns, ...template.optional_columns]));
+}
+
+function emptyDraftRow(template: OrderReleaseTemplate | null): DraftOrderReleaseRow {
+  const row: DraftOrderReleaseRow = {};
+  for (const column of templateColumns(template)) {
+    row[column] = String(template?.defaults[column] ?? "");
   }
-  return parsed as Array<Record<string, unknown>>;
+  return row;
+}
+
+function draftRowsForTemplate(template: OrderReleaseTemplate | null, existingRows: DraftOrderReleaseRow[]) {
+  const columns = templateColumns(template);
+  if (!template || !columns.length) return existingRows;
+  return existingRows.map((row) => {
+    const next = emptyDraftRow(template);
+    for (const column of columns) {
+      next[column] = row[column] ?? next[column] ?? "";
+    }
+    return next;
+  });
+}
+
+function serializeDraftRows(rows: DraftOrderReleaseRow[]) {
+  return rows.map((row) =>
+    Object.fromEntries(
+      Object.entries(row)
+        .map(([key, value]) => [key, value.trim()])
+        .filter(([, value]) => value)
+    )
+  );
 }
 
 export function OrderReleaseGeneratorView({ token }: { token: string }) {
@@ -114,7 +149,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<OrderReleaseWorkflowStage>("templates");
   const [fileName, setFileName] = useState("synthetic_order_release_rows.json");
-  const [rowsJson, setRowsJson] = useState(JSON.stringify(syntheticOrderReleaseRows, null, 2));
+  const [draftRows, setDraftRows] = useState<DraftOrderReleaseRow[]>(normalizeDraftRows(syntheticOrderReleaseRows));
   const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
   const [xmlPreview, setXmlPreview] = useState<OrderReleaseXmlPreview | null>(null);
   const [xmlArtifact, setXmlArtifact] = useState<OrderReleaseXmlArtifact | null>(null);
@@ -168,7 +203,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
     if (!effectiveTemplateId) return;
     void runAction(
       async () => {
-        const rows = parseRows(rowsJson);
+        const rows = serializeDraftRows(draftRows);
         const result = await createOrderReleaseBatch(token, {
           template_id: effectiveTemplateId,
           file_name: fileName.trim() || "synthetic_order_release_rows.json",
@@ -187,6 +222,26 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
       },
       (result) => `Order Release batch ${result.id} created.`
     );
+  };
+
+  const handleSelectTemplate = (templateId: string) => {
+    const nextTemplate = templateItems.find((item) => item.id === templateId) ?? null;
+    setSelectedTemplateId(templateId);
+    setDraftRows((currentRows) => draftRowsForTemplate(nextTemplate, currentRows));
+  };
+
+  const handleDraftRowChange = (rowIndex: number, column: string, value: string) => {
+    setDraftRows((rows) =>
+      rows.map((row, index) => (index === rowIndex ? { ...row, [column]: value } : row))
+    );
+  };
+
+  const handleAddDraftRow = () => {
+    setDraftRows((rows) => [...rows, emptyDraftRow(selectedTemplate)]);
+  };
+
+  const handleRemoveDraftRow = (rowIndex: number) => {
+    setDraftRows((rows) => rows.filter((_, index) => index !== rowIndex));
   };
 
   const handlePreviewXml = () => {
@@ -376,7 +431,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
                 subtitle: item.name,
                 title: item.code
               }))}
-              onSelect={setSelectedTemplateId}
+              onSelect={handleSelectTemplate}
               selectedId={effectiveTemplateId}
             />
           </OperationalPanel>
@@ -400,17 +455,45 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
                 />
               </label>
             </div>
-            <label className="full-width-field">
-              Batch rows JSON
-              <textarea
-                aria-label="Batch rows JSON"
-                onChange={(event) => setRowsJson(event.target.value)}
-                rows={12}
-                value={rowsJson}
-              />
-            </label>
             <div className="master-data-action-bar">
-              <Button disabled={isMutating || !effectiveTemplateId} onClick={handleCreateBatch} variant="primary">
+              <Button disabled={!selectedTemplate} onClick={handleAddDraftRow} variant="secondary">
+                Add row
+              </Button>
+            </div>
+            <div aria-label="Order Release row editor" className="template-author-table-list">
+              {draftRows.map((row, rowIndex) => (
+                <section aria-label={`Order Release row ${rowIndex + 1}`} className="template-author-table-card" key={rowIndex}>
+                  <div className="template-author-table-card__header">
+                    <h4>Row {rowIndex + 1}</h4>
+                    <Button
+                      disabled={draftRows.length === 1}
+                      onClick={() => handleRemoveDraftRow(rowIndex)}
+                      variant="secondary"
+                    >
+                      Remove row
+                    </Button>
+                  </div>
+                  <div className="master-data-author-grid">
+                    {templateColumns(selectedTemplate).map((column) => {
+                      const required = Boolean(selectedTemplate?.required_columns.includes(column));
+                      return (
+                        <label key={`${rowIndex}-${column}`}>
+                          {column}
+                          <input
+                            aria-label={`Row ${rowIndex + 1} ${column}`}
+                            onChange={(event) => handleDraftRowChange(rowIndex, column, event.target.value)}
+                            required={required}
+                            value={row[column] ?? ""}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !effectiveTemplateId || !draftRows.length} onClick={handleCreateBatch} variant="primary">
                 Create batch
               </Button>
             </div>
