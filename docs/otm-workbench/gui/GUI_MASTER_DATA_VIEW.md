@@ -283,6 +283,10 @@ The durable batch-history list labels the selected row as the active batch. This
 keeps the inspected batch visible in the list itself instead of relying only on
 the selected-object side panel.
 
+The active batch row also carries `aria-current="true"` and a stable active row
+class. This gives browser QA and assistive technology a durable state marker for
+the selected batch, independent of button text.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

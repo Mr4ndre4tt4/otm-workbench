@@ -338,6 +338,10 @@
   padding-top: 8px;
 }
 
+.table-list-item-active {
+  border-top-color: var(--accent);
+}
+
 .table-list-main {
   grid-area: main;
   min-width: 0;

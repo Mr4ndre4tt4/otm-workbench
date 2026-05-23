@@ -1796,7 +1796,13 @@ export function MasterDataView({ token }: { token: string }) {
             {(batches.data?.items ?? []).length ? (
               <div className="table-list" aria-label="Durable Master Data batches">
                 {(batches.data?.items ?? []).map((batch) => (
-                  <div className="table-list-item" key={batch.batch_id}>
+                  <div
+                    aria-current={activeBatch?.batch_id === batch.batch_id ? "true" : undefined}
+                    className={
+                      activeBatch?.batch_id === batch.batch_id ? "table-list-item table-list-item-active" : "table-list-item"
+                    }
+                    key={batch.batch_id}
+                  >
                     <strong className="table-list-main">{batch.batch_id}</strong>
                     <div className="table-list-meta">
                       <span>{batch.template_code}</span>

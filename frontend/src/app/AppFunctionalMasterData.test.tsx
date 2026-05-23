@@ -790,11 +790,15 @@ describe("Functional Master Data journey", () => {
     await screen.findByText("Download started: master_data_regions_basic.zip.");
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
-    expect(screen.getByRole("button", { name: "Active batch batch_history" })).toBeDisabled();
+    const activeHistoryButton = screen.getByRole("button", { name: "Active batch batch_history" });
+    expect(activeHistoryButton).toBeDisabled();
+    expect(activeHistoryButton.closest(".table-list-item")).toHaveAttribute("aria-current", "true");
     await screen.findByText("001_REGION_HISTORY.csv");
     await userEvent.click(screen.getByRole("button", { name: "Use latest matching batch" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_1");
-    expect(screen.getByRole("button", { name: "Active batch batch_1" })).toBeDisabled();
+    const activeLatestButton = screen.getByRole("button", { name: "Active batch batch_1" });
+    expect(activeLatestButton).toBeDisabled();
+    expect(activeLatestButton.closest(".table-list-item")).toHaveAttribute("aria-current", "true");
     await screen.findByText("master_data_regions_basic.zip");
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
