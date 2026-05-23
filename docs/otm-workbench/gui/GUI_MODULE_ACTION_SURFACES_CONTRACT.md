@@ -121,7 +121,7 @@ extensions and must stay backend-metadata driven.
 | Load Plan | No executable actions surfaced | Build/export/checklist actions when backend exposes available_actions |
 | Assets Library | No executable actions surfaced | Asset upload/download/version actions through guarded contracts |
 | Evidence Hub | No executable actions surfaced | Evidence export/open actions through guarded contracts |
-| Master Data | Batch workflow actions exposed through backend `available_actions`; UI buttons respect backend disabled states | Template-level actions and richer shared action rendering |
+| Master Data | Batch and template workflow actions exposed through backend `available_actions`; UI buttons respect backend disabled states | Richer shared action rendering |
 | Order Release Generator | No executable actions surfaced | XML preview/generate/import actions when backend exposes available_actions |
 | Integration Mapping Studio | No executable actions surfaced | Preview/test mapping actions when backend exposes available_actions |
 

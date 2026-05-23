@@ -879,6 +879,83 @@ def publish_master_data_template(
     return payload
 
 
+def master_data_template_action(
+    *,
+    template_code: str,
+    key: str,
+    label: str,
+    path_suffix: str,
+    variant: str,
+    icon_key: str,
+    disabled: bool,
+    disabled_reason: str | None,
+    result_hint: str,
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": "POST",
+        "href": f"/api/v1/modules/master-data/templates/{template_code}{path_suffix}",
+        "variant": variant,
+        "icon_key": icon_key,
+        "requires_confirmation": False,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "permission": f"master_data.template.{key}",
+        "result_hint": result_hint,
+    }
+
+
+def build_master_data_template_available_actions(template: MasterDataTemplate) -> list[dict[str, object]]:
+    is_published = template.status == "PUBLISHED"
+    return [
+        master_data_template_action(
+            template_code=template.code,
+            key="validate_definition",
+            label="Validate definition",
+            path_suffix="/validate-definition",
+            variant="secondary",
+            icon_key="check-circle",
+            disabled=False,
+            disabled_reason=None,
+            result_hint="refresh_object",
+        ),
+        master_data_template_action(
+            template_code=template.code,
+            key="publish_template",
+            label="Publish template",
+            path_suffix="/publish",
+            variant="secondary",
+            icon_key="upload-cloud",
+            disabled=is_published,
+            disabled_reason="TEMPLATE_ALREADY_PUBLISHED" if is_published else None,
+            result_hint="refresh_object",
+        ),
+        master_data_template_action(
+            template_code=template.code,
+            key="build_workbook",
+            label="Build workbook",
+            path_suffix="/build-workbook",
+            variant="secondary",
+            icon_key="file-spreadsheet",
+            disabled=not is_published,
+            disabled_reason=None if is_published else "PUBLISHED_TEMPLATE_REQUIRED",
+            result_hint="refresh_object",
+        ),
+        master_data_template_action(
+            template_code=template.code,
+            key="create_version",
+            label="Create next version",
+            path_suffix="/versions",
+            variant="secondary",
+            icon_key="copy",
+            disabled=not is_published,
+            disabled_reason=None if is_published else "PUBLISHED_TEMPLATE_REQUIRED",
+            result_hint="refresh_object",
+        ),
+    ]
+
+
 def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, object]:
     return {
         "id": template.id,
@@ -891,6 +968,7 @@ def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, ob
         "target_tables": json.loads(template.target_tables_json),
         "sheets": json.loads(template.sheets_json),
         "definition": master_data_template_definition(template),
+        "available_actions": build_master_data_template_available_actions(template),
         "description": template.description,
         "created_at": template.created_at.isoformat() if template.created_at else None,
         "updated_at": template.updated_at.isoformat() if template.updated_at else None,

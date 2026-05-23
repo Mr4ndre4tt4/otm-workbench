@@ -243,6 +243,11 @@ output build, CSV build, package export, and Load Plan registration. The UI
 reads those disabled states instead of inferring action eligibility only from
 local status checks, and disabled reasons are passed through to button titles.
 
+Master Data template responses also expose backend-owned `available_actions` for
+definition validation, template publish, workbook generation, and version
+creation. The Author and Workbook stages read those states with frontend
+fallbacks for older payloads.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

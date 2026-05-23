@@ -109,6 +109,32 @@ def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_hea
     ]
 
 
+def test_master_data_template_detail_exposes_backend_owned_available_actions(client, admin_header):
+    draft_response = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_TEMPLATE_ACTIONS"),
+        headers=admin_header,
+    )
+    assert draft_response.status_code == 200
+    draft_actions = draft_response.json()["available_actions"]
+    assert action_by_key(draft_actions, "validate_definition")["disabled"] is False
+    assert action_by_key(draft_actions, "publish_template")["disabled"] is False
+    assert action_by_key(draft_actions, "build_workbook")["disabled"] is True
+    assert action_by_key(draft_actions, "build_workbook")["disabled_reason"] == "PUBLISHED_TEMPLATE_REQUIRED"
+    assert action_by_key(draft_actions, "create_version")["disabled_reason"] == "PUBLISHED_TEMPLATE_REQUIRED"
+
+    publish_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_TEMPLATE_ACTIONS/publish",
+        headers=admin_header,
+    )
+    assert publish_response.status_code == 200
+    published_actions = publish_response.json()["available_actions"]
+    assert action_by_key(published_actions, "publish_template")["disabled"] is True
+    assert action_by_key(published_actions, "publish_template")["disabled_reason"] == "TEMPLATE_ALREADY_PUBLISHED"
+    assert action_by_key(published_actions, "build_workbook")["disabled"] is False
+    assert action_by_key(published_actions, "create_version")["disabled"] is False
+
+
 def test_master_data_template_validation_uses_catalog_dictionary(client, admin_header):
     response = client.post("/api/v1/modules/master-data/templates/REGIONS_BASIC/validate", headers=admin_header)
 

@@ -26,6 +26,7 @@ export type MasterDataTemplate = {
   target_tables: string[];
   sheets: MasterDataTemplateSheet[];
   definition?: MasterDataTemplateDefinition;
+  available_actions?: AvailableAction[];
   description: string;
   created_at: string | null;
   updated_at: string | null;

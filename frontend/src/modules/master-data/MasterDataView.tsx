@@ -91,6 +91,19 @@ function masterDataActionReason(batch: MasterDataBatch | null, key: string) {
   return batch?.available_actions?.find((item) => item.key === key)?.disabled_reason ?? undefined;
 }
 
+function masterDataTemplateActionDisabled(
+  template: MasterDataTemplate | null | undefined,
+  key: string,
+  fallbackDisabled: boolean
+) {
+  const action = template?.available_actions?.find((item) => item.key === key);
+  return action ? action.disabled : fallbackDisabled;
+}
+
+function masterDataTemplateActionReason(template: MasterDataTemplate | null | undefined, key: string) {
+  return template?.available_actions?.find((item) => item.key === key)?.disabled_reason ?? undefined;
+}
+
 const masterDataWorkflowStages = [
   { id: "templates", title: "Templates", status: "1" },
   { id: "author", title: "Author", status: "2" },
@@ -1141,13 +1154,38 @@ export function MasterDataView({ token }: { token: string }) {
               <Button disabled={isMutating || !authorTemplate} onClick={handleUpdateDraft} variant="secondary">
                 Update draft
               </Button>
-              <Button disabled={isMutating || !authorTemplate} onClick={handleValidateDefinition} variant="secondary">
+              <Button
+                disabled={
+                  isMutating || masterDataTemplateActionDisabled(authorTemplate, "validate_definition", !authorTemplate)
+                }
+                onClick={handleValidateDefinition}
+                title={masterDataTemplateActionReason(authorTemplate, "validate_definition")}
+                variant="secondary"
+              >
                 Validate definition
               </Button>
-              <Button disabled={isMutating || !authorTemplate || authorValidation?.valid === false} onClick={handlePublishTemplate} variant="secondary">
+              <Button
+                disabled={
+                  isMutating ||
+                  masterDataTemplateActionDisabled(
+                    authorTemplate,
+                    "publish_template",
+                    !authorTemplate || authorValidation?.valid === false
+                  ) ||
+                  authorValidation?.valid === false
+                }
+                onClick={handlePublishTemplate}
+                title={masterDataTemplateActionReason(authorTemplate, "publish_template")}
+                variant="secondary"
+              >
                 Publish template
               </Button>
-              <Button disabled={isMutating || !authorTemplate} onClick={handleCreateVersion} variant="secondary">
+              <Button
+                disabled={isMutating || masterDataTemplateActionDisabled(authorTemplate, "create_version", !authorTemplate)}
+                onClick={handleCreateVersion}
+                title={masterDataTemplateActionReason(authorTemplate, "create_version")}
+                variant="secondary"
+              >
                 Create next version
               </Button>
             </div>
@@ -1207,7 +1245,15 @@ export function MasterDataView({ token }: { token: string }) {
               <Button disabled={!effectiveTemplateCode || isMutating} onClick={handleValidateTemplate} variant="primary">
                 Validate template
               </Button>
-              <Button disabled={!effectiveTemplateCode || isMutating} onClick={handleBuildWorkbook} variant="secondary">
+              <Button
+                disabled={
+                  isMutating ||
+                  masterDataTemplateActionDisabled(selectedTemplate, "build_workbook", !effectiveTemplateCode)
+                }
+                onClick={handleBuildWorkbook}
+                title={masterDataTemplateActionReason(selectedTemplate, "build_workbook")}
+                variant="secondary"
+              >
                 Build workbook
               </Button>
             </div>
