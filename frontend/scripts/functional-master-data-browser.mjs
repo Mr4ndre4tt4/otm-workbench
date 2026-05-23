@@ -135,6 +135,13 @@ async function assertActiveBatchRowMarked(page) {
   }
 }
 
+async function assertControlValue(locator, expected, description) {
+  const value = await locator.inputValue();
+  if (value !== expected) {
+    throw new Error(`${description} expected value "${expected}" but received "${value}".`);
+  }
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -271,8 +278,17 @@ async function run() {
     await page.getByText("Cutover checklist readiness blockers").waitFor();
     await page.getByLabel("Template filter").selectOption("REGIONS_BASIC");
     await page.getByLabel("Batch status filter").selectOption("EXPORTED");
+    await page.getByLabel("Batch file name filter").fill("regions");
+    await page.getByLabel("Batch minimum row count").fill("1");
     await page.getByLabel("Batch page size").selectOption("10");
     await page.getByLabel("Durable Master Data batches").getByText("REGIONS_BASIC", { exact: true }).first().waitFor();
+    await assertActiveBatchRowMarked(page);
+    await page.getByRole("button", { name: "Reset batch filters" }).click();
+    await assertControlValue(page.getByLabel("Template filter"), "", "Template filter after reset");
+    await assertControlValue(page.getByLabel("Batch status filter"), "", "Batch status filter after reset");
+    await assertControlValue(page.getByLabel("Batch file name filter"), "", "Batch file name filter after reset");
+    await assertControlValue(page.getByLabel("Batch minimum row count"), "", "Batch minimum row count after reset");
+    await assertControlValue(page.getByLabel("Batch page size"), "50", "Batch page size after reset");
     await assertActiveBatchRowMarked(page);
 
     await page.locator('a[href="/home"]').click();
