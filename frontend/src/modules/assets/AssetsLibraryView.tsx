@@ -18,7 +18,7 @@ import {
   useNavigation,
   useAssetVersions
 } from '../../platform/hooks';
-import type { AssetClassification, AssetFilters, AssetItem } from '../../platform/types';
+import type { AssetClassification, AssetFilters, AssetItem, EvidenceHubFilters } from '../../platform/types';
 import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
 import {
@@ -72,6 +72,14 @@ const defaultAssetDraft = {
   sensitivity: "INTERNAL",
   tags: "SYNTHETIC,MVP0",
   visibility: "PROJECT"
+};
+
+const emptyEvidenceTargetFilters: EvidenceHubFilters = {
+  artifact_id: "",
+  client_safe: true,
+  evidence_type: "",
+  source_module: "",
+  status: ""
 };
 
 function classificationItems(classifications: AssetClassification[] | undefined, fallback: string[]) {
@@ -147,7 +155,10 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const classifications = useAssetClassifications(token);
   const navigation = useNavigation(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
-  const evidenceHub = useEvidenceHub(token, { client_safe: true });
+  const [evidenceTargetFilters, setEvidenceTargetFilters] = useState<EvidenceHubFilters>(emptyEvidenceTargetFilters);
+  const [draftEvidenceTargetFilters, setDraftEvidenceTargetFilters] =
+    useState<EvidenceHubFilters>(emptyEvidenceTargetFilters);
+  const evidenceHub = useEvidenceHub(token, evidenceTargetFilters);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
@@ -250,6 +261,18 @@ export function AssetsLibraryView({ token }: { token: string }) {
     if (!target) return;
     setLinkTargetId(target.targetId);
     setLinkTargetLabel(target.targetLabel);
+  };
+
+  const applyEvidenceTargetFilters = () => {
+    setEvidenceTargetFilters({
+      artifact_id: draftEvidenceTargetFilters.artifact_id?.trim() ?? "",
+      client_safe: true,
+      evidence_type: draftEvidenceTargetFilters.evidence_type?.trim() ?? "",
+      source_module: draftEvidenceTargetFilters.source_module?.trim() ?? "",
+      status: draftEvidenceTargetFilters.status?.trim() ?? ""
+    });
+    setLinkTargetId("");
+    setLinkTargetLabel("");
   };
 
   useEffect(() => {
@@ -784,6 +807,53 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   ))}
                 </select>
               </label>
+              {linkType === "ARTIFACT" || linkType === "EVIDENCE" ? (
+                <>
+                  <label>
+                    Evidence target source module filter
+                    <input
+                      aria-label="Evidence target source module filter"
+                      onChange={(event) =>
+                        setDraftEvidenceTargetFilters((current) => ({ ...current, source_module: event.target.value }))
+                      }
+                      value={draftEvidenceTargetFilters.source_module ?? ""}
+                    />
+                  </label>
+                  <label>
+                    Evidence target type filter
+                    <input
+                      aria-label="Evidence target type filter"
+                      onChange={(event) =>
+                        setDraftEvidenceTargetFilters((current) => ({ ...current, evidence_type: event.target.value }))
+                      }
+                      value={draftEvidenceTargetFilters.evidence_type ?? ""}
+                    />
+                  </label>
+                  <label>
+                    Evidence target status filter
+                    <input
+                      aria-label="Evidence target status filter"
+                      onChange={(event) =>
+                        setDraftEvidenceTargetFilters((current) => ({ ...current, status: event.target.value }))
+                      }
+                      value={draftEvidenceTargetFilters.status ?? ""}
+                    />
+                  </label>
+                  <label>
+                    Evidence target artifact id filter
+                    <input
+                      aria-label="Evidence target artifact id filter"
+                      onChange={(event) =>
+                        setDraftEvidenceTargetFilters((current) => ({ ...current, artifact_id: event.target.value }))
+                      }
+                      value={draftEvidenceTargetFilters.artifact_id ?? ""}
+                    />
+                  </label>
+                  <Button disabled={isMutating} onClick={applyEvidenceTargetFilters} variant="secondary">
+                    Apply evidence target filters
+                  </Button>
+                </>
+              ) : null}
               {guidedLinkTargets.length ? (
                 <label>
                   Asset guided link target

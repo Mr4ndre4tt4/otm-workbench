@@ -52,6 +52,9 @@ The screen uses shared components:
   targets from Catalog Core Data Dictionary search;
 - Guided link target selector for `ARTIFACT` and `EVIDENCE` targets from
   Evidence Hub client-safe evidence and artifact summaries;
+- Backend-owned Evidence Hub filters in the Link stage for source module,
+  evidence type, status, and artifact id before selecting `ARTIFACT` or
+  `EVIDENCE` targets;
 - Backend validation for `ARTIFACT` and `EVIDENCE` link targets: artifacts must
   exist and be backed by client-safe Evidence Hub evidence, and evidence links
   must point to client-safe evidence records;
@@ -94,9 +97,9 @@ Still open:
 
 ```text
 - richer custom metadata validation messaging
-- richer filtering for high-volume guided artifact/evidence target lists once
-  operational volume requires it
 - deeper authoring for backend-owned classifications
+- pagination or search-result virtualization if Evidence Hub target volumes
+  become large enough to need it
 ```
 
 ## Validation

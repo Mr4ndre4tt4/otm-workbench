@@ -251,6 +251,7 @@ describe("Functional Assets Library journey", () => {
     const downloadRequests: unknown[] = [];
     const archiveRequests: unknown[] = [];
     const listUrls: string[] = [];
+    const evidenceUrls: string[] = [];
     let createdAsset: ReturnType<typeof assetFixture> | null = null;
     const referenceAsset = referenceAssetFixture();
     let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
@@ -345,6 +346,7 @@ describe("Functional Assets Library journey", () => {
         return Promise.resolve(jsonResponse({ items, page: 1, page_size: items.length, total: items.length }));
       }
       if (url.includes("/api/v1/evidence-hub/evidence")) {
+        evidenceUrls.push(url);
         return Promise.resolve(
           jsonResponse({
             items: [
@@ -648,6 +650,17 @@ describe("Functional Assets Library journey", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "ARTIFACT");
+    await userEvent.type(screen.getByLabelText("Evidence target source module filter"), "integration_mapping");
+    await userEvent.type(screen.getByLabelText("Evidence target type filter"), "integration_mapping_spec");
+    await userEvent.click(screen.getByRole("button", { name: "Apply evidence target filters" }));
+    expect(
+      evidenceUrls.some(
+        (url) =>
+          url.includes("client_safe=true") &&
+          url.includes("source_module=integration_mapping") &&
+          url.includes("evidence_type=integration_mapping_spec")
+      )
+    ).toBe(true);
     expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("synthetic_mapping_spec.md");
     await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "artifact_qa_1");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));
