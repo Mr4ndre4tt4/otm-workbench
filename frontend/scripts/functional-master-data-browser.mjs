@@ -237,8 +237,10 @@ async function run() {
     const outputPanel = page.getByLabel("Output and export workflow");
     await outputPanel.getByRole("button", { name: "Build output" }).click();
     await page.getByText("Output build is OUTPUT_BUILT.").waitFor();
+    await page.getByLabel("Master Data output record preview").getByText("REGION").first().waitFor();
     await outputPanel.getByRole("button", { name: "Build CSV" }).click();
     await page.getByText("CSV build is CSV_BUILT.").waitFor();
+    await page.getByLabel("Master Data CSV file preview").getByText("001_REGION.csv").waitFor();
     await outputPanel.getByRole("button", { name: "Export package" }).click();
     await page.getByText("CSV package export is EXPORTED.").waitFor();
     await page.getByLabel("Export package summary").waitFor();

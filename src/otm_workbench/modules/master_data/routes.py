@@ -9,7 +9,16 @@ from sqlalchemy.orm import Session
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import Artifact, AuditLog, Evidence, MasterDataBatch, MasterDataCsvFile, MasterDataTemplate, User
+from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    Evidence,
+    MasterDataBatch,
+    MasterDataCsvFile,
+    MasterDataOutputRecord,
+    MasterDataTemplate,
+    User,
+)
 from otm_workbench.modules.master_data.coordinate_quality.routes import router as coordinate_quality_router
 from otm_workbench.modules.master_data.templates import (
     build_master_data_csv_files,
@@ -126,6 +135,35 @@ def serialize_master_data_artifact(batch_id: str, artifact: Artifact, evidence: 
             if is_available
             else None
         ),
+    }
+
+
+def serialize_master_data_output_record(record: MasterDataOutputRecord) -> dict[str, object]:
+    return {
+        "id": record.id,
+        "batch_id": record.batch_id,
+        "template_code": record.template_code,
+        "target_table": record.target_table,
+        "record_index": record.record_index,
+        "payload": _json_loads(record.payload_json, {}),
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+    }
+
+
+def serialize_master_data_csv_file(csv_file: MasterDataCsvFile) -> dict[str, object]:
+    preview_lines = csv_file.content.splitlines()[:5]
+    return {
+        "id": csv_file.id,
+        "batch_id": csv_file.batch_id,
+        "template_code": csv_file.template_code,
+        "table_name": csv_file.table_name,
+        "file_name": csv_file.file_name,
+        "row_count": csv_file.row_count,
+        "content_preview": "\n".join(preview_lines),
+        "line_count": len(csv_file.content.splitlines()),
+        "created_at": csv_file.created_at.isoformat() if csv_file.created_at else None,
+        "updated_at": csv_file.updated_at.isoformat() if csv_file.updated_at else None,
     }
 
 
@@ -313,6 +351,40 @@ def list_master_data_batch_artifacts(
         for artifact, evidence in master_data_batch_artifacts(db, batch_id)
     ]
     return PageResponse(items=artifacts, total=len(artifacts))
+
+
+@router.get("/batches/{batch_id}/output-records")
+def list_master_data_batch_output_records(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    get_master_data_batch_or_404(db, batch_id)
+    records = (
+        db.query(MasterDataOutputRecord)
+        .filter(MasterDataOutputRecord.batch_id == batch_id)
+        .order_by(MasterDataOutputRecord.target_table, MasterDataOutputRecord.record_index)
+        .all()
+    )
+    items = [serialize_master_data_output_record(record) for record in records]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}/csv-files")
+def list_master_data_batch_csv_files(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    get_master_data_batch_or_404(db, batch_id)
+    csv_files = (
+        db.query(MasterDataCsvFile)
+        .filter(MasterDataCsvFile.batch_id == batch_id)
+        .order_by(MasterDataCsvFile.file_name)
+        .all()
+    )
+    items = [serialize_master_data_csv_file(csv_file) for csv_file in csv_files]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.get("/batches/{batch_id}/artifacts/{artifact_id}/download")

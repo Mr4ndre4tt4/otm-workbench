@@ -1257,6 +1257,43 @@ def test_master_data_batch_build_output_creates_output_records(client, admin_hea
     assert '"REGION_XID": "REGION_001"' in rows_by_table["REGION"].payload_json
 
 
+def test_master_data_batch_output_records_endpoint_returns_backend_preview(client, admin_header):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+
+    response = client.get(f"/api/v1/modules/master-data/batches/{batch_id}/output-records", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 2
+    assert payload["items"][0]["target_table"] == "REGION"
+    assert payload["items"][0]["payload"]["REGION_GID"] == "SYN.REGION_001"
+
+
 def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header, db_session):
     workbook = Workbook()
     regions = workbook.active
@@ -1326,6 +1363,45 @@ def test_master_data_batch_build_csv_creates_otm_csv_files(client, admin_header,
     assert rows[0].file_name == "001_REGION.csv"
     assert rows[0].row_count == 1
     assert rows[0].content.startswith("REGION\nREGION_GID,REGION_XID,REGION_NAME")
+
+
+def test_master_data_batch_csv_files_endpoint_returns_preview_only(client, admin_header):
+    workbook = Workbook()
+    regions = workbook.active
+    regions.title = "REGIONS"
+    regions.append(["Region GID", "Region XID", "Region Name"])
+    regions.append(["SYN.REGION_001", "REGION_001", "Synthetic Region"])
+    details = workbook.create_sheet("REGION_DETAILS")
+    details.append(["Region GID", "Location GID"])
+    details.append(["SYN.REGION_001", "SYN.LOCATION_001"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "regions_basic_upload.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    batch_id = batch_response.json()["batch_id"]
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/validate-relationships", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+
+    response = client.get(f"/api/v1/modules/master-data/batches/{batch_id}/csv-files", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 2
+    assert payload["items"][0]["file_name"] == "001_REGION.csv"
+    assert payload["items"][0]["content_preview"].startswith("REGION\nREGION_GID,REGION_XID,REGION_NAME")
+    assert "content" not in payload["items"][0]
 
 
 def test_master_data_batch_build_csv_is_idempotent_for_double_click(

@@ -12,6 +12,8 @@ import type {
   MasterDataArtifactsResponse,
   MasterDataBatch,
   MasterDataBatchesResponse,
+  MasterDataCsvFilesResponse,
+  MasterDataOutputRecordsResponse,
   MasterDataRelationshipValidation,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
@@ -48,6 +50,22 @@ export function useMasterDataBatchArtifacts(token: string | null, batchId: strin
   return useQuery({
     queryKey: ["modules", "master-data", "batches", batchId, "artifacts"],
     queryFn: () => apiGet<MasterDataArtifactsResponse>(`/api/v1/modules/master-data/batches/${batchId}/artifacts`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useMasterDataOutputRecords(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches", batchId, "output-records"],
+    queryFn: () => apiGet<MasterDataOutputRecordsResponse>(`/api/v1/modules/master-data/batches/${batchId}/output-records`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useMasterDataCsvFiles(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches", batchId, "csv-files"],
+    queryFn: () => apiGet<MasterDataCsvFilesResponse>(`/api/v1/modules/master-data/batches/${batchId}/csv-files`, { token }),
     enabled: Boolean(token && batchId)
   });
 }

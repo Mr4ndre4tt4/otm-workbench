@@ -100,6 +100,34 @@ export type MasterDataArtifact = {
 
 export type MasterDataArtifactsResponse = PageResponse<MasterDataArtifact>;
 
+export type MasterDataOutputRecord = {
+  id: string;
+  batch_id: string;
+  template_code: string;
+  target_table: string;
+  record_index: number;
+  payload: Record<string, unknown>;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type MasterDataOutputRecordsResponse = PageResponse<MasterDataOutputRecord>;
+
+export type MasterDataCsvFile = {
+  id: string;
+  batch_id: string;
+  template_code: string;
+  table_name: string;
+  file_name: string;
+  row_count: number;
+  content_preview: string;
+  line_count: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type MasterDataCsvFilesResponse = PageResponse<MasterDataCsvFile>;
+
 export type MasterDataRelationshipValidation = {
   batch_id: string;
   status: string;

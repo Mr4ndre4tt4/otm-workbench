@@ -44,7 +44,7 @@ For each module:
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
-| Master Data / Data Factory | MVP workflow done plus first Coordinate Quality and Load Plan handoff slices | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, Load Plan package registration, Coordinate Quality preview/batches/results/export, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, richer spreadsheet operations, deeper Load Plan handoff, and advanced Coordinate Quality diagnostics remain follow-ups. |
+| Master Data / Data Factory | MVP workflow done plus first preview, Coordinate Quality, and Load Plan handoff slices | Backend flows ready for template authoring, batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, Coordinate Quality preview/batches/results/export, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, spreadsheet editing, deeper Load Plan handoff, and advanced Coordinate Quality diagnostics remain follow-ups. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
@@ -96,6 +96,7 @@ Delivered after OTM-119:
 - Friendly labels plus fixed/default values and one-to-many target mappings.
 - Template validation, workbook generation, workbook upload, relationship
   validation, mapping, output, CSV build, and CSV/ZIP export.
+- Read-only backend-owned output record and generated CSV file previews.
 - Durable batch list/detail and batch-scoped artifact listing/download.
 - Guarded Load Plan package registration from exported Master Data packages.
 - Negative/out-of-order QA for missing artifacts, repeated CSV/export clicks,
@@ -109,7 +110,8 @@ Remaining GUI work before `Module complete`:
 - Add deeper Load Plan handoff actions after package registration, such as
   checklist creation shortcuts, only when they preserve the staged workflow.
 - Add direct OTM import only after submit/credential guardrails are designed.
-- Add spreadsheet preview/editor only if it has a backend-owned use case.
+- Add spreadsheet editing only if it has a backend-owned mutation and audit use
+  case.
 - Add advanced Coordinate Quality map diagnostics and external provider setup
   only after backend provider governance is designed.
 - Expand advanced batch history filters/pagination if operational volume needs it.

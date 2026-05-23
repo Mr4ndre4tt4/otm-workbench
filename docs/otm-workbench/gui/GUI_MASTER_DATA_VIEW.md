@@ -1,6 +1,6 @@
 # GUI Master Data View
 
-**Status:** MVP workflow done; first Coordinate Quality and Load Plan handoff slices done; module-complete follow-ups remain
+**Status:** MVP workflow done; first preview, Coordinate Quality, and Load Plan handoff slices done; module-complete follow-ups remain
 **Linear:** OTM-114, OTM-117, OTM-118, OTM-91
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
@@ -13,7 +13,7 @@ of only inspecting templates.
 Delivered story:
 
 ```text
-template -> author -> workbook -> upload -> validate -> map -> output/export -> load-plan handoff -> quality
+template -> author -> workbook -> upload -> validate -> map -> output preview -> csv preview/export -> load-plan handoff -> quality
 ```
 
 ## Primary Pattern
@@ -59,6 +59,8 @@ POST /api/v1/modules/master-data/batches/{batch_id}/build-csv
 POST /api/v1/modules/master-data/batches/{batch_id}/export-csv-package
 GET  /api/v1/modules/master-data/batches
 GET  /api/v1/modules/master-data/batches/{batch_id}
+GET  /api/v1/modules/master-data/batches/{batch_id}/output-records
+GET  /api/v1/modules/master-data/batches/{batch_id}/csv-files
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
@@ -196,9 +198,15 @@ The backend owns eligibility, idempotency, generated package evidence, audit,
 domain event, and load sequence; the UI only displays the returned package id,
 type, macro object, evidence id, status, and step count.
 
+The first backend-owned preview slice adds read-only output and CSV previews to
+the Output stage. `GET /output-records` returns generated OTM target-table
+payloads, and `GET /csv-files` returns generated CSV file metadata plus a short
+preview. The UI does not edit workbook cells or CSV content; editing remains
+future scope until a backend-owned mutation contract exists.
+
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
-complete` because direct OTM import, richer workbook/spreadsheet operations,
+complete` because direct OTM import, richer workbook/spreadsheet editing,
 advanced Coordinate Quality map diagnostics, deeper Load Plan handoff flows, and
 broader negative/out-of-order QA are tracked as follow-up scope.
 

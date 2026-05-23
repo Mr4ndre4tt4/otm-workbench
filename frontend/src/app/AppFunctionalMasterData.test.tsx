@@ -240,6 +240,8 @@ describe("Functional Master Data journey", () => {
     const csvRequests: unknown[] = [];
     const exportRequests: unknown[] = [];
     const loadPlanRegistrationRequests: unknown[] = [];
+    const outputRecordListRequests: unknown[] = [];
+    const csvFileListRequests: unknown[] = [];
     const batchListRequests: unknown[] = [];
     const artifactListRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
@@ -402,6 +404,46 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/output-records")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        outputRecordListRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                batch_id: "batch_1",
+                id: "output_record_region",
+                payload: { REGION_GID: "SYN.REGION_BROWSER", REGION_XID: "REGION_BROWSER" },
+                record_index: 1,
+                target_table: "REGION",
+                template_code: "REGIONS_BASIC"
+              }
+            ],
+            total: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/csv-files")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        csvFileListRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                batch_id: "batch_1",
+                content_preview: "REGION\nREGION_GID,REGION_XID\nSYN.REGION_BROWSER,REGION_BROWSER",
+                file_name: "001_REGION.csv",
+                id: "csv_region",
+                line_count: 3,
+                row_count: 1,
+                table_name: "REGION",
+                template_code: "REGIONS_BASIC"
+              }
+            ],
+            total: 1
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/load-plan/packages/from-master-data/batch_1")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         loadPlanRegistrationRequests.push({ method: init?.method });
@@ -512,8 +554,10 @@ describe("Functional Master Data journey", () => {
     const outputPanel = screen.getByLabelText("Output and export workflow");
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Build output" }));
     await screen.findByText("Output build is OUTPUT_BUILT.");
+    expect(screen.getByLabelText("Master Data output record preview")).toHaveTextContent("REGION");
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Build CSV" }));
     await screen.findByText("CSV build is CSV_BUILT.");
+    expect(screen.getByLabelText("Master Data CSV file preview")).toHaveTextContent("001_REGION.csv");
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Export package" }));
     await screen.findByText("CSV package export is EXPORTED.");
     expect(screen.getByLabelText("Export package summary")).toHaveTextContent("artifact_csv_package");
@@ -534,6 +578,8 @@ describe("Functional Master Data journey", () => {
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
+    expect(outputRecordListRequests.length).toBeGreaterThan(0);
+    expect(csvFileListRequests.length).toBeGreaterThan(0);
     expect(batchListRequests.length).toBeGreaterThan(0);
     expect(artifactListRequests.length).toBeGreaterThan(0);
     expect(artifactDownloadRequests).toEqual([

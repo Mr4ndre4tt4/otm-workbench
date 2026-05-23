@@ -25,7 +25,9 @@ select template
 -> validate relationships
 -> map records
 -> build output
+-> inspect output record preview
 -> build OTM CSV files
+-> inspect generated CSV preview
 -> export CSV ZIP package
 -> register exported package for Load Plan
 -> recover batch/artifact state after route navigation
@@ -51,6 +53,8 @@ POST /api/v1/modules/master-data/batches/{batch_id}/build-csv
 POST /api/v1/modules/master-data/batches/{batch_id}/export-csv-package
 GET  /api/v1/modules/master-data/batches
 GET  /api/v1/modules/master-data/batches/{batch_id}
+GET  /api/v1/modules/master-data/batches/{batch_id}/output-records
+GET  /api/v1/modules/master-data/batches/{batch_id}/csv-files
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
@@ -145,6 +149,8 @@ Delivered hardening:
 - invalid workbook upload surfaces backend details and allows replacing the file
 - route leave/return validates durable backend batch and artifact visibility
 - child table removal clears dependent authoring state before re-add
+- output and CSV preview data is fetched from backend-owned generated records
+  and files
 ```
 
 ## 8. Client Data Safety
@@ -163,7 +169,7 @@ separate work before any `Module complete` claim:
 - Coordinate Quality advanced map diagnostics and provider governance
 - deeper Load Plan checklist handoff after package registration
 - direct OTM import / submit guardrails
-- richer spreadsheet preview/editor only with backend-owned state
+- richer spreadsheet editing only with backend-owned mutation and audit state
 - date-field CSVUTIL alter-session coverage for date-bearing templates
 - advanced batch history filters/pagination if operational volume requires it
 ```

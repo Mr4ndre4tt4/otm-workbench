@@ -23,6 +23,8 @@ import {
   useCoordinateQualityResults,
   useMasterDataBatchArtifacts,
   useMasterDataBatches,
+  useMasterDataCsvFiles,
+  useMasterDataOutputRecords,
   useMasterDataTemplateDetail,
   useMasterDataTemplates,
   validateMasterDataTemplateDefinition,
@@ -405,6 +407,8 @@ export function MasterDataView({ token }: { token: string }) {
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
   const activeBatch = uploadedBatch ?? batches.data?.items[0] ?? null;
   const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
+  const outputRecords = useMasterDataOutputRecords(token, activeBatch?.batch_id ?? null);
+  const csvFiles = useMasterDataCsvFiles(token, activeBatch?.batch_id ?? null);
   const canRegisterLoadPlanPackage = Boolean(activeBatch && (exportResult || activeBatch.status === "EXPORTED"));
   const activeCoordinateBatch = coordinateBatch ?? coordinateQualityBatches.data?.items[0] ?? null;
   const coordinateResults = useCoordinateQualityResults(token, activeCoordinateBatch?.batch_id ?? null);
@@ -709,6 +713,7 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await buildMasterDataOutput(token, activeBatch.batch_id);
         setOutputResult(result);
+        await outputRecords.refetch();
         return result;
       },
       (result) => `Output build is ${result.status}.`
@@ -721,6 +726,7 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await buildMasterDataCsv(token, activeBatch.batch_id);
         setCsvResult(result);
+        await csvFiles.refetch();
         return result;
       },
       (result) => `CSV build is ${result.status}.`
@@ -736,6 +742,7 @@ export function MasterDataView({ token }: { token: string }) {
         setLoadPlanPackage(null);
         await batches.refetch();
         await batchArtifacts.refetch();
+        await csvFiles.refetch();
         return result;
       },
       (result) => `CSV package export is ${result.status}.`
@@ -1368,6 +1375,30 @@ export function MasterDataView({ token }: { token: string }) {
                 ]}
               />
             ) : null}
+            <DetailList
+              ariaLabel="Master Data output record preview"
+              emptyText="Build output before previewing backend-owned OTM records."
+              items={(outputRecords.data?.items ?? []).slice(0, 5).map((record) => ({
+                id: record.id,
+                meta: [
+                  `#${record.record_index}`,
+                  Object.keys(record.payload).join(", "),
+                  JSON.stringify(record.payload).slice(0, 160)
+                ],
+                status: "OUTPUT",
+                title: record.target_table
+              }))}
+            />
+            <DetailList
+              ariaLabel="Master Data CSV file preview"
+              emptyText="Build CSV before previewing generated OTM CSV files."
+              items={(csvFiles.data?.items ?? []).map((file) => ({
+                id: file.id,
+                meta: [`${file.row_count} row(s)`, `${file.line_count} line(s)`, file.content_preview],
+                status: "CSV",
+                title: file.file_name
+              }))}
+            />
             <DetailList
               ariaLabel="Durable Master Data batches"
               emptyText="No backend batches available yet."
