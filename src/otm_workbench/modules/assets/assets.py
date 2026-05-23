@@ -37,6 +37,113 @@ def parse_tags(tags_json: str) -> list[str]:
     return [str(item) for item in value]
 
 
+def asset_action(
+    *,
+    asset_id: str,
+    key: str,
+    label: str,
+    method: str,
+    path_suffix: str,
+    variant: str,
+    icon_key: str,
+    requires_confirmation: bool,
+    disabled: bool,
+    disabled_reason: str | None,
+    permission: str,
+    result_hint: str,
+) -> dict[str, object]:
+    return {
+        "key": key,
+        "label": label,
+        "method": method,
+        "href": f"/api/v1/modules/assets/assets/{asset_id}{path_suffix}",
+        "variant": variant,
+        "icon_key": icon_key,
+        "requires_confirmation": requires_confirmation,
+        "disabled": disabled,
+        "disabled_reason": disabled_reason,
+        "permission": permission,
+        "result_hint": result_hint,
+    }
+
+
+def build_asset_available_actions(asset: Asset) -> list[dict[str, object]]:
+    archived = asset.status == "ARCHIVED"
+    no_version = not bool(asset.current_version_id)
+    return [
+        asset_action(
+            asset_id=asset.id,
+            key="asset.update",
+            label="Update metadata",
+            method="PATCH",
+            path_suffix="",
+            variant="secondary",
+            icon_key="edit",
+            requires_confirmation=False,
+            disabled=archived,
+            disabled_reason="ASSET_ARCHIVED" if archived else None,
+            permission="assets.asset.update",
+            result_hint="refresh_object",
+        ),
+        asset_action(
+            asset_id=asset.id,
+            key="asset.upload_version",
+            label="Upload version",
+            method="POST",
+            path_suffix="/versions",
+            variant="primary",
+            icon_key="upload",
+            requires_confirmation=False,
+            disabled=archived,
+            disabled_reason="ASSET_ARCHIVED" if archived else None,
+            permission="assets.asset.upload_version",
+            result_hint="refresh_object",
+        ),
+        asset_action(
+            asset_id=asset.id,
+            key="asset.create_link",
+            label="Create link",
+            method="POST",
+            path_suffix="/links",
+            variant="primary",
+            icon_key="link",
+            requires_confirmation=False,
+            disabled=archived,
+            disabled_reason="ASSET_ARCHIVED" if archived else None,
+            permission="assets.asset.create_link",
+            result_hint="refresh_object",
+        ),
+        asset_action(
+            asset_id=asset.id,
+            key="asset.download_current",
+            label="Download current version",
+            method="GET",
+            path_suffix="/download",
+            variant="secondary",
+            icon_key="download",
+            requires_confirmation=False,
+            disabled=no_version,
+            disabled_reason="NO_CURRENT_VERSION" if no_version else None,
+            permission="assets.asset.download",
+            result_hint="download",
+        ),
+        asset_action(
+            asset_id=asset.id,
+            key="asset.archive",
+            label="Archive asset",
+            method="POST",
+            path_suffix="/archive",
+            variant="danger",
+            icon_key="archive",
+            requires_confirmation=True,
+            disabled=archived,
+            disabled_reason="ASSET_ARCHIVED" if archived else None,
+            permission="assets.asset.archive",
+            result_hint="refresh_object",
+        ),
+    ]
+
+
 def serialize_asset(asset: Asset) -> dict[str, object]:
     return {
         "id": asset.id,
@@ -56,6 +163,7 @@ def serialize_asset(asset: Asset) -> dict[str, object]:
         "otm_table_name": asset.otm_table_name,
         "tags": parse_tags(asset.tags_json),
         "current_version_id": asset.current_version_id,
+        "available_actions": build_asset_available_actions(asset),
         "created_by": asset.created_by,
         "created_at": asset.created_at.isoformat() if asset.created_at else None,
         "updated_at": asset.updated_at.isoformat() if asset.updated_at else None,

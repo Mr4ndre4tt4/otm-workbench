@@ -1,4 +1,5 @@
 import type { PageResponse } from "./shared";
+import type { AvailableAction } from "./shared";
 
 export type AssetItem = {
   id: string;
@@ -18,6 +19,7 @@ export type AssetItem = {
   otm_table_name: string | null;
   tags: string[];
   current_version_id: string | null;
+  available_actions?: AvailableAction[];
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;

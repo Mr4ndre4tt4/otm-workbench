@@ -48,6 +48,13 @@ def test_create_draft_asset_records_metadata_audit_and_event(client, admin_heade
     assert asset["scope_type"] == "PROJECT"
     assert asset["sensitivity"] == "INTERNAL"
     assert asset["tags"] == ["SYNTHETIC", "MVP0"]
+    actions = {action["key"]: action for action in asset["available_actions"]}
+    assert actions["asset.update"]["disabled"] is False
+    assert actions["asset.upload_version"]["disabled"] is False
+    assert actions["asset.create_link"]["disabled"] is False
+    assert actions["asset.download_current"]["disabled"] is True
+    assert actions["asset.download_current"]["disabled_reason"] == "NO_CURRENT_VERSION"
+    assert actions["asset.archive"]["requires_confirmation"] is True
     assert json.loads(audit.metadata_json)["asset_id"] == asset["id"]
     assert json.loads(event.payload_json)["asset_id"] == asset["id"]
 
@@ -333,6 +340,12 @@ def test_archive_asset_preserves_record_and_records_audit_event(client, admin_he
     event = db_session.query(DomainEvent).filter(DomainEvent.event_type == "assets.asset.archived").one()
     assert payload["id"] == created["id"]
     assert payload["status"] == "ARCHIVED"
+    actions = {action["key"]: action for action in payload["available_actions"]}
+    assert actions["asset.update"]["disabled"] is True
+    assert actions["asset.update"]["disabled_reason"] == "ASSET_ARCHIVED"
+    assert actions["asset.upload_version"]["disabled"] is True
+    assert actions["asset.create_link"]["disabled"] is True
+    assert actions["asset.archive"]["disabled"] is True
     assert json.loads(audit.metadata_json)["asset_id"] == created["id"]
     assert json.loads(event.payload_json)["status"] == "ARCHIVED"
 

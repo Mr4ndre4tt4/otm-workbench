@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
+| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
@@ -196,6 +196,8 @@ Required GUI work:
   OTM table.
 - Use ArtifactList or version list for files.
 - Keep file eligibility, version state, and links backend-owned.
+- Expose backend-owned `available_actions` for update, upload, link, download,
+  and archive affordances.
 - Reject archived asset metadata updates, version uploads, and link creation in
   backend mutation APIs.
 - Keep the screen staged; do not return to stacked create/upload/link/list

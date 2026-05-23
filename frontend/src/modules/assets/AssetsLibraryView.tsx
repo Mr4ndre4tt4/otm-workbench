@@ -154,6 +154,11 @@ type GuidedLinkTarget = {
   targetLabel: string;
 };
 
+function actionDisabled(asset: AssetItem | undefined, actionKey: string, fallbackDisabled: boolean) {
+  const action = asset?.available_actions?.find((item) => item.key === actionKey);
+  return action ? action.disabled : fallbackDisabled;
+}
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
@@ -187,6 +192,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const versionedCount = assetItems.filter((asset) => asset.current_version_id).length;
   const internalCount = assetItems.filter((asset) => asset.sensitivity === "INTERNAL").length;
   const isArchived = selectedAsset?.status === "ARCHIVED";
+  const updateDisabled = actionDisabled(selectedAsset, "asset.update", isArchived);
+  const uploadDisabled = actionDisabled(selectedAsset, "asset.upload_version", isArchived);
+  const linkDisabled = actionDisabled(selectedAsset, "asset.create_link", isArchived);
+  const downloadDisabled = actionDisabled(selectedAsset, "asset.download_current", !selectedAsset?.current_version_id);
+  const archiveDisabled = actionDisabled(selectedAsset, "asset.archive", isArchived);
   const classificationGroups = classifications.data?.items ?? [];
   const assetTypeOptions = classificationItems(
     classificationGroups.find((group) => group.classification_type === "asset_type")?.items,
@@ -326,7 +336,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   };
 
   const handleUpdateAsset = () => {
-    if (!effectiveAssetId || isArchived) return;
+    if (!effectiveAssetId || updateDisabled) return;
     void runAction(
       async () => {
         const updated = await updateAsset(token, effectiveAssetId, assetDraftPayload(assetDraft));
@@ -344,9 +354,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
     void runAction(
       async () => {
         const version = await uploadAssetVersion(token, effectiveAssetId, selectedVersionFile);
-        setOperationAsset((current) =>
-          current?.id === effectiveAssetId ? { ...current, current_version_id: version.id } : current
-        );
+        setOperationAsset((current) => {
+          if (current?.id !== effectiveAssetId) return current;
+          const { available_actions, ...rest } = current;
+          return { ...rest, current_version_id: version.id };
+        });
         setSelectedVersionFile(null);
         await refreshAssetState(effectiveAssetId);
         setActiveStage("link");
@@ -756,7 +768,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 Create asset
               </Button>
               <Button
-                disabled={isMutating || !effectiveAssetId || isArchived || !assetDraft.name.trim()}
+                disabled={isMutating || !effectiveAssetId || updateDisabled || !assetDraft.name.trim()}
                 onClick={handleUpdateAsset}
                 variant="secondary"
               >
@@ -771,7 +783,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
             ariaLabel="Assets version workflow"
             emptyText="Select an asset before uploading a version."
             hasItems
-            status={isArchived ? "ARCHIVED" : selectedAsset?.current_version_id ? "VERSIONED" : "PENDING"}
+            status={uploadDisabled ? "BLOCKED" : selectedAsset?.current_version_id ? "VERSIONED" : "PENDING"}
             title="Version"
           >
             <div className="master-data-action-bar">
@@ -779,13 +791,13 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 Asset version file
                 <input
                   aria-label="Asset version file"
-                  disabled={isArchived}
+                  disabled={uploadDisabled}
                   onChange={(event) => setSelectedVersionFile(event.target.files?.[0] ?? null)}
                   type="file"
                 />
               </label>
               <Button
-                disabled={isMutating || !effectiveAssetId || !selectedVersionFile || isArchived}
+                disabled={isMutating || !effectiveAssetId || !selectedVersionFile || uploadDisabled}
                 onClick={handleUploadVersion}
                 variant="primary"
               >
@@ -800,7 +812,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
             ariaLabel="Assets link workflow"
             emptyText="Select an active asset before linking it to another workbench object."
             hasItems
-            status={isArchived ? "ARCHIVED" : "READY"}
+            status={linkDisabled ? "BLOCKED" : "READY"}
             title="Link"
           >
             <div className="master-data-action-bar">
@@ -895,7 +907,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 />
               </label>
               <Button
-                disabled={isMutating || !effectiveAssetId || isArchived || !linkTargetId.trim()}
+                disabled={isMutating || !effectiveAssetId || linkDisabled || !linkTargetId.trim()}
                 onClick={handleCreateLink}
                 variant="primary"
               >
@@ -915,14 +927,14 @@ export function AssetsLibraryView({ token }: { token: string }) {
           >
             <div className="master-data-action-bar">
               <Button
-                disabled={isMutating || !effectiveAssetId || !selectedAsset?.current_version_id}
+                disabled={isMutating || !effectiveAssetId || downloadDisabled}
                 onClick={handleDownloadCurrentVersion}
                 variant="secondary"
               >
                 Download current version
               </Button>
               <Button
-                disabled={isMutating || !effectiveAssetId || isArchived}
+                disabled={isMutating || !effectiveAssetId || archiveDisabled}
                 onClick={handleArchiveAsset}
                 variant="primary"
               >

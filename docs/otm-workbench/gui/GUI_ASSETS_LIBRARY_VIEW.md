@@ -53,6 +53,9 @@ The screen uses shared components:
 - Backend validation for asset metadata OTM references: `macro_object_code`
   must resolve in Catalog Core, and `otm_table_name` must exist in the local
   OTM Data Dictionary;
+- Backend-owned `available_actions` on each asset for update metadata, upload
+  version, create link, download current version, and archive asset, including
+  disabled reasons such as `NO_CURRENT_VERSION` and `ASSET_ARCHIVED`;
 - Guided link target selector for backend-owned `MODULE` targets from platform
   navigation, `MACRO_OBJECT` targets from Catalog Core, and `OTM_TABLE`
   targets from Catalog Core Data Dictionary search;
@@ -97,6 +100,8 @@ record before any update action can be submitted.
 - No frontend-only lifecycle or permission decisions.
 - Asset status, classifications, table linkage, version status, links, download
   permission/audit, and archive state come from backend contracts.
+- Asset action availability and disabled reasons come from backend
+  `available_actions`, with frontend fallbacks only for older payloads.
 - Asset macro-object and OTM-table metadata references are checked against
   Catalog Core and the Data Dictionary before create/update commits.
 - `ARTIFACT` and `EVIDENCE` links cannot be created against unsafe or missing
