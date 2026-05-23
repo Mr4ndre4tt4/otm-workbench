@@ -46,6 +46,13 @@ const emptyFilters = {
   status: ""
 };
 
+const archiveHistoryFilters: EvidenceHubFilters = {
+  evidence_type: "evidence_hub_archive",
+  sensitivity_level: "client_safe",
+  source_module: "evidence_hub",
+  status: "CREATED"
+};
+
 function normalizeFilters(filters: typeof emptyFilters): EvidenceHubFilters {
   return Object.fromEntries(Object.entries(filters).filter(([, value]) => value.trim() !== ""));
 }
@@ -61,7 +68,9 @@ export function EvidenceHubView({ token }: { token: string }) {
   const [archivePackage, setArchivePackage] = useState<EvidenceArchivePackageResponse | null>(null);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const evidence = useEvidenceHub(token, appliedFilters);
+  const archiveHistory = useEvidenceHub(token, archiveHistoryFilters);
   const evidenceItems = evidence.data?.items ?? [];
+  const archiveHistoryItems = archiveHistory.data?.items ?? [];
   const effectiveEvidenceId = selectedEvidenceId ?? evidenceItems[0]?.id ?? null;
   const evidenceDetail = useEvidenceDetail(token, effectiveEvidenceId);
   const selectedEvidence = evidenceDetail.data;
@@ -245,6 +254,20 @@ export function EvidenceHubView({ token }: { token: string }) {
                 ]}
               />
             ) : null}
+            <DetailList
+              ariaLabel="Archive package history"
+              emptyText="No backend-owned archive packages have been created yet."
+              items={archiveHistoryItems.map((item) => ({
+                id: item.id,
+                meta: [
+                  item.artifact?.id ?? "No artifact",
+                  item.artifact?.file_name ?? "No archive file",
+                  `${item.summary.evidence_count ?? 0} evidence`
+                ],
+                status: item.status,
+                title: item.artifact?.file_name ?? item.evidence_type
+              }))}
+            />
           </SelectedObjectPanel>
         }
         status={evidenceItems.length ? "ACTIVE" : "EMPTY"}

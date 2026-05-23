@@ -47,7 +47,7 @@ For each module:
 | Master Data / Data Factory | MVP workflow done plus first preview, batch-history, Coordinate Quality, and Load Plan handoff slices | Backend flows ready for template authoring, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, spreadsheet editing, deeper Load Plan export/handoff, richer batch history dimensions, and advanced Coordinate Quality diagnostics remain follow-ups. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
-| Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
+| Evidence Hub | Functional slice plus archive history done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact/list/download APIs ready | Staged workflow | Guarded XML artifact download is delivered; richer row/template authoring and governed direct OTM submit remain follow-ups. |
 
 ## 4. Recommended Next GUI Queue
@@ -135,14 +135,14 @@ evidence/artifacts.
 Primary object: evidence item or archive package
 Primary pattern: object list/detail + operational surfaces
 First story: filter evidence -> inspect detail -> download guarded artifact ->
-create archive package.
+create archive package -> review backend-owned archive history.
 ```
 
 Remaining GUI work:
 
 ```text
-- Add dedicated archive package history/detail screen if archives need to be
-  browsed as first-class objects.
+- Add dedicated archive detail/audit drill-down only if archives need to be
+  investigated as first-class objects.
 - Add deeper audit log exploration only when the backend exposes a focused
   Evidence Hub audit story.
 ```

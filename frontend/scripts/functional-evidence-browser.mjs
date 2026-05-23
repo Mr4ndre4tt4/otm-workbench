@@ -167,6 +167,7 @@ async function run() {
     await page.getByRole("button", { name: "Create archive" }).click();
     await page.getByText(/^Archive package .+ created\.$/).waitFor();
     await page.getByLabel("Latest archive package").waitFor();
+    await page.getByLabel("Archive package history").getByText(/evidence_hub_archive_/).first().waitFor();
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();

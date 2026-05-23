@@ -1,6 +1,6 @@
 # GUI Evidence Hub View
 
-**Status:** first functional slice delivered
+**Status:** functional slice delivered plus archive history
 **Branch:** `codex/gui-evidence-hub-view`
 **Linear:** OTM-94
 
@@ -13,7 +13,7 @@ Evidence Hub renders evidence index/detail from backend contracts and
 orchestrates the first operational story:
 
 ```text
-filter evidence -> inspect detail -> download guarded artifact -> create archive package
+filter evidence -> inspect detail -> download guarded artifact -> create archive package -> review archive history
 ```
 
 ## Backend Contracts
@@ -56,6 +56,10 @@ another evidence record updates the detail query through backend-owned ids.
 
 Artifact download and archive creation use Evidence Hub backend endpoints. The
 frontend does not display artifact local paths or raw manifest payloads.
+
+Archive package history is also backend-owned. The GUI reads
+`evidence_hub_archive` evidence records created by Evidence Hub instead of
+keeping a frontend-only archive list.
 
 ## Validation
 

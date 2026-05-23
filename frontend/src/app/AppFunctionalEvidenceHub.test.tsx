@@ -96,6 +96,39 @@ function evidenceItem(id = "evidence_1") {
   };
 }
 
+function archiveEvidenceItem() {
+  return {
+    artifact: {
+      artifact_type: "evidence_hub_archive_zip",
+      content_type: "application/zip",
+      created_at: "2026-05-22T00:00:00",
+      file_name: "evidence_hub_archive.zip",
+      id: "artifact_archive",
+      sensitivity_level: "internal",
+      sha256: "b".repeat(64),
+      size_bytes: 128,
+      source_module: "evidence_hub"
+    },
+    client_safe: true,
+    created_at: "2026-05-22T00:00:00",
+    evidence_type: "evidence_hub_archive",
+    id: "evidence_archive",
+    manifest: {
+      created_at: "2026-05-22T00:00:00",
+      id: "manifest_archive",
+      manifest_type: "evidence_hub_archive",
+      schema_version: "evidence-hub-archive-manifest/v1",
+      source_module: "evidence_hub",
+      status: "CREATED"
+    },
+    project_id: null,
+    sensitivity_level: "client_safe",
+    source_module: "evidence_hub",
+    status: "CREATED",
+    summary: { artifact_ref_count: 1, evidence_count: 1, manifest_ref_count: 1 }
+  };
+}
+
 describe("Functional Evidence Hub journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -158,6 +191,15 @@ describe("Functional Evidence Hub journey", () => {
       }
       if (url.endsWith("/api/v1/platform/environments")) {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (
+        url.includes("/api/v1/evidence-hub/evidence?") &&
+        url.includes("source_module=evidence_hub") &&
+        url.includes("evidence_type=evidence_hub_archive")
+      ) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        evidenceRequests.push(url);
+        return Promise.resolve(jsonResponse({ items: [archiveEvidenceItem()], total: 1 }));
       }
       if (url.includes("/api/v1/evidence-hub/evidence?")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -256,6 +298,8 @@ describe("Functional Evidence Hub journey", () => {
       }
     ]);
     expect(screen.getByLabelText("Latest archive package")).toHaveTextContent("artifact_archive");
+    expect(screen.getByLabelText("Archive package history")).toHaveTextContent("evidence_hub_archive.zip");
+    expect(screen.getByLabelText("Archive package history")).toHaveTextContent("1 evidence");
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Evidence Hub/ }));
