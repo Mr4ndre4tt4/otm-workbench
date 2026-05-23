@@ -377,9 +377,22 @@ describe("Functional Assets Library journey", () => {
     await userEvent.selectOptions(screen.getByLabelText("Asset category filter"), "INTEGRATION");
     await userEvent.selectOptions(screen.getByLabelText("Asset status filter"), "DRAFT");
     await userEvent.type(screen.getByLabelText("Asset tag filter"), "MVP0");
+    await userEvent.selectOptions(screen.getByLabelText("Asset scope filter"), "MODULE");
+    await userEvent.type(screen.getByLabelText("Asset module filter"), "rates");
+    await userEvent.type(screen.getByLabelText("Asset macro object filter"), "RATE_GEO");
+    await userEvent.type(screen.getByLabelText("Asset OTM table filter"), "RATE_GEO_COST");
     await userEvent.click(screen.getByRole("button", { name: "Apply asset filters" }));
     expect(listUrls.some((url) => url.includes("asset_type=SPEC") && url.includes("category=INTEGRATION"))).toBe(true);
     expect(listUrls.some((url) => url.includes("status=DRAFT") && url.includes("tag=MVP0"))).toBe(true);
+    expect(
+      listUrls.some(
+        (url) =>
+          url.includes("scope_type=MODULE") &&
+          url.includes("module_id=rates") &&
+          url.includes("macro_object_code=RATE_GEO") &&
+          url.includes("otm_table_name=RATE_GEO_COST")
+      )
+    ).toBe(true);
 
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
     await userEvent.clear(screen.getByLabelText("Asset name"));

@@ -35,7 +35,9 @@ The screen uses shared components:
 - ModuleObjectList for selectable assets;
 - SelectedObjectPanel for selected asset metadata;
 - A staged workflow for Library -> Create -> Version -> Link -> Lifecycle;
-- Backend-owned classification-driven filters and link type options;
+- Backend-owned classification-driven filters and link type options, including
+  asset type, category, status, tag, scope, module id, macro object, and OTM
+  table filters;
 - Create-stage metadata authoring for asset name, description, type, category,
   visibility, scope, sensitivity, module id, macro object, OTM table, and tags;
 - Update action for the selected asset using the same backend-owned metadata
@@ -80,7 +82,6 @@ Still open:
 
 ```text
 - richer custom metadata validation messaging
-- additional filters beyond the first type/category/status/tag controls
 - richer link authoring UX for every supported link type
 - deeper authoring for backend-owned classifications
 ```

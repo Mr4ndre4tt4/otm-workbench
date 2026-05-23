@@ -132,6 +132,10 @@ async function run() {
     await page.getByLabel("Asset category filter").selectOption("INTEGRATION");
     await page.getByLabel("Asset status filter").selectOption("DRAFT");
     await page.getByLabel("Asset tag filter").fill("MVP0");
+    await page.getByLabel("Asset scope filter").selectOption("MODULE");
+    await page.getByLabel("Asset module filter").fill("rates");
+    await page.getByLabel("Asset macro object filter").fill("RATE_GEO");
+    await page.getByLabel("Asset OTM table filter").fill("RATE_GEO_COST");
     await page.getByRole("button", { name: "Apply asset filters" }).click();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();

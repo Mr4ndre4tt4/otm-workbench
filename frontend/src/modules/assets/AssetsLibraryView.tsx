@@ -48,6 +48,10 @@ type AssetWorkflowStage = (typeof assetWorkflowStages)[number]["id"];
 const emptyAssetFilters: AssetFilters = {
   asset_type: "",
   category: "",
+  macro_object_code: "",
+  module_id: "",
+  otm_table_name: "",
+  scope_type: "",
   status: "",
   tag: ""
 };
@@ -449,6 +453,47 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   aria-label="Asset tag filter"
                   onChange={(event) => setDraftAssetFilters((current) => ({ ...current, tag: event.target.value }))}
                   value={draftAssetFilters.tag ?? ""}
+                />
+              </label>
+              <label>
+                Asset scope filter
+                <select
+                  aria-label="Asset scope filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, scope_type: event.target.value }))}
+                  value={draftAssetFilters.scope_type ?? ""}
+                >
+                  <option value="">Any scope</option>
+                  {assetScopeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset module filter
+                <input
+                  aria-label="Asset module filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, module_id: event.target.value }))}
+                  value={draftAssetFilters.module_id ?? ""}
+                />
+              </label>
+              <label>
+                Asset macro object filter
+                <input
+                  aria-label="Asset macro object filter"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, macro_object_code: event.target.value }))
+                  }
+                  value={draftAssetFilters.macro_object_code ?? ""}
+                />
+              </label>
+              <label>
+                Asset OTM table filter
+                <input
+                  aria-label="Asset OTM table filter"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, otm_table_name: event.target.value }))}
+                  value={draftAssetFilters.otm_table_name ?? ""}
                 />
               </label>
               <Button
