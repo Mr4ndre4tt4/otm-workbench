@@ -477,6 +477,7 @@ describe("Functional Order Release Generator journey", () => {
 
   it("creates a backend-owned custom template from the Templates stage", async () => {
     const createTemplateRequests: unknown[] = [];
+    const createVersionRequests: unknown[] = [];
     let templates = [orderReleaseTemplate()];
     const customTemplate = {
       ...orderReleaseTemplate(),
@@ -488,6 +489,14 @@ describe("Functional Order Release Generator journey", () => {
       optional_columns: ["remarks"],
       required_columns: ["release_gid", "source_location_gid", "destination_location_gid"],
       version: 1
+    };
+    const customTemplateV2 = {
+      ...customTemplate,
+      id: "template_or_custom_v2",
+      name: "Custom TL Order Release v2",
+      optional_columns: ["remarks", "weight_uom"],
+      required_columns: ["release_gid", "source_location_gid", "destination_location_gid", "weight"],
+      version: 2
     };
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -543,6 +552,13 @@ describe("Functional Order Release Generator journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: templates, total: templates.length }));
       }
+      if (url.endsWith("/api/v1/modules/order-release-generator/templates/template_or_custom/versions")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        createVersionRequests.push(body);
+        templates = [orderReleaseTemplate(), customTemplateV2, customTemplate];
+        return Promise.resolve(jsonResponse(customTemplateV2));
+      }
       if (url.endsWith("/api/v1/modules/order-release-generator/batches")) {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
@@ -566,6 +582,15 @@ describe("Functional Order Release Generator journey", () => {
 
     await screen.findByText("Order Release template TL_OR_CUSTOM_MVP0 created.");
     expect(screen.getByLabelText("Order Release templates")).toHaveTextContent("TL_OR_CUSTOM_MVP0");
+    await userEvent.type(screen.getByLabelText("Version name"), "Custom TL Order Release v2");
+    await userEvent.type(screen.getByLabelText("Version required columns"), "release_gid, source_location_gid, destination_location_gid, weight");
+    await userEvent.type(screen.getByLabelText("Version optional columns"), "remarks, weight_uom");
+    await userEvent.type(screen.getByLabelText("Version default values"), "domain_name=OTM1\nweight_uom=KG");
+    await userEvent.click(screen.getByRole("button", { name: "Create version" }));
+
+    await screen.findByText("Order Release template TL_OR_CUSTOM_MVP0 v2 created.");
+    expect(screen.getByLabelText("Selected Order Release template")).toHaveTextContent("Version");
+    expect(screen.getByLabelText("Selected Order Release template")).toHaveTextContent("2");
     expect(createTemplateRequests).toEqual([
       {
         code: "TL_OR_CUSTOM_MVP0",
@@ -574,6 +599,15 @@ describe("Functional Order Release Generator journey", () => {
         name: "Custom TL Order Release",
         optional_columns: ["remarks"],
         required_columns: ["release_gid", "source_location_gid", "destination_location_gid"]
+      }
+    ]);
+    expect(createVersionRequests).toEqual([
+      {
+        defaults: { domain_name: "OTM1", weight_uom: "KG" },
+        description: "",
+        name: "Custom TL Order Release v2",
+        optional_columns: ["remarks", "weight_uom"],
+        required_columns: ["release_gid", "source_location_gid", "destination_location_gid", "weight"]
       }
     ]);
   }, 60000);

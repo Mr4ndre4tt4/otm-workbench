@@ -27,6 +27,14 @@ export type OrderReleaseTemplateCreateRequest = {
   defaults: Record<string, unknown>;
 };
 
+export type OrderReleaseTemplateVersionCreateRequest = {
+  name: string;
+  description: string;
+  required_columns: string[];
+  optional_columns: string[];
+  defaults: Record<string, unknown>;
+};
+
 export type OrderReleaseBatchRow = {
   id: string;
   batch_id: string;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   createOrderReleaseBatch,
   createOrderReleaseTemplate,
+  createOrderReleaseTemplateVersion,
   downloadOrderReleaseArtifact,
   generateOrderReleaseXmlArtifact,
   previewOrderReleaseXml,
@@ -186,6 +187,10 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [templateRequiredColumns, setTemplateRequiredColumns] = useState("");
   const [templateOptionalColumns, setTemplateOptionalColumns] = useState("");
   const [templateDefaults, setTemplateDefaults] = useState("");
+  const [versionName, setVersionName] = useState("");
+  const [versionRequiredColumns, setVersionRequiredColumns] = useState("");
+  const [versionOptionalColumns, setVersionOptionalColumns] = useState("");
+  const [versionDefaults, setVersionDefaults] = useState("");
   const [fileName, setFileName] = useState("synthetic_order_release_rows.json");
   const [draftRows, setDraftRows] = useState<DraftOrderReleaseRow[]>(normalizeDraftRows(syntheticOrderReleaseRows));
   const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
@@ -281,6 +286,26 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         return result;
       },
       (result) => `Order Release template ${result.code} created.`
+    );
+  };
+
+  const handleCreateTemplateVersion = () => {
+    if (!selectedTemplate) return;
+    void runAction(
+      async () => {
+        const result = await createOrderReleaseTemplateVersion(token, selectedTemplate.id, {
+          defaults: parseDefaultLines(versionDefaults),
+          description: "",
+          name: versionName.trim(),
+          optional_columns: parseColumnList(versionOptionalColumns),
+          required_columns: parseColumnList(versionRequiredColumns)
+        });
+        setSelectedTemplateId(result.id);
+        setDraftRows([emptyDraftRow(result)]);
+        await queryClient.invalidateQueries({ queryKey: ["modules", "order-release-generator", "templates"] });
+        return result;
+      },
+      (result) => `Order Release template ${result.code} v${result.version} created.`
     );
   };
 
@@ -530,6 +555,54 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
               <div className="master-data-action-bar">
                 <Button disabled={isMutating || !templateCode.trim() || !templateName.trim()} onClick={handleCreateTemplate} variant="primary">
                   Create template
+                </Button>
+              </div>
+            </section>
+            <section aria-label="Order Release template version authoring" className="template-author-table-card">
+              <div className="template-author-table-card__header">
+                <h4>Template versioning</h4>
+              </div>
+              <div className="master-data-author-grid">
+                <label>
+                  Version name
+                  <input
+                    aria-label="Version name"
+                    onChange={(event) => setVersionName(event.target.value)}
+                    value={versionName}
+                  />
+                </label>
+                <label>
+                  Version required columns
+                  <input
+                    aria-label="Version required columns"
+                    onChange={(event) => setVersionRequiredColumns(event.target.value)}
+                    value={versionRequiredColumns}
+                  />
+                </label>
+                <label>
+                  Version optional columns
+                  <input
+                    aria-label="Version optional columns"
+                    onChange={(event) => setVersionOptionalColumns(event.target.value)}
+                    value={versionOptionalColumns}
+                  />
+                </label>
+              </div>
+              <label className="template-author-textarea">
+                Version default values
+                <textarea
+                  aria-label="Version default values"
+                  onChange={(event) => setVersionDefaults(event.target.value)}
+                  value={versionDefaults}
+                />
+              </label>
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={isMutating || !selectedTemplate || !versionName.trim()}
+                  onClick={handleCreateTemplateVersion}
+                  variant="secondary"
+                >
+                  Create version
                 </Button>
               </div>
             </section>

@@ -17,6 +17,7 @@ from otm_workbench.modules.order_release_generator.batches import (
 from otm_workbench.modules.order_release_generator.job_tracking import record_completed_order_release_job
 from otm_workbench.modules.order_release_generator.templates import (
     create_order_release_template,
+    create_order_release_template_version,
     seed_order_release_templates,
     serialize_order_release_template,
 )
@@ -94,6 +95,14 @@ class OrderReleaseTemplateCreateRequest(BaseModel):
     defaults: dict[str, object] = {}
 
 
+class OrderReleaseTemplateVersionCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    required_columns: list[str]
+    optional_columns: list[str] = []
+    defaults: dict[str, object] = {}
+
+
 @router.get("/health")
 def order_release_generator_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "order_release_generator"}
@@ -136,6 +145,36 @@ def create_template(
             422,
             "ORDER_RELEASE_TEMPLATE_INVALID",
             "Order Release template contract is invalid.",
+            {"issues": issues},
+        )
+    return serialize_order_release_template(template)
+
+
+@router.post("/templates/{template_id}/versions")
+def create_template_version(
+    template_id: str,
+    payload: OrderReleaseTemplateVersionCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    source_template = db.get(OrderReleaseTemplate, template_id)
+    if source_template is None:
+        raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
+    template, issues = create_order_release_template_version(
+        db,
+        source_template=source_template,
+        name=payload.name,
+        description=payload.description,
+        required_columns=payload.required_columns,
+        optional_columns=payload.optional_columns,
+        defaults=payload.defaults,
+        created_by=user.email,
+    )
+    if template is None:
+        raise api_error(
+            422,
+            "ORDER_RELEASE_TEMPLATE_INVALID",
+            "Order Release template version contract is invalid.",
             {"issues": issues},
         )
     return serialize_order_release_template(template)

@@ -151,6 +151,54 @@ def create_order_release_template(
     return template, []
 
 
+def create_order_release_template_version(
+    db: Session,
+    *,
+    source_template: OrderReleaseTemplate,
+    name: str,
+    description: str,
+    required_columns: list[str],
+    optional_columns: list[str],
+    defaults: dict[str, object],
+    created_by: str,
+) -> tuple[OrderReleaseTemplate | None, list[dict[str, object]]]:
+    normalized_name = name.strip()
+    normalized_required = normalize_columns(required_columns)
+    normalized_optional = normalize_columns(optional_columns)
+    issues = validate_template_contract(
+        code=source_template.code,
+        name=normalized_name,
+        required_columns=normalized_required,
+        optional_columns=normalized_optional,
+    )
+    if issues:
+        return None, issues
+
+    latest_version = (
+        db.query(OrderReleaseTemplate.version)
+        .filter(OrderReleaseTemplate.code == source_template.code)
+        .order_by(OrderReleaseTemplate.version.desc())
+        .first()
+    )
+    next_version = int(latest_version[0] if latest_version else source_template.version) + 1
+    template = OrderReleaseTemplate(
+        code=source_template.code,
+        name=normalized_name,
+        version=next_version,
+        status="ACTIVE",
+        macro_object_code=source_template.macro_object_code,
+        description=description.strip(),
+        required_columns_json=json.dumps(normalized_required, sort_keys=True),
+        optional_columns_json=json.dumps(normalized_optional, sort_keys=True),
+        defaults_json=json.dumps(defaults, sort_keys=True),
+        created_by=created_by,
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template, []
+
+
 def parse_json_list(value: str) -> list[str]:
     try:
         parsed = json.loads(value)

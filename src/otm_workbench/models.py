@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from otm_workbench.database import Base
@@ -313,9 +313,10 @@ class AssetLink(Base, TimestampMixin):
 
 class OrderReleaseTemplate(Base, TimestampMixin):
     __tablename__ = "order_release_templates"
+    __table_args__ = (UniqueConstraint("code", "version", name="uq_order_release_templates_code_version"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
-    code: Mapped[str] = mapped_column(String, unique=True, index=True)
+    code: Mapped[str] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String)
     version: Mapped[int] = mapped_column(Integer, default=1, index=True)
     status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
