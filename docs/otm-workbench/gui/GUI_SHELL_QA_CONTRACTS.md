@@ -15,8 +15,11 @@ Keep the GUI foundation stable before deeper component and screen-level CSS spli
 - Density and sidebar mode must continue to update `.app-shell` data attributes.
 - Preference controls must not issue overlapping backend writes while a previous
   preference update is still saving.
-- Expanded sidebar must show backend navigation status chips.
-- Collapsed sidebar must keep navigation links available while omitting status chips from the compact rail.
+- Sidebar collapse/expand lives inside the sidebar as a minimal icon control.
+- Sidebar navigation must use backend-owned icon keys and labels without raw
+  lifecycle status chips such as `ACTIVE` or `PLANNED`.
+- Collapsed sidebar must keep navigation links available with icon-first
+  affordances.
 - Backend shell companion coverage lives in `tests/test_gui_shell_backend_contracts.py`.
 - The backend companion covers login/session, navigation label/icon metadata,
   active context persistence, user preference persistence, cockpit summary,
@@ -33,7 +36,7 @@ Run this checklist before major GUI refactors or before accepting new module scr
 - Compact density with collapsed sidebar.
 - Mobile viewport below 900px with collapsed sidebar.
 - Each module route opens from backend navigation without custom page chrome.
-- No text overlap in topbar, preference controls, nav labels, status chips, and primary module panels.
+- No text overlap in topbar, preference controls, nav labels, and primary module panels.
 - Icon-only controls expose labels through accessible names and tooltips.
 
 ## Non-goals

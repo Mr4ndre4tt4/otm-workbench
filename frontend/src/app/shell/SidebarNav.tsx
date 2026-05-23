@@ -2,17 +2,14 @@ import { NavLink } from "react-router-dom";
 
 import { isNavigationItemActive } from "../routes/routeUtils";
 import { renderIcon } from "../../ui/icons";
-import { StatusChip } from "../../ui/components";
-import type { NavigationItem, UserPreferences } from "../../platform/types";
+import type { NavigationItem } from "../../platform/types";
 
 export function SidebarNav({
   currentPath,
-  items,
-  sidebarMode
+  items
 }: {
   currentPath: string;
   items: NavigationItem[];
-  sidebarMode: UserPreferences["sidebar_mode"];
 }) {
   return (
     <nav className="sidebar-nav" aria-label="Workbench modules">
@@ -26,7 +23,6 @@ export function SidebarNav({
             {renderIcon(item.icon_key)}
           </span>
           <span className="nav-label">{item.label}</span>
-          {sidebarMode === "expanded" ? <StatusChip status={item.status} /> : null}
         </NavLink>
       ))}
     </nav>

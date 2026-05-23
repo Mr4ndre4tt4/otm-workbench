@@ -50,7 +50,8 @@ The topbar preference controls now call the backend preference contract:
 - Moon icon sets `theme_mode = dark`
 - Monitor icon sets `theme_mode = system` and `follow_system_theme = true`
 - Rows icon toggles `density` between `comfortable` and `compact`
-- Sidebar icon toggles `sidebar_mode` between `expanded` and `collapsed`
+- Sidebar icon inside the sidebar toggles `sidebar_mode` between `expanded`
+  and `collapsed`
 
 The active preference is reflected with `aria-pressed`, an active button style,
 and root shell attributes:

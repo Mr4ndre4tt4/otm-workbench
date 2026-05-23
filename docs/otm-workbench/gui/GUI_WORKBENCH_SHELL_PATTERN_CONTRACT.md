@@ -30,6 +30,7 @@ preference controls, and content slot.
 - app-shell layout attributes
 - brand lockup
 - sidebar placement
+- sidebar collapse/expand control placement
 - topbar placement
 - sign out action placement
 - preference control placement
@@ -61,7 +62,8 @@ Those decisions remain in backend contracts or the platform auth/session layer.
 2. Render sidebar navigation from backend navigation items.
 3. Render sign out only for authenticated sessions.
 4. Disable preference controls when no backend session token exists.
-5. Render route content through a child slot without inspecting module internals.
+5. Render sidebar collapse/expand from the sidebar, not as a topbar preference.
+6. Render route content through a child slot without inspecting module internals.
 ```
 
 ## 5. Guardrails

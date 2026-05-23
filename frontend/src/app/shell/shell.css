@@ -12,11 +12,20 @@
   padding: 20px 16px;
 }
 
+.sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 20px;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 8px 24px;
+  min-width: 0;
+  padding: 8px;
 }
 
 .brand-mark {

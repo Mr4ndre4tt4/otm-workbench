@@ -1,4 +1,4 @@
-import { Monitor, Moon, PanelLeftClose, PanelLeftOpen, Rows3, Sun } from "lucide-react";
+import { Monitor, Moon, Rows3, Sun } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -19,7 +19,6 @@ export function PreferenceControls({
   const [isSaving, setIsSaving] = useState(false);
   const currentMode = preferences?.theme_mode ?? "light";
   const currentDensity = preferences?.density ?? "comfortable";
-  const currentSidebarMode = preferences?.sidebar_mode ?? "expanded";
 
   async function applyPreferences(nextValues: Partial<UserPreferences>) {
     if (!token || isSaving) return;
@@ -94,17 +93,6 @@ export function PreferenceControls({
         }
       >
         <Rows3 aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        aria-pressed={currentSidebarMode === "collapsed"}
-        className={currentSidebarMode === "collapsed" ? "icon-button-active" : ""}
-        disabled={controlsDisabled}
-        label={currentSidebarMode === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
-        onClick={() =>
-          void applyPreferences({ sidebar_mode: currentSidebarMode === "collapsed" ? "expanded" : "collapsed" })
-        }
-      >
-        {currentSidebarMode === "collapsed" ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
       </IconButton>
       {error ? <span className="preference-error">{error}</span> : null}
     </div>

@@ -37,7 +37,7 @@ describe("PreferenceControls", () => {
     expect(screen.getByRole("button", { name: "Use light mode" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Use dark mode" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Use compact density" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).not.toBeInTheDocument();
   });
 
   it("disables preference controls without a backend token", () => {
@@ -45,6 +45,7 @@ describe("PreferenceControls", () => {
 
     expect(screen.getByRole("button", { name: "Use light mode" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Follow system theme" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).not.toBeInTheDocument();
   });
 
   it("prevents overlapping preference writes while one update is saving", async () => {
@@ -65,8 +66,8 @@ describe("PreferenceControls", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Use compact density" }));
 
-    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    expect(screen.getByRole("button", { name: "Use dark mode" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Use dark mode" }));
     expect(updateUserPreferences).toHaveBeenCalledTimes(1);
     expect(updateUserPreferences).toHaveBeenCalledWith("token", {
       density: "compact",
@@ -82,6 +83,6 @@ describe("PreferenceControls", () => {
       theme_mode: "light"
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Use dark mode" })).toBeEnabled());
   });
 });

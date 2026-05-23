@@ -8,7 +8,12 @@
 
 .app-shell[data-sidebar="collapsed"] .brand-lockup {
   justify-content: center;
-  padding: 8px 0 24px;
+  padding: 8px 0;
+}
+
+.app-shell[data-sidebar="collapsed"] .sidebar-header {
+  display: grid;
+  justify-items: center;
 }
 
 .app-shell[data-sidebar="collapsed"] .brand-text,

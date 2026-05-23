@@ -38,24 +38,24 @@ const navigationItems = [
 ];
 
 describe("SidebarNav", () => {
-  it("renders backend navigation with status chips while expanded", () => {
+  it("renders backend navigation without raw lifecycle status text", () => {
     render(
       <MemoryRouter>
-        <SidebarNav currentPath="/rates" items={navigationItems} sidebarMode="expanded" />
+        <SidebarNav currentPath="/rates" items={navigationItems} />
       </MemoryRouter>
     );
 
     expect(screen.getByRole("navigation", { name: "Workbench modules" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Project Cockpit/ })).toHaveAttribute("href", "/home");
     expect(screen.getByRole("link", { name: /Rates Studio/ })).toHaveClass("nav-item-active");
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
-    expect(screen.getByText("PLANNED")).toBeInTheDocument();
+    expect(screen.queryByText("ACTIVE")).not.toBeInTheDocument();
+    expect(screen.queryByText("PLANNED")).not.toBeInTheDocument();
   });
 
   it("renders icons from backend-owned icon keys instead of module ids", () => {
     render(
       <MemoryRouter>
-        <SidebarNav currentPath="/rates" items={navigationItems} sidebarMode="expanded" />
+        <SidebarNav currentPath="/rates" items={navigationItems} />
       </MemoryRouter>
     );
 
@@ -63,10 +63,10 @@ describe("SidebarNav", () => {
     expect(screen.getByTestId("nav-icon-rates")).toHaveAttribute("data-icon-key", "chart");
   });
 
-  it("keeps collapsed navigation icon-first without duplicating status chips", () => {
+  it("keeps collapsed navigation icon-first without status chips", () => {
     render(
       <MemoryRouter>
-        <SidebarNav currentPath="/rates" items={navigationItems} sidebarMode="collapsed" />
+        <SidebarNav currentPath="/rates" items={navigationItems} />
       </MemoryRouter>
     );
 

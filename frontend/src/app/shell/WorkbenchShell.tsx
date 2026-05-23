@@ -1,7 +1,10 @@
-import { type PropsWithChildren } from "react";
+import { type PropsWithChildren, useState } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { updateUserPreferences } from "../../platform/hooks";
 import type { NavigationItem, UserPreferences } from "../../platform/types";
-import { Button } from "../../ui/components";
+import { Button, IconButton } from "../../ui/components";
 import { PreferenceControls } from "./PreferenceControls";
 import { SidebarNav } from "./SidebarNav";
 
@@ -25,20 +28,45 @@ export function WorkbenchShell({
   sidebarMode,
   token
 }: WorkbenchShellProps) {
+  const queryClient = useQueryClient();
+  const [isSidebarSaving, setIsSidebarSaving] = useState(false);
   const themeMode = preferences?.theme_mode ?? "light";
   const density = preferences?.density ?? "comfortable";
+  const nextSidebarMode: UserPreferences["sidebar_mode"] = sidebarMode === "collapsed" ? "expanded" : "collapsed";
+
+  async function toggleSidebarMode() {
+    if (!token || !preferences || isSidebarSaving) return;
+    setIsSidebarSaving(true);
+    const nextPreferences = { ...preferences, sidebar_mode: nextSidebarMode };
+    try {
+      await updateUserPreferences(token, nextPreferences);
+      queryClient.setQueryData(["platform", "user-preferences"], nextPreferences);
+      await queryClient.invalidateQueries({ queryKey: ["platform", "user-preferences"] });
+    } finally {
+      setIsSidebarSaving(false);
+    }
+  }
 
   return (
     <div className="app-shell" data-density={density} data-sidebar={sidebarMode} data-theme={themeMode}>
       <aside className="sidebar">
-        <div className="brand-lockup">
-          <span className="brand-mark">OTM</span>
-          <div className="brand-text">
-            <strong>Workbench</strong>
-            <span>Implementation cockpit</span>
+        <div className="sidebar-header">
+          <div className="brand-lockup">
+            <span className="brand-mark">OTM</span>
+            <div className="brand-text">
+              <strong>Workbench</strong>
+              <span>Implementation cockpit</span>
+            </div>
           </div>
+          <IconButton
+            disabled={!token || !preferences || isSidebarSaving}
+            label={sidebarMode === "collapsed" ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => void toggleSidebarMode()}
+          >
+            {sidebarMode === "collapsed" ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+          </IconButton>
         </div>
-        <SidebarNav currentPath={currentPath} items={navigationItems} sidebarMode={sidebarMode} />
+        <SidebarNav currentPath={currentPath} items={navigationItems} />
       </aside>
 
       <main className="main-area">
