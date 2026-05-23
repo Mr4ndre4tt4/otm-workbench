@@ -44,6 +44,10 @@ export function useLoadPlanPackageDetail(token: string | null, packageId: string
   });
 }
 
+export function registerMasterDataPackageForLoadPlan(token: string, batchId: string) {
+  return apiPost<LoadPlanPackage>(`/api/v1/modules/load-plan/packages/from-master-data/${batchId}`, {}, { token });
+}
+
 export function createCutoverChecklistFromPackage(token: string, packageId: string) {
   return apiPost<CutoverChecklist>(`/api/v1/modules/load-plan/cutover-checklists/from-package/${packageId}`, {}, { token });
 }

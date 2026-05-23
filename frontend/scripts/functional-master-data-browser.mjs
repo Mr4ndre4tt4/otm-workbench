@@ -242,6 +242,9 @@ async function run() {
     await outputPanel.getByRole("button", { name: "Export package" }).click();
     await page.getByText("CSV package export is EXPORTED.").waitFor();
     await page.getByLabel("Export package summary").waitFor();
+    await outputPanel.getByRole("button", { name: "Register for Load Plan" }).click();
+    await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
+    await page.getByLabel("Load Plan package registration").getByText("master_data_csv_zip").waitFor();
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -272,7 +275,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "master-data-author-template-workbook-upload-output-export-route-recovery",
+          journey: "master-data-author-template-workbook-upload-output-export-load-plan-registration-route-recovery",
           authorTemplateCode,
           baseUrl,
           apiBaseUrl

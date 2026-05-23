@@ -239,6 +239,7 @@ describe("Functional Master Data journey", () => {
     const outputRequests: unknown[] = [];
     const csvRequests: unknown[] = [];
     const exportRequests: unknown[] = [];
+    const loadPlanRegistrationRequests: unknown[] = [];
     const batchListRequests: unknown[] = [];
     const artifactListRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
@@ -401,6 +402,40 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/packages/from-master-data/batch_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        loadPlanRegistrationRequests.push({ method: init?.method });
+        return Promise.resolve(
+          jsonResponse({
+            approval_evidence_id: null,
+            artifact_id: "artifact_csv_package",
+            created_by: "admin@example.test",
+            environment_id: null,
+            evidence_id: "evidence_load_plan_package",
+            id: "load_plan_master_data_package_1",
+            load_sequence: [
+              { position: 1, requirement_level: "REQUIRED", row_count: 1, table_name: "REGION" },
+              { position: 2, requirement_level: "REQUIRED", row_count: 1, table_name: "REGION_DETAIL" }
+            ],
+            manifest_id: "manifest_csv_package",
+            package_type: "master_data_csv_zip",
+            profile_id: null,
+            project_id: null,
+            registered_at: "2026-05-23T00:00:00",
+            source_entity_id: "batch_1",
+            source_entity_type: "master_data_batch",
+            source_module: "master_data",
+            status: "REGISTERED",
+            summary: {
+              catalog_load_plan_path: "/api/v1/catalog/macro-objects/REGION/load-plan",
+              catalog_macro_object_code: "REGION",
+              package_type: "master_data_csv_zip",
+              row_count: 2,
+              table_count: 2
+            }
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactListRequests.push({ method: init?.method ?? "GET" });
@@ -482,6 +517,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Export package" }));
     await screen.findByText("CSV package export is EXPORTED.");
     expect(screen.getByLabelText("Export package summary")).toHaveTextContent("artifact_csv_package");
+    await userEvent.click(within(outputPanel).getByRole("button", { name: "Register for Load Plan" }));
+    await screen.findByText("Load Plan package load_plan_master_data_package_1 registered.");
+    expect(screen.getByLabelText("Load Plan package registration")).toHaveTextContent("master_data_csv_zip");
     expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
     expect(screen.getByLabelText("Master Data export artifacts")).toHaveTextContent("master_data_regions_basic.zip");
     await userEvent.click(within(screen.getByLabelText("Master Data export artifacts")).getByRole("button", { name: "Download" }));
@@ -495,6 +533,7 @@ describe("Functional Master Data journey", () => {
     expect(outputRequests).toEqual([{ method: "POST" }]);
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
+    expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
     expect(batchListRequests.length).toBeGreaterThan(0);
     expect(artifactListRequests.length).toBeGreaterThan(0);
     expect(artifactDownloadRequests).toEqual([

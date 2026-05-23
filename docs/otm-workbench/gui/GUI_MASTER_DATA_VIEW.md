@@ -1,6 +1,6 @@
 # GUI Master Data View
 
-**Status:** MVP workflow done; first Coordinate Quality GUI slice done; module-complete follow-ups remain
+**Status:** MVP workflow done; first Coordinate Quality and Load Plan handoff slices done; module-complete follow-ups remain
 **Linear:** OTM-114, OTM-117, OTM-118, OTM-91
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
@@ -13,7 +13,7 @@ of only inspecting templates.
 Delivered story:
 
 ```text
-template -> author -> workbook -> upload -> validate -> map -> output/export -> quality
+template -> author -> workbook -> upload -> validate -> map -> output/export -> load-plan handoff -> quality
 ```
 
 ## Primary Pattern
@@ -61,6 +61,7 @@ GET  /api/v1/modules/master-data/batches
 GET  /api/v1/modules/master-data/batches/{batch_id}
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
+POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
 POST /api/v1/modules/master-data/coordinate-quality/validate
 GET  /api/v1/modules/master-data/coordinate-quality/batches
 POST /api/v1/modules/master-data/coordinate-quality/batches
@@ -73,7 +74,6 @@ POST /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export
 ```text
 - free-form template authoring from arbitrary N OTM tables
 - browser spreadsheet editor
-- Load Plan registration from Data Factory
 - direct OTM import
 - advanced batch history filters/pagination
 - Coordinate Quality advanced map diagnostics and external geocoder setup
@@ -189,11 +189,18 @@ package, and recovers the recent batch after leaving and returning to the route.
 The UI does not duplicate geospatial or OTM Location rules; it orchestrates the
 backend-owned Coordinate Quality contracts.
 
+The first Load Plan handoff slice adds guarded package registration from the
+Output stage. After a Master Data CSV package is exported, the user can register
+the active batch through `POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}`.
+The backend owns eligibility, idempotency, generated package evidence, audit,
+domain event, and load sequence; the UI only displays the returned package id,
+type, macro object, evidence id, status, and step count.
+
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
-complete` because Load Plan registration, direct OTM import, richer
-workbook/spreadsheet operations, advanced Coordinate Quality map diagnostics,
-and broader negative/out-of-order QA are tracked as follow-up scope.
+complete` because direct OTM import, richer workbook/spreadsheet operations,
+advanced Coordinate Quality map diagnostics, deeper Load Plan handoff flows, and
+broader negative/out-of-order QA are tracked as follow-up scope.
 
 ## Validation
 

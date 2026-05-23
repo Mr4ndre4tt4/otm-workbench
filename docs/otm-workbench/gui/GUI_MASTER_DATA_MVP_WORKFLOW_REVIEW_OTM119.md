@@ -27,6 +27,7 @@ select template
 -> build output
 -> build OTM CSV files
 -> export CSV ZIP package
+-> register exported package for Load Plan
 -> recover batch/artifact state after route navigation
 ```
 
@@ -52,6 +53,7 @@ GET  /api/v1/modules/master-data/batches
 GET  /api/v1/modules/master-data/batches/{batch_id}
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
+POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
 ```
 
 The GUI does not infer lifecycle readiness, OTM table/column validity,
@@ -128,7 +130,7 @@ npm run qa:functional:master-data:browser
 Recent journey:
 
 ```text
-master-data-author-template-workbook-upload-output-export-route-recovery
+master-data-author-template-workbook-upload-output-export-load-plan-registration-route-recovery
 ```
 
 ## 7. Negative And Out-Of-Order Coverage
@@ -139,6 +141,7 @@ Delivered hardening:
 - missing artifact file appears as FILE_MISSING and does not expose download_url
 - build-csv retry/double-click returns persisted CSVs without duplication
 - export-csv-package retry/double-click returns existing artifact/manifest/evidence
+- Load Plan registration is backend-idempotent and returns existing package on retry
 - invalid workbook upload surfaces backend details and allows replacing the file
 - route leave/return validates durable backend batch and artifact visibility
 - child table removal clears dependent authoring state before re-add
@@ -157,8 +160,8 @@ These items remain outside the current MVP workflow and must stay tracked as
 separate work before any `Module complete` claim:
 
 ```text
-- Coordinate Quality GUI placement and workflow
-- guarded Load Plan registration from exported packages
+- Coordinate Quality advanced map diagnostics and provider governance
+- deeper Load Plan checklist handoff after package registration
 - direct OTM import / submit guardrails
 - richer spreadsheet preview/editor only with backend-owned state
 - date-field CSVUTIL alter-session coverage for date-bearing templates

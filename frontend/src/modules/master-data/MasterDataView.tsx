@@ -13,6 +13,7 @@ import {
   mapMasterDataBatch,
   previewCoordinateQuality,
   publishMasterDataTemplate,
+  registerMasterDataPackageForLoadPlan,
   updateMasterDataTemplateDraft,
   uploadMasterDataWorkbook,
   useCatalogColumnsByTable,
@@ -40,7 +41,8 @@ import type {
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
   MasterDataTemplateValidation,
-  MasterDataWorkbookArtifact
+  MasterDataWorkbookArtifact,
+  LoadPlanPackage
 } from '../../platform/types';
 import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
@@ -363,6 +365,7 @@ export function MasterDataView({ token }: { token: string }) {
   const [outputResult, setOutputResult] = useState<MasterDataActionResult | null>(null);
   const [csvResult, setCsvResult] = useState<MasterDataActionResult | null>(null);
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
+  const [loadPlanPackage, setLoadPlanPackage] = useState<LoadPlanPackage | null>(null);
   const [coordinateRecordsJson, setCoordinateRecordsJson] = useState(
     JSON.stringify(defaultCoordinateQualityRecords, null, 2)
   );
@@ -402,6 +405,7 @@ export function MasterDataView({ token }: { token: string }) {
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
   const activeBatch = uploadedBatch ?? batches.data?.items[0] ?? null;
   const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
+  const canRegisterLoadPlanPackage = Boolean(activeBatch && (exportResult || activeBatch.status === "EXPORTED"));
   const activeCoordinateBatch = coordinateBatch ?? coordinateQualityBatches.data?.items[0] ?? null;
   const coordinateResults = useCoordinateQualityResults(token, activeCoordinateBatch?.batch_id ?? null);
   const coordinateQualityBatchItems =
@@ -667,6 +671,7 @@ export function MasterDataView({ token }: { token: string }) {
         setOutputResult(null);
         setCsvResult(null);
         setExportResult(null);
+        setLoadPlanPackage(null);
         await batches.refetch();
         return result;
       },
@@ -728,11 +733,24 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await exportMasterDataCsvPackage(token, activeBatch.batch_id);
         setExportResult(result);
+        setLoadPlanPackage(null);
         await batches.refetch();
         await batchArtifacts.refetch();
         return result;
       },
       (result) => `CSV package export is ${result.status}.`
+    );
+  };
+
+  const handleRegisterLoadPlanPackage = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => {
+        const result = await registerMasterDataPackageForLoadPlan(token, activeBatch.batch_id);
+        setLoadPlanPackage(result);
+        return result;
+      },
+      (result) => `Load Plan package ${result.id} registered.`
     );
   };
 
@@ -1290,6 +1308,9 @@ export function MasterDataView({ token }: { token: string }) {
               <Button disabled={!activeBatch || isMutating} onClick={handleExportCsvPackage} variant="secondary">
                 Export package
               </Button>
+              <Button disabled={!canRegisterLoadPlanPackage || isMutating} onClick={handleRegisterLoadPlanPackage} variant="secondary">
+                Register for Load Plan
+              </Button>
             </div>
             <DetailList
               ariaLabel="Output build summary"
@@ -1325,6 +1346,24 @@ export function MasterDataView({ token }: { token: string }) {
                     ],
                     status: exportResult.status,
                     title: exportResult.status
+                  }
+                ]}
+              />
+            ) : null}
+            {loadPlanPackage ? (
+              <DetailList
+                ariaLabel="Load Plan package registration"
+                items={[
+                  {
+                    id: loadPlanPackage.id,
+                    meta: [
+                      loadPlanPackage.package_type,
+                      loadPlanPackage.summary.catalog_macro_object_code ?? "No macro object",
+                      `${loadPlanPackage.load_sequence.length} load step(s)`,
+                      loadPlanPackage.evidence_id ?? "No evidence"
+                    ],
+                    status: loadPlanPackage.status,
+                    title: loadPlanPackage.id
                   }
                 ]}
               />
