@@ -14,6 +14,7 @@ import {
   useAssets,
   useCatalogMacroObjects,
   useCatalogTables,
+  useEvidenceHub,
   useNavigation,
   useAssetVersions
 } from '../../platform/hooks';
@@ -146,6 +147,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const classifications = useAssetClassifications(token);
   const navigation = useNavigation(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
+  const evidenceHub = useEvidenceHub(token, { client_safe: true });
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AssetWorkflowStage>("library");
   const [operationAsset, setOperationAsset] = useState<AssetItem | null>(null);
@@ -218,6 +220,29 @@ export function AssetsLibraryView({ token }: { token: string }) {
               targetId: item.table_name,
               targetLabel: `${item.table_name} table`
             }))
+          : linkType === "ARTIFACT"
+            ? Array.from(
+                new Map(
+                  (evidenceHub.data?.items ?? [])
+                    .filter((item) => item.artifact)
+                    .map((item) => [
+                      item.artifact!.id,
+                      {
+                        description: `${item.artifact!.source_module} / ${item.artifact!.artifact_type}`,
+                        label: item.artifact!.file_name,
+                        targetId: item.artifact!.id,
+                        targetLabel: item.artifact!.file_name
+                      }
+                    ])
+                ).values()
+              )
+            : linkType === "EVIDENCE"
+              ? (evidenceHub.data?.items ?? []).map((item) => ({
+                  description: `${item.source_module} / ${item.status}`,
+                  label: item.evidence_type,
+                  targetId: item.id,
+                  targetLabel: `${item.evidence_type} evidence`
+                }))
         : [];
 
   const handleGuidedLinkTargetChange = (targetId: string) => {

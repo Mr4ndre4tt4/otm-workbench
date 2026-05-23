@@ -94,6 +94,11 @@ async function run() {
     }
   });
   const context = await seedSyntheticContext(token);
+  const evidenceIndex = await apiRequest("/api/v1/evidence-hub/evidence", { token });
+  const evidenceTarget = evidenceIndex.items?.find((item) => item.artifact);
+  if (!evidenceTarget?.artifact) {
+    throw new Error("Assets browser functional QA requires at least one client-safe evidence item with an artifact.");
+  }
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
@@ -195,6 +200,20 @@ async function run() {
     await page.getByText("Asset link RATE_RECORD created.").waitFor();
     await page.getByLabel("Selected asset links").getByText("Rate Record macro object").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    await page.getByLabel("Asset link type").selectOption("ARTIFACT");
+    await page.getByLabel("Asset guided link target").selectOption(evidenceTarget.artifact.id);
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText(`Asset link ${evidenceTarget.artifact.id} created.`).waitFor();
+    await page.getByLabel("Selected asset links").getByText(evidenceTarget.artifact.file_name).waitFor();
+
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    await page.getByLabel("Asset link type").selectOption("EVIDENCE");
+    await page.getByLabel("Asset guided link target").selectOption(evidenceTarget.id);
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText(`Asset link ${evidenceTarget.id} created.`).waitFor();
+    await page.getByLabel("Selected asset links").getByText(`${evidenceTarget.evidence_type} evidence`).waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Lifecycle" }).click();
     await page.getByRole("button", { name: "Download current version" }).click();
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
@@ -246,7 +265,9 @@ async function run() {
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id,
-          downloaded_file: "synthetic_mapping_spec.md"
+          downloaded_file: "synthetic_mapping_spec.md",
+          linked_artifact_id: evidenceTarget.artifact.id,
+          linked_evidence_id: evidenceTarget.id
         },
         null,
         2

@@ -208,9 +208,27 @@ function classificationGroups() {
             name: "Macro Object",
             sort_order: 40,
             system_protected: true
+          },
+          {
+            code: "ARTIFACT",
+            description: "Links an asset to an Evidence Hub artifact.",
+            id: "asset_link_artifact",
+            is_active: true,
+            name: "Artifact",
+            sort_order: 50,
+            system_protected: true
+          },
+          {
+            code: "EVIDENCE",
+            description: "Links an asset to Evidence Hub evidence.",
+            id: "asset_link_evidence",
+            is_active: true,
+            name: "Evidence",
+            sort_order: 60,
+            system_protected: true
           }
         ],
-        total: 3
+        total: 5
       }
     ],
     total: 4
@@ -325,6 +343,63 @@ describe("Functional Assets Library journey", () => {
             ]
           : [];
         return Promise.resolve(jsonResponse({ items, page: 1, page_size: items.length, total: items.length }));
+      }
+      if (url.includes("/api/v1/evidence-hub/evidence")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                artifact: {
+                  artifact_type: "integration_markdown_spec",
+                  content_type: "text/markdown",
+                  created_at: "2026-05-22T00:00:00",
+                  file_name: "synthetic_mapping_spec.md",
+                  id: "artifact_qa_1",
+                  sensitivity_level: "client_safe",
+                  sha256: "sha-artifact-1",
+                  size_bytes: 42,
+                  source_module: "integration_mapping"
+                },
+                client_safe: true,
+                created_at: "2026-05-22T00:00:00",
+                evidence_type: "integration_mapping_spec",
+                id: "evidence_qa_1",
+                manifest: null,
+                project_id: null,
+                sensitivity_level: "client_safe",
+                source_module: "integration_mapping",
+                status: "CREATED",
+                summary: {}
+              },
+              {
+                artifact: {
+                  artifact_type: "integration_markdown_spec",
+                  content_type: "text/markdown",
+                  created_at: "2026-05-22T00:00:00",
+                  file_name: "synthetic_mapping_spec.md",
+                  id: "artifact_qa_1",
+                  sensitivity_level: "client_safe",
+                  sha256: "sha-artifact-1",
+                  size_bytes: 42,
+                  source_module: "integration_mapping"
+                },
+                client_safe: true,
+                created_at: "2026-05-22T00:01:00",
+                evidence_type: "integration_mapping_spec_review",
+                id: "evidence_qa_2",
+                manifest: null,
+                project_id: null,
+                sensitivity_level: "client_safe",
+                source_module: "integration_mapping",
+                status: "CREATED",
+                summary: {}
+              }
+            ],
+            page: 1,
+            page_size: 2,
+            total: 2
+          })
+        );
       }
       if (url.endsWith("/api/v1/platform/session/me")) {
         return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
@@ -571,6 +646,22 @@ describe("Functional Assets Library journey", () => {
     await screen.findByText("Asset link RATE_RECORD created.");
     expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("Rate Record macro object");
 
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "ARTIFACT");
+    expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("synthetic_mapping_spec.md");
+    await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "artifact_qa_1");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("Asset link artifact_qa_1 created.");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("synthetic_mapping_spec.md");
+
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "EVIDENCE");
+    expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("integration_mapping_spec");
+    await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "evidence_qa_1");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("Asset link evidence_qa_1 created.");
+    expect(screen.getByLabelText("Selected asset links")).toHaveTextContent("integration_mapping_spec evidence");
+
     await userEvent.click(screen.getByRole("button", { name: /5Lifecycle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
     await screen.findByText("Download started: synthetic_mapping_spec.md.");
@@ -627,10 +718,12 @@ describe("Functional Assets Library journey", () => {
     ]);
     expect(linkRequests).toEqual([
       { link_type: "OTM_TABLE", target_id: "RATE_GEO_COST", target_label: "RATE_GEO_COST table" },
-      { link_type: "MACRO_OBJECT", target_id: "RATE_RECORD", target_label: "Rate Record macro object" }
+      { link_type: "MACRO_OBJECT", target_id: "RATE_RECORD", target_label: "Rate Record macro object" },
+      { link_type: "ARTIFACT", target_id: "artifact_qa_1", target_label: "synthetic_mapping_spec.md" },
+      { link_type: "EVIDENCE", target_id: "evidence_qa_1", target_label: "integration_mapping_spec evidence" }
     ]);
     expect(downloadRequests).toEqual([{ method: "GET" }]);
     expect(archiveRequests).toEqual([{ method: "POST" }]);
-    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("MACRO_OBJECT").length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText("Selected asset links")).getAllByText("EVIDENCE").length).toBeGreaterThan(0);
   }, 60000);
 });

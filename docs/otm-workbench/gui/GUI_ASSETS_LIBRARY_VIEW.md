@@ -50,6 +50,8 @@ The screen uses shared components:
 - Guided link target selector for backend-owned `MODULE` targets from platform
   navigation, `MACRO_OBJECT` targets from Catalog Core, and `OTM_TABLE`
   targets from Catalog Core Data Dictionary search;
+- Guided link target selector for `ARTIFACT` and `EVIDENCE` targets from
+  Evidence Hub client-safe evidence and artifact summaries;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -87,8 +89,8 @@ Still open:
 
 ```text
 - richer custom metadata validation messaging
-- richer guided link authoring UX for `ARTIFACT` and `EVIDENCE` once those
-  target search contracts are exposed
+- richer filtering for high-volume guided artifact/evidence target lists once
+  operational volume requires it
 - deeper authoring for backend-owned classifications
 ```
 

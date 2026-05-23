@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, selected-asset sync, guided module/macro-object/table link targets, invalid OTM table and macro object link recovery, and advanced filters are delivered; artifact/evidence target search remains follow-up. |
+| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, invalid OTM table and macro object link recovery, and advanced filters are delivered; high-volume target filtering remains follow-up. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
@@ -182,14 +182,16 @@ Required GUI work:
 - Add guided target selection from backend-owned platform navigation for
   `MODULE`, Catalog Core macro objects for `MACRO_OBJECT`, and Catalog Core
   Data Dictionary table search for `OTM_TABLE`.
+- Add guided target selection from Evidence Hub client-safe evidence and
+  artifact summaries for `EVIDENCE` and `ARTIFACT`.
 - Add advanced backend-owned filters for scope, module id, macro object, and
   OTM table.
 - Use ArtifactList or version list for files.
 - Keep file eligibility, version state, and links backend-owned.
 - Keep the screen staged; do not return to stacked create/upload/link/list
   panels.
-- Add richer guided link authoring UX for `ARTIFACT` and `EVIDENCE` before
-  treating the module as complete.
+- Add richer high-volume filtering if artifact/evidence target lists become
+  operationally large.
 ```
 
 ## 5. Pattern Risks To Watch
