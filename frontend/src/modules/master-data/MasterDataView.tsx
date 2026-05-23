@@ -1810,7 +1810,7 @@ export function MasterDataView({ token }: { token: string }) {
                         disabled={isMutating || activeBatch?.batch_id === batch.batch_id}
                         onClick={() => handleInspectBatch(batch)}
                       >
-                        Inspect batch {batch.batch_id}
+                        {activeBatch?.batch_id === batch.batch_id ? "Active batch" : "Inspect batch"} {batch.batch_id}
                       </Button>
                     </div>
                   </div>

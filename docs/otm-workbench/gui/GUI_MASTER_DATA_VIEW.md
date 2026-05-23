@@ -279,6 +279,10 @@ Resetting batch-history filters also clears any manual historical-batch
 inspection and returns the active workspace to the latest matching batch. This
 prevents a reset from leaving the user in a stale historical context.
 
+The durable batch-history list labels the selected row as the active batch. This
+keeps the inspected batch visible in the list itself instead of relying only on
+the selected-object side panel.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV
