@@ -47,7 +47,7 @@ For each module:
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, Evidence Hub archive convenience, Go/No-Go, and guarded handoff commit UI done | Backend flows mostly ready | Review queue + staged workflow | Current GUI journey is accepted; keep future work to hardening or explicit new scope. |
-| Master Data / Data Factory | MVP workflow done plus first preview, batch-history, Coordinate Quality, Load Plan handoff, and date-column CSV parity slices | Backend flows ready for template authoring, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, spreadsheet editing, deeper Load Plan export/handoff, richer batch history dimensions, and advanced Coordinate Quality diagnostics remain follow-ups. |
+| Master Data / Data Factory | MVP workflow done plus preview, richer batch-history, Coordinate Quality, Load Plan handoff, and date-column CSV parity slices | Backend flows ready for template authoring, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Direct OTM import, spreadsheet editing, deeper Load Plan export/handoff, operational batch analytics, and advanced Coordinate Quality diagnostics remain follow-ups. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | Functional slice plus archive history done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. |
@@ -105,7 +105,8 @@ Delivered after OTM-119:
   validation, mapping, output, CSV build, and CSV/ZIP export.
 - Read-only backend-owned output record and generated CSV file previews.
 - Durable batch list/detail and batch-scoped artifact listing/download.
-- Backend-owned batch history filters for template, status, page, and page size.
+- Backend-owned batch history filters for template, status, file name,
+  minimum rows, page, and page size.
 - Guarded Load Plan package registration from exported Master Data packages.
 - Guarded cutover checklist creation from the registered Load Plan package.
 - Guarded cutover checklist readiness generation from the created checklist.
@@ -125,8 +126,8 @@ Remaining GUI work before `Module complete`:
   case.
 - Add advanced Coordinate Quality map diagnostics and external provider setup
   only after backend provider governance is designed.
-- Expand advanced batch history filters beyond template/status if operational
-  volume needs it.
+- Add operational batch history analytics beyond list filtering/pagination only
+  if operational volume needs it.
 ```
 
 ### 4.3 Evidence Hub

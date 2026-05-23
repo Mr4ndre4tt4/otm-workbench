@@ -1532,9 +1532,13 @@ def test_master_data_batch_list_filters_and_paginates(client, admin_header):
         regions.title = "REGIONS"
         regions.append(["Region GID", "Region XID", "Region Name"])
         regions.append([f"SYN.REGION_FILTER_{index}", f"REGION_FILTER_{index}", "Synthetic Filter Region"])
+        if index == 1:
+            regions.append(["SYN.REGION_FILTER_EXTRA", "REGION_FILTER_EXTRA", "Synthetic Extra Region"])
         details = workbook.create_sheet("REGION_DETAILS")
         details.append(["Region GID", "Location GID"])
         details.append([f"SYN.REGION_FILTER_{index}", f"SYN.LOCATION_FILTER_{index}"])
+        if index == 1:
+            details.append(["SYN.REGION_FILTER_EXTRA", "SYN.LOCATION_FILTER_EXTRA"])
         workbook_bytes = BytesIO()
         workbook.save(workbook_bytes)
         workbook_bytes.seek(0)
@@ -1565,6 +1569,18 @@ def test_master_data_batch_list_filters_and_paginates(client, admin_header):
     assert len(payload["items"]) == 1
     assert payload["items"][0]["template_code"] == "REGIONS_BASIC"
     assert payload["items"][0]["status"] == "PARSED"
+
+    advanced_response = client.get(
+        "/api/v1/modules/master-data/batches",
+        params={"file_name_contains": "upload_1", "min_row_count": 4},
+        headers=admin_header,
+    )
+
+    assert advanced_response.status_code == 200
+    advanced_payload = advanced_response.json()
+    assert advanced_payload["total"] == 1
+    assert advanced_payload["items"][0]["file_name"] == "regions_basic_upload_1.xlsx"
+    assert advanced_payload["items"][0]["row_count"] == 4
 
 
 def test_master_data_batch_build_csv_is_idempotent_for_double_click(

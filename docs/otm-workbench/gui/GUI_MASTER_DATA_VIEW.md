@@ -79,7 +79,7 @@ POST /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export
 - free-form template authoring from arbitrary N OTM tables
 - browser spreadsheet editor
 - direct OTM import
-- advanced batch history filters beyond template/status/page size
+- operational batch history analytics beyond list filtering and pagination
 - Coordinate Quality advanced map diagnostics and external geocoder setup
 ```
 
@@ -224,6 +224,11 @@ The first batch-history slice adds backend-owned filtering and pagination to
 batches by template and lifecycle status, adjust page size, and page through
 results without holding a frontend-only history list.
 
+The second batch-history slice expands that backend-owned filter contract with
+file-name contains and minimum row-count filters. The Output stage sends those
+filters through the same batch list endpoint, so operators can narrow uploaded
+workbooks without relying on frontend-only filtering.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV
@@ -234,8 +239,8 @@ OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
 advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
-flows, broader batch history dimensions, and broader negative/out-of-order QA
-are tracked as follow-up scope.
+flows, operational batch history analytics, and broader negative/out-of-order
+QA are tracked as follow-up scope.
 
 ## Validation
 

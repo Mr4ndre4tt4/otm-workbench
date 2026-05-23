@@ -297,6 +297,8 @@ describe("Functional Master Data journey", () => {
       if (parsedUrl.pathname === "/api/v1/modules/master-data/batches") {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         batchListRequests.push({
+          file_name_contains: parsedUrl.searchParams.get("file_name_contains"),
+          min_row_count: parsedUrl.searchParams.get("min_row_count"),
           method: init?.method ?? "GET",
           page_size: parsedUrl.searchParams.get("page_size"),
           status: parsedUrl.searchParams.get("status"),
@@ -657,6 +659,8 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByText("Checklist item is still pending.")).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
     await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
+    await userEvent.type(screen.getByLabelText("Batch file name filter"), "regions");
+    await userEvent.type(screen.getByLabelText("Batch minimum row count"), "2");
     await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");
     await screen.findByLabelText("Durable Master Data batches");
     expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
@@ -678,6 +682,8 @@ describe("Functional Master Data journey", () => {
     expect(outputRecordListRequests.length).toBeGreaterThan(0);
     expect(csvFileListRequests.length).toBeGreaterThan(0);
     expect(batchListRequests).toContainEqual({
+      file_name_contains: "regions",
+      min_row_count: "2",
       method: "GET",
       page_size: "10",
       status: "EXPORTED",

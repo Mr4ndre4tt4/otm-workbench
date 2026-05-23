@@ -384,6 +384,8 @@ export function MasterDataView({ token }: { token: string }) {
   const [coordinateExport, setCoordinateExport] = useState<CoordinateQualityExport | null>(null);
   const [batchTemplateFilter, setBatchTemplateFilter] = useState("");
   const [batchStatusFilter, setBatchStatusFilter] = useState("");
+  const [batchFileNameFilter, setBatchFileNameFilter] = useState("");
+  const [batchMinRowCountFilter, setBatchMinRowCountFilter] = useState("");
   const [batchPageSize, setBatchPageSize] = useState(50);
   const [batchPage, setBatchPage] = useState(1);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
@@ -408,6 +410,8 @@ export function MasterDataView({ token }: { token: string }) {
   const templateDetail = useMasterDataTemplateDetail(token, effectiveTemplateCode);
   const selectedTemplate = templateDetail.data;
   const batchFilters = {
+    file_name_contains: batchFileNameFilter.trim() || undefined,
+    min_row_count: batchMinRowCountFilter ? Number(batchMinRowCountFilter) : undefined,
     page: batchPage,
     page_size: batchPageSize,
     status: batchStatusFilter || undefined,
@@ -1543,6 +1547,30 @@ export function MasterDataView({ token }: { token: string }) {
                   <option value="CSV_BUILT">CSV BUILT</option>
                   <option value="EXPORTED">EXPORTED</option>
                 </select>
+              </label>
+              <label>
+                File name filter
+                <input
+                  aria-label="Batch file name filter"
+                  onChange={(event) => {
+                    setBatchFileNameFilter(event.target.value);
+                    setBatchPage(1);
+                  }}
+                  value={batchFileNameFilter}
+                />
+              </label>
+              <label>
+                Minimum rows
+                <input
+                  aria-label="Batch minimum row count"
+                  min="0"
+                  onChange={(event) => {
+                    setBatchMinRowCountFilter(event.target.value);
+                    setBatchPage(1);
+                  }}
+                  type="number"
+                  value={batchMinRowCountFilter}
+                />
               </label>
               <label>
                 Page size

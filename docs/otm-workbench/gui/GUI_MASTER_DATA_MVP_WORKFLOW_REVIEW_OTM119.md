@@ -33,7 +33,7 @@ select template
 -> create cutover checklist from registered package
 -> generate cutover checklist readiness
 -> inspect backend-returned readiness blockers
--> filter durable batch history by template/status/page size
+-> filter durable batch history by template/status/file name/minimum rows/page size
 -> recover batch/artifact state after route navigation
 ```
 
@@ -160,7 +160,8 @@ Delivered hardening:
 - child table removal clears dependent authoring state before re-add
 - output and CSV preview data is fetched from backend-owned generated records
   and files
-- durable batch history filters and pagination are backend-owned
+- durable batch history filters and pagination are backend-owned, including
+  template, status, file-name contains, minimum row count, page, and page size
 ```
 
 ## 8. Client Data Safety
@@ -180,6 +181,6 @@ separate work before any `Module complete` claim:
 - deeper Load Plan export/handoff after checklist readiness
 - direct OTM import / submit guardrails
 - richer spreadsheet editing only with backend-owned mutation and audit state
-- advanced batch history filters beyond template/status if operational volume
-  requires it
+- operational batch history analytics beyond list filtering and pagination if
+  operational volume requires it
 ```

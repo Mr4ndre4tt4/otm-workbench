@@ -323,6 +323,8 @@ def get_master_data_template(
 def list_master_data_batches(
     template_code: str | None = None,
     status: str | None = None,
+    file_name_contains: str | None = None,
+    min_row_count: int | None = None,
     page: int = 1,
     page_size: int = 50,
     db: Session = Depends(get_db),
@@ -335,6 +337,10 @@ def list_master_data_batches(
         query = query.filter(MasterDataBatch.template_code == template_code.upper())
     if status:
         query = query.filter(MasterDataBatch.status == status.upper())
+    if file_name_contains and file_name_contains.strip():
+        query = query.filter(MasterDataBatch.file_name.ilike(f"%{file_name_contains.strip()}%"))
+    if min_row_count is not None:
+        query = query.filter(MasterDataBatch.row_count >= max(min_row_count, 0))
     total = query.count()
     batches = (
         query.order_by(MasterDataBatch.created_at.desc())

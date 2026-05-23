@@ -39,6 +39,8 @@ export function useMasterDataTemplateDetail(token: string | null, templateCode: 
 }
 
 export type MasterDataBatchFilters = {
+  file_name_contains?: string;
+  min_row_count?: number;
   page?: number;
   page_size?: number;
   status?: string;
@@ -49,6 +51,8 @@ function masterDataBatchQuery(filters: MasterDataBatchFilters = {}) {
   const params = new URLSearchParams();
   if (filters.template_code) params.set("template_code", filters.template_code);
   if (filters.status) params.set("status", filters.status);
+  if (filters.file_name_contains) params.set("file_name_contains", filters.file_name_contains);
+  if (filters.min_row_count && filters.min_row_count > 0) params.set("min_row_count", String(filters.min_row_count));
   if (filters.page && filters.page > 1) params.set("page", String(filters.page));
   if (filters.page_size && filters.page_size !== 50) params.set("page_size", String(filters.page_size));
   const query = params.toString();
