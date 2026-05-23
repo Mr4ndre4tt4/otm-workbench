@@ -82,9 +82,10 @@ Backend tests cover OTM CSV shape for the MVP workflow:
 - generated artifacts are registered with client-safe evidence
 ```
 
-Date-column `exec alter session ...` behavior remains part of the global CSVUTIL
-contract and should be expanded when a Master Data template with date fields is
-introduced.
+Date-column `exec alter session ...` behavior is covered for Master Data dynamic
+templates that map OTM Data Dictionary `DATE` columns. The explicit regression
+uses a synthetic Item template with `ITEM.EFFECTIVE_DATE`, verifies the generated
+CSV line order, and verifies the same directive inside the exported ZIP package.
 
 ## 5. Authoring Coverage
 
@@ -179,7 +180,6 @@ separate work before any `Module complete` claim:
 - deeper Load Plan export/handoff after checklist readiness
 - direct OTM import / submit guardrails
 - richer spreadsheet editing only with backend-owned mutation and audit state
-- date-field CSVUTIL alter-session coverage for date-bearing templates
 - advanced batch history filters beyond template/status if operational volume
   requires it
 ```

@@ -224,6 +224,12 @@ The first batch-history slice adds backend-owned filtering and pagination to
 batches by template and lifecycle status, adjust page size, and page through
 results without holding a frontend-only history list.
 
+The first OTM-115 completion slice closes explicit date-column CSV parity
+coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
+CSV and exported ZIP content now have regression coverage proving the OTM CSV
+shape remains table line, header line, `exec alter session set nls_date_format =
+'YYYY-MM-DD HH24:MI:SS'`, then data rows.
+
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
@@ -250,6 +256,12 @@ python -m pytest tests\test_master_data_templates.py::test_master_data_batch_art
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_build_csv_is_idempotent_for_double_click -q
 python -m pytest tests\test_master_data_templates.py::test_master_data_batch_export_csv_package_is_idempotent_for_retry -q
 npm run test -- AppFunctionalMasterData.test.tsx -t "shows workbook upload details"
+```
+
+Focused OTM-115 backend QA:
+
+```text
+python -m pytest tests/test_master_data_templates.py::test_master_data_dynamic_template_date_column_csv_includes_alter_session -q
 ```
 
 For isolated local QA against a non-default backend port, the Vite development

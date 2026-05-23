@@ -616,6 +616,127 @@ def test_master_data_dynamic_template_build_csv_and_export_package_preserves_otm
     assert export_payload["tables"] == ["LOCATION"]
 
 
+def test_master_data_dynamic_template_date_column_csv_includes_alter_session(
+    client,
+    admin_header,
+    db_session,
+):
+    payload = {
+        "code": "ITEMS_DATE_CSV",
+        "name": "Items Date CSV",
+        "catalog_macro_object_code": "ITEM",
+        "data_category": "MASTER_DATA",
+        "target_tables": [{"table_name": "ITEM", "sequence": 10, "required": True}],
+        "sheets": [
+            {
+                "code": "ITEMS",
+                "name": "Items",
+                "sequence": 10,
+                "field_keys": ["item_gid", "effective_date"],
+            }
+        ],
+        "fields": [
+            {
+                "field_key": "item_gid",
+                "label": "Item GID",
+                "data_type": "string",
+                "required": True,
+                "sheet_code": "ITEMS",
+            },
+            {
+                "field_key": "effective_date",
+                "label": "Effective Date",
+                "data_type": "date",
+                "required": False,
+                "sheet_code": "ITEMS",
+            },
+        ],
+        "mappings": [
+            {
+                "mapping_key": "item_gid_to_gid",
+                "source_type": "USER_FIELD",
+                "source_field_key": "item_gid",
+                "target_table": "ITEM",
+                "target_column": "ITEM_GID",
+                "required": True,
+            },
+            {
+                "mapping_key": "item_gid_to_xid",
+                "source_type": "USER_FIELD",
+                "source_field_key": "item_gid",
+                "target_table": "ITEM",
+                "target_column": "ITEM_XID",
+                "required": True,
+            },
+            {
+                "mapping_key": "effective_date_to_item",
+                "source_type": "USER_FIELD",
+                "source_field_key": "effective_date",
+                "target_table": "ITEM",
+                "target_column": "EFFECTIVE_DATE",
+                "required": False,
+            },
+        ],
+        "relationship_rules": [],
+        "documentation_refs": [
+            {
+                "source_type": "DATA_DICTIONARY",
+                "scope": "ITEM",
+                "note": "Validated against local OTM Data Dictionary.",
+            }
+        ],
+    }
+    create = client.post("/api/v1/modules/master-data/templates/drafts", json=payload, headers=admin_header)
+    assert create.status_code == 200
+    publish = client.post("/api/v1/modules/master-data/templates/ITEMS_DATE_CSV/publish", headers=admin_header)
+    assert publish.status_code == 200
+
+    workbook = Workbook()
+    items = workbook.active
+    items.title = "ITEMS"
+    items.append(["Item GID", "Effective Date"])
+    items.append(["OTM1.ITEM_DATE_001", "2026-05-23 09:30:00"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_DATE_CSV/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "items_date_csv.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert batch_response.status_code == 200
+    batch_id = batch_response.json()["batch_id"]
+
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
+    client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
+    csv_response = client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
+    export_response = client.post(
+        f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package",
+        headers=admin_header,
+    )
+
+    assert csv_response.status_code == 200
+    csv_payload = csv_response.json()
+    assert csv_payload["csv_file_count"] == 1
+    lines = csv_payload["files"][0]["content"].splitlines()
+    assert lines[0] == "ITEM"
+    assert lines[1] == "ITEM_GID,ITEM_XID,EFFECTIVE_DATE"
+    assert lines[2] == "exec alter session set nls_date_format = 'YYYY-MM-DD HH24:MI:SS'"
+    assert lines[3] == "OTM1.ITEM_DATE_001,OTM1.ITEM_DATE_001,2026-05-23 09:30:00"
+
+    assert export_response.status_code == 200
+    artifact = db_session.query(Artifact).filter(Artifact.id == export_response.json()["artifact_id"]).one()
+    with zipfile.ZipFile(artifact.file_path) as archive:
+        csv_text = archive.read("csv/001_ITEM.csv").decode("utf-8")
+    assert csv_text.splitlines()[2] == "exec alter session set nls_date_format = 'YYYY-MM-DD HH24:MI:SS'"
+
+
 def test_master_data_dynamic_template_relationship_rules_validate_orphans_from_v2_definition(
     client,
     admin_header,
