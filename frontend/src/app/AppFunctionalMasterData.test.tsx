@@ -301,6 +301,8 @@ describe("Functional Master Data journey", () => {
           file_name_contains: parsedUrl.searchParams.get("file_name_contains"),
           min_row_count: parsedUrl.searchParams.get("min_row_count"),
           method: init?.method ?? "GET",
+          page: parsedUrl.searchParams.get("page"),
+          page_size: parsedUrl.searchParams.get("page_size"),
           status: parsedUrl.searchParams.get("status"),
           template_code: parsedUrl.searchParams.get("template_code")
         });
@@ -717,6 +719,8 @@ describe("Functional Master Data journey", () => {
       file_name_contains: "regions",
       min_row_count: "2",
       method: "GET",
+      page: null,
+      page_size: null,
       status: "EXPORTED",
       template_code: "REGIONS_BASIC"
     });

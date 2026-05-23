@@ -233,6 +233,9 @@ The third batch-history slice adds `GET
 /api/v1/modules/master-data/batches/summary`. The Output stage renders
 backend-owned metrics for the current batch filters: matching batch count,
 matching row count, issue count, and status count.
+The summary contract intentionally ignores pagination; `page` and `page_size`
+belong to the durable batch list only, while summary metrics cover the full
+filtered result set.
 
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated

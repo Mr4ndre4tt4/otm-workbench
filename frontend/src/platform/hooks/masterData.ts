@@ -48,14 +48,14 @@ export type MasterDataBatchFilters = {
   template_code?: string;
 };
 
-function masterDataBatchQuery(filters: MasterDataBatchFilters = {}) {
+function masterDataBatchQuery(filters: MasterDataBatchFilters = {}, includePagination = true) {
   const params = new URLSearchParams();
   if (filters.template_code) params.set("template_code", filters.template_code);
   if (filters.status) params.set("status", filters.status);
   if (filters.file_name_contains) params.set("file_name_contains", filters.file_name_contains);
   if (filters.min_row_count && filters.min_row_count > 0) params.set("min_row_count", String(filters.min_row_count));
-  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
-  if (filters.page_size && filters.page_size !== 50) params.set("page_size", String(filters.page_size));
+  if (includePagination && filters.page && filters.page > 1) params.set("page", String(filters.page));
+  if (includePagination && filters.page_size && filters.page_size !== 50) params.set("page_size", String(filters.page_size));
   const query = params.toString();
   return query ? `/api/v1/modules/master-data/batches?${query}` : "/api/v1/modules/master-data/batches";
 }
@@ -69,7 +69,7 @@ export function useMasterDataBatches(token: string | null, filters: MasterDataBa
 }
 
 export function useMasterDataBatchSummary(token: string | null, filters: MasterDataBatchFilters = {}) {
-  const query = masterDataBatchQuery(filters).replace(
+  const query = masterDataBatchQuery(filters, false).replace(
     "/api/v1/modules/master-data/batches",
     "/api/v1/modules/master-data/batches/summary"
   );

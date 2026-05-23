@@ -1630,6 +1630,24 @@ def test_master_data_batch_summary_groups_filtered_history(client, admin_header)
     ]
 
 
+def test_master_data_batch_summary_returns_empty_totals_for_no_matches(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/master-data/batches/summary",
+        params={"template_code": "REGIONS_BASIC", "file_name_contains": "does_not_exist"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total_batches": 0,
+        "total_rows": 0,
+        "total_issues": 0,
+        "latest_batch_id": None,
+        "status_breakdown": [],
+        "template_breakdown": [],
+    }
+
+
 def test_master_data_batch_build_csv_is_idempotent_for_double_click(
     client,
     admin_header,
