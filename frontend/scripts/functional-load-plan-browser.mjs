@@ -284,6 +284,9 @@ async function run() {
       .getByText(/CUTOVER_READINESS_NOT_READY|EVIDENCE_ARCHIVE_MISSING|READINESS_EXPORT_MISSING|CUTOVER_READINESS_MISSING/)
       .first()
       .waitFor();
+    if (!(await page.getByRole("button", { name: "Commit cutover handoff" }).isDisabled())) {
+      throw new Error("Commit cutover handoff should remain disabled while eligibility has blockers.");
+    }
     await page.getByRole("button", { name: "Decide Go/No-Go" }).click();
     await page.getByText(/^Go\/No-Go decision is .*\.$/).waitFor();
     await page.getByLabel("Cutover go no-go decision").waitFor();

@@ -4,6 +4,7 @@ import { apiGet, apiPatch, apiPost } from "../api";
 import type {
   CsvutilBuild,
   CutoverGoNoGoDecision,
+  CutoverHandoffCommit,
   CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
@@ -98,6 +99,10 @@ export function decideCutoverGoNoGo(token: string, checklistId: string) {
     { decision_note: "Synthetic UI go/no-go review." },
     { token }
   );
+}
+
+export function commitCutoverHandoff(token: string, packageId: string) {
+  return apiPost<CutoverHandoffCommit>("/api/v1/modules/load-plan/cutover-handoff", { package_id: packageId }, { token });
 }
 
 export function buildCsvutilFromCutoverChecklist(token: string, checklistId: string) {

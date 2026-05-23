@@ -382,6 +382,30 @@ function goNoGoDecision() {
   };
 }
 
+function cutoverHandoffCommit() {
+  return {
+    archive_evidence_id: "evidence_archive_1",
+    committed_at: "2026-05-22T00:17:00",
+    committed_by: "admin@example.test",
+    environment_id: null,
+    evidence_id: "evidence_cutover_handoff",
+    id: "handoff_1",
+    package_id: "package_1",
+    profile_id: null,
+    project_id: null,
+    readiness_export_id: "readiness_export_1",
+    readiness_id: "package_readiness_1",
+    status: "READY_FOR_CUTOVER",
+    summary: {
+      archive_evidence_id: "evidence_archive_1",
+      package_id: "package_1",
+      readiness_export_id: "readiness_export_1",
+      readiness_id: "package_readiness_1",
+      status: "READY_FOR_CUTOVER"
+    }
+  };
+}
+
 describe("Functional Load Plan journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -395,6 +419,7 @@ describe("Functional Load Plan journey", () => {
     let reviewQueueGenerated = false;
     let reviewItemConfirmed = false;
     let readinessExported = false;
+    let goNoGoDecided = false;
     const checklistRequests: unknown[] = [];
     const cutoverPackageRequests: unknown[] = [];
     const csvutilRequests: unknown[] = [];
@@ -406,6 +431,7 @@ describe("Functional Load Plan journey", () => {
     const reviewQueueRequests: unknown[] = [];
     const sequenceSnapshotRequests: unknown[] = [];
     const goNoGoRequests: unknown[] = [];
+    const handoffCommitRequests: unknown[] = [];
     const zipAnalysisRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
     const createObjectURL = vi.fn(() => "blob:load-plan-artifact");
@@ -615,32 +641,42 @@ describe("Functional Load Plan journey", () => {
       if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/checklist_1/go-no-go")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         goNoGoRequests.push(JSON.parse(String(init?.body)));
+        goNoGoDecided = true;
         return Promise.resolve(jsonResponse(goNoGoDecision()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff") && init?.method === "POST") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        handoffCommitRequests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(jsonResponse(cutoverHandoffCommit()));
       }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_1")) {
         return Promise.resolve(
           jsonResponse({
-            archive_evidence_id: null,
-            blockers: readinessExported
-              ? [{ code: "CUTOVER_READINESS_NOT_READY", message: "Latest readiness is not READY.", severity: "ERROR" }]
-              : readinessGenerated
-                ? [{ code: "READINESS_EXPORT_MISSING", message: "Export readiness first.", severity: "ERROR" }]
-                : [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
+            archive_evidence_id: goNoGoDecided ? "evidence_archive_1" : null,
+            blockers: goNoGoDecided
+              ? []
+              : readinessExported
+                ? [{ code: "CUTOVER_READINESS_NOT_READY", message: "Latest readiness is not READY.", severity: "ERROR" }]
+                : readinessGenerated
+                  ? [{ code: "READINESS_EXPORT_MISSING", message: "Export readiness first.", severity: "ERROR" }]
+                  : [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
             checklist_id: checklistCreated ? "checklist_1" : null,
             checklist_readiness_evidence_id: readinessGenerated ? "evidence_readiness" : null,
             checklist_readiness_status: readinessGenerated ? "READY" : null,
-            eligible: false,
+            eligible: goNoGoDecided,
             next_actions: readinessExported
-              ? ["CUTOVER_READINESS_NOT_READY"]
+              ? goNoGoDecided
+                ? ["commit_cutover_handoff"]
+                : ["CUTOVER_READINESS_NOT_READY"]
               : readinessGenerated
                 ? ["READINESS_EXPORT_MISSING"]
                 : ["CUTOVER_READINESS_MISSING"],
             package_id: "package_1",
-            readiness_export_evidence_id: null,
-            readiness_export_id: null,
+            readiness_export_evidence_id: goNoGoDecided ? "evidence_readiness_export" : null,
+            readiness_export_id: goNoGoDecided ? "readiness_export_1" : null,
             readiness_id: readinessExported ? "package_readiness_1" : null,
-            readiness_status: readinessExported ? "MISSING_SEQUENCE" : null,
-            status: "INELIGIBLE"
+            readiness_status: goNoGoDecided ? "READY" : readinessExported ? "MISSING_SEQUENCE" : null,
+            status: goNoGoDecided ? "ELIGIBLE" : "INELIGIBLE"
           })
         );
       }
@@ -724,6 +760,11 @@ describe("Functional Load Plan journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Decide Go/No-Go" }));
     await screen.findByText("Go/No-Go decision is GO.");
     expect(screen.getByLabelText("Cutover go no-go decision")).toHaveTextContent("evidence_go_no_go");
+    await screen.findByText("Handoff is eligible.");
+    await userEvent.click(screen.getByRole("button", { name: "Commit cutover handoff" }));
+    await screen.findByText("Cutover handoff handoff_1 committed.");
+    expect(screen.getByLabelText("Cutover handoff commit")).toHaveTextContent("READY FOR CUTOVER");
+    expect(screen.getByLabelText("Cutover handoff commit")).toHaveTextContent("evidence_cutover_handoff");
 
     expect(checklistRequests).toEqual([{ method: "POST" }]);
     expect(csvutilRequests).toEqual([
@@ -749,6 +790,7 @@ describe("Functional Load Plan journey", () => {
     expect(cutoverPackageRequests).toEqual([{ method: "POST" }]);
     expect(sequenceSnapshotRequests).toEqual([{ package_id: "package_1" }]);
     expect(goNoGoRequests).toEqual([{ decision_note: "Synthetic UI go/no-go review." }]);
+    expect(handoffCommitRequests).toEqual([{ package_id: "package_1" }]);
     expect(artifactDownloadRequests).toEqual([
       "/api/v1/evidence-hub/artifacts/artifact_csvutil_ctl/download",
       "/api/v1/evidence-hub/artifacts/artifact_readiness_export/download"

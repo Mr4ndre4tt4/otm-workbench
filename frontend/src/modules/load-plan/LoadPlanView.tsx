@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import {
   buildCsvutilFromCutoverChecklist,
+  commitCutoverHandoff,
   createCutoverChecklistFromPackage,
   decideCutoverGoNoGo,
   decideLoadPlanReviewItem,
@@ -24,6 +25,7 @@ import {
 import type {
   CsvutilBuild,
   CutoverGoNoGoDecision,
+  CutoverHandoffCommit,
   CutoverPackageExport,
   CutoverChecklist,
   CutoverChecklistReadiness,
@@ -86,6 +88,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [readinessExport, setReadinessExport] = useState<LoadPlanReadinessExport | null>(null);
   const [cutoverPackageExport, setCutoverPackageExport] = useState<CutoverPackageExport | null>(null);
   const [goNoGoDecision, setGoNoGoDecision] = useState<CutoverGoNoGoDecision | null>(null);
+  const [handoffCommit, setHandoffCommit] = useState<CutoverHandoffCommit | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -344,10 +347,37 @@ export function LoadPlanView({ token }: { token: string }) {
     try {
       const result = await decideCutoverGoNoGo(token, checklist.id);
       setGoNoGoDecision(result);
+      await queryClient.invalidateQueries({
+        queryKey: ["modules", "load-plan", "cutover-handoff", "eligibility", effectivePackageId]
+      });
       setOperationMessage(`Go/No-Go decision is ${result.decision}.`);
       setActiveStage("handoff");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not decide Go/No-Go.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCommitCutoverHandoff = async () => {
+    if (!effectivePackageId) return;
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await commitCutoverHandoff(token, effectivePackageId);
+      setHandoffCommit(result);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["modules", "load-plan", "packages"] }),
+        queryClient.invalidateQueries({ queryKey: ["modules", "load-plan", "package", effectivePackageId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["modules", "load-plan", "cutover-handoff", "eligibility", effectivePackageId]
+        })
+      ]);
+      setOperationMessage(`Cutover handoff ${result.id} committed.`);
+      setActiveStage("handoff");
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not commit cutover handoff.");
     } finally {
       setIsMutating(false);
     }
@@ -873,6 +903,13 @@ export function LoadPlanView({ token }: { token: string }) {
               <Button disabled={!checklist || isMutating} onClick={() => void handleDecideGoNoGo()} variant="primary">
                 Decide Go/No-Go
               </Button>
+              <Button
+                disabled={!handoffEligibility.data?.eligible || isMutating}
+                onClick={() => void handleCommitCutoverHandoff()}
+                variant="secondary"
+              >
+                Commit cutover handoff
+              </Button>
             </div>
             {handoffEligibility.data ? (
               <>
@@ -912,6 +949,23 @@ export function LoadPlanView({ token }: { token: string }) {
                         ],
                         status: goNoGoDecision.decision,
                         title: "Decision"
+                      }
+                    ]}
+                  />
+                ) : null}
+                {handoffCommit ? (
+                  <DetailList
+                    ariaLabel="Cutover handoff commit"
+                    items={[
+                      {
+                        id: handoffCommit.id,
+                        meta: [
+                          handoffCommit.evidence_id ?? "Missing handoff evidence",
+                          handoffCommit.archive_evidence_id,
+                          handoffCommit.committed_by ?? "Unknown committer"
+                        ],
+                        status: handoffCommit.status,
+                        title: handoffCommit.package_id
                       }
                     ]}
                   />

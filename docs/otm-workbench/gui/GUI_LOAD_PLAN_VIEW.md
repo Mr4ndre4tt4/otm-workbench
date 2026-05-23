@@ -52,7 +52,8 @@ download generated CSVUTIL artifact -> run ZIP analysis -> generate review queue
 decide review item when present -> generate sequence snapshot and inspect blockers/next actions ->
 generate package readiness -> export readiness ZIP -> export cutover package ->
 download exported artifact through Evidence Hub -> inspect handoff eligibility ->
-record Go/No-Go decision -> leave route ->
+record Go/No-Go decision -> commit cutover handoff when backend eligibility allows ->
+leave route ->
 return with backend-owned package state visible
 ```
 
@@ -85,6 +86,8 @@ another package updates the detail query through backend-owned ids.
   Data Dictionary findings.
 - Sequence snapshots and Go/No-Go decisions use backend-owned endpoints and
   returned evidence/blocker state.
+- Cutover handoff commit uses backend-owned eligibility and commit endpoints;
+  the button remains disabled while eligibility has blockers.
 - Exports use backend-owned readiness export and cutover package artifacts; the
   frontend only displays returned artifact/evidence/manifest ids.
 - No local artifact path rendering.
@@ -92,14 +95,9 @@ another package updates the detail query through backend-owned ids.
 - Package status, catalog macro, evidence references, artifact references, and load sequence come from backend contracts.
 ```
 
-Out of current scope:
-
-```text
-- handoff commit;
-```
-
-Those actions stay follow-up slices and must continue through backend-owned
-available actions or explicit guarded endpoints.
+The GUI does not bypass Evidence Hub archive or readiness gates. If eligibility
+is blocked, the Handoff stage renders backend blockers and leaves commit
+disabled.
 
 ## Validation
 

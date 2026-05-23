@@ -346,3 +346,19 @@ export type CutoverHandoffEligibility = {
   catalog_macro_object_code?: string;
   catalog_load_plan_path?: string;
 };
+
+export type CutoverHandoffCommit = {
+  id: string;
+  project_id: string | null;
+  environment_id: string | null;
+  profile_id: string | null;
+  package_id: string;
+  readiness_id: string;
+  readiness_export_id: string;
+  archive_evidence_id: string;
+  status: string;
+  evidence_id: string | null;
+  summary: Record<string, unknown>;
+  committed_by: string | null;
+  committed_at: string | null;
+};
