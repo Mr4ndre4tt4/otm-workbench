@@ -11,6 +11,7 @@ import {
   createMasterDataTemplateVersion,
   exportCoordinateQualityBatch,
   exportMasterDataCsvPackage,
+  generateCutoverChecklistReadiness,
   mapMasterDataBatch,
   previewCoordinateQuality,
   publishMasterDataTemplate,
@@ -38,6 +39,7 @@ import type {
   CoordinateQualityPreview,
   CoordinateQualityRecord,
   CutoverChecklist,
+  CutoverChecklistReadiness,
   MasterDataActionResult,
   MasterDataArtifact,
   MasterDataBatch,
@@ -370,6 +372,7 @@ export function MasterDataView({ token }: { token: string }) {
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
   const [loadPlanPackage, setLoadPlanPackage] = useState<LoadPlanPackage | null>(null);
   const [cutoverChecklist, setCutoverChecklist] = useState<CutoverChecklist | null>(null);
+  const [cutoverChecklistReadiness, setCutoverChecklistReadiness] = useState<CutoverChecklistReadiness | null>(null);
   const [coordinateRecordsJson, setCoordinateRecordsJson] = useState(
     JSON.stringify(defaultCoordinateQualityRecords, null, 2)
   );
@@ -690,6 +693,7 @@ export function MasterDataView({ token }: { token: string }) {
         setExportResult(null);
         setLoadPlanPackage(null);
         setCutoverChecklist(null);
+        setCutoverChecklistReadiness(null);
         await batches.refetch();
         return result;
       },
@@ -755,6 +759,7 @@ export function MasterDataView({ token }: { token: string }) {
         setExportResult(result);
         setLoadPlanPackage(null);
         setCutoverChecklist(null);
+        setCutoverChecklistReadiness(null);
         await batches.refetch();
         await batchArtifacts.refetch();
         await csvFiles.refetch();
@@ -771,6 +776,7 @@ export function MasterDataView({ token }: { token: string }) {
         const result = await registerMasterDataPackageForLoadPlan(token, activeBatch.batch_id);
         setLoadPlanPackage(result);
         setCutoverChecklist(null);
+        setCutoverChecklistReadiness(null);
         return result;
       },
       (result) => `Load Plan package ${result.id} registered.`
@@ -783,9 +789,22 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await createCutoverChecklistFromPackage(token, loadPlanPackage.id);
         setCutoverChecklist(result);
+        setCutoverChecklistReadiness(null);
         return result;
       },
       (result) => `Cutover checklist ${result.id} created.`
+    );
+  };
+
+  const handleGenerateCutoverChecklistReadiness = () => {
+    if (!cutoverChecklist) return;
+    void runAction(
+      async () => {
+        const result = await generateCutoverChecklistReadiness(token, cutoverChecklist.id);
+        setCutoverChecklistReadiness(result);
+        return result;
+      },
+      (result) => `Cutover checklist readiness is ${result.status}.`
     );
   };
 
@@ -1422,6 +1441,32 @@ export function MasterDataView({ token }: { token: string }) {
                     ],
                     status: cutoverChecklist.status,
                     title: cutoverChecklist.id
+                  }
+                ]}
+              />
+            ) : null}
+            <div className="master-data-action-bar">
+              <Button
+                disabled={!cutoverChecklist || isMutating}
+                onClick={handleGenerateCutoverChecklistReadiness}
+                variant="secondary"
+              >
+                Generate checklist readiness
+              </Button>
+            </div>
+            {cutoverChecklistReadiness ? (
+              <DetailList
+                ariaLabel="Cutover checklist readiness handoff"
+                items={[
+                  {
+                    id: cutoverChecklistReadiness.checklist_id,
+                    meta: [
+                      `${cutoverChecklistReadiness.summary.item_count} item(s)`,
+                      `${cutoverChecklistReadiness.summary.blocker_count} blocker(s)`,
+                      cutoverChecklistReadiness.evidence_id ?? "No evidence"
+                    ],
+                    status: cutoverChecklistReadiness.status,
+                    title: cutoverChecklistReadiness.summary.ready ? "READY" : "REVIEW"
                   }
                 ]}
               />

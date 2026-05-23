@@ -241,6 +241,7 @@ describe("Functional Master Data journey", () => {
     const exportRequests: unknown[] = [];
     const loadPlanRegistrationRequests: unknown[] = [];
     const cutoverChecklistRequests: unknown[] = [];
+    const cutoverChecklistReadinessRequests: unknown[] = [];
     const outputRecordListRequests: unknown[] = [];
     const csvFileListRequests: unknown[] = [];
     const batchListRequests: unknown[] = [];
@@ -526,6 +527,39 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/cutover_checklist_1/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        cutoverChecklistReadinessRequests.push({ method: init?.method });
+        return Promise.resolve(
+          jsonResponse({
+            blockers: [
+              {
+                code: "ITEM_PENDING",
+                item_code: "PACKAGE_REGISTERED",
+                message: "Checklist item is still pending.",
+                severity: "ERROR"
+              }
+            ],
+            checklist_id: "cutover_checklist_1",
+            evidence_id: "evidence_checklist_readiness",
+            package_id: "load_plan_master_data_package_1",
+            status: "REVIEW",
+            summary: {
+              blocker_count: 1,
+              blocked_count: 0,
+              done_count: 0,
+              error_count: 1,
+              item_count: 1,
+              missing_evidence_count: 1,
+              pending_count: 1,
+              ready: false,
+              skipped_count: 0,
+              status_counts: { PENDING: 1 },
+              warning_count: 0
+            }
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactListRequests.push({ method: init?.method ?? "GET" });
@@ -615,6 +649,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Create cutover checklist" }));
     await screen.findByText("Cutover checklist cutover_checklist_1 created.");
     expect(screen.getByLabelText("Cutover checklist handoff")).toHaveTextContent("DEFAULT_CUTOVER");
+    await userEvent.click(within(outputPanel).getByRole("button", { name: "Generate checklist readiness" }));
+    await screen.findByText("Cutover checklist readiness is REVIEW.");
+    expect(screen.getByLabelText("Cutover checklist readiness handoff")).toHaveTextContent("1 blocker");
     await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
     await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
     await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");
@@ -634,6 +671,7 @@ describe("Functional Master Data journey", () => {
     expect(exportRequests).toEqual([{ method: "POST" }]);
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
     expect(cutoverChecklistRequests).toEqual([{ method: "POST" }]);
+    expect(cutoverChecklistReadinessRequests).toEqual([{ method: "POST" }]);
     expect(outputRecordListRequests.length).toBeGreaterThan(0);
     expect(csvFileListRequests.length).toBeGreaterThan(0);
     expect(batchListRequests).toContainEqual({

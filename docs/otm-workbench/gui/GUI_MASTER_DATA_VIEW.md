@@ -13,7 +13,7 @@ of only inspecting templates.
 Delivered story:
 
 ```text
-template -> author -> workbook -> upload -> validate -> map -> output preview -> csv preview/export -> load-plan package -> cutover checklist -> quality
+template -> author -> workbook -> upload -> validate -> map -> output preview -> csv preview/export -> load-plan package -> cutover checklist -> readiness -> quality
 ```
 
 ## Primary Pattern
@@ -65,6 +65,7 @@ GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
 POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}
+POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/readiness
 POST /api/v1/modules/master-data/coordinate-quality/validate
 GET  /api/v1/modules/master-data/coordinate-quality/batches
 POST /api/v1/modules/master-data/coordinate-quality/batches
@@ -205,6 +206,12 @@ registered package. The Output stage calls
 and displays the backend checklist id, status, template code, package type,
 evidence id, and item count. Checklist item editing remains in Load Plan.
 
+The third Load Plan handoff slice lets Data Factory generate checklist readiness
+from the created checklist. The Output stage calls
+`POST /api/v1/modules/load-plan/cutover-checklists/{checklist_id}/readiness`
+and renders the backend status, ready/review result, blocker count, item count,
+and evidence id. Data Factory does not decide readiness or edit item evidence.
+
 The first backend-owned preview slice adds read-only output and CSV previews to
 the Output stage. `GET /output-records` returns generated OTM target-table
 payloads, and `GET /csv-files` returns generated CSV file metadata plus a short
@@ -219,7 +226,7 @@ results without holding a frontend-only history list.
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
-advanced Coordinate Quality map diagnostics, deeper Load Plan readiness/handoff
+advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
 flows, broader batch history dimensions, and broader negative/out-of-order QA
 are tracked as follow-up scope.
 
