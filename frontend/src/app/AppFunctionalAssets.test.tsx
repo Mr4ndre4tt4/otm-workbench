@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -602,6 +602,18 @@ describe("Functional Assets Library journey", () => {
           url.includes("otm_table_name=RATE_GEO_COST")
       )
     ).toBe(true);
+    await userEvent.click(screen.getByRole("button", { name: "Reset asset filters" }));
+    expect(screen.getByLabelText("Asset type filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset category filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset status filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset tag filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset scope filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset module filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset macro object filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset OTM table filter")).toHaveValue("");
+    await waitFor(() => {
+      expect(listUrls.at(-1)?.endsWith("/api/v1/modules/assets/assets")).toBe(true);
+    });
 
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
     await userEvent.selectOptions(screen.getByLabelText("Asset classification type"), "asset_category");
@@ -624,7 +636,7 @@ describe("Functional Assets Library journey", () => {
     await userEvent.clear(screen.getByLabelText("Asset module id"));
     await userEvent.type(screen.getByLabelText("Asset module id"), "rates");
     await userEvent.clear(screen.getByLabelText("Asset macro object"));
-    await userEvent.type(screen.getByLabelText("Asset macro object"), "RATE_GEO");
+    await userEvent.type(screen.getByLabelText("Asset macro object"), "RATE_RECORD");
     await userEvent.clear(screen.getByLabelText("Asset OTM table"));
     await userEvent.type(screen.getByLabelText("Asset OTM table"), "RATE_GEO_COST");
     await userEvent.clear(screen.getByLabelText("Asset tags"));
@@ -745,7 +757,7 @@ describe("Functional Assets Library journey", () => {
         asset_type: "SPEC",
         category: "PLAYBOOK",
         description: "Client-safe rate table support asset.",
-        macro_object_code: "RATE_GEO",
+        macro_object_code: "RATE_RECORD",
         module_id: "rates",
         name: "Synthetic Rate Table Notes",
         otm_table_name: "RATE_GEO_COST",
@@ -776,7 +788,7 @@ describe("Functional Assets Library journey", () => {
         asset_type: "SPEC",
         category: "PLAYBOOK",
         description: "Updated client-safe rate table support asset.",
-        macro_object_code: "RATE_GEO",
+        macro_object_code: "RATE_RECORD",
         module_id: "rates",
         name: "Synthetic Rate Table Notes Updated",
         otm_table_name: "RATE_GEO_COST",

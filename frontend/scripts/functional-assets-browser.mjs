@@ -74,6 +74,13 @@ async function seedSyntheticContext(token) {
   return { project, profile, environment };
 }
 
+async function assertControlValue(locator, expected, description) {
+  const value = await locator.inputValue();
+  if (value !== expected) {
+    throw new Error(`${description} expected value "${expected}" but received "${value}".`);
+  }
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -142,6 +149,15 @@ async function run() {
     await page.getByLabel("Asset macro object filter").fill("RATE_GEO");
     await page.getByLabel("Asset OTM table filter").fill("RATE_GEO_COST");
     await page.getByRole("button", { name: "Apply asset filters" }).click();
+    await page.getByRole("button", { name: "Reset asset filters" }).click();
+    await assertControlValue(page.getByLabel("Asset type filter"), "", "Asset type filter after reset");
+    await assertControlValue(page.getByLabel("Asset category filter"), "", "Asset category filter after reset");
+    await assertControlValue(page.getByLabel("Asset status filter"), "", "Asset status filter after reset");
+    await assertControlValue(page.getByLabel("Asset tag filter"), "", "Asset tag filter after reset");
+    await assertControlValue(page.getByLabel("Asset scope filter"), "", "Asset scope filter after reset");
+    await assertControlValue(page.getByLabel("Asset module filter"), "", "Asset module filter after reset");
+    await assertControlValue(page.getByLabel("Asset macro object filter"), "", "Asset macro object filter after reset");
+    await assertControlValue(page.getByLabel("Asset OTM table filter"), "", "Asset OTM table filter after reset");
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
     await page.getByLabel("Asset name").fill("Synthetic Rate Table Notes");
@@ -152,7 +168,7 @@ async function run() {
     await page.getByLabel("Asset scope").selectOption("MODULE");
     await page.getByLabel("Asset sensitivity").selectOption("INTERNAL");
     await page.getByLabel("Asset module id").fill("rates");
-    await page.getByLabel("Asset macro object").fill("RATE_GEO");
+    await page.getByLabel("Asset macro object").fill("RATE_RECORD");
     await page.getByLabel("Asset OTM table").fill("RATE_GEO_COST");
     await page.getByLabel("Asset tags").fill("SYNTHETIC,RATE");
     await page.getByRole("button", { name: "Create asset" }).click();

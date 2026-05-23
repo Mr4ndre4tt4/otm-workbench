@@ -1,7 +1,7 @@
 # GUI Assets Library View
 
-**Status:** functional slice implemented
-**Branch:** `codex/gui-foundation-integration-pr-plan`
+**Status:** functional journey done; module-complete review still requires explicit acceptance pass
+**Branch:** `codex/master-data-hardening-next`
 
 ## Objective
 
@@ -40,6 +40,8 @@ The screen uses shared components:
 - Backend-owned classification-driven filters and link type options, including
   asset type, category, status, tag, scope, module id, macro object, and OTM
   table filters;
+- Reset recovery for the backend-owned asset filters, clearing draft/applied
+  filter state and selected operation context before reloading the library;
 - Create-stage classification authoring for custom backend-owned metadata
   values such as asset categories, types, visibility, scope, sensitivity, and
   link types;
@@ -96,6 +98,11 @@ backend-owned classification values where available and conservative fallback
 options where a classification group is not returned yet. Selecting another
 asset in the Library refreshes the authoring form from that selected backend
 record before any update action can be submitted.
+
+The Library stage now exposes `Reset asset filters` alongside `Apply asset
+filters`, so a user can recover from over-narrow filter combinations without
+leaving the module. The reset is covered in both React functional QA and browser
+QA.
 
 ## Safety
 

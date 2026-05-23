@@ -311,6 +311,13 @@ export function AssetsLibraryView({ token }: { token: string }) {
     setLinkTargetLabel("");
   };
 
+  const resetAssetFilters = () => {
+    setDraftAssetFilters(emptyAssetFilters);
+    setAssetFilters(emptyAssetFilters);
+    setSelectedAssetId(null);
+    setOperationAsset(null);
+  };
+
   useEffect(() => {
     if (selectedAsset) {
       // Draft mirrors the backend-selected asset so updates never use stale row metadata.
@@ -662,6 +669,9 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 variant="secondary"
               >
                 Apply asset filters
+              </Button>
+              <Button disabled={isMutating} onClick={resetAssetFilters} variant="secondary">
+                Reset asset filters
               </Button>
             </div>
             <ModuleObjectList
