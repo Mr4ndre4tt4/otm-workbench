@@ -247,6 +247,9 @@ async function run() {
     await outputPanel.getByRole("button", { name: "Register for Load Plan" }).click();
     await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
     await page.getByLabel("Load Plan package registration").getByText("master_data_csv_zip").waitFor();
+    await outputPanel.getByRole("button", { name: "Create cutover checklist" }).click();
+    await page.getByText(/^Cutover checklist .+ created\.$/).waitFor();
+    await page.getByLabel("Cutover checklist handoff").getByText(/item\(s\)/).waitFor();
     await page.getByLabel("Template filter").selectOption("REGIONS_BASIC");
     await page.getByLabel("Batch status filter").selectOption("EXPORTED");
     await page.getByLabel("Batch page size").selectOption("10");

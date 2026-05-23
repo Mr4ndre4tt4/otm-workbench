@@ -30,6 +30,7 @@ select template
 -> inspect generated CSV preview
 -> export CSV ZIP package
 -> register exported package for Load Plan
+-> create cutover checklist from registered package
 -> filter durable batch history by template/status/page size
 -> recover batch/artifact state after route navigation
 ```
@@ -59,6 +60,7 @@ GET  /api/v1/modules/master-data/batches/{batch_id}/csv-files
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
+POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}
 ```
 
 The GUI does not infer lifecycle readiness, OTM table/column validity,
@@ -147,6 +149,7 @@ Delivered hardening:
 - build-csv retry/double-click returns persisted CSVs without duplication
 - export-csv-package retry/double-click returns existing artifact/manifest/evidence
 - Load Plan registration is backend-idempotent and returns existing package on retry
+- cutover checklist creation is delegated to the Load Plan backend contract
 - invalid workbook upload surfaces backend details and allows replacing the file
 - route leave/return validates durable backend batch and artifact visibility
 - child table removal clears dependent authoring state before re-add
@@ -169,7 +172,7 @@ separate work before any `Module complete` claim:
 
 ```text
 - Coordinate Quality advanced map diagnostics and provider governance
-- deeper Load Plan checklist handoff after package registration
+- deeper Load Plan readiness/handoff after checklist creation
 - direct OTM import / submit guardrails
 - richer spreadsheet editing only with backend-owned mutation and audit state
 - date-field CSVUTIL alter-session coverage for date-bearing templates

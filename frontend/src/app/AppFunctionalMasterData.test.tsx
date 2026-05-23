@@ -240,6 +240,7 @@ describe("Functional Master Data journey", () => {
     const csvRequests: unknown[] = [];
     const exportRequests: unknown[] = [];
     const loadPlanRegistrationRequests: unknown[] = [];
+    const cutoverChecklistRequests: unknown[] = [];
     const outputRecordListRequests: unknown[] = [];
     const csvFileListRequests: unknown[] = [];
     const batchListRequests: unknown[] = [];
@@ -484,6 +485,47 @@ describe("Functional Master Data journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/from-package/load_plan_master_data_package_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        cutoverChecklistRequests.push({ method: init?.method });
+        return Promise.resolve(
+          jsonResponse({
+            catalog_macro_object_code: "REGION",
+            created_by: "admin@example.test",
+            environment_id: null,
+            evidence_id: "evidence_cutover_checklist",
+            id: "cutover_checklist_1",
+            items: [
+              {
+                checklist_id: "cutover_checklist_1",
+                details: {},
+                evidence_id: null,
+                evidence_required: true,
+                id: "cutover_item_1",
+                item_code: "PACKAGE_REGISTERED",
+                method: "MANUAL",
+                package_id: "load_plan_master_data_package_1",
+                sort_order: 1,
+                status: "PENDING",
+                table_name: null,
+                template_item_id: "template_item_1",
+                title: "Confirm package registration"
+              }
+            ],
+            package_id: "load_plan_master_data_package_1",
+            package_type: "master_data_csv_zip",
+            profile_id: null,
+            project_id: null,
+            status: "DRAFT",
+            summary: {
+              catalog_macro_object_code: "REGION",
+              item_count: 1,
+              package_type: "master_data_csv_zip"
+            },
+            template_code: "DEFAULT_CUTOVER"
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/artifacts")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactListRequests.push({ method: init?.method ?? "GET" });
@@ -570,6 +612,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Register for Load Plan" }));
     await screen.findByText("Load Plan package load_plan_master_data_package_1 registered.");
     expect(screen.getByLabelText("Load Plan package registration")).toHaveTextContent("master_data_csv_zip");
+    await userEvent.click(within(outputPanel).getByRole("button", { name: "Create cutover checklist" }));
+    await screen.findByText("Cutover checklist cutover_checklist_1 created.");
+    expect(screen.getByLabelText("Cutover checklist handoff")).toHaveTextContent("DEFAULT_CUTOVER");
     await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
     await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
     await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");
@@ -588,6 +633,7 @@ describe("Functional Master Data journey", () => {
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
+    expect(cutoverChecklistRequests).toEqual([{ method: "POST" }]);
     expect(outputRecordListRequests.length).toBeGreaterThan(0);
     expect(csvFileListRequests.length).toBeGreaterThan(0);
     expect(batchListRequests).toContainEqual({

@@ -5,6 +5,7 @@ import {
   buildMasterDataOutput,
   buildMasterDataWorkbook,
   createCoordinateQualityBatch,
+  createCutoverChecklistFromPackage,
   createMasterDataTemplateDraft,
   downloadBackendArtifact,
   createMasterDataTemplateVersion,
@@ -36,6 +37,7 @@ import type {
   CoordinateQualityExport,
   CoordinateQualityPreview,
   CoordinateQualityRecord,
+  CutoverChecklist,
   MasterDataActionResult,
   MasterDataArtifact,
   MasterDataBatch,
@@ -367,6 +369,7 @@ export function MasterDataView({ token }: { token: string }) {
   const [csvResult, setCsvResult] = useState<MasterDataActionResult | null>(null);
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
   const [loadPlanPackage, setLoadPlanPackage] = useState<LoadPlanPackage | null>(null);
+  const [cutoverChecklist, setCutoverChecklist] = useState<CutoverChecklist | null>(null);
   const [coordinateRecordsJson, setCoordinateRecordsJson] = useState(
     JSON.stringify(defaultCoordinateQualityRecords, null, 2)
   );
@@ -686,6 +689,7 @@ export function MasterDataView({ token }: { token: string }) {
         setCsvResult(null);
         setExportResult(null);
         setLoadPlanPackage(null);
+        setCutoverChecklist(null);
         await batches.refetch();
         return result;
       },
@@ -750,6 +754,7 @@ export function MasterDataView({ token }: { token: string }) {
         const result = await exportMasterDataCsvPackage(token, activeBatch.batch_id);
         setExportResult(result);
         setLoadPlanPackage(null);
+        setCutoverChecklist(null);
         await batches.refetch();
         await batchArtifacts.refetch();
         await csvFiles.refetch();
@@ -765,9 +770,22 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await registerMasterDataPackageForLoadPlan(token, activeBatch.batch_id);
         setLoadPlanPackage(result);
+        setCutoverChecklist(null);
         return result;
       },
       (result) => `Load Plan package ${result.id} registered.`
+    );
+  };
+
+  const handleCreateCutoverChecklist = () => {
+    if (!loadPlanPackage) return;
+    void runAction(
+      async () => {
+        const result = await createCutoverChecklistFromPackage(token, loadPlanPackage.id);
+        setCutoverChecklist(result);
+        return result;
+      },
+      (result) => `Cutover checklist ${result.id} created.`
     );
   };
 
@@ -1381,6 +1399,29 @@ export function MasterDataView({ token }: { token: string }) {
                     ],
                     status: loadPlanPackage.status,
                     title: loadPlanPackage.id
+                  }
+                ]}
+              />
+            ) : null}
+            <div className="master-data-action-bar">
+              <Button disabled={!loadPlanPackage || isMutating} onClick={handleCreateCutoverChecklist} variant="secondary">
+                Create cutover checklist
+              </Button>
+            </div>
+            {cutoverChecklist ? (
+              <DetailList
+                ariaLabel="Cutover checklist handoff"
+                items={[
+                  {
+                    id: cutoverChecklist.id,
+                    meta: [
+                      cutoverChecklist.template_code ?? "No template",
+                      cutoverChecklist.package_type,
+                      `${cutoverChecklist.items.length} item(s)`,
+                      cutoverChecklist.evidence_id ?? "No evidence"
+                    ],
+                    status: cutoverChecklist.status,
+                    title: cutoverChecklist.id
                   }
                 ]}
               />

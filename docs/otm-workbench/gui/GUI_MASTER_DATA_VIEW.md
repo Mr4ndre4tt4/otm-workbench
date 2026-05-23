@@ -13,7 +13,7 @@ of only inspecting templates.
 Delivered story:
 
 ```text
-template -> author -> workbook -> upload -> validate -> map -> output preview -> csv preview/export -> load-plan handoff -> quality
+template -> author -> workbook -> upload -> validate -> map -> output preview -> csv preview/export -> load-plan package -> cutover checklist -> quality
 ```
 
 ## Primary Pattern
@@ -64,6 +64,7 @@ GET  /api/v1/modules/master-data/batches/{batch_id}/csv-files
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
 POST /api/v1/modules/load-plan/packages/from-master-data/{batch_id}
+POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}
 POST /api/v1/modules/master-data/coordinate-quality/validate
 GET  /api/v1/modules/master-data/coordinate-quality/batches
 POST /api/v1/modules/master-data/coordinate-quality/batches
@@ -198,6 +199,12 @@ The backend owns eligibility, idempotency, generated package evidence, audit,
 domain event, and load sequence; the UI only displays the returned package id,
 type, macro object, evidence id, status, and step count.
 
+The second Load Plan handoff slice adds cutover checklist creation from the
+registered package. The Output stage calls
+`POST /api/v1/modules/load-plan/cutover-checklists/from-package/{package_id}`
+and displays the backend checklist id, status, template code, package type,
+evidence id, and item count. Checklist item editing remains in Load Plan.
+
 The first backend-owned preview slice adds read-only output and CSV previews to
 the Output stage. `GET /output-records` returns generated OTM target-table
 payloads, and `GET /csv-files` returns generated CSV file metadata plus a short
@@ -212,9 +219,9 @@ results without holding a frontend-only history list.
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
-advanced Coordinate Quality map diagnostics, deeper Load Plan handoff flows,
-broader batch history dimensions, and broader negative/out-of-order QA are
-tracked as follow-up scope.
+advanced Coordinate Quality map diagnostics, deeper Load Plan readiness/handoff
+flows, broader batch history dimensions, and broader negative/out-of-order QA
+are tracked as follow-up scope.
 
 ## Validation
 
