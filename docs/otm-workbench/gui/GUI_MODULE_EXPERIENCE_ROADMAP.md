@@ -4,6 +4,9 @@
 **Linear:** follows `OTM-108`
 **Scope:** module-by-module GUI sequencing after the module experience architecture contract.
 
+See `GUI_MODULE_API_CONTRACT_MATRIX.md` for the backend API contract readiness
+map across implemented GUI modules.
+
 ## 1. Purpose
 
 This roadmap applies `GUI_MODULE_EXPERIENCE_ARCHITECTURE.md` to the current
