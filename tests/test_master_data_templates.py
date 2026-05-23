@@ -1022,6 +1022,41 @@ def test_master_data_batch_detail_exposes_backend_owned_available_actions(client
     assert action_by_key(exported_actions, "register_load_plan_package")["disabled"] is False
 
 
+def test_master_data_available_actions_allow_mapping_parsed_batch_without_relationship_rules(client, admin_header):
+    client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=dynamic_locations_template_payload("LOCATIONS_ACTIONS_NO_REL"),
+        headers=admin_header,
+    )
+    client.post("/api/v1/modules/master-data/templates/LOCATIONS_ACTIONS_NO_REL/publish", headers=admin_header)
+
+    workbook = Workbook()
+    locations = workbook.active
+    locations.title = "LOCATIONS"
+    locations.append(["Location ID", "Location Name"])
+    locations.append(["SYN.LOCATION_ACTION", "Synthetic Action Location"])
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    batch_response = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_ACTIONS_NO_REL/batches",
+        headers=admin_header,
+        files={
+            "file": (
+                "locations_actions_no_rel.xlsx",
+                workbook_bytes.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert batch_response.status_code == 200
+    actions = batch_response.json()["available_actions"]
+    assert action_by_key(actions, "validate_relationships")["disabled"] is False
+    assert action_by_key(actions, "map_records")["disabled"] is False
+    assert action_by_key(actions, "map_records")["disabled_reason"] is None
+
+
 def test_master_data_template_batch_upload_skips_generated_metadata_rows(
     client,
     admin_header,

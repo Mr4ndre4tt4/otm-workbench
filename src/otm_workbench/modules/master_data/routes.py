@@ -690,13 +690,14 @@ def create_master_data_batch_from_workbook(
             details=validation,
         )
     try:
-        return parse_master_data_template_workbook(
+        result = parse_master_data_template_workbook(
             db,
             template,
             file.file,
             file.filename or "master_data_upload.xlsx",
             file.content_type or "application/octet-stream",
         )
+        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, str(result["batch_id"])))
     except (KeyError, ValueError) as exc:
         raise api_error(
             422,

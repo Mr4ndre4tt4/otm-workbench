@@ -87,6 +87,10 @@ function masterDataActionDisabled(batch: MasterDataBatch | null, key: string, fa
   return action ? action.disabled : fallbackDisabled;
 }
 
+function masterDataActionReason(batch: MasterDataBatch | null, key: string) {
+  return batch?.available_actions?.find((item) => item.key === key)?.disabled_reason ?? undefined;
+}
+
 const masterDataWorkflowStages = [
   { id: "templates", title: "Templates", status: "1" },
   { id: "author", title: "Author", status: "2" },
@@ -1308,6 +1312,7 @@ export function MasterDataView({ token }: { token: string }) {
               <Button
                 disabled={isMutating || masterDataActionDisabled(activeBatch, "validate_relationships", !activeBatch)}
                 onClick={handleValidateRelationships}
+                title={masterDataActionReason(activeBatch, "validate_relationships")}
                 variant="primary"
               >
                 Validate relationships
@@ -1352,6 +1357,7 @@ export function MasterDataView({ token }: { token: string }) {
               <Button
                 disabled={isMutating || masterDataActionDisabled(activeBatch, "map_records", !activeBatch)}
                 onClick={handleMapBatch}
+                title={masterDataActionReason(activeBatch, "map_records")}
                 variant="primary"
               >
                 Map records
@@ -1385,6 +1391,7 @@ export function MasterDataView({ token }: { token: string }) {
               <Button
                 disabled={isMutating || masterDataActionDisabled(activeBatch, "build_output", !activeBatch)}
                 onClick={handleBuildOutput}
+                title={masterDataActionReason(activeBatch, "build_output")}
                 variant="primary"
               >
                 Build output
@@ -1392,6 +1399,7 @@ export function MasterDataView({ token }: { token: string }) {
               <Button
                 disabled={isMutating || masterDataActionDisabled(activeBatch, "build_csv", !activeBatch)}
                 onClick={handleBuildCsv}
+                title={masterDataActionReason(activeBatch, "build_csv")}
                 variant="secondary"
               >
                 Build CSV
@@ -1399,6 +1407,7 @@ export function MasterDataView({ token }: { token: string }) {
               <Button
                 disabled={isMutating || masterDataActionDisabled(activeBatch, "export_csv_package", !activeBatch)}
                 onClick={handleExportCsvPackage}
+                title={masterDataActionReason(activeBatch, "export_csv_package")}
                 variant="secondary"
               >
                 Export package
@@ -1409,6 +1418,7 @@ export function MasterDataView({ token }: { token: string }) {
                   masterDataActionDisabled(activeBatch, "register_load_plan_package", !canRegisterLoadPlanPackage)
                 }
                 onClick={handleRegisterLoadPlanPackage}
+                title={masterDataActionReason(activeBatch, "register_load_plan_package")}
                 variant="secondary"
               >
                 Register for Load Plan
