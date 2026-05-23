@@ -50,6 +50,9 @@ The screen uses shared components:
 - Structured asset metadata validation feedback for invalid backend-owned
   classifications, including the invalid field name, classification type, and
   allowed codes without echoing the submitted value;
+- Backend validation for asset metadata OTM references: `macro_object_code`
+  must resolve in Catalog Core, and `otm_table_name` must exist in the local
+  OTM Data Dictionary;
 - Guided link target selector for backend-owned `MODULE` targets from platform
   navigation, `MACRO_OBJECT` targets from Catalog Core, and `OTM_TABLE`
   targets from Catalog Core Data Dictionary search;
@@ -94,6 +97,8 @@ record before any update action can be submitted.
 - No frontend-only lifecycle or permission decisions.
 - Asset status, classifications, table linkage, version status, links, download
   permission/audit, and archive state come from backend contracts.
+- Asset macro-object and OTM-table metadata references are checked against
+  Catalog Core and the Data Dictionary before create/update commits.
 - `ARTIFACT` and `EVIDENCE` links cannot be created against unsafe or missing
   Evidence Hub records.
 - Archived assets cannot be updated, versioned, or linked through backend

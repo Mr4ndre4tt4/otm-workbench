@@ -67,6 +67,29 @@ def reject_archived_asset(asset: Asset) -> None:
         raise api_error(409, "ASSET_ARCHIVED", "Archived assets cannot be changed.")
 
 
+def validate_asset_otm_references(db: Session, payload: dict[str, object]) -> None:
+    dictionary_root = Path(get_settings().otm_data_dictionary_root)
+    macro_object_code = str(payload.get("macro_object_code") or "").strip().upper()
+    otm_table_name = str(payload.get("otm_table_name") or "").strip().upper()
+    if macro_object_code and get_macro_object(db, dictionary_root, macro_object_code) is None:
+        raise api_error(
+            400,
+            "ASSET_METADATA_INVALID",
+            "Asset macro object was not found in Catalog Core.",
+            details={"field_name": "macro_object_code", "reference_type": "catalog_macro_object"},
+        )
+    if otm_table_name:
+        try:
+            load_table_definition(dictionary_root, otm_table_name)
+        except FileNotFoundError as exc:
+            raise api_error(
+                400,
+                "ASSET_METADATA_INVALID",
+                "Asset OTM table was not found in the Data Dictionary.",
+                details={"field_name": "otm_table_name", "reference_type": "otm_data_dictionary_table"},
+            ) from exc
+
+
 def artifact_has_client_safe_evidence(db: Session, artifact_id: str) -> bool:
     return (
         db.query(Evidence)
@@ -107,8 +130,10 @@ def create_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
+    request_payload = payload.model_dump()
+    validate_asset_otm_references(db, request_payload)
     try:
-        asset = create_draft_asset(db, payload=payload.model_dump(), user=user)
+        asset = create_draft_asset(db, payload=request_payload, user=user)
     except AssetValidationError as exc:
         raise api_error(400, "ASSET_CLASSIFICATION_INVALID", str(exc), details=exc.details) from exc
     except ValueError as exc:
@@ -176,11 +201,13 @@ def patch_asset(
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     reject_archived_asset(asset)
+    request_payload = payload.model_dump(exclude_unset=True)
+    validate_asset_otm_references(db, request_payload)
     try:
         updated = update_asset_metadata(
             db,
             asset=asset,
-            payload=payload.model_dump(exclude_unset=True),
+            payload=request_payload,
             updated_by=user.email,
         )
     except AssetValidationError as exc:

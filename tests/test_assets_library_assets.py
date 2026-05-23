@@ -15,8 +15,8 @@ def draft_asset_payload(**overrides):
         "scope_type": "PROJECT",
         "sensitivity": "INTERNAL",
         "module_id": "assets",
-        "macro_object_code": "ORDER_RELEASE",
-        "otm_table_name": "ORDER_RELEASE",
+        "macro_object_code": "RATE_RECORD",
+        "otm_table_name": "RATE_GEO_COST",
         "tags": ["SYNTHETIC", "MVP0"],
     }
     payload.update(overrides)
@@ -90,6 +90,31 @@ def test_create_global_asset_rejects_secret_like_metadata(client, admin_header):
     assert "ChangeMe123" not in payload["message"]
 
 
+def test_create_draft_asset_rejects_invalid_otm_references(client, admin_header):
+    invalid_macro = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(macro_object_code="NOT_A_MACRO_OBJECT"),
+        headers=admin_header,
+    )
+    invalid_table = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(macro_object_code="RATE_RECORD", otm_table_name="NOT_A_REAL_OTM_TABLE"),
+        headers=admin_header,
+    )
+
+    assert invalid_macro.status_code == 400
+    macro_payload = invalid_macro.json()
+    assert macro_payload["code"] == "ASSET_METADATA_INVALID"
+    assert macro_payload["details"]["field_name"] == "macro_object_code"
+    assert "macro object" in macro_payload["message"].lower()
+
+    assert invalid_table.status_code == 400
+    table_payload = invalid_table.json()
+    assert table_payload["code"] == "ASSET_METADATA_INVALID"
+    assert table_payload["details"]["field_name"] == "otm_table_name"
+    assert "data dictionary" in table_payload["message"].lower()
+
+
 def test_list_and_detail_assets_with_filters(client, admin_header):
     created = client.post(
         "/api/v1/modules/assets/assets",
@@ -155,7 +180,7 @@ def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header)
         "/api/v1/modules/assets/assets",
         json=draft_asset_payload(
             name="Synthetic Rate Table Notes",
-            macro_object_code="RATE_GEO",
+            macro_object_code="RATE_RECORD",
             otm_table_name="RATE_GEO_COST",
         ),
         headers=admin_header,
@@ -164,15 +189,15 @@ def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header)
         "/api/v1/modules/assets/assets",
         json=draft_asset_payload(
             name="Synthetic Order Release Notes",
-            macro_object_code="ORDER_RELEASE",
-            otm_table_name="ORDER_RELEASE",
+            macro_object_code="REGION",
+            otm_table_name="REGION",
         ),
         headers=admin_header,
     )
 
     response = client.get(
         "/api/v1/modules/assets/assets",
-        params={"macro_object_code": "rate_geo", "otm_table_name": "rate_geo_cost"},
+        params={"macro_object_code": "rate_record", "otm_table_name": "rate_geo_cost"},
         headers=admin_header,
     )
 
@@ -261,6 +286,33 @@ def test_update_global_asset_rejects_secret_like_metadata(client, admin_header):
     payload = response.json()
     assert payload["code"] == "ASSET_SECRET_RISK"
     assert "abcd1234" not in payload["message"]
+
+
+def test_update_asset_metadata_rejects_invalid_otm_references(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    invalid_macro = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"macro_object_code": "NOT_A_MACRO_OBJECT"},
+        headers=admin_header,
+    )
+    invalid_table = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"otm_table_name": "NOT_A_REAL_OTM_TABLE"},
+        headers=admin_header,
+    )
+
+    assert invalid_macro.status_code == 400
+    assert invalid_macro.json()["code"] == "ASSET_METADATA_INVALID"
+    assert invalid_macro.json()["details"]["field_name"] == "macro_object_code"
+
+    assert invalid_table.status_code == 400
+    assert invalid_table.json()["code"] == "ASSET_METADATA_INVALID"
+    assert invalid_table.json()["details"]["field_name"] == "otm_table_name"
 
 
 def test_archive_asset_preserves_record_and_records_audit_event(client, admin_header, db_session):
