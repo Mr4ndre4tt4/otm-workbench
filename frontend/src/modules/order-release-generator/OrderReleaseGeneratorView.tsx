@@ -100,6 +100,17 @@ function batchMeta(batch: OrderReleaseBatch) {
   ];
 }
 
+function batchRowIssueItems(batch: OrderReleaseBatch | null) {
+  return (batch?.rows ?? []).flatMap((row) =>
+    row.issues.map((issue, issueIndex) => ({
+      id: `${row.id}-${issueIndex}`,
+      meta: [`Row ${row.row_number}`, String(issue.column ?? "row"), String(issue.severity ?? "ERROR")],
+      status: row.status,
+      title: String(issue.code ?? "ROW_ISSUE")
+    }))
+  );
+}
+
 function normalizeDraftRows(rows: Array<Record<string, unknown>>): DraftOrderReleaseRow[] {
   return rows.map((row) =>
     Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value ?? "")]))
@@ -171,6 +182,8 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const defaultCount = selectedTemplate ? Object.keys(selectedTemplate.defaults).length : 0;
   const activeBatch = selectedBatch ?? createdBatch;
   const artifacts = useOrderReleaseArtifacts(token, activeBatch?.id ?? null);
+  const activeBatchIsValid = activeBatch?.status === "VALID";
+  const activeBatchRowIssues = batchRowIssueItems(activeBatch);
 
   if (templates.isLoading) {
     return <StatePanel>Loading Order Release Generator...</StatePanel>;
@@ -498,17 +511,22 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
               </Button>
             </div>
             {activeBatch ? (
-              <DetailList
-                ariaLabel="Active Order Release batch"
-                items={[
-                  {
-                    id: activeBatch.id,
-                    meta: batchMeta(activeBatch),
-                    status: activeBatch.status,
-                    title: activeBatch.id
-                  }
-                ]}
-              />
+              <>
+                <DetailList
+                  ariaLabel="Active Order Release batch"
+                  items={[
+                    {
+                      id: activeBatch.id,
+                      meta: batchMeta(activeBatch),
+                      status: activeBatch.status,
+                      title: activeBatch.id
+                    }
+                  ]}
+                />
+                {activeBatchRowIssues.length ? (
+                  <DetailList ariaLabel="Order Release batch row issues" items={activeBatchRowIssues} />
+                ) : null}
+              </>
             ) : null}
           </OperationalPanel>
         ) : null}
@@ -522,10 +540,13 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             title="Preview"
           >
             <div className="master-data-action-bar">
-              <Button disabled={isMutating || !activeBatch} onClick={handlePreviewXml} variant="primary">
+              <Button disabled={isMutating || !activeBatch || !activeBatchIsValid} onClick={handlePreviewXml} variant="primary">
                 Preview XML
               </Button>
             </div>
+            {!activeBatchIsValid && activeBatch ? (
+              <FeedbackMessage tone="error">Fix invalid batch rows before previewing XML.</FeedbackMessage>
+            ) : null}
             {xmlPreview ? (
               <DetailList
                 ariaLabel="Order Release XML preview"
@@ -551,10 +572,13 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             title="Artifact"
           >
             <div className="master-data-action-bar">
-              <Button disabled={isMutating || !activeBatch} onClick={handleGenerateArtifact} variant="primary">
+              <Button disabled={isMutating || !activeBatch || !activeBatchIsValid} onClick={handleGenerateArtifact} variant="primary">
                 Generate XML artifact
               </Button>
             </div>
+            {!activeBatchIsValid && activeBatch ? (
+              <FeedbackMessage tone="error">Fix invalid batch rows before generating XML artifacts.</FeedbackMessage>
+            ) : null}
             {generatedArtifacts.length ? (
               <section aria-label="Order Release XML artifact" className="integration-generated-artifacts">
                 <ArtifactList

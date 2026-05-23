@@ -78,13 +78,17 @@ Delivered hardening:
 - raw JSON row editing was removed from the GUI;
 - add/remove row controls keep batch input in backend contract shape;
 - frontend functional QA verifies edited field payloads before batch creation.
+- invalid backend batch rows now surface row-level issue code, column, severity,
+  and row number inside the Batch stage;
+- Preview and Artifact actions are disabled while the active batch is not VALID;
+- the user can correct the row fields and recreate a valid batch without
+  leaving the staged workflow.
 ```
 
 Still open:
 
 ```text
 - richer reusable template authoring/versioning UX
-- deeper row validation/recovery UX for invalid batches
 - governed direct OTM submit capability after MVP0
 ```
 
@@ -106,6 +110,15 @@ Recent OTM-125 validation:
 ```text
 npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx
 npm run lint
+npm run build
+python -m pytest tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+```
+
+Second OTM-125 validation:
+
+```text
+npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx -t "shows invalid batch row issues"
+npm run test -- AppFunctionalOrderReleaseGenerator.test.tsx
 npm run build
 python -m pytest tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
 ```

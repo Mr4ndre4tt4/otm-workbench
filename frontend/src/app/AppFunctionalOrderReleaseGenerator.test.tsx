@@ -126,6 +126,41 @@ function validBatch() {
   };
 }
 
+function invalidBatch() {
+  return {
+    ...validBatch(),
+    id: "or_batch_invalid",
+    issue_count: 1,
+    release_count: 1,
+    rows: [
+      {
+        batch_id: "or_batch_invalid",
+        created_at: "2026-05-22T00:00:00",
+        id: "or_row_invalid_1",
+        issues: [{ code: "MISSING_REQUIRED_COLUMN", column: "release_gid", severity: "ERROR" }],
+        normalized_json: { weight: "100", weight_uom: "KG" },
+        release_gid: null,
+        row_number: 1,
+        status: "INVALID",
+        updated_at: null
+      },
+      {
+        batch_id: "or_batch_invalid",
+        created_at: "2026-05-22T00:00:00",
+        id: "or_row_invalid_2",
+        issues: [],
+        normalized_json: { release_gid: "OTM1.OR_SYN_002", weight_uom: "KG" },
+        release_gid: "OTM1.OR_SYN_002",
+        row_number: 2,
+        status: "VALID",
+        updated_at: null
+      }
+    ],
+    status: "INVALID",
+    summary: { issue_count: 1, release_count: 1, row_count: 2, template_code: "SYN_TL_ORDER_RELEASE" }
+  };
+}
+
 describe("Functional Order Release Generator journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -345,5 +380,98 @@ describe("Functional Order Release Generator journey", () => {
     expect(downloadRequests).toEqual([{ method: "GET" }]);
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(submitRequests).toEqual([{ method: "POST" }]);
+  }, 60000);
+
+  it("shows invalid batch row issues and lets the user correct and recreate the batch", async () => {
+    const createBatchRequests: unknown[] = [];
+    let createAttempt = 0;
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              {
+                id: "order_release_generator",
+                label: "Order Release Generator",
+                path: "/order-release-generator",
+                status: "ACTIVE"
+              }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/templates")) {
+        return Promise.resolve(jsonResponse({ items: [orderReleaseTemplate()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches")) {
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init?.body));
+          createAttempt += 1;
+          createBatchRequests.push({ attempt: createAttempt, release_gid: body.rows[0].release_gid ?? null });
+          return Promise.resolve(jsonResponse(createAttempt === 1 ? invalidBatch() : validBatch()));
+        }
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_invalid/artifacts")) {
+        return Promise.resolve(jsonResponse({ batch_id: "or_batch_invalid", items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts")) {
+        return Promise.resolve(jsonResponse({ batch_id: "or_batch_1", items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Order Release Generator" });
+    await userEvent.click(screen.getByRole("button", { name: /2Batch/ }));
+    await userEvent.clear(screen.getByLabelText("Row 1 release_gid"));
+    await userEvent.click(screen.getByRole("button", { name: "Create batch" }));
+
+    await screen.findByText("Order Release batch or_batch_invalid created.");
+    expect(screen.getByLabelText("Order Release batch row issues")).toHaveTextContent("MISSING_REQUIRED_COLUMN");
+    expect(screen.getByLabelText("Order Release batch row issues")).toHaveTextContent("release_gid");
+
+    await userEvent.type(screen.getByLabelText("Row 1 release_gid"), "OTM1.OR_SYN_001");
+    await userEvent.click(screen.getByRole("button", { name: "Create batch" }));
+    await screen.findByText("Order Release batch or_batch_1 created.");
+
+    expect(createBatchRequests).toEqual([
+      { attempt: 1, release_gid: null },
+      { attempt: 2, release_gid: "OTM1.OR_SYN_001" }
+    ]);
   }, 60000);
 });
