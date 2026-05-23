@@ -283,3 +283,23 @@ def test_archive_asset_preserves_record_and_records_audit_event(client, admin_he
     assert payload["status"] == "ARCHIVED"
     assert json.loads(audit.metadata_json)["asset_id"] == created["id"]
     assert json.loads(event.payload_json)["status"] == "ARCHIVED"
+
+
+def test_update_archived_asset_metadata_is_rejected(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    client.post(f"/api/v1/modules/assets/assets/{created['id']}/archive", headers=admin_header)
+
+    response = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"name": "Synthetic Archived Asset Update"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    payload = response.json()
+    assert payload["code"] == "ASSET_ARCHIVED"
+    assert "archived" in payload["message"].lower()

@@ -97,6 +97,22 @@ def test_upload_asset_version_rejects_missing_asset(client, admin_header):
     assert response.status_code == 404
 
 
+def test_upload_asset_version_rejects_archived_asset(client, admin_header):
+    asset = create_asset(client, admin_header)
+    client.post(f"/api/v1/modules/assets/assets/{asset['id']}/archive", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/versions",
+        files={"file": ("archived.txt", b"synthetic archived asset update", "text/plain")},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    payload = response.json()
+    assert payload["code"] == "ASSET_ARCHIVED"
+    assert "archived" in payload["message"].lower()
+
+
 def test_upload_global_asset_version_rejects_secret_like_content(client, admin_header):
     asset = client.post(
         "/api/v1/modules/assets/assets",

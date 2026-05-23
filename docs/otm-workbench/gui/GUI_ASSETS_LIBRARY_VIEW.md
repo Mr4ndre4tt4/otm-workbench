@@ -75,7 +75,9 @@ a file version, create selected link types such as `OTM_TABLE` and
 from backend validation errors when the target table or macro object is invalid,
 download the current version through the guarded backend download endpoint, and
 archive the asset. Once the backend returns `ARCHIVED`, the UI keeps lifecycle
-actions disabled for new uploads and links.
+actions disabled for metadata updates, new uploads, and links. The backend also
+rejects those archived-asset mutations with `ASSET_ARCHIVED`, so the lifecycle
+rule does not live only in the frontend.
 
 The create stage no longer creates a fixed hard-coded synthetic asset. It
 authors create and update payloads from visible UI controls, using
@@ -94,6 +96,8 @@ record before any update action can be submitted.
   permission/audit, and archive state come from backend contracts.
 - `ARTIFACT` and `EVIDENCE` links cannot be created against unsafe or missing
   Evidence Hub records.
+- Archived assets cannot be updated, versioned, or linked through backend
+  mutation APIs.
 ```
 
 Still open:

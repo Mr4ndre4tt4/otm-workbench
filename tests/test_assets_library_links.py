@@ -198,3 +198,19 @@ def test_create_asset_link_rejects_unknown_link_type(client, admin_header):
 
     assert response.status_code == 400
     assert "link" in response.json()["message"].lower()
+
+
+def test_create_asset_link_rejects_archived_asset(client, admin_header):
+    asset = create_asset(client, admin_header)
+    client.post(f"/api/v1/modules/assets/assets/{asset['id']}/archive", headers=admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "MODULE", "target_id": "assets"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 409
+    payload = response.json()
+    assert payload["code"] == "ASSET_ARCHIVED"
+    assert "archived" in payload["message"].lower()

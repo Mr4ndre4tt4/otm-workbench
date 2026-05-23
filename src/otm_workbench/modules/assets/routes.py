@@ -62,6 +62,11 @@ class AssetLinkCreateRequest(BaseModel):
     target_label: str = ""
 
 
+def reject_archived_asset(asset: Asset) -> None:
+    if asset.status == "ARCHIVED":
+        raise api_error(409, "ASSET_ARCHIVED", "Archived assets cannot be changed.")
+
+
 def artifact_has_client_safe_evidence(db: Session, artifact_id: str) -> bool:
     return (
         db.query(Evidence)
@@ -170,6 +175,7 @@ def patch_asset(
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    reject_archived_asset(asset)
     try:
         updated = update_asset_metadata(
             db,
@@ -208,6 +214,7 @@ def create_asset_link_endpoint(
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    reject_archived_asset(asset)
     link_type = payload.link_type.strip().upper()
     target_id = payload.target_id.strip()
     if link_type == "OTM_TABLE":
@@ -299,6 +306,7 @@ def upload_asset_file_version(
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    reject_archived_asset(asset)
     content = file.file.read()
     try:
         version = upload_asset_version(
