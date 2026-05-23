@@ -15,6 +15,7 @@ import {
   useAssetVersions
 } from '../../platform/hooks';
 import type { AssetClassification, AssetFilters, AssetItem } from '../../platform/types';
+import { ApiError } from '../../platform/api';
 import { PageHeader } from '../../app/shell';
 import {
   Button,
@@ -116,6 +117,13 @@ function assetDraftFromAsset(asset: AssetItem) {
   };
 }
 
+function formatAssetsError(error: unknown) {
+  if (error instanceof ApiError) {
+    return `${error.code}: ${error.message}`;
+  }
+  return error instanceof Error ? error.message : "Assets Library action failed.";
+}
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
@@ -195,7 +203,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
       const result = await action();
       setOperationMessage(onSuccess(result));
     } catch (error) {
-      setOperationError(error instanceof Error ? error.message : "Assets Library action failed.");
+      setOperationError(formatAssetsError(error));
     } finally {
       setIsMutating(false);
     }

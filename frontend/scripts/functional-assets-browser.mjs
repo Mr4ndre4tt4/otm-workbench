@@ -170,6 +170,10 @@ async function run() {
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
     await page.getByLabel("Asset link type").selectOption("OTM_TABLE");
+    await page.getByLabel("Asset link target id").fill("NOT_A_REAL_OTM_TABLE");
+    await page.getByLabel("Asset link target label").fill("Invalid OTM table");
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText("ASSET_LINK_INVALID_TABLE: OTM table not found in Data Dictionary.").waitFor();
     await page.getByLabel("Asset link target id").fill("RATE_GEO_COST");
     await page.getByLabel("Asset link target label").fill("Rate Geo Cost table");
     await page.getByRole("button", { name: "Create link" }).click();
@@ -199,12 +203,18 @@ async function run() {
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
     await page.getByRole("button", { name: /Synthetic Rate Table Notes Updated/ }).first().waitFor();
 
-    if (consoleErrors.length || failedResponses.length) {
+    const unexpectedConsoleErrors = consoleErrors.filter(
+      (message) => !message.includes("Failed to load resource: the server responded with a status of 400")
+    );
+    const unexpectedFailedResponses = failedResponses.filter(
+      (failure) => !(failure.startsWith("400 ") && failure.includes("/api/v1/modules/assets/assets/") && failure.endsWith("/links"))
+    );
+    if (unexpectedConsoleErrors.length || unexpectedFailedResponses.length) {
       throw new Error(
         [
           "Assets browser functional QA detected runtime failures.",
-          consoleErrors.length ? `Console errors:\n${consoleErrors.join("\n")}` : "",
-          failedResponses.length ? `HTTP failures:\n${failedResponses.join("\n")}` : ""
+          unexpectedConsoleErrors.length ? `Console errors:\n${unexpectedConsoleErrors.join("\n")}` : "",
+          unexpectedFailedResponses.length ? `HTTP failures:\n${unexpectedFailedResponses.join("\n")}` : ""
         ]
           .filter(Boolean)
           .join("\n")

@@ -218,6 +218,7 @@ describe("Functional Assets Library journey", () => {
     const createRequests: unknown[] = [];
     const updateRequests: unknown[] = [];
     const uploadRequests: unknown[] = [];
+    const invalidLinkRequests: unknown[] = [];
     const linkRequests: unknown[] = [];
     const downloadRequests: unknown[] = [];
     const archiveRequests: unknown[] = [];
@@ -322,6 +323,18 @@ describe("Functional Assets Library journey", () => {
         if (init?.method === "POST") {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
           const body = JSON.parse(String(init?.body));
+          if (body.target_id === "NOT_A_REAL_OTM_TABLE") {
+            invalidLinkRequests.push(body);
+            return Promise.resolve(
+              jsonResponse(
+                {
+                  code: "ASSET_LINK_INVALID_TABLE",
+                  message: "OTM table not found in Data Dictionary."
+                },
+                400
+              )
+            );
+          }
           linkRequests.push(body);
           createdLink = { ...linkFixture(), link_type: body.link_type, target_id: body.target_id, target_label: body.target_label };
           return Promise.resolve(jsonResponse(createdLink));
@@ -423,6 +436,14 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "OTM_TABLE");
     await userEvent.clear(screen.getByLabelText("Asset link target id"));
+    await userEvent.type(screen.getByLabelText("Asset link target id"), "NOT_A_REAL_OTM_TABLE");
+    await userEvent.clear(screen.getByLabelText("Asset link target label"));
+    await userEvent.type(screen.getByLabelText("Asset link target label"), "Invalid OTM table");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+    await screen.findByText("ASSET_LINK_INVALID_TABLE: OTM table not found in Data Dictionary.");
+    expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("4Link");
+    expect(linkRequests).toEqual([]);
+    await userEvent.clear(screen.getByLabelText("Asset link target id"));
     await userEvent.type(screen.getByLabelText("Asset link target id"), "RATE_GEO_COST");
     await userEvent.clear(screen.getByLabelText("Asset link target label"));
     await userEvent.type(screen.getByLabelText("Asset link target label"), "Rate Geo Cost table");
@@ -463,6 +484,9 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
+    expect(invalidLinkRequests).toEqual([
+      { link_type: "OTM_TABLE", target_id: "NOT_A_REAL_OTM_TABLE", target_label: "Invalid OTM table" }
+    ]);
     expect(updateRequests).toEqual([
       {
         asset_type: "SPEC",

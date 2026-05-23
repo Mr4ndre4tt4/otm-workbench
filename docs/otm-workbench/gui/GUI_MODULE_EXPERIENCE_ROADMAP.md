@@ -46,7 +46,7 @@ For each module:
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
 | Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
 | Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
-| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata and selected-asset sync are delivered; richer filter/link validation remains follow-up. |
+| Assets Library | Functional journey done | Backend asset/version/link/filter APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, selected-asset sync, and invalid OTM table link recovery are delivered; richer filters/link authoring remain follow-ups. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact APIs ready | Staged workflow | Artifact download remains follow-up. |
 
@@ -176,11 +176,13 @@ Required GUI work:
   and tags.
 - Add selected asset metadata update through the backend `PATCH` contract.
 - Sync the authoring form from the selected backend asset before update.
+- Preserve backend error codes/messages for invalid link targets, including Data
+  Dictionary validation for `OTM_TABLE`.
 - Use ArtifactList or version list for files.
 - Keep file eligibility, version state, and links backend-owned.
 - Keep the screen staged; do not return to stacked create/upload/link/list
   panels.
-- Add deeper filter/link validation messaging before treating the module as
+- Add richer filter controls and link authoring UX before treating the module as
   complete.
 ```
 

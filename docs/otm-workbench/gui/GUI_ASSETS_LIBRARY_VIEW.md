@@ -42,6 +42,8 @@ The screen uses shared components:
   payload and `PATCH` contract;
 - Selected-asset synchronization so the metadata form reflects the backend
   record selected in the Library before an update is submitted;
+- Backend error code preservation in action feedback, including Data
+  Dictionary validation failures for `OTM_TABLE` asset links;
 - OperationalPanel for the active create, upload, link, or lifecycle action;
 - DetailList for asset versions and links;
 - FeedbackMessage for backend action results.
@@ -50,11 +52,12 @@ The screen uses shared components:
 The first selected asset defaults to the first backend item. Selecting another
 asset updates detail, versions, and links through backend-owned ids. The current
 functional slice follows a staged story: review the Library with backend
-filters, create a client-safe synthetic support asset, upload a file version,
-edit its metadata, upload a file version, create a selected link type such as
-`OTM_TABLE`, download the current version through the guarded backend download
-endpoint, and archive the asset. Once the backend returns `ARCHIVED`, the UI
-keeps lifecycle actions disabled for new uploads and links.
+filters, create a client-safe synthetic support asset, edit its metadata, upload
+a file version, create a selected link type such as `OTM_TABLE`, recover from a
+backend Data Dictionary validation error when the target table is invalid,
+download the current version through the guarded backend download endpoint, and
+archive the asset. Once the backend returns `ARCHIVED`, the UI keeps lifecycle
+actions disabled for new uploads and links.
 
 The create stage no longer creates a fixed hard-coded synthetic asset. It
 authors create and update payloads from visible UI controls, using
@@ -78,8 +81,8 @@ Still open:
 ```text
 - richer custom metadata validation messaging
 - additional filters beyond the first type/category/status/tag controls
-- richer link authoring UX and validation messaging for every supported link type
-- deeper authoring for backend-owned classifications and link target validation
+- richer link authoring UX for every supported link type
+- deeper authoring for backend-owned classifications
 ```
 
 ## Validation
