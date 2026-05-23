@@ -270,6 +270,11 @@ selected-object action guidance, and loads that batch's output/artifact surfaces
 This lets QA and cutover operators return to a previous upload/export cycle
 without re-running the whole workflow.
 
+When a historical batch is active, the Output stage also exposes a recovery
+control that returns the workspace to the latest batch matching the current
+filters. This keeps historical inspection reversible without forcing route
+navigation or filter resets.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

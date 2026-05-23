@@ -791,6 +791,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
     await screen.findByText("001_REGION_HISTORY.csv");
+    await userEvent.click(screen.getByRole("button", { name: "Use latest matching batch" }));
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_1");
+    await screen.findByText("master_data_regions_basic.zip");
 
     expect(templateValidationRequests).toEqual([{ method: "POST" }]);
     expect(workbookRequests).toEqual([{ method: "POST" }]);

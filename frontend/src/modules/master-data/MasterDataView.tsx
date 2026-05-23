@@ -485,7 +485,11 @@ export function MasterDataView({ token }: { token: string }) {
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
   const authorSelectedColumns = selectedAuthorColumns(authorTables, authorColumnsByTable);
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
-  const activeBatch = uploadedBatch ?? batches.data?.items[0] ?? null;
+  const latestMatchingBatch = batches.data?.items[0] ?? null;
+  const activeBatch = uploadedBatch ?? latestMatchingBatch;
+  const isInspectingHistoricalBatch = Boolean(
+    uploadedBatch && latestMatchingBatch && uploadedBatch.batch_id !== latestMatchingBatch.batch_id
+  );
   const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
   const outputRecords = useMasterDataOutputRecords(token, activeBatch?.batch_id ?? null);
   const csvFiles = useMasterDataCsvFiles(token, activeBatch?.batch_id ?? null);
@@ -768,6 +772,13 @@ export function MasterDataView({ token }: { token: string }) {
       },
       (result) => `Inspecting batch ${result.batch_id}.`
     );
+  };
+
+  const handleUseLatestMatchingBatch = () => {
+    setUploadedBatch(null);
+    clearBatchWorkflowState();
+    setOperationMessage("Inspecting latest matching batch.");
+    setOperationError(null);
   };
 
   const handleValidateRelationships = () => {
@@ -1746,6 +1757,9 @@ export function MasterDataView({ token }: { token: string }) {
               </Button>
               <Button disabled={!hasBatchHistoryFilters || batches.isFetching} onClick={resetBatchHistoryFilters}>
                 Reset batch filters
+              </Button>
+              <Button disabled={!isInspectingHistoricalBatch || batches.isFetching} onClick={handleUseLatestMatchingBatch}>
+                Use latest matching batch
               </Button>
             </div>
             <MetricGrid
