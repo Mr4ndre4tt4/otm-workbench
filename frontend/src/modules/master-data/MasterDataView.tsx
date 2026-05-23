@@ -465,6 +465,8 @@ export function MasterDataView({ token }: { token: string }) {
     setBatchMinRowCountFilter("");
     setBatchPageSize(50);
     setBatchPage(1);
+    setUploadedBatch(null);
+    clearBatchWorkflowState();
   }
   function clearBatchWorkflowState() {
     setRelationshipValidation(null);

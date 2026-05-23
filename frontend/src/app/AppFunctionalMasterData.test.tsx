@@ -794,6 +794,8 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Use latest matching batch" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_1");
     await screen.findByText("master_data_regions_basic.zip");
+    await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
 
     expect(templateValidationRequests).toEqual([{ method: "POST" }]);
     expect(workbookRequests).toEqual([{ method: "POST" }]);
@@ -827,6 +829,7 @@ describe("Functional Master Data journey", () => {
       template_code: "REGIONS_BASIC"
     });
     await userEvent.click(screen.getByRole("button", { name: "Reset batch filters" }));
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_1");
     expect(screen.getByLabelText("Template filter")).toHaveValue("");
     expect(screen.getByLabelText("Batch status filter")).toHaveValue("");
     expect(screen.getByLabelText("Batch file name filter")).toHaveValue("");

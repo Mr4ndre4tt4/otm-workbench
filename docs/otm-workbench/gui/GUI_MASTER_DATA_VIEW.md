@@ -275,6 +275,10 @@ control that returns the workspace to the latest batch matching the current
 filters. This keeps historical inspection reversible without forcing route
 navigation or filter resets.
 
+Resetting batch-history filters also clears any manual historical-batch
+inspection and returns the active workspace to the latest matching batch. This
+prevents a reset from leaving the user in a stale historical context.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV
