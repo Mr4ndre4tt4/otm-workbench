@@ -795,7 +795,7 @@
 
 .master-data-workflow {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -898,13 +898,18 @@
   gap: 6px;
 }
 
-.master-data-author-grid input {
+.master-data-author-grid input,
+.master-data-author-grid textarea {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
   min-height: 38px;
   padding: 8px 10px;
+}
+
+.master-data-author-grid textarea {
+  resize: vertical;
 }
 
 .master-data-column-picker {

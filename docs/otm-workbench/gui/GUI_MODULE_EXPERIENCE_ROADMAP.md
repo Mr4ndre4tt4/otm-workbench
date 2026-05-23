@@ -44,8 +44,8 @@ For each module:
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, and Go/No-Go UI done | Backend flows mostly ready | Review queue + staged workflow | Continue with handoff commit and artifact download follow-ups. |
-| Master Data / Data Factory | MVP workflow done | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality GUI, Load Plan registration, direct OTM import, and richer spreadsheet operations remain follow-ups. |
-| Coordinate Quality | No GUI journey | Backend/API ready | Staged workflow or review queue | Needs placement decision. |
+| Master Data / Data Factory | MVP workflow done plus first Coordinate Quality slice | Backend flows ready for template authoring, batches, CSV/ZIP export, durable artifacts, Coordinate Quality preview/batches/results/export, and hardening QA | Staged workflow + object detail | Treat current workflow as MVP accepted; Coordinate Quality is embedded as the `Quality` stage. Load Plan registration, direct OTM import, richer spreadsheet operations, and advanced Coordinate Quality diagnostics remain follow-ups. |
+| Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | First functional slice done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive history/detail only if needed. |
 | Order Release Generator | First functional slice done | Template/batch/XML artifact/list/download APIs ready | Staged workflow | Guarded XML artifact download is delivered; richer row/template authoring and governed direct OTM submit remain follow-ups. |
@@ -105,10 +105,11 @@ Delivered after OTM-119:
 Remaining GUI work before `Module complete`:
 
 ```text
-- Add Coordinate Quality placement and workflow.
 - Add guarded Load Plan registration from exported package.
 - Add direct OTM import only after submit/credential guardrails are designed.
 - Add spreadsheet preview/editor only if it has a backend-owned use case.
+- Add advanced Coordinate Quality map diagnostics and external provider setup
+  only after backend provider governance is designed.
 - Expand advanced batch history filters/pagination if operational volume needs it.
 ```
 

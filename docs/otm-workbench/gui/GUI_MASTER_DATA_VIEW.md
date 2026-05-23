@@ -1,7 +1,7 @@
 # GUI Master Data View
 
-**Status:** MVP workflow done; module-complete follow-ups remain
-**Linear:** OTM-114, OTM-117, OTM-118
+**Status:** MVP workflow done; first Coordinate Quality GUI slice done; module-complete follow-ups remain
+**Linear:** OTM-114, OTM-117, OTM-118, OTM-91
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
 
@@ -13,7 +13,7 @@ of only inspecting templates.
 Delivered story:
 
 ```text
-template -> author -> workbook -> upload -> validate -> map -> output/export
+template -> author -> workbook -> upload -> validate -> map -> output/export -> quality
 ```
 
 ## Primary Pattern
@@ -32,6 +32,7 @@ Upload
 Validate
 Map
 Output
+Quality
 ```
 
 The side panel remains focused on selected template metadata and active batch
@@ -60,17 +61,22 @@ GET  /api/v1/modules/master-data/batches
 GET  /api/v1/modules/master-data/batches/{batch_id}
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts
 GET  /api/v1/modules/master-data/batches/{batch_id}/artifacts/{artifact_id}/download
+POST /api/v1/modules/master-data/coordinate-quality/validate
+GET  /api/v1/modules/master-data/coordinate-quality/batches
+POST /api/v1/modules/master-data/coordinate-quality/batches
+GET  /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/results
+POST /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export
 ```
 
 ## Out Of Scope
 
 ```text
-- Coordinate Quality GUI
 - free-form template authoring from arbitrary N OTM tables
 - browser spreadsheet editor
 - Load Plan registration from Data Factory
 - direct OTM import
 - advanced batch history filters/pagination
+- Coordinate Quality advanced map diagnostics and external geocoder setup
 ```
 
 Batch workflow state is recoverable from backend batch list/detail endpoints.
@@ -175,19 +181,30 @@ exporting a package, the script leaves Data Factory, returns, opens the Output
 stage, and verifies durable backend-owned batch and artifact rows are still
 visible.
 
-OTM-119 closes the current Master Data MVP workflow hardening pass. The module
-is not marked `Module complete` because Coordinate Quality GUI, Load Plan
-registration, direct OTM import, and richer workbook/spreadsheet operations are
-tracked as follow-up scope.
+The first OTM-91 GUI slice places Coordinate Quality inside Data Factory as the
+`Quality` stage. The frontend submits synthetic Location records and optional
+fake provider candidates to the backend preview endpoint, creates a persisted
+quality batch, inspects result rows and recent batches, exports the correction
+package, and recovers the recent batch after leaving and returning to the route.
+The UI does not duplicate geospatial or OTM Location rules; it orchestrates the
+backend-owned Coordinate Quality contracts.
+
+OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
+now has its first GUI workflow slice. The module is not marked `Module
+complete` because Load Plan registration, direct OTM import, richer
+workbook/spreadsheet operations, advanced Coordinate Quality map diagnostics,
+and broader negative/out-of-order QA are tracked as follow-up scope.
 
 ## Validation
 
 ```text
 cd frontend
 npm run test -- AppFunctionalMasterData.test.tsx
+npm run test -- AppFunctionalCoordinateQuality.test.tsx
 npm run lint
 npm run build
 npm run qa:functional:master-data:browser
+npm run qa:functional:coordinate-quality:browser
 ```
 
 Focused OTM-119 backend QA:

@@ -4,17 +4,22 @@ import {
   buildMasterDataCsv,
   buildMasterDataOutput,
   buildMasterDataWorkbook,
+  createCoordinateQualityBatch,
   createMasterDataTemplateDraft,
   downloadBackendArtifact,
   createMasterDataTemplateVersion,
+  exportCoordinateQualityBatch,
   exportMasterDataCsvPackage,
   mapMasterDataBatch,
+  previewCoordinateQuality,
   publishMasterDataTemplate,
   updateMasterDataTemplateDraft,
   uploadMasterDataWorkbook,
   useCatalogColumnsByTable,
   useCatalogMacroObjectTables,
   useCatalogMacroObjects,
+  useCoordinateQualityBatches,
+  useCoordinateQualityResults,
   useMasterDataBatchArtifacts,
   useMasterDataBatches,
   useMasterDataTemplateDetail,
@@ -24,6 +29,10 @@ import {
   validateMasterDataTemplate
 } from '../../platform/hooks';
 import type {
+  CoordinateQualityBatch,
+  CoordinateQualityExport,
+  CoordinateQualityPreview,
+  CoordinateQualityRecord,
   MasterDataActionResult,
   MasterDataArtifact,
   MasterDataBatch,
@@ -70,7 +79,8 @@ const masterDataWorkflowStages = [
   { id: "upload", title: "Upload", status: "4" },
   { id: "validate", title: "Validate", status: "5" },
   { id: "map", title: "Map", status: "6" },
-  { id: "output", title: "Output", status: "7" }
+  { id: "output", title: "Output", status: "7" },
+  { id: "quality", title: "Quality", status: "8" }
 ] as const;
 
 type MasterDataWorkflowStage = (typeof masterDataWorkflowStages)[number]["id"];
@@ -86,7 +96,53 @@ function summaryMeta(summary: Record<string, unknown> | undefined) {
   return Object.entries(summary ?? {}).map(([key, value]) => `${key}: ${String(value)}`);
 }
 
+function parseJsonObject(text: string) {
+  const parsed = JSON.parse(text) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Expected a JSON object.");
+  }
+  return parsed as Record<string, { lat: number; lon: number; source?: string }>;
+}
+
+function parseJsonArray(text: string) {
+  const parsed = JSON.parse(text) as unknown;
+  if (!Array.isArray(parsed) || parsed.some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
+    throw new Error("Expected a JSON array of objects.");
+  }
+  return parsed as Array<Record<string, unknown>>;
+}
+
 const defaultAuthorColumns = ["LOCATION_GID", "LOCATION_XID", "LOCATION_NAME", "COUNTRY_CODE3_GID"];
+
+const defaultCoordinateQualityRecords = [
+  {
+    location_gid: "SYN.LOC_QA_001",
+    location_name: "Synthetic Preview DC",
+    address_line: "Rua Um 100",
+    city: "Sao Paulo",
+    province_code: "SP",
+    postal_code: "01000-000",
+    country_code3_gid: "BRA",
+    lat: null,
+    lon: null
+  },
+  {
+    location_gid: "SYN.LOC_QA_002",
+    location_name: "Synthetic Corrected DC",
+    address_line: "Rua Dois 200",
+    city: "Sao Paulo",
+    province_code: "SP",
+    postal_code: "01000-000",
+    country_code3_gid: "BRA",
+    lat: -3.73,
+    lon: -38.52
+  }
+];
+
+const defaultCoordinateQualityCandidates = {
+  "SYN.LOC_QA_001": { lat: -23.55, lon: -46.63, source: "fake:inline" },
+  "SYN.LOC_QA_002": { lat: -23.55, lon: -46.63, source: "fake:inline" }
+};
 
 function fieldKeyForColumn(columnName: string) {
   return columnName.toLowerCase();
@@ -293,6 +349,7 @@ function locationDraftPayload(
 export function MasterDataView({ token }: { token: string }) {
   const templates = useMasterDataTemplates(token);
   const batches = useMasterDataBatches(token);
+  const coordinateQualityBatches = useCoordinateQualityBatches(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
   const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
   const catalogAuthorTables = useCatalogMacroObjectTables(token, authorMacroObjectCode);
@@ -306,6 +363,15 @@ export function MasterDataView({ token }: { token: string }) {
   const [outputResult, setOutputResult] = useState<MasterDataActionResult | null>(null);
   const [csvResult, setCsvResult] = useState<MasterDataActionResult | null>(null);
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
+  const [coordinateRecordsJson, setCoordinateRecordsJson] = useState(
+    JSON.stringify(defaultCoordinateQualityRecords, null, 2)
+  );
+  const [coordinateCandidatesJson, setCoordinateCandidatesJson] = useState(
+    JSON.stringify(defaultCoordinateQualityCandidates, null, 2)
+  );
+  const [coordinatePreview, setCoordinatePreview] = useState<CoordinateQualityPreview | null>(null);
+  const [coordinateBatch, setCoordinateBatch] = useState<CoordinateQualityBatch | null>(null);
+  const [coordinateExport, setCoordinateExport] = useState<CoordinateQualityExport | null>(null);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [authorTemplateCode, setAuthorTemplateCode] = useState("LOCATIONS_DYNAMIC_UI");
   const [authorTemplateName, setAuthorTemplateName] = useState("Locations Dynamic UI");
@@ -336,6 +402,12 @@ export function MasterDataView({ token }: { token: string }) {
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
   const activeBatch = uploadedBatch ?? batches.data?.items[0] ?? null;
   const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
+  const activeCoordinateBatch = coordinateBatch ?? coordinateQualityBatches.data?.items[0] ?? null;
+  const coordinateResults = useCoordinateQualityResults(token, activeCoordinateBatch?.batch_id ?? null);
+  const coordinateQualityBatchItems =
+    coordinateBatch && !(coordinateQualityBatches.data?.items ?? []).some((batch) => batch.batch_id === coordinateBatch.batch_id)
+      ? [coordinateBatch, ...(coordinateQualityBatches.data?.items ?? [])]
+      : (coordinateQualityBatches.data?.items ?? []);
   const authorDraftPreview = locationDraftPayload(
     authorTemplateCode.trim().toUpperCase() || "LOCATIONS_DYNAMIC_UI",
     authorTemplateName.trim() || "Locations Dynamic UI",
@@ -369,6 +441,48 @@ export function MasterDataView({ token }: { token: string }) {
         return result;
       },
       (result) => `Template validation is ${result.valid ? "VALID" : result.severity}.`
+    );
+  };
+
+  const coordinateQualityPayload = () => ({
+    fake_candidates: parseJsonObject(coordinateCandidatesJson),
+    records: parseJsonArray(coordinateRecordsJson) as CoordinateQualityRecord[],
+    source_batch_id: activeBatch?.batch_id ?? null,
+    source_type: activeBatch ? "master_data_batch" : "api"
+  });
+
+  const handlePreviewCoordinateQuality = () => {
+    void runAction(
+      async () => {
+        const result = await previewCoordinateQuality(token, coordinateQualityPayload());
+        setCoordinatePreview(result);
+        return result;
+      },
+      (result) => `Coordinate Quality preview processed ${result.summary.processed_count} location(s).`
+    );
+  };
+
+  const handleCreateCoordinateQualityBatch = () => {
+    void runAction(
+      async () => {
+        const result = await createCoordinateQualityBatch(token, coordinateQualityPayload());
+        setCoordinateBatch(result);
+        setCoordinateExport(null);
+        return result;
+      },
+      (result) => `Coordinate Quality batch ${result.batch_id} created.`
+    );
+  };
+
+  const handleExportCoordinateQuality = () => {
+    if (!activeCoordinateBatch) return;
+    void runAction(
+      async () => {
+        const result = await exportCoordinateQualityBatch(token, activeCoordinateBatch.batch_id);
+        setCoordinateExport(result);
+        return result;
+      },
+      (result) => `Coordinate Quality package ${result.file_name} exported.`
     );
   };
 
@@ -1251,6 +1365,104 @@ export function MasterDataView({ token }: { token: string }) {
                 }))}
               />
             </section>
+          </OperationalPanel>
+        ) : null}
+
+        {activeStage === "quality" ? (
+          <OperationalPanel
+            ariaLabel="Coordinate Quality workflow"
+            emptyText="Use synthetic Location records to validate lat/lon quality before exporting a review package."
+            hasItems
+            status={coordinateExport ? "EXPORTED" : activeCoordinateBatch?.status ?? "READY"}
+            title="Coordinate Quality"
+          >
+            <div className="master-data-author-grid">
+              <label>
+                Coordinate records JSON
+                <textarea
+                  aria-label="Coordinate records JSON"
+                  onChange={(event) => setCoordinateRecordsJson(event.target.value)}
+                  rows={10}
+                  value={coordinateRecordsJson}
+                />
+              </label>
+              <label>
+                Fake geocoder candidates JSON
+                <textarea
+                  aria-label="Coordinate fake candidates JSON"
+                  onChange={(event) => setCoordinateCandidatesJson(event.target.value)}
+                  rows={10}
+                  value={coordinateCandidatesJson}
+                />
+              </label>
+            </div>
+            <div className="master-data-action-bar master-data-output-actions">
+              <Button disabled={isMutating} onClick={handlePreviewCoordinateQuality} variant="primary">
+                Preview coordinates
+              </Button>
+              <Button disabled={isMutating} onClick={handleCreateCoordinateQualityBatch} variant="secondary">
+                Create quality batch
+              </Button>
+              <Button disabled={isMutating || !activeCoordinateBatch} onClick={handleExportCoordinateQuality} variant="secondary">
+                Export quality package
+              </Button>
+            </div>
+            {coordinatePreview ? (
+              <DetailList
+                ariaLabel="Coordinate Quality preview summary"
+                items={[
+                  {
+                    id: "coordinate-preview",
+                    meta: summaryMeta(coordinatePreview.summary),
+                    status: coordinatePreview.summary.failed_count ? "REVIEW" : "READY",
+                    title: "Preview"
+                  }
+                ]}
+              />
+            ) : null}
+            <DetailList
+              ariaLabel="Coordinate Quality results"
+              emptyText="No coordinate results available yet."
+              items={(coordinateResults.data?.items ?? coordinatePreview?.results ?? []).map((result) => ({
+                id: result.id ?? result.location_gid,
+                meta: [
+                  result.location_name ?? "No name",
+                  `${result.lat_orig ?? "null"}, ${result.lon_orig ?? "null"}`,
+                  `${result.lat_new ?? "null"}, ${result.lon_new ?? "null"}`,
+                  result.source ?? "No source"
+                ],
+                status: result.status,
+                title: result.location_gid
+              }))}
+            />
+            <DetailList
+              ariaLabel="Coordinate Quality batches"
+              emptyText="No coordinate quality batches created yet."
+              items={coordinateQualityBatchItems.map((batch) => ({
+                id: batch.batch_id,
+                meta: summaryMeta(batch.summary),
+                status: batch.status,
+                title: batch.batch_id
+              }))}
+            />
+            {coordinateExport ? (
+              <DetailList
+                ariaLabel="Coordinate Quality export package"
+                items={[
+                  {
+                    id: coordinateExport.artifact_id,
+                    meta: [
+                      coordinateExport.artifact_id,
+                      coordinateExport.manifest_id,
+                      coordinateExport.evidence_id,
+                      `${coordinateExport.size_bytes} bytes`
+                    ],
+                    status: "EXPORTED",
+                    title: coordinateExport.file_name
+                  }
+                ]}
+              />
+            ) : null}
           </OperationalPanel>
         ) : null}
       </ModuleWorkspaceLayout>

@@ -185,3 +185,82 @@ export type MasterDataTemplateDraftRequest = {
   relationship_rules: MasterDataTemplateDefinition["relationship_rules"];
   documentation_refs: MasterDataTemplateDefinition["documentation_refs"];
 };
+
+export type CoordinateQualityRecord = {
+  location_gid: string;
+  location_name?: string | null;
+  address_line?: string | null;
+  city?: string | null;
+  province_code?: string | null;
+  postal_code?: string | null;
+  country_code3_gid?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+};
+
+export type CoordinateQualityRequest = {
+  records: CoordinateQualityRecord[];
+  fake_candidates: Record<string, { lat: number; lon: number; source?: string }>;
+  source_type?: string;
+  source_batch_id?: string | null;
+};
+
+export type CoordinateQualitySummary = {
+  total_count: number;
+  processed_count: number;
+  ok_count: number;
+  corrected_count: number;
+  review_count: number;
+  divergent_count: number;
+  failed_count: number;
+};
+
+export type CoordinateQualityResult = {
+  id?: string;
+  batch_id?: string;
+  location_gid: string;
+  location_name: string | null;
+  address: Record<string, unknown>;
+  country_code3_gid: string | null;
+  province_code: string | null;
+  postal_code: string | null;
+  lat_orig: string | number | null;
+  lon_orig: string | number | null;
+  lat_new: string | number | null;
+  lon_new: string | number | null;
+  status: string;
+  source: string | null;
+  diff_lat: string | number | null;
+  diff_lon: string | number | null;
+  orig_valid_uf: boolean;
+  new_valid_uf: boolean;
+  issue: Record<string, unknown>;
+};
+
+export type CoordinateQualityPreview = {
+  summary: CoordinateQualitySummary;
+  results: CoordinateQualityResult[];
+};
+
+export type CoordinateQualityBatch = {
+  batch_id: string;
+  status: string;
+  provider_mode: string;
+  summary: CoordinateQualitySummary;
+  issues: Array<Record<string, unknown>>;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type CoordinateQualityBatchesResponse = PageResponse<CoordinateQualityBatch>;
+export type CoordinateQualityResultsResponse = PageResponse<CoordinateQualityResult>;
+
+export type CoordinateQualityExport = {
+  batch_id: string;
+  artifact_id: string;
+  manifest_id: string;
+  evidence_id: string;
+  file_name: string;
+  sha256: string;
+  size_bytes: number;
+};

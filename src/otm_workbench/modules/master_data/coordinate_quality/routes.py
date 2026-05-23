@@ -61,6 +61,23 @@ def create_coordinate_quality_batch_endpoint(
     )
 
 
+@router.get("/batches")
+def list_coordinate_quality_batches(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batches = (
+        db.query(MasterDataCoordinateQualityBatch)
+        .order_by(MasterDataCoordinateQualityBatch.created_at.desc(), MasterDataCoordinateQualityBatch.id.desc())
+        .limit(25)
+        .all()
+    )
+    return {
+        "items": [serialize_coordinate_quality_batch(batch) for batch in batches],
+        "total": len(batches),
+    }
+
+
 @router.get("/batches/{batch_id}")
 def get_coordinate_quality_batch(
     batch_id: str,

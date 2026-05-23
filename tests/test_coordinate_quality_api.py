@@ -154,6 +154,40 @@ def test_coordinate_quality_create_batch_endpoint_persists_results(client, admin
     assert list_response.json()["items"][0]["status"] == "CORRECTED"
 
 
+def test_coordinate_quality_list_batches_returns_recent_state(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/master-data/coordinate-quality/batches",
+        headers=admin_header,
+        json={
+            "records": [
+                {
+                    "location_gid": "SYN.LOC_LIST",
+                    "location_name": "Synthetic List DC",
+                    "address_line": "Rua Quatro 400",
+                    "city": "Sao Paulo",
+                    "province_code": "SP",
+                    "postal_code": "01000-000",
+                    "country_code3_gid": "BRA",
+                    "lat": None,
+                    "lon": None,
+                }
+            ],
+            "fake_candidates": {
+                "SYN.LOC_LIST": {"lat": -23.55, "lon": -46.63, "source": "fake:inline"}
+            },
+        },
+    ).json()
+
+    response = client.get(
+        "/api/v1/modules/master-data/coordinate-quality/batches",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["batch_id"] == created["batch_id"]
+    assert response.json()["items"][0]["summary"]["total_count"] == 1
+
+
 def test_coordinate_quality_export_creates_client_safe_evidence(client, admin_header, db_session):
     batch_response = client.post(
         "/api/v1/modules/master-data/coordinate-quality/batches",

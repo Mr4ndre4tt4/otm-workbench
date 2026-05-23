@@ -2,6 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiGet, apiPatch, apiPost, apiUpload } from "../api";
 import type {
+  CoordinateQualityBatch,
+  CoordinateQualityBatchesResponse,
+  CoordinateQualityExport,
+  CoordinateQualityPreview,
+  CoordinateQualityRequest,
+  CoordinateQualityResultsResponse,
   MasterDataActionResult,
   MasterDataArtifactsResponse,
   MasterDataBatch,
@@ -42,6 +48,27 @@ export function useMasterDataBatchArtifacts(token: string | null, batchId: strin
   return useQuery({
     queryKey: ["modules", "master-data", "batches", batchId, "artifacts"],
     queryFn: () => apiGet<MasterDataArtifactsResponse>(`/api/v1/modules/master-data/batches/${batchId}/artifacts`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useCoordinateQualityBatches(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "coordinate-quality", "batches"],
+    queryFn: () =>
+      apiGet<CoordinateQualityBatchesResponse>("/api/v1/modules/master-data/coordinate-quality/batches", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useCoordinateQualityResults(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "coordinate-quality", "batches", batchId, "results"],
+    queryFn: () =>
+      apiGet<CoordinateQualityResultsResponse>(
+        `/api/v1/modules/master-data/coordinate-quality/batches/${batchId}/results`,
+        { token }
+      ),
     enabled: Boolean(token && batchId)
   });
 }
@@ -127,6 +154,22 @@ export function buildMasterDataCsv(token: string, batchId: string) {
 export function exportMasterDataCsvPackage(token: string, batchId: string) {
   return apiPost<MasterDataActionResult>(
     `/api/v1/modules/master-data/batches/${batchId}/export-csv-package`,
+    {},
+    { token }
+  );
+}
+
+export function previewCoordinateQuality(token: string, payload: CoordinateQualityRequest) {
+  return apiPost<CoordinateQualityPreview>("/api/v1/modules/master-data/coordinate-quality/validate", payload, { token });
+}
+
+export function createCoordinateQualityBatch(token: string, payload: CoordinateQualityRequest) {
+  return apiPost<CoordinateQualityBatch>("/api/v1/modules/master-data/coordinate-quality/batches", payload, { token });
+}
+
+export function exportCoordinateQualityBatch(token: string, batchId: string) {
+  return apiPost<CoordinateQualityExport>(
+    `/api/v1/modules/master-data/coordinate-quality/batches/${batchId}/export`,
     {},
     { token }
   );
