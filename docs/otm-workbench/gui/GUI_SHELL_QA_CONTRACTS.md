@@ -11,6 +11,7 @@ Keep the GUI foundation stable before deeper component and screen-level CSS spli
 
 - Theme controls must persist through `/api/v1/platform/user-preferences`.
 - System theme must store `theme_mode=system` with `follow_system_theme=true`.
+- Non-system themes must not persist with `follow_system_theme=true`.
 - Density and sidebar mode must continue to update `.app-shell` data attributes.
 - Expanded sidebar must show backend navigation status chips.
 - Collapsed sidebar must keep navigation links available while omitting status chips from the compact rail.

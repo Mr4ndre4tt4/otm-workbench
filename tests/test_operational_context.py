@@ -299,3 +299,40 @@ def test_user_preferences_can_be_updated_and_read(client, auth_header):
         "density": "compact",
         "sidebar_mode": "collapsed",
     }
+
+
+def test_user_preferences_reject_inconsistent_system_theme_state(client, auth_header):
+    follow_without_system = client.put(
+        "/api/v1/platform/user-preferences",
+        json={
+            "theme_mode": "light",
+            "follow_system_theme": True,
+            "density": "comfortable",
+            "sidebar_mode": "expanded",
+        },
+        headers=auth_header,
+    )
+    system_without_follow = client.put(
+        "/api/v1/platform/user-preferences",
+        json={
+            "theme_mode": "system",
+            "follow_system_theme": False,
+            "density": "comfortable",
+            "sidebar_mode": "expanded",
+        },
+        headers=auth_header,
+    )
+    current = client.get("/api/v1/platform/user-preferences", headers=auth_header)
+
+    assert follow_without_system.status_code == 422
+    assert system_without_follow.status_code == 422
+    assert follow_without_system.json()["code"] == "VALIDATION_ERROR"
+    assert "follow_system_theme requires theme_mode=system" in str(follow_without_system.json())
+    assert "theme_mode=system requires follow_system_theme=true" in str(system_without_follow.json())
+    assert current.status_code == 200
+    assert current.json() == {
+        "theme_mode": "light",
+        "follow_system_theme": False,
+        "density": "comfortable",
+        "sidebar_mode": "expanded",
+    }

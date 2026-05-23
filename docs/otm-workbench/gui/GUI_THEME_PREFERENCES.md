@@ -35,6 +35,13 @@ Supported values:
 - `density`: `comfortable`, `compact`
 - `sidebar_mode`: `expanded`, `collapsed`
 
+Consistency rules:
+
+- `follow_system_theme=true` requires `theme_mode=system`.
+- `theme_mode=system` requires `follow_system_theme=true`.
+- Invalid enum values or inconsistent system-theme combinations are rejected by
+  the backend instead of being normalized in the frontend.
+
 ## GUI Behavior
 
 The topbar preference controls now call the backend preference contract:
@@ -63,6 +70,8 @@ client can map the same value to the OS theme source without changing the API.
 ## Validation
 
 - Backend preference defaults and update/read cycle covered by
+  `tests/test_operational_context.py`.
+- Invalid preference enum/system-theme combinations covered by
   `tests/test_operational_context.py`.
 - GUI preference writes and active shell state covered by
   `frontend/src/app/App.test.tsx`.

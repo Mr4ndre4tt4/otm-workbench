@@ -1,7 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from otm_workbench.contracts import PageResponse
@@ -97,6 +97,14 @@ class UserPreferencesPayload(BaseModel):
     follow_system_theme: bool = False
     density: Literal["comfortable", "compact"] = "comfortable"
     sidebar_mode: Literal["expanded", "collapsed"] = "expanded"
+
+    @model_validator(mode="after")
+    def validate_system_theme_consistency(self):
+        if self.follow_system_theme and self.theme_mode != "system":
+            raise ValueError("follow_system_theme requires theme_mode=system.")
+        if self.theme_mode == "system" and not self.follow_system_theme:
+            raise ValueError("theme_mode=system requires follow_system_theme=true.")
+        return self
 
 
 class IdNameResponse(BaseModel):

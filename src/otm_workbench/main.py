@@ -20,6 +20,21 @@ from otm_workbench.reference.routes import router as reference_router
 import otm_workbench.models  # noqa: F401
 
 
+def json_safe_validation_errors(errors: list[dict[str, object]]) -> list[dict[str, object]]:
+    def make_safe(value):
+        if isinstance(value, dict):
+            return {key: make_safe(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [make_safe(item) for item in value]
+        if isinstance(value, tuple):
+            return [make_safe(item) for item in value]
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        return str(value)
+
+    return [make_safe(error) for error in errors]
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="OTM Workbench", version="0.1.0")
@@ -60,7 +75,7 @@ def create_app() -> FastAPI:
             content={
                 "code": "VALIDATION_ERROR",
                 "message": "The request payload is invalid.",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": json_safe_validation_errors(exc.errors())},
             },
         )
 
