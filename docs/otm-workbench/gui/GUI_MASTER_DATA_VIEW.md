@@ -254,6 +254,11 @@ or blocked, and the backend disabled reason when blocked. This makes the real
 next step visible without forcing users to infer readiness from disabled buttons
 alone.
 
+Master Data `available_actions` now also expose backend-owned `recommended`
+metadata. The backend marks the next action that advances the template or batch
+workflow, while leaving repeatable/idempotent actions available without making
+the UI infer priority from local lifecycle rules.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV

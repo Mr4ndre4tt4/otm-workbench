@@ -39,6 +39,7 @@ Backend remains responsible for:
 ```text
 - action availability
 - action ordering
+- recommended next action
 - action method and href
 - primary/secondary variant
 - disabled flag

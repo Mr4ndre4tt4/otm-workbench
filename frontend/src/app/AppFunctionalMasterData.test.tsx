@@ -66,10 +66,10 @@ function cockpitSummary() {
 function regionsTemplate() {
   return {
     available_actions: [
-      { disabled: false, disabled_reason: null, href: "", icon_key: "check-circle", key: "validate_definition", label: "Validate definition", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
-      { disabled: true, disabled_reason: "TEMPLATE_ALREADY_PUBLISHED", href: "", icon_key: "upload-cloud", key: "publish_template", label: "Publish template", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
-      { disabled: false, disabled_reason: null, href: "", icon_key: "file-spreadsheet", key: "build_workbook", label: "Build workbook", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
-      { disabled: false, disabled_reason: null, href: "", icon_key: "copy", key: "create_version", label: "Create next version", method: "POST", requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
+      { disabled: false, disabled_reason: null, href: "", icon_key: "check-circle", key: "validate_definition", label: "Validate definition", method: "POST", recommended: false, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: true, disabled_reason: "TEMPLATE_ALREADY_PUBLISHED", href: "", icon_key: "upload-cloud", key: "publish_template", label: "Publish template", method: "POST", recommended: false, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: false, disabled_reason: null, href: "", icon_key: "file-spreadsheet", key: "build_workbook", label: "Build workbook", method: "POST", recommended: true, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" },
+      { disabled: false, disabled_reason: null, href: "", icon_key: "copy", key: "create_version", label: "Create next version", method: "POST", recommended: false, requires_confirmation: false, result_hint: "refresh_object", variant: "secondary" }
     ],
     catalog_macro_object_code: "REGION",
     code: "REGIONS_BASIC",
@@ -660,7 +660,7 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByLabelText("Master Data templates")).toHaveTextContent("REGIONS_BASIC");
     await screen.findByText("Synthetic starter template for region master data.");
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Build workbook");
-    expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Ready now");
+    expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Recommended next");
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("TEMPLATE_ALREADY_PUBLISHED");
 
     await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));

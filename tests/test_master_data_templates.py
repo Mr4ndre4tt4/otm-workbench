@@ -118,6 +118,7 @@ def test_master_data_template_detail_exposes_backend_owned_available_actions(cli
     assert draft_response.status_code == 200
     draft_actions = draft_response.json()["available_actions"]
     assert action_by_key(draft_actions, "validate_definition")["disabled"] is False
+    assert action_by_key(draft_actions, "validate_definition")["recommended"] is True
     assert action_by_key(draft_actions, "publish_template")["disabled"] is False
     assert action_by_key(draft_actions, "build_workbook")["disabled"] is True
     assert action_by_key(draft_actions, "build_workbook")["disabled_reason"] == "PUBLISHED_TEMPLATE_REQUIRED"
@@ -132,6 +133,7 @@ def test_master_data_template_detail_exposes_backend_owned_available_actions(cli
     assert action_by_key(published_actions, "publish_template")["disabled"] is True
     assert action_by_key(published_actions, "publish_template")["disabled_reason"] == "TEMPLATE_ALREADY_PUBLISHED"
     assert action_by_key(published_actions, "build_workbook")["disabled"] is False
+    assert action_by_key(published_actions, "build_workbook")["recommended"] is True
     assert action_by_key(published_actions, "create_version")["disabled"] is False
 
 
@@ -1010,6 +1012,7 @@ def test_master_data_batch_detail_exposes_backend_owned_available_actions(client
         "available_actions"
     ]
     assert action_by_key(parsed_actions, "validate_relationships")["disabled"] is False
+    assert action_by_key(parsed_actions, "validate_relationships")["recommended"] is True
     assert action_by_key(parsed_actions, "map_records")["disabled"] is True
     assert action_by_key(parsed_actions, "map_records")["disabled_reason"] == "RELATIONSHIP_VALIDATION_REQUIRED"
     assert action_by_key(parsed_actions, "register_load_plan_package")["disabled_reason"] == "EXPORT_REQUIRED"
@@ -1020,12 +1023,14 @@ def test_master_data_batch_detail_exposes_backend_owned_available_actions(client
     ]
     assert action_by_key(validated_actions, "validate_relationships")["disabled"] is True
     assert action_by_key(validated_actions, "map_records")["disabled"] is False
+    assert action_by_key(validated_actions, "map_records")["recommended"] is True
 
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/map", headers=admin_header)
     mapped_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
         "available_actions"
     ]
     assert action_by_key(mapped_actions, "build_output")["disabled"] is False
+    assert action_by_key(mapped_actions, "build_output")["recommended"] is True
     assert action_by_key(mapped_actions, "build_csv")["disabled"] is True
 
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-output", headers=admin_header)
@@ -1033,6 +1038,7 @@ def test_master_data_batch_detail_exposes_backend_owned_available_actions(client
         "available_actions"
     ]
     assert action_by_key(output_actions, "build_csv")["disabled"] is False
+    assert action_by_key(output_actions, "build_csv")["recommended"] is True
     assert action_by_key(output_actions, "export_csv_package")["disabled"] is True
 
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/build-csv", headers=admin_header)
@@ -1040,12 +1046,14 @@ def test_master_data_batch_detail_exposes_backend_owned_available_actions(client
         "available_actions"
     ]
     assert action_by_key(csv_actions, "export_csv_package")["disabled"] is False
+    assert action_by_key(csv_actions, "export_csv_package")["recommended"] is True
 
     client.post(f"/api/v1/modules/master-data/batches/{batch_id}/export-csv-package", headers=admin_header)
     exported_actions = client.get(f"/api/v1/modules/master-data/batches/{batch_id}", headers=admin_header).json()[
         "available_actions"
     ]
     assert action_by_key(exported_actions, "register_load_plan_package")["disabled"] is False
+    assert action_by_key(exported_actions, "register_load_plan_package")["recommended"] is True
 
 
 def test_master_data_available_actions_allow_mapping_parsed_batch_without_relationship_rules(client, admin_header):
@@ -1081,6 +1089,7 @@ def test_master_data_available_actions_allow_mapping_parsed_batch_without_relati
     assert action_by_key(actions, "validate_relationships")["disabled"] is False
     assert action_by_key(actions, "map_records")["disabled"] is False
     assert action_by_key(actions, "map_records")["disabled_reason"] is None
+    assert action_by_key(actions, "map_records")["recommended"] is True
 
 
 def test_master_data_template_batch_upload_skips_generated_metadata_rows(

@@ -96,9 +96,19 @@ def master_data_batch_action(
         "requires_confirmation": False,
         "disabled": disabled,
         "disabled_reason": disabled_reason,
+        "recommended": False,
         "permission": f"master_data.batch.{key}",
         "result_hint": result_hint,
     }
+
+
+def mark_recommended_master_data_action(
+    actions: list[dict[str, object]],
+    recommended_key: str | None,
+) -> list[dict[str, object]]:
+    for action in actions:
+        action["recommended"] = action["key"] == recommended_key
+    return actions
 
 
 def build_master_data_batch_available_actions(db: Session, batch: MasterDataBatch) -> list[dict[str, object]]:
@@ -112,7 +122,21 @@ def build_master_data_batch_available_actions(db: Session, batch: MasterDataBatc
     can_build_csv = batch.status in {"OUTPUT_BUILT", "CSV_BUILT"}
     can_export = batch.status in {"CSV_BUILT", "EXPORTED"}
     can_register = batch.status == "EXPORTED"
-    return [
+    recommended_key = None
+    if can_validate and has_relationship_rules:
+        recommended_key = "validate_relationships"
+    elif can_map:
+        recommended_key = "map_records"
+    elif can_build_output:
+        recommended_key = "build_output"
+    elif batch.status == "OUTPUT_BUILT":
+        recommended_key = "build_csv"
+    elif batch.status == "CSV_BUILT":
+        recommended_key = "export_csv_package"
+    elif can_register:
+        recommended_key = "register_load_plan_package"
+
+    actions = [
         master_data_batch_action(
             batch_id=batch.id,
             key="validate_relationships",
@@ -178,10 +202,12 @@ def build_master_data_batch_available_actions(db: Session, batch: MasterDataBatc
             "requires_confirmation": False,
             "disabled": not can_register,
             "disabled_reason": None if can_register else "EXPORT_REQUIRED",
+            "recommended": False,
             "permission": "load_plan.package.create_from_master_data",
             "result_hint": "refresh_object",
         },
     ]
+    return mark_recommended_master_data_action(actions, recommended_key)
 
 
 def serialize_master_data_batch(db: Session, batch: MasterDataBatch) -> dict[str, object]:

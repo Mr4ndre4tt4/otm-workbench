@@ -108,8 +108,11 @@ function masterDataTemplateActionReason(template: MasterDataTemplate | null | un
 function masterDataActionGuidanceItems(scope: string, actions: AvailableAction[] | undefined) {
   return (actions ?? []).map((action) => ({
     id: `${scope}-${action.key}`,
-    meta: [scope, action.disabled ? action.disabled_reason ?? "Blocked by backend rule" : "Ready now"],
-    status: action.disabled ? "BLOCKED" : "AVAILABLE",
+    meta: [
+      scope,
+      action.disabled ? action.disabled_reason ?? "Blocked by backend rule" : action.recommended ? "Recommended next" : "Ready now"
+    ],
+    status: action.disabled ? "BLOCKED" : action.recommended ? "NEXT" : "AVAILABLE",
     title: action.label
   }));
 }

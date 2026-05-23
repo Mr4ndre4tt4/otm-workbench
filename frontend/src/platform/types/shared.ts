@@ -14,6 +14,7 @@ export type AvailableAction = {
   icon_key: string;
   disabled: boolean;
   disabled_reason: string | null;
+  recommended?: boolean;
   requires_confirmation: boolean;
   permission?: string | null;
   result_hint?: "download" | "refresh_list" | "refresh_object" | string | null;

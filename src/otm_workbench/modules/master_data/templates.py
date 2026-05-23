@@ -901,14 +901,25 @@ def master_data_template_action(
         "requires_confirmation": False,
         "disabled": disabled,
         "disabled_reason": disabled_reason,
+        "recommended": False,
         "permission": f"master_data.template.{key}",
         "result_hint": result_hint,
     }
 
 
+def mark_recommended_template_action(
+    actions: list[dict[str, object]],
+    recommended_key: str,
+) -> list[dict[str, object]]:
+    for action in actions:
+        action["recommended"] = action["key"] == recommended_key
+    return actions
+
+
 def build_master_data_template_available_actions(template: MasterDataTemplate) -> list[dict[str, object]]:
     is_published = template.status == "PUBLISHED"
-    return [
+    recommended_key = "build_workbook" if is_published else "validate_definition"
+    actions = [
         master_data_template_action(
             template_code=template.code,
             key="validate_definition",
@@ -954,6 +965,7 @@ def build_master_data_template_available_actions(template: MasterDataTemplate) -
             result_hint="refresh_object",
         ),
     ]
+    return mark_recommended_template_action(actions, recommended_key)
 
 
 def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, object]:
