@@ -11,6 +11,7 @@ import type {
   MasterDataActionResult,
   MasterDataArtifactsResponse,
   MasterDataBatch,
+  MasterDataBatchSummary,
   MasterDataBatchesResponse,
   MasterDataCsvFilesResponse,
   MasterDataOutputRecordsResponse,
@@ -63,6 +64,18 @@ export function useMasterDataBatches(token: string | null, filters: MasterDataBa
   return useQuery({
     queryKey: ["modules", "master-data", "batches", filters],
     queryFn: () => apiGet<MasterDataBatchesResponse>(masterDataBatchQuery(filters), { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useMasterDataBatchSummary(token: string | null, filters: MasterDataBatchFilters = {}) {
+  const query = masterDataBatchQuery(filters).replace(
+    "/api/v1/modules/master-data/batches",
+    "/api/v1/modules/master-data/batches/summary"
+  );
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches", "summary", filters],
+    queryFn: () => apiGet<MasterDataBatchSummary>(query, { token }),
     enabled: Boolean(token)
   });
 }

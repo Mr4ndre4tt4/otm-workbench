@@ -24,6 +24,7 @@ import {
   useCoordinateQualityBatches,
   useCoordinateQualityResults,
   useMasterDataBatchArtifacts,
+  useMasterDataBatchSummary,
   useMasterDataBatches,
   useMasterDataCsvFiles,
   useMasterDataOutputRecords,
@@ -418,6 +419,7 @@ export function MasterDataView({ token }: { token: string }) {
     template_code: batchTemplateFilter || undefined
   };
   const batches = useMasterDataBatches(token, batchFilters);
+  const batchSummary = useMasterDataBatchSummary(token, batchFilters);
   const targetTableCount = new Set(templateItems.flatMap((item) => item.target_tables)).size;
   const sheetCount = templateItems.reduce((total, item) => total + item.sheets.length, 0);
   const fieldCount =
@@ -1597,6 +1599,35 @@ export function MasterDataView({ token }: { token: string }) {
                 Next
               </Button>
             </div>
+            <MetricGrid
+              ariaLabel="Master Data batch history metrics"
+              items={[
+                {
+                  key: "batch-history-total",
+                  label: "Matching batches",
+                  status: booleanStatus(batchSummary.data?.total_batches ?? 0),
+                  value: batchSummary.data?.total_batches ?? 0
+                },
+                {
+                  key: "batch-history-rows",
+                  label: "Matching rows",
+                  status: booleanStatus(batchSummary.data?.total_rows ?? 0),
+                  value: batchSummary.data?.total_rows ?? 0
+                },
+                {
+                  key: "batch-history-issues",
+                  label: "Issues",
+                  status: batchSummary.data?.total_issues ? "REVIEW" : "OK",
+                  value: batchSummary.data?.total_issues ?? 0
+                },
+                {
+                  key: "batch-history-statuses",
+                  label: "Statuses",
+                  status: booleanStatus(batchSummary.data?.status_breakdown.length ?? 0),
+                  value: batchSummary.data?.status_breakdown.length ?? 0
+                }
+              ]}
+            />
             <DetailList
               ariaLabel="Durable Master Data batches"
               emptyText="No backend batches match the current filters."

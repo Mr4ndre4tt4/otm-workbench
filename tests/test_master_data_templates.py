@@ -1583,6 +1583,53 @@ def test_master_data_batch_list_filters_and_paginates(client, admin_header):
     assert advanced_payload["items"][0]["row_count"] == 4
 
 
+def test_master_data_batch_summary_groups_filtered_history(client, admin_header):
+    for index in range(2):
+        workbook = Workbook()
+        regions = workbook.active
+        regions.title = "REGIONS"
+        regions.append(["Region GID", "Region XID", "Region Name"])
+        regions.append([f"SYN.REGION_SUMMARY_{index}", f"REGION_SUMMARY_{index}", "Synthetic Summary Region"])
+        if index == 1:
+            regions.append(["SYN.REGION_SUMMARY_EXTRA", "REGION_SUMMARY_EXTRA", "Synthetic Extra Region"])
+        details = workbook.create_sheet("REGION_DETAILS")
+        details.append(["Region GID", "Location GID"])
+        details.append([f"SYN.REGION_SUMMARY_{index}", f"SYN.LOCATION_SUMMARY_{index}"])
+        if index == 1:
+            details.append(["SYN.REGION_SUMMARY_EXTRA", "SYN.LOCATION_SUMMARY_EXTRA"])
+        workbook_bytes = BytesIO()
+        workbook.save(workbook_bytes)
+        workbook_bytes.seek(0)
+        response = client.post(
+            "/api/v1/modules/master-data/templates/REGIONS_BASIC/batches",
+            files={
+                "file": (
+                    f"regions_summary_upload_{index}.xlsx",
+                    workbook_bytes.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            headers=admin_header,
+        )
+        assert response.status_code == 200
+
+    response = client.get(
+        "/api/v1/modules/master-data/batches/summary",
+        params={"file_name_contains": "summary_upload", "min_row_count": 2},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_batches"] == 2
+    assert payload["total_rows"] == 6
+    assert payload["total_issues"] == 0
+    assert payload["status_breakdown"] == [{"status": "PARSED", "batch_count": 2, "row_count": 6, "issue_count": 0}]
+    assert payload["template_breakdown"] == [
+        {"template_code": "REGIONS_BASIC", "batch_count": 2, "row_count": 6, "issue_count": 0}
+    ]
+
+
 def test_master_data_batch_build_csv_is_idempotent_for_double_click(
     client,
     admin_header,

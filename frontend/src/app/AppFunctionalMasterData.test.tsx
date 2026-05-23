@@ -245,6 +245,7 @@ describe("Functional Master Data journey", () => {
     const outputRecordListRequests: unknown[] = [];
     const csvFileListRequests: unknown[] = [];
     const batchListRequests: unknown[] = [];
+    const batchSummaryRequests: unknown[] = [];
     const artifactListRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
 
@@ -293,6 +294,26 @@ describe("Functional Master Data journey", () => {
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
         return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (parsedUrl.pathname === "/api/v1/modules/master-data/batches/summary") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        batchSummaryRequests.push({
+          file_name_contains: parsedUrl.searchParams.get("file_name_contains"),
+          min_row_count: parsedUrl.searchParams.get("min_row_count"),
+          method: init?.method ?? "GET",
+          status: parsedUrl.searchParams.get("status"),
+          template_code: parsedUrl.searchParams.get("template_code")
+        });
+        return Promise.resolve(
+          jsonResponse({
+            latest_batch_id: "batch_1",
+            status_breakdown: [{ batch_count: 1, issue_count: 0, row_count: 2, status: "EXPORTED" }],
+            template_breakdown: [{ batch_count: 1, issue_count: 0, row_count: 2, template_code: "REGIONS_BASIC" }],
+            total_batches: 1,
+            total_issues: 0,
+            total_rows: 2
+          })
+        );
       }
       if (parsedUrl.pathname === "/api/v1/modules/master-data/batches") {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -662,6 +683,9 @@ describe("Functional Master Data journey", () => {
     await userEvent.type(screen.getByLabelText("Batch file name filter"), "regions");
     await userEvent.type(screen.getByLabelText("Batch minimum row count"), "2");
     await userEvent.selectOptions(screen.getByLabelText("Batch page size"), "10");
+    await screen.findByLabelText("Master Data batch history metrics");
+    expect(screen.getByLabelText("Master Data batch history metrics")).toHaveTextContent("Matching batches");
+    expect(screen.getByLabelText("Master Data batch history metrics")).toHaveTextContent("Matching rows");
     await screen.findByLabelText("Durable Master Data batches");
     expect(screen.getByLabelText("Durable Master Data batches")).toHaveTextContent("batch_1");
     expect(screen.getByLabelText("Master Data export artifacts")).toHaveTextContent("master_data_regions_basic.zip");
@@ -686,6 +710,13 @@ describe("Functional Master Data journey", () => {
       min_row_count: "2",
       method: "GET",
       page_size: "10",
+      status: "EXPORTED",
+      template_code: "REGIONS_BASIC"
+    });
+    expect(batchSummaryRequests).toContainEqual({
+      file_name_contains: "regions",
+      min_row_count: "2",
+      method: "GET",
       status: "EXPORTED",
       template_code: "REGIONS_BASIC"
     });

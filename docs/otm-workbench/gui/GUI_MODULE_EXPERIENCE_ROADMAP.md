@@ -107,6 +107,8 @@ Delivered after OTM-119:
 - Durable batch list/detail and batch-scoped artifact listing/download.
 - Backend-owned batch history filters for template, status, file name,
   minimum rows, page, and page size.
+- Backend-owned batch history metrics for the current filters, including
+  matching batches, matching rows, issues, and status count.
 - Guarded Load Plan package registration from exported Master Data packages.
 - Guarded cutover checklist creation from the registered Load Plan package.
 - Guarded cutover checklist readiness generation from the created checklist.
@@ -126,8 +128,8 @@ Remaining GUI work before `Module complete`:
   case.
 - Add advanced Coordinate Quality map diagnostics and external provider setup
   only after backend provider governance is designed.
-- Add operational batch history analytics beyond list filtering/pagination only
-  if operational volume needs it.
+- Add deeper batch-history analytics beyond current-filter metrics only if
+  operational volume needs it.
 ```
 
 ### 4.3 Evidence Hub

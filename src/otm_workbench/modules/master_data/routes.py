@@ -174,6 +174,26 @@ def get_master_data_batch_or_404(db: Session, batch_id: str) -> MasterDataBatch:
     return batch
 
 
+def filtered_master_data_batch_query(
+    db: Session,
+    *,
+    template_code: str | None = None,
+    status: str | None = None,
+    file_name_contains: str | None = None,
+    min_row_count: int | None = None,
+):
+    query = db.query(MasterDataBatch)
+    if template_code:
+        query = query.filter(MasterDataBatch.template_code == template_code.upper())
+    if status:
+        query = query.filter(MasterDataBatch.status == status.upper())
+    if file_name_contains and file_name_contains.strip():
+        query = query.filter(MasterDataBatch.file_name.ilike(f"%{file_name_contains.strip()}%"))
+    if min_row_count is not None:
+        query = query.filter(MasterDataBatch.row_count >= max(min_row_count, 0))
+    return query
+
+
 def get_batch_artifact_or_404(db: Session, batch_id: str, artifact_id: str) -> tuple[Artifact, Evidence]:
     for artifact, evidence in master_data_batch_artifacts(db, batch_id):
         if artifact.id == artifact_id:
@@ -332,15 +352,13 @@ def list_master_data_batches(
 ):
     safe_page = max(page, 1)
     safe_page_size = max(1, min(page_size, 100))
-    query = db.query(MasterDataBatch)
-    if template_code:
-        query = query.filter(MasterDataBatch.template_code == template_code.upper())
-    if status:
-        query = query.filter(MasterDataBatch.status == status.upper())
-    if file_name_contains and file_name_contains.strip():
-        query = query.filter(MasterDataBatch.file_name.ilike(f"%{file_name_contains.strip()}%"))
-    if min_row_count is not None:
-        query = query.filter(MasterDataBatch.row_count >= max(min_row_count, 0))
+    query = filtered_master_data_batch_query(
+        db,
+        template_code=template_code,
+        status=status,
+        file_name_contains=file_name_contains,
+        min_row_count=min_row_count,
+    )
     total = query.count()
     batches = (
         query.order_by(MasterDataBatch.created_at.desc())
@@ -350,6 +368,48 @@ def list_master_data_batches(
     )
     items = [serialize_master_data_batch(db, batch) for batch in batches]
     return PageResponse(items=items, total=total, page=safe_page, page_size=safe_page_size)
+
+
+@router.get("/batches/summary")
+def get_master_data_batch_summary(
+    template_code: str | None = None,
+    status: str | None = None,
+    file_name_contains: str | None = None,
+    min_row_count: int | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batches = filtered_master_data_batch_query(
+        db,
+        template_code=template_code,
+        status=status,
+        file_name_contains=file_name_contains,
+        min_row_count=min_row_count,
+    ).all()
+    status_totals: dict[str, dict[str, int | str]] = {}
+    template_totals: dict[str, dict[str, int | str]] = {}
+    latest_batch = max(batches, key=lambda batch: batch.created_at) if batches else None
+    for batch in batches:
+        status_bucket = status_totals.setdefault(
+            batch.status,
+            {"status": batch.status, "batch_count": 0, "row_count": 0, "issue_count": 0},
+        )
+        template_bucket = template_totals.setdefault(
+            batch.template_code,
+            {"template_code": batch.template_code, "batch_count": 0, "row_count": 0, "issue_count": 0},
+        )
+        for bucket in (status_bucket, template_bucket):
+            bucket["batch_count"] = int(bucket["batch_count"]) + 1
+            bucket["row_count"] = int(bucket["row_count"]) + batch.row_count
+            bucket["issue_count"] = int(bucket["issue_count"]) + batch.issue_count
+    return {
+        "total_batches": len(batches),
+        "total_rows": sum(batch.row_count for batch in batches),
+        "total_issues": sum(batch.issue_count for batch in batches),
+        "latest_batch_id": latest_batch.id if latest_batch else None,
+        "status_breakdown": sorted(status_totals.values(), key=lambda item: str(item["status"])),
+        "template_breakdown": sorted(template_totals.values(), key=lambda item: str(item["template_code"])),
+    }
 
 
 @router.get("/batches/{batch_id}")

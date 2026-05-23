@@ -84,6 +84,23 @@ export type MasterDataBatch = {
 
 export type MasterDataBatchesResponse = PageResponse<MasterDataBatch>;
 
+export type MasterDataBatchSummaryBucket = {
+  batch_count: number;
+  issue_count: number;
+  row_count: number;
+  status?: string;
+  template_code?: string;
+};
+
+export type MasterDataBatchSummary = {
+  latest_batch_id?: string | null;
+  status_breakdown: MasterDataBatchSummaryBucket[];
+  template_breakdown: MasterDataBatchSummaryBucket[];
+  total_batches: number;
+  total_issues: number;
+  total_rows: number;
+};
+
 export type MasterDataArtifact = {
   id: string;
   artifact_type: string;

@@ -229,6 +229,11 @@ file-name contains and minimum row-count filters. The Output stage sends those
 filters through the same batch list endpoint, so operators can narrow uploaded
 workbooks without relying on frontend-only filtering.
 
+The third batch-history slice adds `GET
+/api/v1/modules/master-data/batches/summary`. The Output stage renders
+backend-owned metrics for the current batch filters: matching batch count,
+matching row count, issue count, and status count.
+
 The first OTM-115 completion slice closes explicit date-column CSV parity
 coverage. A synthetic dynamic Item template maps `ITEM.EFFECTIVE_DATE`; generated
 CSV and exported ZIP content now have regression coverage proving the OTM CSV
@@ -239,8 +244,8 @@ OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,
 advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
-flows, operational batch history analytics, and broader negative/out-of-order
-QA are tracked as follow-up scope.
+flows, deeper batch-history analytics beyond current-filter metrics, and
+broader negative/out-of-order QA are tracked as follow-up scope.
 
 ## Validation
 
