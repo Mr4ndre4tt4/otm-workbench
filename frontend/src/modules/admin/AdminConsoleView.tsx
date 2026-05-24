@@ -106,6 +106,19 @@ export function AdminConsoleView({ token }: { token: string }) {
     ]);
   };
 
+  const resetSetupDrafts = () => {
+    setWorkspaceName("");
+    setProjectWorkspaceId("");
+    setProjectName("");
+    setProfileProjectId("");
+    setProfileName("");
+    setEnvironmentProjectId("");
+    setEnvironmentType("DEV");
+    setEnvironmentName("");
+    setOperationMessage(null);
+    setOperationError(null);
+  };
+
   const handleCreateWorkspace = async () => {
     const name = workspaceName.trim();
     if (!name) {
@@ -338,6 +351,11 @@ export function AdminConsoleView({ token }: { token: string }) {
               status={projectItems.length ? "ACTIVE" : "EMPTY"}
               title="Setup authoring"
             >
+              <div className="admin-console-actions">
+                <Button disabled={isMutating} onClick={resetSetupDrafts} type="button">
+                  Reset setup drafts
+                </Button>
+              </div>
               <div className="admin-setup-authoring">
                 <form
                   className="admin-setup-form"

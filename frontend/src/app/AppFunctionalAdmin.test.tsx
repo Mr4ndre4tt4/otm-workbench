@@ -435,6 +435,25 @@ describe("Functional Admin Console journey", () => {
     await waitFor(() => expect(environmentRequests).toEqual([{ project_id: "project_2", name: "Synthetic DEV B", environment_type: "DEV" }]));
     expect((await within(await screen.findByLabelText("Setup authoring")).findAllByText("Synthetic DEV B")).length).toBeGreaterThan(0);
 
+    await userEvent.type(screen.getByLabelText("Workspace name"), "Temporary Workspace Draft");
+    await userEvent.selectOptions(screen.getByLabelText("Project workspace"), "workspace_2");
+    await userEvent.type(screen.getByLabelText("Project name"), "Temporary Project Draft");
+    await userEvent.selectOptions(screen.getByLabelText("Profile project"), "project_2");
+    await userEvent.type(screen.getByLabelText("Profile name"), "Temporary Profile Draft");
+    await userEvent.selectOptions(screen.getByLabelText("Environment project"), "project_2");
+    await userEvent.selectOptions(screen.getByLabelText("Environment type"), "UAT");
+    await userEvent.type(screen.getByLabelText("Environment name"), "Temporary UAT Draft");
+    await userEvent.click(screen.getByRole("button", { name: "Reset setup drafts" }));
+    expect(screen.getByLabelText("Workspace name")).toHaveValue("");
+    expect(screen.getByLabelText("Project workspace")).toHaveValue("workspace_1");
+    expect(screen.getByLabelText("Project name")).toHaveValue("");
+    expect(screen.getByLabelText("Profile project")).toHaveValue("project_1");
+    expect(screen.getByLabelText("Profile name")).toHaveValue("");
+    expect(screen.getByLabelText("Environment project")).toHaveValue("project_1");
+    expect(screen.getByLabelText("Environment type")).toHaveValue("DEV");
+    expect(screen.getByLabelText("Environment name")).toHaveValue("");
+    expect(screen.queryByText("Created environment Synthetic DEV B.")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Enable feature flag dev_tools" }));
     await waitFor(() => expect(within(screen.getByLabelText("Feature flags")).getByText("ENABLED")).toBeInTheDocument());
     expect(featureFlagRequests).toEqual([{ name: "dev_tools", enabled: true, scope: "global" }]);

@@ -122,6 +122,34 @@ async function createSetupEntitiesFromUi(page) {
   await page.getByText(`Created environment ${names.environment}.`).waitFor();
   await setupPanel.getByText(names.environment, { exact: true }).first().waitFor();
 
+  await page.getByLabel("Workspace name").fill(`Temporary workspace draft ${suffix}`);
+  await page.getByLabel("Project workspace").selectOption({ label: names.workspace });
+  await page.getByLabel("Project name").fill(`Temporary project draft ${suffix}`);
+  await page.getByLabel("Profile project").selectOption({ label: names.project });
+  await page.getByLabel("Profile name").fill(`Temporary profile draft ${suffix}`);
+  await page.getByLabel("Environment project").selectOption({ label: names.project });
+  await page.getByLabel("Environment type").selectOption("UAT");
+  await page.getByLabel("Environment name").fill(`Temporary UAT draft ${suffix}`);
+  await page.getByRole("button", { name: "Reset setup drafts" }).click();
+  await page.getByLabel("Workspace name").evaluate((element) => {
+    if (element.value !== "") throw new Error(`Workspace draft was not reset: ${element.value}`);
+  });
+  await page.getByLabel("Project name").evaluate((element) => {
+    if (element.value !== "") throw new Error(`Project draft was not reset: ${element.value}`);
+  });
+  await page.getByLabel("Profile name").evaluate((element) => {
+    if (element.value !== "") throw new Error(`Profile draft was not reset: ${element.value}`);
+  });
+  await page.getByLabel("Environment type").evaluate((element) => {
+    if (element.value !== "DEV") throw new Error(`Environment type was not reset to DEV: ${element.value}`);
+  });
+  await page.getByLabel("Environment name").evaluate((element) => {
+    if (element.value !== "") throw new Error(`Environment draft was not reset: ${element.value}`);
+  });
+  if (await page.getByText(`Created environment ${names.environment}.`).isVisible().catch(() => false)) {
+    throw new Error("Setup success feedback stayed visible after reset.");
+  }
+
   return names;
 }
 
