@@ -154,6 +154,23 @@ async function run() {
     await page.getByText("Reference validation: ERROR").waitFor();
     await page.getByText(/outside|not found|does not exist|not allowed/i).waitFor();
 
+    await page.getByRole("button", { name: "Reset catalog validation" }).click();
+    await page.getByLabel("Table name").evaluate((element) => {
+      if (element.value !== "RATE_GEO_COST") throw new Error(`Unexpected table reset value: ${element.value}`);
+    });
+    await page.getByLabel("Usage").evaluate((element) => {
+      if (element.value !== "cutover") throw new Error(`Unexpected usage reset value: ${element.value}`);
+    });
+    await page.getByLabel("Column table").evaluate((element) => {
+      if (element.value !== "RATE_GEO_COST") throw new Error(`Unexpected column table reset value: ${element.value}`);
+    });
+    await page.getByLabel("Reference value").evaluate((element) => {
+      if (element.value !== "OTM1.BRL") throw new Error(`Unexpected reference reset value: ${element.value}`);
+    });
+    if (await page.getByText("Reference validation: ERROR").isVisible().catch(() => false)) {
+      throw new Error("Reference validation result stayed visible after reset.");
+    }
+
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/catalog"]').click();

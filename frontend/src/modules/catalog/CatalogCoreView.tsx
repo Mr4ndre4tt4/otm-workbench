@@ -35,17 +35,28 @@ function catalogMacroMeta(item: CatalogMacroObject) {
   return [item.category, item.default_method, `${tableCount} table(s)`, `${dependencyCount} dependency(ies)`];
 }
 
+const defaultCatalogValidation = {
+  columnName: "RATE_GEO_COST_GROUP_GID",
+  columnTableName: "RATE_GEO_COST",
+  referenceDomainName: "OTM1",
+  referenceFieldName: "currency_gid",
+  referenceModuleId: "rates",
+  referenceValue: "OTM1.BRL",
+  tableName: "RATE_GEO_COST",
+  tableUsage: "cutover"
+};
+
 export function CatalogCoreView({ token }: { token: string }) {
   const macroObjects = useCatalogMacroObjects(token);
   const [selectedMacroCode, setSelectedMacroCode] = useState<string | null>(null);
-  const [tableName, setTableName] = useState("RATE_GEO_COST");
-  const [tableUsage, setTableUsage] = useState("cutover");
-  const [columnTableName, setColumnTableName] = useState("RATE_GEO_COST");
-  const [columnName, setColumnName] = useState("RATE_GEO_COST_GROUP_GID");
-  const [referenceModuleId, setReferenceModuleId] = useState("rates");
-  const [referenceFieldName, setReferenceFieldName] = useState("currency_gid");
-  const [referenceValue, setReferenceValue] = useState("OTM1.BRL");
-  const [referenceDomainName, setReferenceDomainName] = useState("OTM1");
+  const [tableName, setTableName] = useState(defaultCatalogValidation.tableName);
+  const [tableUsage, setTableUsage] = useState(defaultCatalogValidation.tableUsage);
+  const [columnTableName, setColumnTableName] = useState(defaultCatalogValidation.columnTableName);
+  const [columnName, setColumnName] = useState(defaultCatalogValidation.columnName);
+  const [referenceModuleId, setReferenceModuleId] = useState(defaultCatalogValidation.referenceModuleId);
+  const [referenceFieldName, setReferenceFieldName] = useState(defaultCatalogValidation.referenceFieldName);
+  const [referenceValue, setReferenceValue] = useState(defaultCatalogValidation.referenceValue);
+  const [referenceDomainName, setReferenceDomainName] = useState(defaultCatalogValidation.referenceDomainName);
   const [tableValidation, setTableValidation] = useState<CatalogValidateTableResult | null>(null);
   const [columnValidation, setColumnValidation] = useState<CatalogValidateColumnResult | null>(null);
   const [referenceValidation, setReferenceValidation] = useState<CatalogValidateReferenceResult | null>(null);
@@ -124,6 +135,22 @@ export function CatalogCoreView({ token }: { token: string }) {
     }
   }
 
+  function resetCatalogValidation() {
+    setTableName(defaultCatalogValidation.tableName);
+    setTableUsage(defaultCatalogValidation.tableUsage);
+    setColumnTableName(defaultCatalogValidation.columnTableName);
+    setColumnName(defaultCatalogValidation.columnName);
+    setReferenceModuleId(defaultCatalogValidation.referenceModuleId);
+    setReferenceFieldName(defaultCatalogValidation.referenceFieldName);
+    setReferenceValue(defaultCatalogValidation.referenceValue);
+    setReferenceDomainName(defaultCatalogValidation.referenceDomainName);
+    setTableValidation(null);
+    setColumnValidation(null);
+    setReferenceValidation(null);
+    setValidationError(null);
+    setRunningValidation(null);
+  }
+
   return (
     <>
       <PageHeader
@@ -145,6 +172,9 @@ export function CatalogCoreView({ token }: { token: string }) {
       <section className="panel catalog-validation-panel" aria-label="Catalog validation">
         <div className="panel-header">
           <h2>Catalog validation</h2>
+          <Button disabled={Boolean(runningValidation)} onClick={resetCatalogValidation} type="button" variant="secondary">
+            Reset catalog validation
+          </Button>
         </div>
         {validationError ? <FeedbackMessage tone="error">{validationError}</FeedbackMessage> : null}
         <div className="catalog-validation-grid">

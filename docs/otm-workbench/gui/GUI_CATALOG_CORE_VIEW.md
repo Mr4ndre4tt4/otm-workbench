@@ -32,7 +32,9 @@ The screen uses shared components:
 - ModuleObjectList for selectable catalog macro objects;
 - SelectedObjectPanel for selected macro object metadata;
 - DetailList for linked OTM tables;
-- DetailList for load plan dependency/target steps.
+- DetailList for load plan dependency/target steps;
+- Catalog validation reset action to restore the default synthetic table,
+  column, and reference fields and clear stale validation results.
 ```
 
 The first selected macro object defaults to the first backend item. Selecting
@@ -49,9 +51,9 @@ backend-owned codes.
 - Macro status, table eligibility, validation state, and load plan sequence come from backend contracts.
 ```
 
-This slice intentionally keeps Catalog Core read-only. Dictionary import,
-table validation, column validation, and reference validation can be wired later
-through backend-owned available actions or explicit guarded endpoints.
+This slice keeps Catalog Core metadata read-only while exposing guarded
+backend-owned table, column, and reference validation endpoints. The reset
+action is UI-local recovery only; validation truth remains backend-owned.
 
 ## Validation
 

@@ -336,6 +336,19 @@ describe("Functional Catalog journey", () => {
     expect(screen.getByText("Reference is outside the active domain scope.")).toBeInTheDocument();
     expect(referenceValidationRequests).toHaveLength(1);
 
+    await userEvent.click(screen.getByRole("button", { name: "Reset catalog validation" }));
+    expect(screen.getByLabelText("Table name")).toHaveValue("RATE_GEO_COST");
+    expect(screen.getByLabelText("Usage")).toHaveValue("cutover");
+    expect(screen.getByLabelText("Column table")).toHaveValue("RATE_GEO_COST");
+    expect(screen.getByLabelText("Column name")).toHaveValue("RATE_GEO_COST_GROUP_GID");
+    expect(screen.getByLabelText("Module")).toHaveValue("rates");
+    expect(screen.getByLabelText("Field")).toHaveValue("currency_gid");
+    expect(screen.getByLabelText("Reference value")).toHaveValue("OTM1.BRL");
+    expect(screen.getByLabelText("Domain")).toHaveValue("OTM1");
+    expect(screen.queryByText("Table validation: ERROR")).not.toBeInTheDocument();
+    expect(screen.queryByText("Column validation: INFO")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reference validation: ERROR")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await screen.findByRole("heading", { name: "Project Cockpit" });
     await userEvent.click(screen.getByRole("link", { name: /OTM Catalog Core/ }));
