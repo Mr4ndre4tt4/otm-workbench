@@ -218,6 +218,33 @@ async function run() {
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
     await page.getByLabel("Asset link type").selectOption("ARTIFACT");
+    await page.getByLabel("Evidence target source module filter").fill(evidenceTarget.source_module);
+    await page.getByLabel("Evidence target type filter").fill(evidenceTarget.evidence_type);
+    await page.getByRole("button", { name: "Apply evidence target filters" }).click();
+    await page.getByRole("button", { name: "Reset evidence target filters" }).click();
+    await assertControlValue(
+      page.getByLabel("Evidence target source module filter"),
+      "",
+      "Evidence target source module filter after reset"
+    );
+    await assertControlValue(
+      page.getByLabel("Evidence target type filter"),
+      "",
+      "Evidence target type filter after reset"
+    );
+    await assertControlValue(
+      page.getByLabel("Evidence target status filter"),
+      "",
+      "Evidence target status filter after reset"
+    );
+    await assertControlValue(
+      page.getByLabel("Evidence target artifact id filter"),
+      "",
+      "Evidence target artifact id filter after reset"
+    );
+    await page.getByLabel("Evidence target source module filter").fill(evidenceTarget.source_module);
+    await page.getByLabel("Evidence target type filter").fill(evidenceTarget.evidence_type);
+    await page.getByRole("button", { name: "Apply evidence target filters" }).click();
     await page.getByLabel("Asset guided link target").selectOption(evidenceTarget.artifact.id);
     await page.getByRole("button", { name: "Create link" }).click();
     await page.getByText(`Asset link ${evidenceTarget.artifact.id} created.`).waitFor();

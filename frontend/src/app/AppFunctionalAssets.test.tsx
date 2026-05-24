@@ -721,6 +721,16 @@ describe("Functional Assets Library journey", () => {
           url.includes("evidence_type=integration_mapping_spec")
       )
     ).toBe(true);
+    await userEvent.click(screen.getByRole("button", { name: "Reset evidence target filters" }));
+    expect(screen.getByLabelText("Evidence target source module filter")).toHaveValue("");
+    expect(screen.getByLabelText("Evidence target type filter")).toHaveValue("");
+    expect(screen.getByLabelText("Evidence target status filter")).toHaveValue("");
+    expect(screen.getByLabelText("Evidence target artifact id filter")).toHaveValue("");
+    expect(evidenceUrls.at(-1)).toContain("client_safe=true");
+    expect(evidenceUrls.at(-1)).not.toContain("source_module=integration_mapping");
+    await userEvent.type(screen.getByLabelText("Evidence target source module filter"), "integration_mapping");
+    await userEvent.type(screen.getByLabelText("Evidence target type filter"), "integration_mapping_spec");
+    await userEvent.click(screen.getByRole("button", { name: "Apply evidence target filters" }));
     expect(screen.getByLabelText("Asset guided link target")).toHaveTextContent("synthetic_mapping_spec.md");
     await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "artifact_qa_1");
     await userEvent.click(screen.getByRole("button", { name: "Create link" }));

@@ -311,6 +311,13 @@ export function AssetsLibraryView({ token }: { token: string }) {
     setLinkTargetLabel("");
   };
 
+  const resetEvidenceTargetFilters = () => {
+    setDraftEvidenceTargetFilters(emptyEvidenceTargetFilters);
+    setEvidenceTargetFilters(emptyEvidenceTargetFilters);
+    setLinkTargetId("");
+    setLinkTargetLabel("");
+  };
+
   const resetAssetFilters = () => {
     setDraftAssetFilters(emptyAssetFilters);
     setAssetFilters(emptyAssetFilters);
@@ -993,6 +1000,9 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   </label>
                   <Button disabled={isMutating} onClick={applyEvidenceTargetFilters} variant="secondary">
                     Apply evidence target filters
+                  </Button>
+                  <Button disabled={isMutating} onClick={resetEvidenceTargetFilters} variant="secondary">
+                    Reset evidence target filters
                   </Button>
                 </>
               ) : null}

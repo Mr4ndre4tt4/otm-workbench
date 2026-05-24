@@ -71,6 +71,8 @@ The screen uses shared components:
 - Backend-owned Evidence Hub filters in the Link stage for source module,
   evidence type, status, and artifact id before selecting `ARTIFACT` or
   `EVIDENCE` targets;
+- Reset recovery for Evidence Hub target filters, clearing draft/applied
+  filters and selected target before reloading client-safe target suggestions;
 - Backend validation for `ARTIFACT` and `EVIDENCE` link targets: artifacts must
   exist and be backed by client-safe Evidence Hub evidence, and evidence links
   must point to client-safe evidence records;
@@ -103,6 +105,10 @@ The Library stage now exposes `Reset asset filters` alongside `Apply asset
 filters`, so a user can recover from over-narrow filter combinations without
 leaving the module. The reset is covered in both React functional QA and browser
 QA.
+
+The Link stage also exposes `Reset evidence target filters` for `ARTIFACT` and
+`EVIDENCE` target selection, so overly narrow Evidence Hub target filters can be
+cleared without leaving the staged lifecycle.
 
 ## Safety
 
