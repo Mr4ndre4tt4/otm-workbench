@@ -340,6 +340,27 @@ describe("Functional Order Release Generator journey", () => {
     expect(screen.queryByLabelText("Batch rows JSON")).not.toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Row 1 weight"));
     await userEvent.type(screen.getByLabelText("Row 1 weight"), "125");
+    await userEvent.click(screen.getByRole("button", { name: "Reset rows" }));
+    await screen.findByText("Order Release rows reset from the selected template.");
+    expect(screen.getByLabelText("Order Release row editor")).toHaveTextContent("Row 1");
+    expect(screen.getByLabelText("Order Release row editor")).not.toHaveTextContent("Row 2");
+    expect(screen.getByLabelText("Row 1 weight_uom")).toHaveValue("KG");
+    await userEvent.clear(screen.getByLabelText("Row 1 release_gid"));
+    await userEvent.type(screen.getByLabelText("Row 1 release_gid"), "OTM1.OR_SYN_001");
+    await userEvent.clear(screen.getByLabelText("Row 1 source_location_gid"));
+    await userEvent.type(screen.getByLabelText("Row 1 source_location_gid"), "OTM1.SOURCE_A");
+    await userEvent.clear(screen.getByLabelText("Row 1 destination_location_gid"));
+    await userEvent.type(screen.getByLabelText("Row 1 destination_location_gid"), "OTM1.DEST_A");
+    await userEvent.clear(screen.getByLabelText("Row 1 early_pickup_date"));
+    await userEvent.type(screen.getByLabelText("Row 1 early_pickup_date"), "2026-05-20 08:00:00");
+    await userEvent.clear(screen.getByLabelText("Row 1 late_delivery_date"));
+    await userEvent.type(screen.getByLabelText("Row 1 late_delivery_date"), "2026-05-21 17:00:00");
+    await userEvent.clear(screen.getByLabelText("Row 1 item_gid"));
+    await userEvent.type(screen.getByLabelText("Row 1 item_gid"), "OTM1.ITEM_A");
+    await userEvent.clear(screen.getByLabelText("Row 1 packaged_item_gid"));
+    await userEvent.type(screen.getByLabelText("Row 1 packaged_item_gid"), "OTM1.PACK_A");
+    await userEvent.clear(screen.getByLabelText("Row 1 weight"));
+    await userEvent.type(screen.getByLabelText("Row 1 weight"), "125");
     await userEvent.click(screen.getByRole("button", { name: "Create batch" }));
     await screen.findByText("Order Release batch or_batch_1 created.");
     expect(screen.getByLabelText("Active Order Release batch")).toHaveTextContent("VALID");
@@ -371,7 +392,7 @@ describe("Functional Order Release Generator journey", () => {
         file_name: "synthetic_order_release_rows.json",
         first_release_gid: "OTM1.OR_SYN_001",
         first_weight: "125",
-        row_count: 3,
+        row_count: 1,
         template_id: "template_or_tl"
       }
     ]);

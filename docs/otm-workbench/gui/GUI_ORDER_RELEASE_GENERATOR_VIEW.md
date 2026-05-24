@@ -1,7 +1,7 @@
 # GUI Order Release Generator View
 
-**Status:** first functional slice implemented; row, template authoring, and template versioning hardening delivered
-**Branch:** `codex/gui-foundation-integration-pr-plan`
+**Status:** first functional slice implemented; row, template authoring, template versioning, and row reset recovery hardening delivered
+**Branch:** `codex/master-data-hardening-next`
 
 ## Objective
 
@@ -89,6 +89,8 @@ Delivered hardening:
 - batch row authoring is now field-based and template-guided;
 - raw JSON row editing was removed from the GUI;
 - add/remove row controls keep batch input in backend contract shape;
+- reset row recovery rebuilds a single draft row from the selected backend
+  template defaults and clears route-session preview/artifact/submit state;
 - frontend functional QA verifies edited field payloads before batch creation.
 - invalid backend batch rows now surface row-level issue code, column, severity,
   and row number inside the Batch stage;

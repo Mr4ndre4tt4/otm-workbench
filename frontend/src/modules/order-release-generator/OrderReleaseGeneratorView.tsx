@@ -325,6 +325,17 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
     setDraftRows((rows) => [...rows, emptyDraftRow(selectedTemplate)]);
   };
 
+  const handleResetDraftRows = () => {
+    setDraftRows([emptyDraftRow(selectedTemplate)]);
+    setCreatedBatch(null);
+    setSelectedBatchId(null);
+    setXmlPreview(null);
+    setXmlArtifact(null);
+    setSubmitGuard(null);
+    setOperationError(null);
+    setOperationMessage("Order Release rows reset from the selected template.");
+  };
+
   const handleRemoveDraftRow = (rowIndex: number) => {
     setDraftRows((rows) => rows.filter((_, index) => index !== rowIndex));
   };
@@ -643,6 +654,9 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
             <div className="master-data-action-bar">
               <Button disabled={!selectedTemplate} onClick={handleAddDraftRow} variant="secondary">
                 Add row
+              </Button>
+              <Button disabled={!selectedTemplate || isMutating} onClick={handleResetDraftRows} variant="secondary">
+                Reset rows
               </Button>
             </div>
             <div aria-label="Order Release row editor" className="template-author-table-list">

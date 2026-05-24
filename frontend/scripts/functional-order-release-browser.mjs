@@ -131,6 +131,26 @@ async function run() {
     await page.getByLabel("Order Release templates").getByText("TL_ORDER_RELEASE_MVP0").waitFor();
 
     await page.getByRole("button", { name: /2Batch/ }).click();
+    await page.getByRole("button", { name: "Reset rows" }).click();
+    await page.getByText("Order Release rows reset from the selected template.").waitFor();
+    await page.getByLabel("Order Release row editor").getByText("Row 1").waitFor();
+    if (await page.getByLabel("Order Release row editor").getByText("Row 2").isVisible().catch(() => false)) {
+      throw new Error("Reset rows did not collapse the editor back to a single template row.");
+    }
+    const requiredFields = [
+      ["Row 1 release_gid", "OTM1.OR_SYN_BROWSER_001"],
+      ["Row 1 source_location_gid", "OTM1.SOURCE_A"],
+      ["Row 1 destination_location_gid", "OTM1.DEST_A"],
+      ["Row 1 early_pickup_date", "2026-05-20 08:00:00"],
+      ["Row 1 late_delivery_date", "2026-05-21 17:00:00"],
+      ["Row 1 item_gid", "OTM1.ITEM_A"],
+      ["Row 1 packaged_item_gid", "OTM1.PACK_A"],
+      ["Row 1 weight", "100"],
+      ["Row 1 weight_uom", "KG"]
+    ];
+    for (const [label, value] of requiredFields) {
+      await page.getByLabel(label, { exact: true }).fill(value);
+    }
     await page.getByRole("button", { name: "Create batch" }).click();
     await page.getByText(/Order Release batch .* created\./).waitFor();
     const batchPanel = page.getByLabel("Active Order Release batch");
