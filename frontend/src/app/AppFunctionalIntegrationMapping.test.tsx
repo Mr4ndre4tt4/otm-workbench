@@ -653,6 +653,33 @@ describe("Functional Integration Mapping Studio journey", () => {
     await waitFor(() => expect(lookupRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition lookups")).findByText("Synthetic carrier lookup")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Reset mapping rule drafts" }));
+    expect(screen.getByLabelText("Source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Target schema")).toHaveValue("");
+    expect(screen.getByLabelText("Source path")).toHaveValue("");
+    expect(screen.getByLabelText("Target path")).toHaveValue("");
+    expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");
+    expect(screen.getByLabelText("Mapping description")).toHaveValue("");
+    expect(screen.getByLabelText("Loop source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Loop target schema")).toHaveValue("");
+    expect(screen.getByLabelText("Loop name")).toHaveValue("");
+    expect(screen.getByLabelText("Loop source collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Loop target collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Join source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Join name")).toHaveValue("");
+    expect(screen.getByLabelText("Join left path")).toHaveValue("");
+    expect(screen.getByLabelText("Join right path")).toHaveValue("");
+    expect(screen.getByLabelText("Join operator")).toHaveValue("EQ");
+    expect(screen.getByLabelText("Lookup source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup target schema")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup name")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup input path")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup output path")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup type")).toHaveValue("MOCK");
+    expect(screen.getByLabelText("Lookup description")).toHaveValue("");
+    expect(screen.getByLabelText("Lookup mock response JSON")).toHaveValue("");
+    expect(screen.queryByText("Created lookup Synthetic carrier lookup.")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Validate definition" }));
     await screen.findByText("Validation passed with 0 issue(s).");
     await userEvent.click(screen.getByRole("button", { name: "Preview definition" }));

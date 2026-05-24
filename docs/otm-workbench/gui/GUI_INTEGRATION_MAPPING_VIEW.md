@@ -65,6 +65,7 @@ Current panels:
 - Schema document metadata
 - Mapping rows
 - Generated preview/spec artifacts
+- Mapping-rule draft reset recovery
 ```
 
 ## Safety Boundaries
@@ -96,6 +97,7 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Mapping target path
 - Staged workflow navigation
 - Schema node selector usage
+- Mapping-rule draft reset after mapping, loop, join, and lookup authoring
 - Validate, preview, and generate-spec actions
 - Generated artifact listing and guarded download
 ```

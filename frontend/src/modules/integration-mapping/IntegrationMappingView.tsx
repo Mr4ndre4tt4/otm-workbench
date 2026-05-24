@@ -190,6 +190,37 @@ export function IntegrationMappingView({ token }: { token: string }) {
     ]);
   };
 
+  const resetMappingRuleDrafts = () => {
+    setSourceSchemaId('');
+    setTargetSchemaId('');
+    setSourcePath('');
+    setTargetPath('');
+    setTransformType('DIRECT');
+    setMappingDescription('');
+    setLoopSourceSchemaId('');
+    setLoopTargetSchemaId('');
+    setLoopName('');
+    setLoopSourceCollectionPath('');
+    setLoopTargetCollectionPath('');
+    setLoopDescription('');
+    setJoinSourceSchemaId('');
+    setJoinName('');
+    setJoinLeftPath('');
+    setJoinRightPath('');
+    setJoinOperator('EQ');
+    setJoinDescription('');
+    setLookupSourceSchemaId('');
+    setLookupTargetSchemaId('');
+    setLookupName('');
+    setLookupInputPath('');
+    setLookupOutputPath('');
+    setLookupType('MOCK');
+    setLookupDescription('');
+    setLookupMockResponseJson('');
+    setOperationMessage(null);
+    setOperationError(null);
+  };
+
   const handleCreateSystem = async () => {
     setIsMutating(true);
     setOperationMessage(null);
@@ -963,6 +994,11 @@ export function IntegrationMappingView({ token }: { token: string }) {
           status={(schemaDocuments.data?.items ?? []).length >= 2 ? "ACTIVE" : "EMPTY"}
           title="Mapping rules"
         >
+          <div className="integration-action-bar">
+            <Button disabled={isMutating} onClick={resetMappingRuleDrafts} type="button">
+              Reset mapping rule drafts
+            </Button>
+          </div>
           <form
             className="integration-mapping-form"
             onSubmit={(event) => {

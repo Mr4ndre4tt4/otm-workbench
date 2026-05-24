@@ -186,6 +186,30 @@ async function run() {
     await page.getByText("Created lookup Synthetic carrier lookup.").waitFor();
     await page.getByLabel("Selected definition lookups").getByText("Synthetic carrier lookup", { exact: true }).waitFor();
 
+    await page.getByRole("button", { name: "Reset mapping rule drafts" }).click();
+    const mappingForm = page.locator(".integration-mapping-form");
+    await mappingForm.getByLabel("Source schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping source schema after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Target schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping target schema after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Source path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping source path after reset: ${element.value}`);
+    });
+    await page.locator(".integration-loop-form").getByLabel("Loop source schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected loop source schema after reset: ${element.value}`);
+    });
+    await page.locator(".integration-join-form").getByLabel("Join source schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected join source schema after reset: ${element.value}`);
+    });
+    await page.locator(".integration-lookup-form").getByLabel("Lookup mock response JSON").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected lookup mock JSON after reset: ${element.value}`);
+    });
+    if (await page.getByText("Created lookup Synthetic carrier lookup.").isVisible().catch(() => false)) {
+      throw new Error("Lookup success feedback stayed visible after mapping rule reset.");
+    }
+
     await page.getByRole("button", { name: "Validate definition" }).click();
     await page.getByText("Validation passed with 0 issue(s).").waitFor();
     await page.getByRole("button", { name: "Preview definition" }).click();
