@@ -1137,7 +1137,10 @@ def parse_master_data_template_workbook(
         expected_field_names = [field["name"] for field in fields]
         expected_target_columns = [field["target_column"] for field in fields]
         field_name_row = [cell.value for cell in worksheet[2]][: len(expected_field_names)]
-        target_column_row = [cell.value for cell in worksheet[3]][: len(expected_target_columns)]
+        target_column_row = [
+            "" if cell.value is None else cell.value
+            for cell in worksheet[3]
+        ][: len(expected_target_columns)]
         data_start_row = 4 if (
             field_name_row == expected_field_names
             and target_column_row == expected_target_columns
@@ -1439,8 +1442,16 @@ def build_master_data_csv_files(
         .first()
     )
     template_columns_by_table: dict[str, list[str]] = {}
+    table_order: list[str] = []
     if template is not None:
         definition = master_data_template_definition(template)
+        table_order = [
+            table["table_name"]
+            for table in sorted(
+                definition.get("target_tables", []),
+                key=lambda table: int(table.get("sequence", 0)),
+            )
+        ]
         for mapping in definition.get("mappings", []):
             target_table = mapping["target_table"]
             table_columns = template_columns_by_table.setdefault(target_table, [])
@@ -1456,8 +1467,11 @@ def build_master_data_csv_files(
                     if target_column not in table_columns:
                         table_columns.append(target_column)
 
+    ordered_table_names = [table_name for table_name in table_order if table_name in records_by_table]
+    ordered_table_names.extend(table_name for table_name in records_by_table if table_name not in set(ordered_table_names))
+
     response_files = []
-    for index, table_name in enumerate(records_by_table, start=1):
+    for index, table_name in enumerate(ordered_table_names, start=1):
         rows = records_by_table[table_name]
         row_columns = {column for row in rows for column in row}
         template_columns = template_columns_by_table.get(table_name, [])

@@ -165,13 +165,13 @@ def test_master_data_scenario_packs_expose_backend_owned_draft_payloads(client, 
     location_pack = packs["LOCATION_OPERATIONAL"]
     assert location_pack["catalog_macro_object_code"] == "LOCATION"
     assert location_pack["target_tables"] == [
+        "EQUIPMENT_GROUP_PROFILE",
+        "EQUIPMENT_GROUP_PROFILE_D",
         "LOCATION",
         "LOCATION_ADDRESS",
         "LOCATION_CAPACITY",
         "LOCATION_ACTIVITY_TIME_DEF",
         "LOCATION_LOAD_UNLOAD_POINT",
-        "EQUIPMENT_GROUP_PROFILE",
-        "EQUIPMENT_GROUP_PROFILE_D",
     ]
     assert location_pack["summary"] == {
         "sheet_count": 7,

@@ -161,6 +161,170 @@ def prepare_exported_master_data_locations_batch(client, admin_header):
     return batch, export.json()
 
 
+def create_master_data_template_from_scenario_pack(client, admin_header, pack_code):
+    packs = client.get("/api/v1/modules/master-data/scenario-packs", headers=admin_header).json()["items"]
+    draft_payload = next(pack["draft_payload"] for pack in packs if pack["code"] == pack_code)
+    draft = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=draft_payload,
+        headers=admin_header,
+    )
+    assert draft.status_code == 200
+    publish = client.post(
+        f"/api/v1/modules/master-data/templates/{draft_payload['code']}/publish",
+        headers=admin_header,
+    )
+    assert publish.status_code == 200
+    assert publish.json()["validation"]["valid"] is True
+    return draft_payload["code"]
+
+
+def prepare_exported_operational_locations_batch(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "LOCATION_OPERATIONAL")
+    editor_payload = {
+        "file_name": "locations_operational_load_plan.xlsx",
+        "sheets": [
+            {
+                "sheet_code": "LOCATIONS",
+                "rows": [
+                    {
+                        "row_id": "LOCATIONS-1",
+                        "values": {
+                            "location_gid": "SYN.LOC_DC_001",
+                            "location_xid": "LOC_DC_001",
+                            "location_name": "Synthetic Distribution Center",
+                            "city": "Atlanta",
+                            "province_code": "GA",
+                            "postal_code": "30301",
+                            "country_code3_gid": "USA",
+                            "time_zone_gid": "America/New_York",
+                            "lat": "33.74900",
+                            "lon": "-84.38800",
+                            "location_equipment_group_profile_gid": "SYN.EGP_DRYVAN",
+                            "appointment_activity_type": "LIVE",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "LOCATION_ADDRESSES",
+                "rows": [
+                    {
+                        "row_id": "LOCATION_ADDRESSES-1",
+                        "values": {
+                            "address_location_gid": "SYN.LOC_DC_001",
+                            "address_line_sequence": "1",
+                            "address_line": "100 Synthetic Logistics Way",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "LOCATION_CAPACITIES",
+                "rows": [
+                    {
+                        "row_id": "LOCATION_CAPACITIES-1",
+                        "values": {
+                            "capacity_location_gid": "SYN.LOC_DC_001",
+                            "location_capacity_gid": "SYN.LOC_CAP_DC_001",
+                            "location_capacity_xid": "LOC_CAP_DC_001",
+                            "capacity_calendar_gid": "SYN.CAL_DOCK_WEEKDAY",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "LOCATION_ACTIVITY_TIMES",
+                "rows": [
+                    {
+                        "row_id": "LOCATION_ACTIVITY_TIMES-1",
+                        "values": {
+                            "activity_location_gid": "SYN.LOC_DC_001",
+                            "location_role_gid": "SYN.LOC_ROLE_SHIPPER",
+                            "activity_time_def_gid": "SYN.ACT_TIME_LIVE_90",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "LOCATION_DOCKS",
+                "rows": [
+                    {
+                        "row_id": "LOCATION_DOCKS-1",
+                        "values": {
+                            "dock_location_gid": "SYN.LOC_DC_001",
+                            "load_unload_point": "DOCK_A",
+                            "dock_equipment_group_profile_gid": "SYN.EGP_DRYVAN",
+                            "is_load": "Y",
+                            "load_sequence": "10",
+                            "is_unload": "Y",
+                            "unload_sequence": "10",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "EQUIPMENT_PROFILES",
+                "rows": [
+                    {
+                        "row_id": "EQUIPMENT_PROFILES-1",
+                        "values": {
+                            "equipment_group_profile_gid": "SYN.EGP_DRYVAN",
+                            "equipment_group_profile_xid": "EGP_DRYVAN",
+                            "equipment_group_profile_name": "Synthetic Dry Van Equipment",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "EQUIPMENT_PROFILE_DETAILS",
+                "rows": [
+                    {
+                        "row_id": "EQUIPMENT_PROFILE_DETAILS-1",
+                        "values": {
+                            "detail_equipment_group_profile_gid": "SYN.EGP_DRYVAN",
+                            "equipment_group_gid": "SYN.EQG_53_DRYVAN",
+                        },
+                    }
+                ],
+            },
+        ],
+    }
+    batch_response = client.post(
+        f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
+        json=editor_payload,
+        headers=admin_header,
+    )
+    assert batch_response.status_code == 200
+    batch = batch_response.json()
+    assert batch["status"] == "PARSED"
+    relationship = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/validate-relationships",
+        headers=admin_header,
+    )
+    assert relationship.status_code == 200
+    assert relationship.json()["status"] == "RELATIONSHIP_VALIDATED", relationship.json()
+    assert client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/map", headers=admin_header).status_code == 200
+    assert client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-output", headers=admin_header).status_code == 200
+    csv = client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-csv", headers=admin_header)
+    assert csv.status_code == 200
+    assert {item["table_name"] for item in csv.json()["files"]} == {
+        "LOCATION",
+        "LOCATION_ADDRESS",
+        "LOCATION_CAPACITY",
+        "LOCATION_ACTIVITY_TIME_DEF",
+        "LOCATION_LOAD_UNLOAD_POINT",
+        "EQUIPMENT_GROUP_PROFILE",
+        "EQUIPMENT_GROUP_PROFILE_D",
+    }
+    export = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/export-csv-package",
+        headers=admin_header,
+    )
+    assert export.status_code == 200
+    return batch, export.json()
+
+
 def test_load_plan_packages_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
@@ -496,6 +660,58 @@ def test_register_master_data_package_creates_load_plan_package(client, admin_he
     assert payload["summary"]["template_code"] == "LOCATIONS_BASIC"
     assert package.created_by == "admin@example.com"
     assert package.registered_at is not None
+
+
+def test_operational_master_data_package_reaches_zip_analysis_and_cutover_readiness(
+    client,
+    admin_header,
+):
+    batch, export = prepare_exported_operational_locations_batch(client, admin_header)
+    package = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    ).json()
+
+    assert package["artifact_id"] == export["artifact_id"]
+    assert package["summary"]["catalog_macro_object_code"] == "LOCATION"
+    assert [item["table_name"] for item in package["load_sequence"]] == [
+        "EQUIPMENT_GROUP_PROFILE",
+        "EQUIPMENT_GROUP_PROFILE_D",
+        "LOCATION",
+        "LOCATION_ADDRESS",
+        "LOCATION_CAPACITY",
+        "LOCATION_ACTIVITY_TIME_DEF",
+        "LOCATION_LOAD_UNLOAD_POINT",
+    ]
+
+    zip_analysis = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    assert zip_analysis.status_code == 200
+    zip_payload = zip_analysis.json()
+    assert zip_payload["summary"]["error_count"] == 0, zip_payload["findings"]
+    assert zip_payload["summary"]["csv_file_count"] == 7
+
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+    readiness = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    ).json()
+
+    assert readiness["summary"]["latest_zip_analysis_id"] == zip_payload["id"]
+    master_data_family = next(
+        family for family in readiness["summary"]["package_families"] if family["family_code"] == "MASTER_DATA"
+    )
+    assert master_data_family["table_count"] == 7
+    assert readiness["status"] == "BLOCKED"
+    assert not any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
+    assert "SYN.LOC_DC_001" not in json.dumps(zip_payload)
+    assert "SYN.LOC_DC_001" not in json.dumps(readiness)
 
 
 def test_register_master_data_package_creates_client_safe_evidence_audit_and_event(

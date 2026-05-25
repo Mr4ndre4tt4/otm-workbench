@@ -211,8 +211,12 @@ def create_master_data_batch_from_editor_rows(
 
 
 def _target_column_for_field(definition: dict[str, object], sheet_code: str, field_key: str) -> str:
+    fields_by_key = {str(field["field_key"]): field for field in definition.get("fields", [])}
     for mapping in definition.get("mappings", []):
         mapping_sheet_code = str(mapping.get("sheet_code") or "")
+        if not mapping_sheet_code and mapping.get("source_field_key"):
+            field = fields_by_key.get(str(mapping["source_field_key"]))
+            mapping_sheet_code = str(field.get("sheet_code") or "") if field else ""
         if mapping_sheet_code == sheet_code and mapping.get("source_field_key") == field_key:
             return str(mapping["target_column"])
     return ""

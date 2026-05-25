@@ -116,14 +116,25 @@ Delivered backend changes:
   relationship rules exist and the batch has not been relationship-validated.
 - Dynamic workbook sheets can include relationship-only fields without forcing a
   fake OTM target column.
+- Backend-owned workbook editor batches now preserve technical metadata rows for
+  dynamic mappings that infer sheet ownership from field metadata.
+- Relationship-only target columns are parsed as intentional blanks instead of
+  data rows.
+- Master Data CSV generation now orders output files by
+  `target_tables.sequence`, allowing the sheet/story order to stay user-friendly
+  while the CSV/Load Plan order follows Data Dictionary dependencies.
 - The Author stage can apply a backend-owned scenario pack, show its objective,
   target-table flow, documentation basis, and create the draft from the server
   payload without duplicating the mapping rules in frontend state.
+- The Operational Location scenario now reaches Load Plan package intake, ZIP
+  analysis, and Cutover readiness with no ZIP analysis structure errors; readiness
+  remains blocked only by pending cutover checklist work.
 
 Tests:
 
 ```text
 python -m pytest tests/test_master_data_templates.py -q
+python -m pytest tests/test_load_plan_package_intake.py::test_operational_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
 npm run test -- AppFunctionalMasterData.test.tsx
 npm run qa:functional:master-data:browser
 ```

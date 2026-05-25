@@ -65,13 +65,13 @@ LOCATION_OPERATIONAL_DRAFT = {
     "catalog_macro_object_code": "LOCATION",
     "data_category": "MASTER_DATA",
     "target_tables": [
-        {"table_name": "LOCATION", "sequence": 10, "required": True},
-        {"table_name": "LOCATION_ADDRESS", "sequence": 20, "required": False},
-        {"table_name": "LOCATION_CAPACITY", "sequence": 30, "required": False},
-        {"table_name": "LOCATION_ACTIVITY_TIME_DEF", "sequence": 40, "required": False},
-        {"table_name": "LOCATION_LOAD_UNLOAD_POINT", "sequence": 50, "required": False},
-        {"table_name": "EQUIPMENT_GROUP_PROFILE", "sequence": 60, "required": False},
-        {"table_name": "EQUIPMENT_GROUP_PROFILE_D", "sequence": 70, "required": False},
+        {"table_name": "EQUIPMENT_GROUP_PROFILE", "sequence": 10, "required": False},
+        {"table_name": "EQUIPMENT_GROUP_PROFILE_D", "sequence": 20, "required": False},
+        {"table_name": "LOCATION", "sequence": 30, "required": True},
+        {"table_name": "LOCATION_ADDRESS", "sequence": 40, "required": False},
+        {"table_name": "LOCATION_CAPACITY", "sequence": 50, "required": False},
+        {"table_name": "LOCATION_ACTIVITY_TIME_DEF", "sequence": 60, "required": False},
+        {"table_name": "LOCATION_LOAD_UNLOAD_POINT", "sequence": 70, "required": False},
     ],
     "sheets": [
         {

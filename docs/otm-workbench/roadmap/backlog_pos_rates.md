@@ -367,11 +367,12 @@ Artifacts + Evidence
 8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas/colunas, issues estruturais de workbook, relacionamento same-batch e bloqueio de mapping quando templates possuem regras pendentes]
 9. Mapping Engine basico. [INICIADO com mapeamento de batch validado para canonical records por target_column]
 10. Geracao de output records. [INICIADO com materializacao de canonical records em master_data_output_records]
-11. Geracao de CSVs. [INICIADO com master_data_csv_files e CSV OTM por tabela]
-12. ZIP + MANIFEST.json. [INICIADO com pacote CSV ZIP e manifest.json]
+11. Geracao de CSVs. [INICIADO com master_data_csv_files e CSV OTM por tabela; Operational Location agora usa ordem tecnica por target_tables.sequence/Data Dictionary para Load Plan]
+12. ZIP + MANIFEST.json. [INICIADO com pacote CSV ZIP e manifest.json; pacote Operational Location chega em ZIP analysis sem erro estrutural]
 13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template e pacote CSV ZIP]
 14. Seed de Items & Packaging Standard. [ENTREGUE MVP0 inicial com ITEM, PACKAGED_ITEM e TI_HI validados no Data Dictionary]
 15. Seed de Locations Basic. [ENTREGUE MVP0 inicial com LOCATION e LOCATION_ADDRESS validados no Data Dictionary, preparando Coordinate Quality]
+16. Scenario packs funcionais Location Operational e Item Packaging. [INICIADO com QA backend, editor backend-owned, relacoes same-batch e handoff Location -> Load Plan/Cutover]
 ```
 
 ---
