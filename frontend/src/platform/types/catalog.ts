@@ -86,6 +86,28 @@ export type CatalogMacroObjectLoadPlan = {
   };
 };
 
+export type CatalogSchemaGuidanceRole = "MACRO_OBJECT" | "ENVELOPE_ONLY" | "TECHNICAL_ROOT";
+
+export type CatalogSchemaRoot = {
+  id: string;
+  schema_pack_id: string;
+  schema_file_id: string;
+  root_name: string;
+  root_display_label: string;
+  canonical_root_name: string;
+  schema_root_aliases: string[];
+  data_dictionary_family: string;
+  schema_guidance_role: CatalogSchemaGuidanceRole;
+  namespace: string;
+  domain_area: string;
+  root_type: string;
+  envelope_role: string;
+  recommended_modules: string[];
+  documentation: string;
+};
+
+export type CatalogSchemaRootsResponse = PageResponse<CatalogSchemaRoot>;
+
 export type CatalogMacroObjectDataDictionaryCheck = {
   macro_object_code: string;
   macro_object_name: string;
@@ -111,7 +133,7 @@ export type CatalogMacroObjectDataDictionaryCheck = {
     canonical_root_name: string;
     schema_root_aliases: string[];
     data_dictionary_family: string;
-    schema_guidance_role: "MACRO_OBJECT" | "ENVELOPE_ONLY" | "TECHNICAL_ROOT";
+    schema_guidance_role: CatalogSchemaGuidanceRole;
     domain_area: string;
     root_type: string;
     relationship_role: string;
@@ -130,13 +152,15 @@ export type CatalogMacroObjectDataDictionaryCheck = {
     all_target_tables_validated: boolean;
     all_schema_links_have_source_reference: boolean;
     guidance_ready: boolean;
-    readiness_status:
-      | "READY"
-      | "BLOCKED_DATA_DICTIONARY"
-      | "BLOCKED_SCHEMA_LINKS"
-      | "BLOCKED_SOURCE_REFERENCES";
+    readiness_status: CatalogSchemaReadinessStatus;
   };
 };
+
+export type CatalogSchemaReadinessStatus =
+  | "READY"
+  | "BLOCKED_DATA_DICTIONARY"
+  | "BLOCKED_SCHEMA_LINKS"
+  | "BLOCKED_SOURCE_REFERENCES";
 
 export type CatalogSchemaGuidanceReadiness = {
   items: {
@@ -144,11 +168,7 @@ export type CatalogSchemaGuidanceReadiness = {
     macro_object_name: string;
     category: string;
     guidance_ready: boolean;
-    readiness_status:
-      | "READY"
-      | "BLOCKED_DATA_DICTIONARY"
-      | "BLOCKED_SCHEMA_LINKS"
-      | "BLOCKED_SOURCE_REFERENCES";
+    readiness_status: CatalogSchemaReadinessStatus;
     target_table_count: number;
     validated_table_count: number;
     missing_table_count: number;

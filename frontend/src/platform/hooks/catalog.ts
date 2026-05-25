@@ -3,9 +3,13 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { apiGet, apiPost } from "../api";
 import type {
   CatalogMacroObject,
+  CatalogMacroObjectDataDictionaryCheck,
   CatalogMacroObjectLoadPlan,
   CatalogMacroObjectsResponse,
   CatalogMacroObjectTablesResponse,
+  CatalogSchemaGuidanceReadiness,
+  CatalogSchemaGuidanceRole,
+  CatalogSchemaRootsResponse,
   CatalogTablesResponse,
   CatalogTableColumnsResponse,
   CatalogValidateColumnPayload,
@@ -45,6 +49,37 @@ export function useCatalogMacroObjectLoadPlan(token: string | null, macroObjectC
     queryKey: ["catalog", "macro-objects", macroObjectCode, "load-plan"],
     queryFn: () => apiGet<CatalogMacroObjectLoadPlan>(`/api/v1/catalog/macro-objects/${macroObjectCode}/load-plan`, { token }),
     enabled: Boolean(token && macroObjectCode)
+  });
+}
+
+export function useCatalogMacroObjectDataDictionaryCheck(token: string | null, macroObjectCode: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "macro-objects", macroObjectCode, "data-dictionary-cross-check"],
+    queryFn: () =>
+      apiGet<CatalogMacroObjectDataDictionaryCheck>(
+        `/api/v1/catalog/macro-objects/${macroObjectCode}/data-dictionary-cross-check`,
+        { token }
+      ),
+    enabled: Boolean(token && macroObjectCode)
+  });
+}
+
+export function useCatalogSchemaGuidanceReadiness(token: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "schema-guidance", "readiness"],
+    queryFn: () => apiGet<CatalogSchemaGuidanceReadiness>("/api/v1/catalog/schema-guidance/readiness", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useCatalogSchemaRootsByRole(token: string | null, schemaGuidanceRole: CatalogSchemaGuidanceRole | null) {
+  const params = new URLSearchParams();
+  if (schemaGuidanceRole) params.set("schema_guidance_role", schemaGuidanceRole);
+  const queryString = params.toString();
+  return useQuery({
+    queryKey: ["catalog", "schema-roots", "role", schemaGuidanceRole],
+    queryFn: () => apiGet<CatalogSchemaRootsResponse>(`/api/v1/catalog/schema-roots?${queryString}`, { token }),
+    enabled: Boolean(token && schemaGuidanceRole)
   });
 }
 

@@ -278,6 +278,15 @@ generation in MVP0.
 envelope/path browsing, but it is not a business macro object and must not drive
 CSVUtil, cutover, or Data Dictionary table guidance.
 
+Frontend platform hooks expose the staged contracts without prescribing the
+screen layout:
+
+```text
+- useCatalogSchemaGuidanceReadiness
+- useCatalogSchemaRootsByRole
+- useCatalogMacroObjectDataDictionaryCheck
+```
+
 ## API Surface
 
 First cut should be read-heavy and internal/admin-facing.
