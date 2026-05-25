@@ -129,6 +129,8 @@ Delivered backend changes:
 - The Operational Location scenario now reaches Load Plan package intake, ZIP
   analysis, and Cutover readiness with no ZIP analysis structure errors; readiness
   remains blocked only by pending cutover checklist work.
+- The Operational Location negative editor path now rejects a dock/load-unload
+  point whose location key has no `LOCATIONS` parent before a batch is created.
 - The Item Packaging scenario now reaches Load Plan package intake, ZIP
   analysis, and Cutover readiness with no ZIP analysis structure errors,
   preserving the `ITEM`, `SHIP_UNIT_SPEC`, `PACKAGED_ITEM`, `TI_HI` technical
@@ -142,6 +144,7 @@ Tests:
 ```text
 python -m pytest tests/test_master_data_templates.py -q
 python -m pytest tests/test_load_plan_package_intake.py::test_operational_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
+python -m pytest tests/test_load_plan_package_intake.py::test_operational_location_master_data_blocks_orphan_dock_before_batch_creation -q
 python -m pytest tests/test_load_plan_package_intake.py::test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
 python -m pytest tests/test_load_plan_package_intake.py::test_item_packaging_master_data_blocks_orphan_transport_handling_unit_before_mapping -q
 npm run test -- AppFunctionalMasterData.test.tsx

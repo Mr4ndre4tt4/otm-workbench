@@ -179,9 +179,8 @@ def create_master_data_template_from_scenario_pack(client, admin_header, pack_co
     return draft_payload["code"]
 
 
-def prepare_exported_operational_locations_batch(client, admin_header):
-    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "LOCATION_OPERATIONAL")
-    editor_payload = {
+def operational_locations_editor_payload() -> dict[str, object]:
+    return {
         "file_name": "locations_operational_load_plan.xlsx",
         "sheets": [
             {
@@ -290,6 +289,11 @@ def prepare_exported_operational_locations_batch(client, admin_header):
             },
         ],
     }
+
+
+def prepare_exported_operational_locations_batch(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "LOCATION_OPERATIONAL")
+    editor_payload = operational_locations_editor_payload()
     batch_response = client.post(
         f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
         json=editor_payload,
@@ -323,6 +327,18 @@ def prepare_exported_operational_locations_batch(client, admin_header):
     )
     assert export.status_code == 200
     return batch, export.json()
+
+
+def create_operational_locations_batch_with_missing_location_parent(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "LOCATION_OPERATIONAL")
+    editor_payload = operational_locations_editor_payload()
+    dock_rows = next(sheet["rows"] for sheet in editor_payload["sheets"] if sheet["sheet_code"] == "LOCATION_DOCKS")
+    dock_rows[0]["values"]["dock_location_gid"] = "SYN.LOC_MISSING_001"
+    return client.post(
+        f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
+        json=editor_payload,
+        headers=admin_header,
+    )
 
 
 def item_packaging_editor_payload() -> dict[str, object]:
@@ -862,6 +878,26 @@ def test_operational_master_data_package_reaches_zip_analysis_and_cutover_readin
     assert not any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
     assert "SYN.LOC_DC_001" not in json.dumps(zip_payload)
     assert "SYN.LOC_DC_001" not in json.dumps(readiness)
+
+
+def test_operational_location_master_data_blocks_orphan_dock_before_batch_creation(
+    client,
+    admin_header,
+):
+    response = create_operational_locations_batch_with_missing_location_parent(client, admin_header)
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["code"] == "MASTER_DATA_WORKBOOK_EDITOR_INVALID"
+    orphan = next(
+        issue
+        for issue in payload["details"]["validation"]["issues"]
+        if issue["field_key"] == "dock_location_gid"
+    )
+    assert orphan["code"] == "RELATIONSHIP_PARENT_NOT_FOUND"
+    assert orphan["sheet_code"] == "LOCATION_DOCKS"
+    assert orphan["parent_sheet_code"] == "LOCATIONS"
+    assert orphan["message"].endswith("LOCATIONS.location_gid.")
 
 
 def test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_readiness(
