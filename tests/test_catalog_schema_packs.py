@@ -114,6 +114,15 @@ def write_known_roots_schema_pack(folder):
 """,
         encoding="utf-8",
     )
+    (folder / "Transmission.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/transmission">
+  <xs:element name="Transmission" type="xs:string"/>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
 
 
 def write_sensitive_schema_pack(folder):
@@ -427,6 +436,7 @@ def test_catalog_schema_pack_index_creates_known_macro_object_schema_links(clien
     item_links = client.get("/api/v1/catalog/macro-objects/ITEM/schema-links", headers=admin_header)
     order_links = client.get("/api/v1/catalog/macro-objects/ORDER_RELEASE/schema-links", headers=admin_header)
     shipment_links = client.get("/api/v1/catalog/macro-objects/SHIPMENT/schema-links", headers=admin_header)
+    transmission_roots = client.get("/api/v1/catalog/schema-roots?root_name=Transmission", headers=admin_header)
 
     assert indexed.status_code == 200
     assert rate_record_links.status_code == 200
@@ -434,6 +444,7 @@ def test_catalog_schema_pack_index_creates_known_macro_object_schema_links(clien
     assert item_links.status_code == 200
     assert order_links.status_code == 200
     assert shipment_links.status_code == 200
+    assert transmission_roots.status_code == 200
     rate_roots = {item["root_name"]: item for item in rate_record_links.json()["items"]}
     assert set(rate_roots) == {"RATE_GEO", "X_LANE"}
     assert rate_roots["RATE_GEO"]["functional_confidence"] == "ORACLE_OFFICIAL_PINNED"
@@ -448,6 +459,11 @@ def test_catalog_schema_pack_index_creates_known_macro_object_schema_links(clien
     assert shipment_links.json()["items"][0]["macro_object_code"] == "SHIPMENT"
     assert shipment_links.json()["items"][0]["source_reference_label"] == "Oracle Shipment.xsd Interfaces"
     assert shipment_links.json()["items"][0]["source_reference_url"].startswith("https://docs.oracle.com/")
+    transmission = transmission_roots.json()["items"][0]
+    assert transmission["root_name"] == "Transmission"
+    assert transmission["schema_guidance_role"] == "ENVELOPE_ONLY"
+    assert transmission["data_dictionary_family"] == ""
+    assert transmission["recommended_modules"] == ["integration_mapping"]
     assert "source_path" not in str(rate_record_links.json())
     assert str(schema_folder) not in str(rate_record_links.json())
 

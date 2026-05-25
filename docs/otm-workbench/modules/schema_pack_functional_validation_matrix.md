@@ -103,6 +103,9 @@ Backend status:
   XML/schema guidance, blocked for CSVUtil/cutover in MVP0.
 - Catalog Core now seeds `SHIPMENT` as a transactional macro object for
   Integration Mapping XML/schema guidance, blocked for CSVUtil/cutover in MVP0.
+- `Transmission` is explicitly serialized as `ENVELOPE_ONLY`, not as a macro
+  object, so it can support XML envelope browsing without implying table load
+  guidance.
 ```
 
 ## Next Hardening Slices

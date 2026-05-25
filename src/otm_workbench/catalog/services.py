@@ -849,6 +849,14 @@ def _schema_root_metadata(root_name: str) -> dict[str, object]:
     )
 
 
+def _schema_guidance_role(root: SchemaRoot) -> str:
+    if root.envelope_role in {"TRANSMISSION", "DBXML", "SERVICE"} or root.root_type in {"ENVELOPE", "SERVICE_MESSAGE"}:
+        return "ENVELOPE_ONLY"
+    if _schema_root_metadata(root.root_name)["data_dictionary_family"]:
+        return "MACRO_OBJECT"
+    return "TECHNICAL_ROOT"
+
+
 def _schema_root_name_candidates(root_name: str) -> list[str]:
     target_key = _alias_key(root_name)
     candidates = {root_name}
@@ -1218,6 +1226,7 @@ def serialize_schema_root(root: SchemaRoot) -> dict[str, object]:
         "canonical_root_name": metadata["canonical_root_name"],
         "schema_root_aliases": metadata["schema_root_aliases"],
         "data_dictionary_family": metadata["data_dictionary_family"],
+        "schema_guidance_role": _schema_guidance_role(root),
         "namespace": root.namespace,
         "domain_area": root.domain_area,
         "root_type": root.root_type,
@@ -1319,6 +1328,7 @@ def serialize_macro_object_schema_link(
         "canonical_root_name": root_metadata["canonical_root_name"],
         "schema_root_aliases": root_metadata["schema_root_aliases"],
         "data_dictionary_family": root_metadata["data_dictionary_family"],
+        "schema_guidance_role": _schema_guidance_role(root),
         "domain_area": root.domain_area,
         "root_type": root.root_type,
         "relationship_role": row.relationship_role,

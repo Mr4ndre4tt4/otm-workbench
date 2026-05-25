@@ -111,6 +111,7 @@ export type CatalogMacroObjectDataDictionaryCheck = {
     canonical_root_name: string;
     schema_root_aliases: string[];
     data_dictionary_family: string;
+    schema_guidance_role: "MACRO_OBJECT" | "ENVELOPE_ONLY" | "TECHNICAL_ROOT";
     domain_area: string;
     root_type: string;
     relationship_role: string;

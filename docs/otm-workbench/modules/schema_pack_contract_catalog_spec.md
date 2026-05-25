@@ -127,6 +127,7 @@ Serialized API responses also expose backend-owned naming metadata:
 - canonical_root_name
 - schema_root_aliases
 - data_dictionary_family
+- schema_guidance_role: MACRO_OBJECT | ENVELOPE_ONLY | TECHNICAL_ROOT
 ```
 
 These values let future GUIs, desktop apps, and automation jobs present stable
@@ -272,6 +273,10 @@ MVP0.
 `SHIPMENT` is treated as a transactional macro object for Integration Mapping
 path browsing and schema guidance. It is not allowlisted for CSVUtil/cutover
 generation in MVP0.
+
+`Transmission` remains `ENVELOPE_ONLY`: it is valid for integration XML
+envelope/path browsing, but it is not a business macro object and must not drive
+CSVUtil, cutover, or Data Dictionary table guidance.
 
 ## API Surface
 
