@@ -14,6 +14,7 @@ import type {
   MasterDataBatchSummary,
   MasterDataBatchesResponse,
   MasterDataCsvFilesResponse,
+  MasterDataOtmImportReadiness,
   MasterDataOutputRecordsResponse,
   MasterDataRelationshipValidation,
   MasterDataScenarioPacksResponse,
@@ -260,6 +261,17 @@ export function exportMasterDataCsvPackage(token: string, batchId: string) {
     {},
     { token }
   );
+}
+
+export function getMasterDataOtmImportReadiness(token: string, batchId: string) {
+  return apiGet<MasterDataOtmImportReadiness>(
+    `/api/v1/modules/master-data/batches/${batchId}/otm-import-readiness`,
+    { token }
+  );
+}
+
+export function submitMasterDataBatchToOtm(token: string, batchId: string) {
+  return apiPost<Record<string, unknown>>(`/api/v1/modules/master-data/batches/${batchId}/submit-otm`, {}, { token });
 }
 
 export function previewCoordinateQuality(token: string, payload: CoordinateQualityRequest) {

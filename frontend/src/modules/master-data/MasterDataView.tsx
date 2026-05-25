@@ -14,10 +14,12 @@ import {
   exportMasterDataCsvPackage,
   generateCutoverChecklistReadiness,
   getMasterDataBatch,
+  getMasterDataOtmImportReadiness,
   mapMasterDataBatch,
   previewCoordinateQuality,
   publishMasterDataTemplate,
   registerMasterDataPackageForLoadPlan,
+  submitMasterDataBatchToOtm,
   updateMasterDataTemplateDraft,
   uploadMasterDataWorkbook,
   useCatalogColumnsByTable,
@@ -49,6 +51,7 @@ import type {
   MasterDataActionResult,
   MasterDataArtifact,
   MasterDataBatch,
+  MasterDataOtmImportReadiness,
   MasterDataRelationshipValidation,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
@@ -416,6 +419,7 @@ export function MasterDataView({ token }: { token: string }) {
   const [outputResult, setOutputResult] = useState<MasterDataActionResult | null>(null);
   const [csvResult, setCsvResult] = useState<MasterDataActionResult | null>(null);
   const [exportResult, setExportResult] = useState<MasterDataActionResult | null>(null);
+  const [otmImportReadiness, setOtmImportReadiness] = useState<MasterDataOtmImportReadiness | null>(null);
   const [loadPlanPackage, setLoadPlanPackage] = useState<LoadPlanPackage | null>(null);
   const [cutoverChecklist, setCutoverChecklist] = useState<CutoverChecklist | null>(null);
   const [cutoverChecklistReadiness, setCutoverChecklistReadiness] = useState<CutoverChecklistReadiness | null>(null);
@@ -507,6 +511,7 @@ export function MasterDataView({ token }: { token: string }) {
     setOutputResult(null);
     setCsvResult(null);
     setExportResult(null);
+    setOtmImportReadiness(null);
     setLoadPlanPackage(null);
     setCutoverChecklist(null);
     setCutoverChecklistReadiness(null);
@@ -994,6 +999,7 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await exportMasterDataCsvPackage(token, activeBatch.batch_id);
         setExportResult(result);
+        setOtmImportReadiness(null);
         setUploadedBatch(await getMasterDataBatch(token, activeBatch.batch_id));
         setLoadPlanPackage(null);
         setCutoverChecklist(null);
@@ -1004,6 +1010,30 @@ export function MasterDataView({ token }: { token: string }) {
         return result;
       },
       (result) => `CSV package export is ${result.status}.`
+    );
+  };
+
+  const handleVerifyOtmImportGuard = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => {
+        const result = await getMasterDataOtmImportReadiness(token, activeBatch.batch_id);
+        setOtmImportReadiness(result);
+        return result;
+      },
+      (result) => `OTM import readiness is ${result.status}.`
+    );
+  };
+
+  const handleAttemptGuardedOtmImport = () => {
+    if (!activeBatch) return;
+    void runAction(
+      async () => {
+        const result = await submitMasterDataBatchToOtm(token, activeBatch.batch_id);
+        setOtmImportReadiness(null);
+        return result;
+      },
+      () => "Master Data OTM import submitted."
     );
   };
 
@@ -1863,6 +1893,43 @@ export function MasterDataView({ token }: { token: string }) {
                   }
                 ]}
               />
+            ) : null}
+            <div className="master-data-action-bar">
+              <Button disabled={!activeBatch || isMutating} onClick={handleVerifyOtmImportGuard} variant="secondary">
+                Verify OTM import guard
+              </Button>
+              <Button disabled={!activeBatch || isMutating} onClick={handleAttemptGuardedOtmImport} variant="secondary">
+                Attempt guarded OTM import
+              </Button>
+            </div>
+            {otmImportReadiness ? (
+              <>
+                <DetailList
+                  ariaLabel="Master Data OTM import guard"
+                  items={[
+                    {
+                      id: otmImportReadiness.batch_id,
+                      meta: [
+                        otmImportReadiness.required_capability,
+                        otmImportReadiness.recommended_transport,
+                        otmImportReadiness.artifact?.file_name ?? "No exported artifact",
+                        `${otmImportReadiness.blockers.length} blocker(s)`
+                      ],
+                      status: otmImportReadiness.status,
+                      title: "Direct OTM import guard"
+                    }
+                  ]}
+                />
+                <BlockerPanel
+                  emptyText="No direct OTM import blockers returned by the backend."
+                  items={otmImportReadiness.blockers.map((blocker) => ({
+                    codes: [blocker.code],
+                    id: blocker.code,
+                    message: blocker.message
+                  }))}
+                  title="Master Data OTM import blockers"
+                />
+              </>
             ) : null}
             {loadPlanPackage ? (
               <DetailList

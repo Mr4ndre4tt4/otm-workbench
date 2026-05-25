@@ -20,6 +20,7 @@ from otm_workbench.models import (
     User,
 )
 from otm_workbench.modules.master_data.coordinate_quality.routes import router as coordinate_quality_router
+from otm_workbench.modules.master_data.otm_import_guard import build_master_data_otm_import_readiness
 from otm_workbench.modules.master_data.scenario_packs import list_master_data_scenario_packs
 from otm_workbench.modules.master_data.templates import (
     build_master_data_csv_files,
@@ -343,6 +344,20 @@ def get_batch_artifact_or_404(db: Session, batch_id: str, artifact_id: str) -> t
         if artifact.id == artifact_id:
             return artifact, evidence
     raise api_error(404, "MASTER_DATA_ARTIFACT_NOT_FOUND", "Master Data artifact not found for this batch.")
+
+
+def master_data_submit_guard_error(batch_id: str, readiness: dict[str, object]):
+    return api_error(
+        409,
+        "MASTER_DATA_OTM_IMPORT_DISABLED",
+        "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured.",
+        {
+            "batch_id": batch_id,
+            "required_capability": readiness["required_capability"],
+            "reason": "No governed OTM connection/capability exists for direct Master Data import.",
+            "readiness_status": readiness["status"],
+        },
+    )
 
 
 @router.get("/health")
@@ -686,6 +701,45 @@ def list_master_data_batch_csv_files(
     )
     items = [serialize_master_data_csv_file(csv_file) for csv_file in csv_files]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/batches/{batch_id}/otm-import-readiness")
+def get_master_data_otm_import_readiness(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = get_master_data_batch_or_404(db, batch_id)
+    return build_master_data_otm_import_readiness(db, batch)
+
+
+@router.post("/batches/{batch_id}/submit-otm")
+def submit_master_data_batch_to_otm(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = get_master_data_batch_or_404(db, batch_id)
+    readiness = build_master_data_otm_import_readiness(db, batch)
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="master_data.batch.submit_otm.guard",
+            target_type="master_data_batch",
+            target_id=batch.id,
+            metadata_json=json.dumps(
+                {
+                    "batch_id": batch.id,
+                    "readiness_status": readiness["status"],
+                    "required_capability": readiness["required_capability"],
+                    "blocker_codes": [blocker["code"] for blocker in readiness["blockers"]],
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+    raise master_data_submit_guard_error(batch.id, readiness)
 
 
 @router.get("/batches/{batch_id}/artifacts/{artifact_id}/download")

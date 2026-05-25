@@ -175,6 +175,25 @@ export type MasterDataArtifact = {
 
 export type MasterDataArtifactsResponse = PageResponse<MasterDataArtifact>;
 
+export type MasterDataOtmImportReadiness = {
+  batch_id: string;
+  status: "BLOCKED" | "GUARDED" | "READY";
+  ready: boolean;
+  required_capability: string;
+  recommended_transport: string;
+  official_source_basis: string[];
+  blockers: Array<{
+    code: string;
+    message: string;
+  }>;
+  artifact: null | {
+    artifact_id: string;
+    file_name: string;
+    sha256: string;
+    content_type: string;
+  };
+};
+
 export type MasterDataOutputRecord = {
   id: string;
   batch_id: string;

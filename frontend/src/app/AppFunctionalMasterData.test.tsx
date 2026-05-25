@@ -317,6 +317,8 @@ describe("Functional Master Data journey", () => {
     const workbookEditorRequests: string[] = [];
     const workbookEditorValidationRequests: unknown[] = [];
     const workbookEditorBatchRequests: unknown[] = [];
+    const otmImportReadinessRequests: unknown[] = [];
+    const otmImportSubmitRequests: unknown[] = [];
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -616,6 +618,64 @@ describe("Functional Master Data journey", () => {
             status: "EXPORTED",
             summary: { file_count: 2 }
           })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/otm-import-readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        otmImportReadinessRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          jsonResponse({
+            artifact: {
+              artifact_id: "artifact_csv_package",
+              content_type: "application/zip",
+              file_name: "master_data_regions_basic.zip",
+              sha256: "abc123"
+            },
+            batch_id: "batch_1",
+            blockers: [
+              {
+                code: "OTM_CONNECTION_NOT_CONFIGURED",
+                message: "No governed OTM connection profile is configured for this environment."
+              },
+              {
+                code: "OTM_CREDENTIALS_NOT_CONFIGURED",
+                message: "No governed OTM credential reference is configured for this environment."
+              },
+              {
+                code: "OTM_SUBMIT_CAPABILITY_DISABLED",
+                message: "Direct Master Data OTM submit capability is not enabled."
+              }
+            ],
+            official_source_basis: [
+              "Oracle inbound integration supports HTTP POST, REST JSON, and SOAP.",
+              "REST should be preferred where possible; Transmission XML remains for gaps.",
+              "DB.XML is privileged and bypasses full business-context validation."
+            ],
+            ready: false,
+            recommended_transport: "CSVUTIL_UPLOAD_OR_INTEGRATION",
+            required_capability: "master_data.submit_otm",
+            status: "GUARDED"
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_1/submit-otm")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        otmImportSubmitRequests.push({ method: init?.method });
+        return Promise.resolve(
+          jsonResponse(
+            {
+              code: "MASTER_DATA_OTM_IMPORT_DISABLED",
+              details: {
+                batch_id: "batch_1",
+                readiness_status: "GUARDED",
+                reason: "No governed OTM connection/capability exists for direct Master Data import.",
+                required_capability: "master_data.submit_otm"
+              },
+              message:
+                "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured."
+            },
+            409
+          )
         );
       }
       if (parsedUrl.pathname === "/api/v1/modules/master-data/batches/batch_1") {
@@ -950,6 +1010,19 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Export package" }));
     await screen.findByText("CSV package export is EXPORTED.");
     expect(screen.getByLabelText("Export package summary")).toHaveTextContent("artifact_csv_package");
+    await userEvent.click(within(outputPanel).getByRole("button", { name: "Verify OTM import guard" }));
+    await screen.findByText("OTM import readiness is GUARDED.");
+    expect(screen.getByLabelText("Master Data OTM import guard")).toHaveTextContent("master_data.submit_otm");
+    expect(screen.getByLabelText("Master Data OTM import guard")).toHaveTextContent("CSVUTIL_UPLOAD_OR_INTEGRATION");
+    expect(screen.getByText("Master Data OTM import blockers")).toBeInTheDocument();
+    expect(screen.getByText("OTM_CONNECTION_NOT_CONFIGURED")).toBeInTheDocument();
+    expect(screen.getByText("OTM_CREDENTIALS_NOT_CONFIGURED")).toBeInTheDocument();
+    expect(screen.getByText("OTM_SUBMIT_CAPABILITY_DISABLED")).toBeInTheDocument();
+    expect(screen.getByLabelText("Master Data OTM import guard")).not.toHaveTextContent("password");
+    await userEvent.click(within(outputPanel).getByRole("button", { name: "Attempt guarded OTM import" }));
+    await screen.findByText(
+      "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured."
+    );
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Register for Load Plan" }));
     await screen.findByText("Load Plan package load_plan_master_data_package_1 registered.");
     expect(screen.getByLabelText("Load Plan package registration")).toHaveTextContent("master_data_csv_zip");
@@ -978,6 +1051,7 @@ describe("Functional Master Data journey", () => {
     await screen.findByText("Download started: master_data_regions_basic.zip.");
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
     expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_history");
+    expect(screen.queryByLabelText("Master Data OTM import guard")).not.toBeInTheDocument();
     const activeHistoryButton = screen.getByRole("button", { name: "Active batch batch_history" });
     expect(activeHistoryButton).toBeDisabled();
     expect(activeHistoryButton.closest(".table-list-item")).toHaveAttribute("aria-current", "true");
@@ -999,6 +1073,8 @@ describe("Functional Master Data journey", () => {
     expect(outputRequests).toEqual([{ method: "POST" }]);
     expect(csvRequests).toEqual([{ method: "POST" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
+    expect(otmImportReadinessRequests).toEqual([{ method: "GET" }]);
+    expect(otmImportSubmitRequests).toEqual([{ method: "POST" }]);
     expect(batchDetailRequests.length).toBeGreaterThanOrEqual(5);
     expect(loadPlanRegistrationRequests).toEqual([{ method: "POST" }]);
     expect(cutoverChecklistRequests).toEqual([{ method: "POST" }]);

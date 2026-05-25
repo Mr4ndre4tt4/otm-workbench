@@ -152,10 +152,16 @@ async function run() {
   const failedResponses = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
+      if (message.text() === "Failed to load resource: the server responded with a status of 409 (Conflict)") {
+        return;
+      }
       consoleErrors.push(message.text());
     }
   });
   page.on("response", (response) => {
+    if (response.status() === 409 && response.url().includes("/api/v1/modules/master-data/batches/") && response.url().endsWith("/submit-otm")) {
+      return;
+    }
     if (response.status() >= 400) {
       failedResponses.push(`${response.status()} ${response.url()}`);
     }
@@ -350,6 +356,19 @@ async function run() {
     await outputPanel.getByRole("button", { name: "Export package" }).click();
     await page.getByText("CSV package export is EXPORTED.").waitFor();
     await page.getByLabel("Export package summary").waitFor();
+    await outputPanel.getByRole("button", { name: "Verify OTM import guard" }).click();
+    await page.getByText("OTM import readiness is GUARDED.").waitFor();
+    await page.getByLabel("Master Data OTM import guard").getByText("master_data.submit_otm").waitFor();
+    await page.getByLabel("Master Data OTM import guard").getByText("CSVUTIL_UPLOAD_OR_INTEGRATION").waitFor();
+    await page.getByText("OTM_CONNECTION_NOT_CONFIGURED").waitFor();
+    await page.getByText("OTM_CREDENTIALS_NOT_CONFIGURED").waitFor();
+    await page.getByText("OTM_SUBMIT_CAPABILITY_DISABLED").waitFor();
+    await outputPanel.getByRole("button", { name: "Attempt guarded OTM import" }).click();
+    await page
+      .getByText(
+        "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured."
+      )
+      .waitFor();
     await outputPanel.getByRole("button", { name: "Register for Load Plan" }).click();
     await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
     await page.getByLabel("Load Plan package registration").getByText("master_data_csv_zip").waitFor();
@@ -374,6 +393,7 @@ async function run() {
     await assertControlValue(page.getByLabel("Batch minimum row count"), "", "Batch minimum row count after reset");
     await assertControlValue(page.getByLabel("Batch page size"), "50", "Batch page size after reset");
     await assertActiveBatchRowMarked(page);
+    await assertHidden(page.getByLabel("Master Data OTM import guard"), "OTM import guard should clear after batch reset.");
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -406,7 +426,7 @@ async function run() {
         {
           status: "passed",
           journey:
-            "master-data-scenario-packs-author-manual-template-workbook-editor-output-export-load-plan-registration-route-recovery",
+            "master-data-scenario-packs-author-manual-template-workbook-editor-output-export-otm-import-guard-load-plan-registration-route-recovery",
           scenarioTemplateCode,
           itemScenarioTemplateCode,
           authorTemplateCode,

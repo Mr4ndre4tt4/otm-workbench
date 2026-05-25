@@ -345,10 +345,30 @@ be reselected from the Output stage.
 OTM-119 closes the current Master Data MVP workflow hardening pass, OTM-91 now
 has its first GUI workflow slice, and OTM-127 adds the first backend-owned
 workbook editor path before upload. The module is not marked `Module complete`
-because direct OTM import, richer audited workbook/spreadsheet editing, advanced
-Coordinate Quality map diagnostics, deeper Load Plan export/handoff flows,
-deeper batch-history analytics beyond current-filter metrics, and broader
-negative/out-of-order QA are tracked as follow-up scope.
+because real direct OTM import, richer audited workbook/spreadsheet editing,
+advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
+flows, deeper batch-history analytics beyond current-filter metrics, and
+broader negative/out-of-order QA are tracked as follow-up scope.
+
+OTM-128 adds the first direct OTM import guardrail contract without performing
+any external submission. After a Master Data CSV package is exported, the Output
+stage can call `GET
+/api/v1/modules/master-data/batches/{batch_id}/otm-import-readiness` and render
+backend-owned blockers for missing governed OTM connection, credential
+reference, and submit capability. The guarded `POST
+/api/v1/modules/master-data/batches/{batch_id}/submit-otm` endpoint always
+returns `MASTER_DATA_OTM_IMPORT_DISABLED` in this slice and writes a client-safe
+audit row with blocker codes only. No OTM endpoint, credential, token, local
+path, or real client data is displayed.
+
+The guardrail is based on Oracle official documentation: inbound integration can
+use HTTP POST, REST JSON, or SOAP; REST should be preferred where possible but
+Transmission XML remains necessary for gaps; and DB.XML is privileged because it
+can write directly to OTM/GTM database tables and does not run full
+business-context validation. Real submission remains future scope until
+connection profiles, credential vault references, environment allow-lists,
+capability governance, audit, retry/job behavior, and the exact Oracle transport
+decision are designed.
 
 ## Validation
 
@@ -381,6 +401,15 @@ Focused OTM-127 workbook editor QA:
 
 ```text
 python -m pytest tests/test_master_data_templates.py -q
+cd frontend
+npm run test -- AppFunctionalMasterData.test.tsx
+npm run qa:functional:master-data:browser
+```
+
+Focused OTM-128 direct import guard QA:
+
+```text
+python -m pytest tests/test_master_data_direct_otm_import_guard.py -q
 cd frontend
 npm run test -- AppFunctionalMasterData.test.tsx
 npm run qa:functional:master-data:browser
