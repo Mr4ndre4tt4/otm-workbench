@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../platform/api";
 import { updateUserPreferences } from "../../platform/hooks";
 import type { UserPreferences } from "../../platform/types";
 import { PreferenceControls } from "./PreferenceControls";
@@ -84,5 +85,23 @@ describe("PreferenceControls", () => {
     });
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Use dark mode" })).toBeEnabled());
+  });
+
+  it("renders backend preference errors through the shared feedback pattern", async () => {
+    vi.mocked(updateUserPreferences).mockRejectedValue(
+      new ApiError("Theme preference could not be saved.", "PREFERENCE_SAVE_FAILED", 503)
+    );
+
+    renderWithQueryClient({
+      density: "comfortable",
+      follow_system_theme: false,
+      sidebar_mode: "expanded",
+      theme_mode: "light"
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Use dark mode" }));
+
+    const feedback = await screen.findByText("Theme preference could not be saved.");
+    expect(feedback).toHaveClass("form-error");
   });
 });

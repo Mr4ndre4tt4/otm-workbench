@@ -52,6 +52,8 @@ The topbar preference controls now call the backend preference contract:
 - Rows icon toggles `density` between `comfortable` and `compact`
 - Sidebar icon inside the sidebar toggles `sidebar_mode` between `expanded`
   and `collapsed`
+- Topbar preference failures are rendered through the shared inline error
+  feedback pattern.
 - Sidebar persistence failures are caught in the shell and rendered as inline
   backend error feedback instead of failing silently.
 
@@ -76,7 +78,8 @@ client can map the same value to the OS theme source without changing the API.
   `tests/test_operational_context.py`.
 - Invalid preference enum/system-theme combinations covered by
   `tests/test_operational_context.py`.
-- GUI preference writes and active shell state covered by
-  `frontend/src/app/App.test.tsx`.
+- GUI preference writes, active shell state, overlap guards, and shared error
+  feedback covered by `frontend/src/app/App.test.tsx` and
+  `frontend/src/app/shell/PreferenceControls.test.tsx`.
 - Sidebar preference persistence, disabled unauthenticated state, and backend
   error feedback covered by `frontend/src/app/shell/WorkbenchShell.test.tsx`.

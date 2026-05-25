@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../platform/api";
 import { updateUserPreferences } from "../../platform/hooks";
 import type { UserPreferences } from "../../platform/types";
-import { IconButton } from "../../ui/components";
+import { FeedbackMessage, IconButton } from "../../ui/components";
 
 export function PreferenceControls({
   preferences,
@@ -94,7 +94,7 @@ export function PreferenceControls({
       >
         <Rows3 aria-hidden="true" />
       </IconButton>
-      {error ? <span className="preference-error">{error}</span> : null}
+      {error ? <FeedbackMessage tone="error">{error}</FeedbackMessage> : null}
     </div>
   );
 }
