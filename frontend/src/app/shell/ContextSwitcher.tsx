@@ -18,6 +18,11 @@ export function ContextSwitcher({ token }: { token: string }) {
   const profiles = useProfiles(token, projectId || null);
   const environments = useEnvironments(token, projectId || null);
 
+  function clearDraftFeedback() {
+    setMessage(null);
+    setError(null);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
@@ -54,7 +59,7 @@ export function ContextSwitcher({ token }: { token: string }) {
             setProjectId(event.target.value);
             setProfileId("");
             setEnvironmentId("");
-            setMessage(null);
+            clearDraftFeedback();
           }}
           value={projectId}
         >
@@ -68,7 +73,14 @@ export function ContextSwitcher({ token }: { token: string }) {
       </label>
       <label>
         <span>Profile</span>
-        <select disabled={!projectId || profiles.isLoading} onChange={(event) => setProfileId(event.target.value)} value={profileId}>
+        <select
+          disabled={!projectId || profiles.isLoading}
+          onChange={(event) => {
+            setProfileId(event.target.value);
+            clearDraftFeedback();
+          }}
+          value={profileId}
+        >
           <option value="">Select profile</option>
           {(profiles.data?.items ?? []).map((profile) => (
             <option key={profile.id} value={profile.id}>
@@ -81,7 +93,10 @@ export function ContextSwitcher({ token }: { token: string }) {
         <span>Environment</span>
         <select
           disabled={!projectId || environments.isLoading}
-          onChange={(event) => setEnvironmentId(event.target.value)}
+          onChange={(event) => {
+            setEnvironmentId(event.target.value);
+            clearDraftFeedback();
+          }}
           value={environmentId}
         >
           <option value="">Select environment</option>
@@ -94,7 +109,14 @@ export function ContextSwitcher({ token }: { token: string }) {
       </label>
       <label>
         <span>Domain</span>
-        <input onChange={(event) => setDomainName(event.target.value)} placeholder="PUBLIC" value={domainName} />
+        <input
+          onChange={(event) => {
+            setDomainName(event.target.value);
+            clearDraftFeedback();
+          }}
+          placeholder="PUBLIC"
+          value={domainName}
+        />
       </label>
       <Button disabled={isSubmitting || !projectId} type="submit" variant="primary">
         {isSubmitting ? "Applying..." : "Apply context"}

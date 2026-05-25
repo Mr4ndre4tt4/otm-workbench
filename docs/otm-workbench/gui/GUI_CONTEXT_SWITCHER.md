@@ -30,6 +30,9 @@ authentication.
 - The shell invalidates platform queries after context update so navigation,
   cockpit summary, and related platform contracts can refresh from backend
   truth.
+- Local submit feedback is scoped to the current draft. Changing project,
+  profile, environment, or domain clears stale success/error messages before a
+  new apply action.
 
 ## Boundary
 
@@ -40,8 +43,11 @@ selected context and renders backend responses.
 
 ```text
 python -m pytest tests\test_operational_context.py::test_active_context_selector_lists_projects_profiles_and_environments -q
-npm run test
+npm run test -- ContextSwitcher.test.tsx
+npm run qa:functional:shell:browser
 ```
 
 The frontend test verifies that selector GETs and the active-context POST carry
-the bearer token.
+the bearer token. The browser journey also verifies context draft recovery:
+after a successful apply, editing the draft clears the previous submit feedback
+before the next apply.

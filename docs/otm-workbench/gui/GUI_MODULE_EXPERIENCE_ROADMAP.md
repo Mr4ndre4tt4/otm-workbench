@@ -41,7 +41,7 @@ For each module:
 
 | Module | GUI status | Backend status for first GUI story | Primary pattern | Current decision |
 |---|---|---|---|---|
-| Shell / Project Cockpit | Functional journey done | Platform context/preferences/navigation ready | Module overview | Keep hardening preferences/context. |
+| Shell / Project Cockpit | Functional journey done | Platform context/preferences/navigation ready | Module overview | Context draft feedback recovery is delivered; keep future shell work explicit and backend-owned. |
 | Rates Studio | Functional journey done | Batch, validation, artifacts, approval ready | Object list/detail + operational surfaces | Treat as reference implementation. |
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice; macro-object validation-result switch recovery is delivered. |
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later; selected-job feedback recovery is delivered. |

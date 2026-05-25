@@ -125,6 +125,13 @@ async function run() {
     await page.getByRole("button", { name: "Apply context" }).click();
 
     await page.getByText("Project context ready").waitFor();
+    await page.getByText("Context updated.").waitFor();
+    await page.getByText("OTM1").waitFor();
+    await contextControls.locator("input").fill("otm2");
+    await page.getByText("Context updated.").waitFor({ state: "hidden" });
+    await contextControls.locator("input").fill("otm1");
+    await page.getByRole("button", { name: "Apply context" }).click();
+    await page.getByText("Context updated.").waitFor();
     await page.getByText("OTM1").waitFor();
 
     await page.locator('a[href="/rates"]').click();
