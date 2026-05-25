@@ -380,6 +380,16 @@ batch while preserving external reference policy checks such as invalid
 currency/domain references.
 ```
 
+Implementation note, 2026-05-25, Rates LTL/TL chain slice:
+
+```text
+The synthetic LTL/TL stack now crosses the backend chain from Rates CSV export
+to Load Plan package intake, ZIP analysis, Cutover Checklist creation, and
+Cutover readiness. The ZIP analyzer reads 13 generated CSV tables with zero
+analysis errors, and the cutover family summary classifies the full stack under
+RATES.
+```
+
 ## Follow-Up Issues
 
 Recommended Linear/backlog follow-ups:
@@ -396,6 +406,8 @@ Recommended Linear/backlog follow-ups:
 3. Rates QA: synthetic LTL/TL rate stack based on the observed table sequence.
    [FIRST SLICE DELIVERED: backend scenario, Data Dictionary sequence check,
    validation flow with same-batch GID references]
+   [SECOND SLICE DELIVERED: Rates export -> Load Plan package -> ZIP analysis
+   -> Cutover readiness chain]
 4. Master Data QA: synthetic location/equipment/geography package family.
 5. Security: ensure reference archives and generated QA artifacts never leak
    real domains, emails, GIDs, local paths, or row values.

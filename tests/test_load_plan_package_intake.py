@@ -6,6 +6,7 @@ from sqlalchemy import inspect
 
 from otm_workbench.database import engine
 from otm_workbench.models import AuditLog, DomainEvent, Evidence, LoadPlanPackage
+from tests.fixtures_rates import ltl_tl_rate_stack_tables
 
 
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
@@ -50,6 +51,30 @@ def prepare_approved_exported_rate_batch(client, admin_header):
     approval = client.post(
         f"/api/v1/modules/rates/batches/{batch['id']}/approve",
         json={"approval_note": "Reviewed for synthetic load package"},
+        headers=admin_header,
+    )
+    assert approval.status_code == 200
+    return batch, export.json(), approval.json()
+
+
+def prepare_approved_exported_ltl_tl_rate_batch(client, admin_header):
+    batch = create_rate_batch(client, admin_header, scenario_code="LTL_TL_RATE_STACK")
+    table_response = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/tables",
+        json={"tables": ltl_tl_rate_stack_tables()},
+        headers=admin_header,
+    )
+    assert table_response.status_code == 200
+    validation = client.post(f"/api/v1/modules/rates/batches/{batch['id']}/validate", headers=admin_header)
+    assert validation.status_code == 200
+    assert validation.json()["valid"] is True
+    preview = client.post(f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview", headers=admin_header)
+    assert preview.status_code == 200
+    export = client.post(f"/api/v1/modules/rates/batches/{batch['id']}/export-csv", headers=admin_header)
+    assert export.status_code == 200
+    approval = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/approve",
+        json={"approval_note": "Reviewed for synthetic LTL/TL load package"},
         headers=admin_header,
     )
     assert approval.status_code == 200
@@ -207,6 +232,50 @@ def test_register_rates_package_creates_load_plan_package(client, admin_header, 
     ]
     assert package.created_by == "admin@example.com"
     assert package.registered_at is not None
+
+
+def test_ltl_tl_rates_package_reaches_zip_analysis_and_cutover_readiness(client, admin_header):
+    batch, export, approval = prepare_approved_exported_ltl_tl_rate_batch(client, admin_header)
+    package_response = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    )
+    assert package_response.status_code == 200
+    package = package_response.json()
+
+    zip_analysis = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    assert zip_analysis.status_code == 200
+    analysis_payload = zip_analysis.json()
+    assert analysis_payload["summary"]["csv_file_count"] == 13
+    assert analysis_payload["summary"]["table_count"] == 13
+    assert analysis_payload["summary"]["error_count"] == 0
+    assert analysis_payload["summary"]["catalog_macro_object_code"] == "RATE_RECORD"
+
+    checklist_response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    )
+    assert checklist_response.status_code == 200
+    checklist = checklist_response.json()
+    readiness = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+    assert readiness.status_code == 200
+    readiness_payload = readiness.json()
+    assert readiness_payload["status"] == "BLOCKED"
+    assert readiness_payload["summary"]["latest_zip_analysis_id"] == analysis_payload["id"]
+    assert readiness_payload["summary"]["zip_analysis_error_count"] == 0
+    rates_family = next(
+        item for item in readiness_payload["summary"]["package_families"] if item["family_code"] == "RATES"
+    )
+    assert rates_family["table_count"] == 13
+    assert rates_family["status"] == "BLOCKED"
+    assert "OTM1.RO_LTL_TL_001" not in json.dumps(readiness_payload)
 
 
 def test_load_plan_package_list_and_detail(client, admin_header):

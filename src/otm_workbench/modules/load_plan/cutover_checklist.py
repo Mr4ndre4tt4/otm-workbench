@@ -384,7 +384,12 @@ def package_family_for_table(table_name: str | None) -> str:
         return "AGENTS_REFNUMS"
     if normalized in PARAMETER_SET_TABLES or normalized.startswith("PARAMETER_"):
         return "PARAMETER_SET"
-    if normalized.startswith("RATE_") or normalized in {"ACCESSORIAL_CODE", "ACCESSORIAL_COST", "X_LANE"}:
+    if normalized.startswith("RATE_") or normalized in {
+        "ACCESSORIAL_CODE",
+        "ACCESSORIAL_COST",
+        "ACCESSORIAL_COST_UNIT_BREAK",
+        "X_LANE",
+    }:
         return "RATES"
     if normalized in MASTER_DATA_TABLES or normalized.startswith("GEO_"):
         return "MASTER_DATA"
