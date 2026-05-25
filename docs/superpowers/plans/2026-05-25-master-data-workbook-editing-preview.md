@@ -310,7 +310,7 @@ Expected: `2 passed`.
 - Modify: `src/otm_workbench/modules/master_data/routes.py`
 - Test: `tests/test_master_data_templates.py`
 
-- [ ] **Step 1: Write failing test for JSON-row batch creation**
+- [x] **Step 1: Write failing test for JSON-row batch creation**
 
 Add:
 
@@ -336,7 +336,7 @@ def test_master_data_workbook_editor_creates_batch_from_valid_rows(client, admin
     assert payload["row_count"] == 2
 ```
 
-- [ ] **Step 2: Run test and verify it fails**
+- [x] **Step 2: Run test and verify it fails**
 
 Run:
 
@@ -346,7 +346,7 @@ python -m pytest tests/test_master_data_templates.py::test_master_data_workbook_
 
 Expected: route missing.
 
-- [ ] **Step 3: Implement batch creation**
+- [x] **Step 3: Implement batch creation**
 
 Implementation should:
 - call `validate_master_data_workbook_rows`
@@ -355,7 +355,7 @@ Implementation should:
 - call existing `parse_master_data_template_workbook`
 - return `serialize_master_data_batch`
 
-- [ ] **Step 4: Run backend suite subset**
+- [x] **Step 4: Run backend suite subset**
 
 Run:
 

@@ -41,6 +41,7 @@ from otm_workbench.modules.master_data.templates import (
 )
 from otm_workbench.modules.master_data.workbook_editor import (
     build_master_data_workbook_editor_contract,
+    create_master_data_batch_from_editor_rows,
     validate_master_data_workbook_rows,
 )
 from otm_workbench.platform.services import file_sha256
@@ -434,6 +435,35 @@ def validate_master_data_workbook_editor_rows(
             "Master Data template must be published before workbook editing.",
         )
     return validate_master_data_workbook_rows(template, payload)
+
+
+@router.post("/templates/{template_code}/workbook-editor/batches")
+def create_master_data_batch_from_workbook_editor_rows(
+    template_code: str,
+    payload: dict[str, object],
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_master_data_templates(db)
+    template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == template_code.upper()).first()
+    if template is None:
+        raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
+    if template.status != "PUBLISHED":
+        raise api_error(
+            409,
+            "MASTER_DATA_TEMPLATE_NOT_PUBLISHED",
+            "Master Data template must be published before workbook editing.",
+        )
+    try:
+        result = create_master_data_batch_from_editor_rows(db, template, payload)
+        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, str(result["batch_id"])))
+    except ValueError as exc:
+        raise api_error(
+            422,
+            "MASTER_DATA_WORKBOOK_EDITOR_INVALID",
+            "Workbook editor rows are not valid for batch creation.",
+            details={"error": str(exc)},
+        ) from exc
 
 
 @router.patch("/templates/{template_code}/draft")

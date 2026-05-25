@@ -1,5 +1,13 @@
+from io import BytesIO
+
+from openpyxl import Workbook
+from sqlalchemy.orm import Session
+
 from otm_workbench.models import MasterDataTemplate
-from otm_workbench.modules.master_data.templates import master_data_template_definition
+from otm_workbench.modules.master_data.templates import (
+    master_data_template_definition,
+    parse_master_data_template_workbook,
+)
 
 
 def _string_value(value: object) -> str:
@@ -151,3 +159,60 @@ def validate_master_data_workbook_rows(template: MasterDataTemplate, payload: di
             "issue_count": len(issues),
         },
     }
+
+
+def create_master_data_batch_from_editor_rows(
+    db: Session,
+    template: MasterDataTemplate,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    validation = validate_master_data_workbook_rows(template, payload)
+    if not validation["valid"]:
+        raise ValueError("Workbook editor rows are invalid.")
+
+    definition = master_data_template_definition(template)
+    field_keys_by_sheet = {
+        str(sheet["code"]): [str(field_key) for field_key in sheet.get("field_keys", [])]
+        for sheet in definition.get("sheets", [])
+    }
+    fields_by_key = {str(field["field_key"]): field for field in definition.get("fields", [])}
+    rows_by_sheet = {
+        str(sheet_payload.get("sheet_code", "")).strip().upper(): sheet_payload.get("rows", [])
+        for sheet_payload in payload.get("sheets", [])
+    }
+
+    workbook = Workbook()
+    default_sheet = workbook.active
+    for index, sheet in enumerate(definition.get("sheets", [])):
+        sheet_code = str(sheet["code"])
+        worksheet = default_sheet if index == 0 else workbook.create_sheet()
+        worksheet.title = sheet_code[:31]
+        field_keys = field_keys_by_sheet[sheet_code]
+        fields = [fields_by_key[field_key] for field_key in field_keys]
+        worksheet.append([field["label"] for field in fields])
+        worksheet.append(field_keys)
+        worksheet.append([_target_column_for_field(definition, sheet_code, field_key) for field_key in field_keys])
+        for row_payload in rows_by_sheet.get(sheet_code, []):
+            values = dict(row_payload.get("values", {}))
+            if not values:
+                continue
+            worksheet.append([values.get(field_key) for field_key in field_keys])
+
+    workbook_bytes = BytesIO()
+    workbook.save(workbook_bytes)
+    workbook_bytes.seek(0)
+    return parse_master_data_template_workbook(
+        db,
+        template,
+        workbook_bytes,
+        str(payload.get("file_name") or f"{template.code.lower()}_editor.xlsx"),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+def _target_column_for_field(definition: dict[str, object], sheet_code: str, field_key: str) -> str:
+    for mapping in definition.get("mappings", []):
+        mapping_sheet_code = str(mapping.get("sheet_code") or "")
+        if mapping_sheet_code == sheet_code and mapping.get("source_field_key") == field_key:
+            return str(mapping["target_column"])
+    return ""

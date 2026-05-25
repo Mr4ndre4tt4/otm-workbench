@@ -1497,6 +1497,56 @@ def test_master_data_workbook_editor_validation_reports_relationship_orphans(cli
     )
 
 
+def test_master_data_workbook_editor_creates_batch_from_valid_rows(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json={
+            "file_name": "items_editor.xlsx",
+            "sheets": [
+                {
+                    "sheet_code": "ITEMS",
+                    "rows": [
+                        {
+                            "row_id": "ITEMS-1",
+                            "values": {
+                                "item_gid": "SYN.ITEM_1",
+                                "item_xid": "ITEM_1",
+                                "description": "Synthetic Item",
+                            },
+                        }
+                    ],
+                },
+                {
+                    "sheet_code": "PACKAGING",
+                    "rows": [
+                        {
+                            "row_id": "PACKAGING-1",
+                            "values": {
+                                "packaged_item_gid": "SYN.PKG_1",
+                                "packaged_item_xid": "PKG_1",
+                                "item_gid": "SYN.ITEM_1",
+                            },
+                        }
+                    ],
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "ITEMS_PACKAGING_STANDARD"
+    assert payload["status"] == "PARSED"
+    assert payload["file_name"] == "items_editor.xlsx"
+    assert payload["row_count"] == 2
+    assert payload["sheet_summaries"] == [
+        {"sheet_code": "ITEMS", "target_table": "ITEM", "row_count": 1},
+        {"sheet_code": "PACKAGING", "target_table": "PACKAGED_ITEM", "row_count": 1},
+        {"sheet_code": "TI_HI", "target_table": "TI_HI", "row_count": 0},
+    ]
+
+
 def test_master_data_locations_template_detail_and_validation(client, admin_header):
     detail = client.get(
         "/api/v1/modules/master-data/templates/LOCATIONS_BASIC",
