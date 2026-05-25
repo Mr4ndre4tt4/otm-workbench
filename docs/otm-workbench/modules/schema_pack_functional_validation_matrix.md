@@ -93,6 +93,8 @@ Backend status:
 - `GET /api/v1/catalog/macro-objects/{code}/data-dictionary-cross-check`
   returns target table validation plus linked schema roots and source-reference
   readiness without exposing schema pack source paths.
+- Cross-check summaries expose `guidance_ready` and `readiness_status`; a macro
+  object with zero schema links is `BLOCKED_SCHEMA_LINKS`.
 ```
 
 ## Next Hardening Slices

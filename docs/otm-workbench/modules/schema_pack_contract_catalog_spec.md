@@ -577,6 +577,8 @@ Remaining hardening before user-facing path guidance:
    desktop, jobs, and evidence.
 7. Use the macro-object Data Dictionary cross-check endpoint before declaring a
    SchemaRoot recommendation ready for user-facing guidance.
+8. Treat a macro object with validated tables but zero schema links as
+   `BLOCKED_SCHEMA_LINKS`, not as guidance-ready.
 ```
 
 Functional validation tracking:

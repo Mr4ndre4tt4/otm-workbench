@@ -319,6 +319,8 @@ def test_catalog_macro_object_data_dictionary_cross_check_includes_schema_links(
         "schema_link_count": 1,
         "all_target_tables_validated": True,
         "all_schema_links_have_source_reference": True,
+        "guidance_ready": True,
+        "readiness_status": "READY",
     }
     assert [item["table_name"] for item in payload["table_checks"]] == [
         "RATE_GEO",
@@ -333,3 +335,18 @@ def test_catalog_macro_object_data_dictionary_cross_check_includes_schema_links(
     assert payload["schema_links"][0]["functional_confidence"] == "DATA_DICTIONARY_CROSSED"
     assert "source_path" not in str(payload)
     assert "C:/otm/contracts/26A" not in str(payload)
+
+
+def test_catalog_macro_object_cross_check_blocks_guidance_without_schema_links(client, admin_header):
+    response = client.get("/api/v1/catalog/macro-objects/ITEM/data-dictionary-cross-check", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["macro_object_code"] == "ITEM"
+    assert payload["summary"]["target_table_count"] == 4
+    assert payload["summary"]["validated_table_count"] == 4
+    assert payload["summary"]["schema_link_count"] == 0
+    assert payload["summary"]["all_target_tables_validated"] is True
+    assert payload["summary"]["all_schema_links_have_source_reference"] is False
+    assert payload["summary"]["guidance_ready"] is False
+    assert payload["summary"]["readiness_status"] == "BLOCKED_SCHEMA_LINKS"

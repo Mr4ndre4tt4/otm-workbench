@@ -128,6 +128,12 @@ export type CatalogMacroObjectDataDictionaryCheck = {
     schema_link_count: number;
     all_target_tables_validated: boolean;
     all_schema_links_have_source_reference: boolean;
+    guidance_ready: boolean;
+    readiness_status:
+      | "READY"
+      | "BLOCKED_DATA_DICTIONARY"
+      | "BLOCKED_SCHEMA_LINKS"
+      | "BLOCKED_SOURCE_REFERENCES";
   };
 };
 

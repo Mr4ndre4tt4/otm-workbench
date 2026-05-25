@@ -610,6 +610,17 @@ def serialize_macro_object_data_dictionary_cross_check(db: Session, macro: OtmMa
     source_referenced_link_count = sum(
         1 for item in schema_links if item["source_reference_status"] in {"PINNED", "USER_CONFIRMED", "NOT_APPLICABLE"}
     )
+    has_schema_links = bool(schema_links)
+    all_target_tables_validated = validated_table_count == len(target_tables)
+    all_schema_links_have_source_reference = has_schema_links and source_referenced_link_count == len(schema_links)
+    guidance_ready = all_target_tables_validated and all_schema_links_have_source_reference
+    readiness_status = "READY"
+    if not all_target_tables_validated:
+        readiness_status = "BLOCKED_DATA_DICTIONARY"
+    elif not has_schema_links:
+        readiness_status = "BLOCKED_SCHEMA_LINKS"
+    elif not all_schema_links_have_source_reference:
+        readiness_status = "BLOCKED_SOURCE_REFERENCES"
     return {
         "macro_object_code": macro.code,
         "macro_object_name": macro.name,
@@ -620,8 +631,10 @@ def serialize_macro_object_data_dictionary_cross_check(db: Session, macro: OtmMa
             "validated_table_count": validated_table_count,
             "missing_table_count": len(target_tables) - validated_table_count,
             "schema_link_count": len(schema_links),
-            "all_target_tables_validated": validated_table_count == len(target_tables),
-            "all_schema_links_have_source_reference": source_referenced_link_count == len(schema_links),
+            "all_target_tables_validated": all_target_tables_validated,
+            "all_schema_links_have_source_reference": all_schema_links_have_source_reference,
+            "guidance_ready": guidance_ready,
+            "readiness_status": readiness_status,
         },
     }
 
