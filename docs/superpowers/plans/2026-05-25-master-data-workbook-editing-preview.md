@@ -157,7 +157,7 @@ Validation response shape:
 - Modify: `src/otm_workbench/modules/master_data/routes.py`
 - Test: `tests/test_master_data_templates.py`
 
-- [ ] **Step 1: Write failing backend test for editor contract**
+- [x] **Step 1: Write failing backend test for editor contract**
 
 Add:
 
@@ -178,7 +178,7 @@ def test_master_data_workbook_editor_contract_uses_backend_template_definition(c
     assert payload["relationship_rules"][0]["parent_sheet_code"] == "ITEMS"
 ```
 
-- [ ] **Step 2: Run test and verify it fails**
+- [x] **Step 2: Run test and verify it fails**
 
 Run:
 
@@ -188,7 +188,7 @@ python -m pytest tests/test_master_data_templates.py::test_master_data_workbook_
 
 Expected: `404 Not Found` or route missing.
 
-- [ ] **Step 3: Implement editor contract**
+- [x] **Step 3: Implement editor contract**
 
 Create `build_master_data_workbook_editor_contract(template: MasterDataTemplate) -> dict[str, object]` in `workbook_editor.py`. It must read `template.definition_json` when present and otherwise use `template.sheets_json`.
 
@@ -206,7 +206,7 @@ def get_master_data_workbook_editor(template_code: str, db: Session = Depends(ge
     return build_master_data_workbook_editor_contract(template)
 ```
 
-- [ ] **Step 4: Run backend test and verify it passes**
+- [x] **Step 4: Run backend test and verify it passes**
 
 Run:
 

@@ -1411,6 +1411,29 @@ def test_master_data_items_packaging_template_detail_and_validation(client, admi
     }
 
 
+def test_master_data_workbook_editor_contract_uses_backend_template_definition(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["template_code"] == "ITEMS_PACKAGING_STANDARD"
+    assert [sheet["code"] for sheet in payload["sheets"]] == ["ITEMS", "PACKAGING", "TI_HI"]
+    assert payload["sheets"][0]["target_table"] == "ITEM"
+    assert payload["sheets"][0]["fields"][0] == {
+        "field_key": "item_gid",
+        "label": "Item GID",
+        "data_type": "string",
+        "required": True,
+    }
+    assert payload["sheets"][0]["starter_rows"] == [
+        {"row_id": "ITEMS-1", "values": {"item_gid": "", "item_xid": "", "description": "", "item_type_gid": ""}}
+    ]
+    assert payload["relationship_rules"][0]["parent_sheet_code"] == "ITEMS"
+
+
 def test_master_data_locations_template_detail_and_validation(client, admin_header):
     detail = client.get(
         "/api/v1/modules/master-data/templates/LOCATIONS_BASIC",
