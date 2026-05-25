@@ -304,9 +304,10 @@ def test_preview_integration_definition_rejects_missing_join_binding_alias(clien
         headers=admin_header,
     )
 
-    assert response.status_code == 200
-    assert response.json()["preview"]["mode"] == "synthetic_metadata_only"
-    assert "target_json" not in response.json()["preview"]
+    assert response.status_code == 409
+    assert response.json()["code"] == "INTEGRATION_PREVIEW_VALIDATION_FAILED"
+    issue_codes = {issue["code"] for issue in response.json()["details"]["issues"]}
+    assert "INTEGRATION_VALIDATION_MAPPING_ALIAS_MISSING" in issue_codes
 
 
 def test_preview_integration_definition_uses_join_binding_alias_inside_loop(client, admin_header):
@@ -475,6 +476,7 @@ def test_preview_integration_definition_rejects_missing_join_binding_alias_insid
         headers=admin_header,
     )
 
-    assert response.status_code == 200
-    assert response.json()["preview"]["mode"] == "synthetic_metadata_only"
-    assert "target_json" not in response.json()["preview"]
+    assert response.status_code == 409
+    assert response.json()["code"] == "INTEGRATION_PREVIEW_VALIDATION_FAILED"
+    issue_codes = {issue["code"] for issue in response.json()["details"]["issues"]}
+    assert "INTEGRATION_VALIDATION_MAPPING_ALIAS_MISSING" in issue_codes

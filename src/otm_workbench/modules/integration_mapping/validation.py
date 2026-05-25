@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.models import (
     IntegrationDefinition,
+    IntegrationJoinBindingHop,
     IntegrationJoinRule,
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
@@ -167,6 +168,56 @@ def validate_mapping(db: Session, mapping: IntegrationMapping) -> list[Validatio
         if transform_config_issue is not None:
             issues.append(transform_config_issue)
     return issues
+
+
+def alias_scopes_for_definition(
+    db: Session,
+    definition_id: str,
+) -> dict[tuple[str, str], str]:
+    hops = (
+        db.query(IntegrationJoinBindingHop)
+        .filter(IntegrationJoinBindingHop.definition_id == definition_id)
+        .all()
+    )
+    return {
+        (hop.source_schema_document_id, hop.result_alias): hop.right_collection_path
+        for hop in hops
+    }
+
+
+def validate_mapping_alias_scope(
+    mapping: IntegrationMapping,
+    alias_scopes: dict[tuple[str, str], str],
+) -> list[ValidationIssue]:
+    config = parse_transform_config(mapping.transform_config_json)
+    source_alias = str(config.get("source_alias") or "").strip()
+    if not source_alias:
+        return []
+    alias_scope = alias_scopes.get((mapping.source_schema_document_id, source_alias))
+    if alias_scope is None:
+        return [
+            issue(
+                code="INTEGRATION_VALIDATION_MAPPING_ALIAS_MISSING",
+                entity_type="mapping",
+                entity_id=mapping.id,
+                field="transform_config.source_alias",
+                message=f"source_alias is not produced by a join binding in this Integration Definition: {source_alias}",
+            )
+        ]
+    if not mapping.source_path.startswith(f"{alias_scope}/"):
+        return [
+            issue(
+                code="INTEGRATION_VALIDATION_MAPPING_ALIAS_SCOPE_INVALID",
+                entity_type="mapping",
+                entity_id=mapping.id,
+                field="source_path",
+                message=(
+                    "source_path must be inside the collection produced by transform_config.source_alias "
+                    f"{source_alias}: {alias_scope}"
+                ),
+            )
+        ]
+    return []
 
 
 def validate_loop(db: Session, loop: IntegrationLoopDefinition) -> list[ValidationIssue]:
@@ -341,8 +392,10 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     lookups = (
         db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).all()
     )
+    alias_scopes = alias_scopes_for_definition(db, definition.id)
     for mapping in mappings:
         issues.extend(validate_mapping(db, mapping))
+        issues.extend(validate_mapping_alias_scope(mapping, alias_scopes))
     issues.extend(validate_duplicate_target_paths(mappings))
     issues.extend(
         validate_required_target_paths(

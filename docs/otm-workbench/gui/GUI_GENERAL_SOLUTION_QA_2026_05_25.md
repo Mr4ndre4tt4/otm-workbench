@@ -112,7 +112,7 @@ artifacts, not product source.
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
-| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, scalar alias-scoped mapping, and loop-scoped alias mapping for `Entregas[]` rows. | To become a full accelerator for NDD-like mappings, it still needs deeper semantic validation, UI assistance for alias-backed mapping config, and a fuller browser scenario. |
+| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, scalar alias-scoped mapping, and loop-scoped alias mapping for `Entregas[]` rows. | To become a full accelerator for NDD-like mappings, it still needs a fuller browser scenario and richer required-field semantics. |
 | Admin Console | Browser QA passed | Functional setup, capability, feature flag, jobs and audit visibility. | Advanced edit/delete/pagination and volume management remain future. |
 
 ## 4. Findings Added To Pipeline
@@ -128,6 +128,7 @@ artifacts, not product source.
 | `OTM-148` | High | Staged Rules UI authoring/review delivered for Integration Mapping join bindings. |
 | `OTM-149` | High | Scalar downstream mappings can read from join-binding aliases, and missing aliases block executable preview instead of falling back to global XML traversal. |
 | `OTM-150` | High | Loop-scoped target mappings can read from join-binding aliases and materialize `Entregas[]` rows with source/target item provenance. |
+| `OTM-151` | High | Alias-backed mappings now validate missing/out-of-scope aliases and the UI exposes an alias source selector during mapping authoring. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 
 ## 5. Recommended Next Queue

@@ -13,6 +13,7 @@ from tests.test_integration_mapping_mappings import (
     create_source_and_target_documents,
     mapping_payload,
 )
+from tests.test_integration_mapping_join_bindings import join_binding_payload, planned_shipment_source_document
 
 
 def create_full_valid_definition(client, admin_header):
@@ -405,6 +406,92 @@ def test_validate_integration_definition_reports_invalid_date_format_transform_c
         "mapping",
         "transform_config",
         "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+
+
+def test_validate_integration_definition_reports_missing_mapping_source_alias(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_alias_validation.json",
+        content='{"header":{"accessKey":""}}',
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            source_path="/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            target_path="$.header.accessKey",
+            transform_config={"source_alias": "missing_alias"},
+        ),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is False
+    assert (
+        "mapping",
+        "transform_config.source_alias",
+        "INTEGRATION_VALIDATION_MAPPING_ALIAS_MISSING",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+
+
+def test_validate_integration_definition_reports_mapping_source_path_outside_alias_scope(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_alias_scope_validation.json",
+        content='{"header":{"shipmentId":""}}',
+    )
+    binding = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/join-bindings",
+        json=join_binding_payload(source),
+        headers=admin_header,
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            source_path="/Transmission/Shipment/ShipmentGid",
+            target_path="$.header.shipmentId",
+            transform_config={"source_alias": "ship_unit_release"},
+        ),
+        headers=admin_header,
+    )
+    assert binding.status_code == 200
+    assert created.status_code == 200
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is False
+    assert (
+        "mapping",
+        "source_path",
+        "INTEGRATION_VALIDATION_MAPPING_ALIAS_SCOPE_INVALID",
     ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
 
 

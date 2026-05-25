@@ -124,7 +124,9 @@ called complete for this class of integration:
   delivered in `OTM-149`; loop-scoped alias mapping for `Entregas[]` delivered
   in `OTM-150`.
 - Semantic validation for joins, loop scope, duplicate target fields, missing
-  required target fields, and transform configuration.
+  required target fields, and transform configuration. `OTM-151` delivered
+  missing/out-of-scope alias blockers; fuller scenario required-field semantics
+  remain open.
 - Executable local preview that materializes synthetic target JSON from
   mappings, loops, joins, lookups, and transforms.
 - Response handling model for success/error paths.
@@ -156,7 +158,8 @@ Recommended next backlog sequence:
    mapping delivered in `OTM-150`.
 8. Harden validation to catch same-path joins, duplicate target paths, missing
    required target fields, invalid lookup output scope, and transform config
-   gaps.
+   gaps. `OTM-151` delivered missing/out-of-scope alias validation and UI alias
+   source selection.
 9. Implement executable synthetic preview that renders target JSON and shows
    field-level provenance.
 10. Add browser QA for the full NDD-like synthetic scenario, including wrong

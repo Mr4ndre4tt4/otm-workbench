@@ -178,6 +178,15 @@ describe("Functional Integration Mapping Studio journey", () => {
         name: "Xid",
         node_type: "string",
         sequence_index: 11
+      },
+      {
+        id: "node_source_release_refnum_value",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/Release/ReleaseRefnum",
+        path: "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+        name: "ReleaseRefnumValue",
+        node_type: "string",
+        sequence_index: 12
       }
     ];
     const targetSchemaNodes = [
@@ -198,6 +207,15 @@ describe("Functional Integration Mapping Studio journey", () => {
         name: "deliveries",
         node_type: "array",
         sequence_index: 4
+      },
+      {
+        id: "node_target_access_key",
+        schema_document_id: "schema_target",
+        parent_path: "$.header",
+        path: "$.header.accessKey",
+        name: "accessKey",
+        node_type: "string",
+        sequence_index: 5
       }
     ];
 
@@ -413,17 +431,31 @@ describe("Functional Integration Mapping Studio journey", () => {
         if (init?.method === "POST") {
           const body = JSON.parse(String(init.body));
           mappingRequests.push(body);
-          expect(body).toEqual({
-            source_schema_document_id: "schema_source",
-            target_schema_document_id: "schema_target",
-            source_path: "/Transmission/Shipment/ShipmentGid",
-            target_path: "$.header.shipmentId",
-            transform_type: "DIRECT",
-            description: "Synthetic direct mapping from shipment id.",
-            sequence_index: 10
-          });
+          if (body.target_path === "$.header.shipmentId") {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/ShipmentGid",
+              target_path: "$.header.shipmentId",
+              transform_type: "DIRECT",
+              transform_config: {},
+              description: "Synthetic direct mapping from shipment id.",
+              sequence_index: 10
+            });
+          } else {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+              target_path: "$.header.accessKey",
+              transform_type: "DIRECT",
+              transform_config: { source_alias: "ship_unit_release" },
+              description: "Synthetic alias-backed access key mapping.",
+              sequence_index: 10
+            });
+          }
           const mapping = {
-            id: "mapping_1",
+            id: `mapping_${mappingRequests.length}`,
             definition_id: "definition_1",
             ...body,
             status: "ACTIVE",
@@ -431,7 +463,7 @@ describe("Functional Integration Mapping Studio journey", () => {
             created_at: "2026-05-21T10:03:00",
             updated_at: "2026-05-21T10:03:00"
           };
-          mappings = [mapping];
+          mappings = [...mappings, mapping];
           return Promise.resolve(jsonResponse(mapping));
         }
         return Promise.resolve(jsonResponse({ items: mappings, total: mappings.length, page: 1, page_size: 50 }));
@@ -819,6 +851,17 @@ describe("Functional Integration Mapping Studio journey", () => {
     await waitFor(() => expect(joinBindingRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition join bindings")).findByText("Stop to release binding")).toBeInTheDocument();
 
+    await userEvent.selectOptions(screen.getByLabelText("Alias source context"), "ship_unit_release");
+    await userEvent.selectOptions(
+      await screen.findByLabelText("Mapping source node"),
+      "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue"
+    );
+    await userEvent.selectOptions(await screen.findByLabelText("Mapping target node"), "$.header.accessKey");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic alias-backed access key mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(2));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.accessKey")).toBeInTheDocument();
+
     await userEvent.selectOptions(screen.getByLabelText("Lookup source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Lookup target schema"), "schema_target");
     await userEvent.type(screen.getByLabelText("Lookup name"), "Synthetic carrier lookup");
@@ -853,6 +896,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Source path")).toHaveValue("");
     expect(screen.getByLabelText("Target path")).toHaveValue("");
     expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");
+    expect(screen.getByLabelText("Alias source context")).toHaveValue("");
     expect(screen.getByLabelText("Mapping description")).toHaveValue("");
     expect(screen.getByLabelText("Loop source schema")).toHaveValue("");
     expect(screen.getByLabelText("Loop target schema")).toHaveValue("");

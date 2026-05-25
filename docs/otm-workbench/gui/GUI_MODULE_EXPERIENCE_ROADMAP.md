@@ -88,6 +88,9 @@ test pass/fail:
 8. OTM-150: execute loop-scoped alias mappings for Integration Mapping
    deliveries. Delivered for `$.deliveries[]` style target rows with
    source/target item provenance.
+9. OTM-151: add semantic validation and UI assist for Integration alias
+   mappings. Delivered missing/out-of-scope alias blockers plus an Alias source
+   context selector in the mapping authoring form.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```

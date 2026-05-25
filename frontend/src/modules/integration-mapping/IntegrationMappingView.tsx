@@ -293,6 +293,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
+  const [mappingSourceAlias, setMappingSourceAlias] = useState('');
   const [mappingDescription, setMappingDescription] = useState('');
   const [systemCode, setSystemCode] = useState('');
   const [systemName, setSystemName] = useState('');
@@ -407,6 +408,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setSourcePath('');
     setTargetPath('');
     setTransformType('DIRECT');
+    setMappingSourceAlias('');
     setMappingDescription('');
     setLoopSourceSchemaId('');
     setLoopTargetSchemaId('');
@@ -637,11 +639,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
         source_schema_document_id: sourceSchemaId,
         target_path: targetPath.trim(),
         target_schema_document_id: targetSchemaId,
+        transform_config: mappingSourceAlias ? { source_alias: mappingSourceAlias } : {},
         transform_type: transformType
       });
       setOperationMessage(`Created mapping ${mapping.target_path}.`);
       setSourcePath('');
       setTargetPath('');
+      setMappingSourceAlias('');
       setMappingDescription('');
       await refreshDefinitionData(effectiveDefinitionId);
     } catch (error) {
@@ -1403,6 +1407,19 @@ export function IntegrationMappingView({ token }: { token: string }) {
                     {item.code}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label>
+              Alias source context
+              <select onChange={(event) => setMappingSourceAlias(event.target.value)} value={mappingSourceAlias}>
+                <option value="">No join alias</option>
+                {(joinBindings.data?.items ?? []).flatMap((binding) =>
+                  binding.hops.map((hop) => (
+                    <option key={`${binding.id}-${hop.result_alias}`} value={hop.result_alias}>
+                      {hop.result_alias}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
             <label className="integration-form-wide">

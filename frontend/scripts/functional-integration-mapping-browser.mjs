@@ -160,7 +160,7 @@ async function run() {
           "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid>",
           "<ShipmentStop><StopSequence>1</StopSequence><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
           "<ShipUnit><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid><ShipUnitContent><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></ShipUnitContent></ShipUnit>",
-          "<Release><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></Release>",
+          "<Release><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid><ReleaseRefnum><ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid><ReleaseRefnumValue>KEY-001</ReleaseRefnumValue></ReleaseRefnum></Release>",
           "</Shipment></Transmission>"
         ].join("")
       );
@@ -171,7 +171,7 @@ async function run() {
     await payloadForm.getByLabel("Payload format").selectOption("JSON");
     await payloadForm.getByLabel("Payload file name").fill(`external_delivery_manual_${suffix}.json`);
     await payloadForm.getByLabel("Payload description").fill("Synthetic browser target payload.");
-    await payloadForm.getByLabel("Payload content").fill('{"header":{"shipmentId":"DEMO"},"deliveries":[{"sequence":1}]}');
+    await payloadForm.getByLabel("Payload content").fill('{"header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1}]}');
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload external_delivery_manual_${suffix}.json and schema $ created.`).waitFor();
 
@@ -227,6 +227,14 @@ async function run() {
     await page.getByText("Created join binding Stop to release binding.").waitFor();
     await page.getByLabel("Selected definition join bindings").getByText("Stop to release binding", { exact: true }).waitFor();
 
+    await page.getByLabel("Alias source context").selectOption("ship_unit_release");
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping description").fill("Synthetic alias-backed access key mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.header.accessKey.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.header.accessKey", { exact: true }).waitFor();
+
     await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
     await page.getByLabel("Lookup name").fill("Synthetic carrier lookup");
@@ -249,6 +257,9 @@ async function run() {
     });
     await mappingForm.getByLabel("Source path").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping source path after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Alias source context").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping source alias after reset: ${element.value}`);
     });
     await page.locator(".integration-loop-form").getByLabel("Loop source schema").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected loop source schema after reset: ${element.value}`);
