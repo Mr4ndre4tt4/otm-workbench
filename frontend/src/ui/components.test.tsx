@@ -13,6 +13,7 @@ import {
   ModuleObjectList,
   ModuleWorkspaceLayout,
   ModuleWorkspaceSide,
+  NextActionPanel,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel
@@ -220,6 +221,58 @@ describe("ModuleWorkspaceLayout", () => {
     expect(screen.getByText("Rate batch list")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Expected panels" })).toBeInTheDocument();
     expect(screen.getByText("Available actions from backend")).toBeInTheDocument();
+  });
+});
+
+describe("NextActionPanel", () => {
+  it("renders the selected object, current stage, and backend-recommended action", () => {
+    render(
+      <NextActionPanel
+        action={{
+          description: "Backend action is ready for the selected template.",
+          label: "Build workbook",
+          status: "NEXT"
+        }}
+        ariaLabel="Data Factory next action"
+        context={["Template", "REGIONS_BASIC"]}
+        objectLabel="Template"
+        objectValue="REGIONS_BASIC"
+        stageLabel="Workbook"
+        title="Next action"
+      />
+    );
+
+    expect(screen.getByLabelText("Data Factory next action")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Next action" })).toBeInTheDocument();
+    expect(screen.getAllByText("Template")).toHaveLength(2);
+    expect(screen.getAllByText("REGIONS_BASIC")).toHaveLength(2);
+    expect(screen.getByText("Workbook")).toBeInTheDocument();
+    expect(screen.getByText("Build workbook")).toBeInTheDocument();
+    expect(screen.getByText("NEXT")).toBeInTheDocument();
+    expect(screen.getByText("Backend action is ready for the selected template.")).toBeInTheDocument();
+  });
+
+  it("renders disabled guidance and blockers without caller-owned panel markup", () => {
+    render(
+      <NextActionPanel
+        action={{
+          disabled: true,
+          disabledReason: "PUBLISHED_TEMPLATE_REQUIRED",
+          label: "Build workbook",
+          status: "BLOCKED"
+        }}
+        ariaLabel="Blocked next action"
+        blockers={["PUBLISHED_TEMPLATE_REQUIRED"]}
+        objectLabel="Template"
+        objectValue="LOCATIONS_DYNAMIC_UI"
+        stageLabel="Workbook"
+        title="Next action"
+      />
+    );
+
+    expect(screen.getByText("BLOCKED")).toBeInTheDocument();
+    expect(screen.getAllByText("PUBLISHED_TEMPLATE_REQUIRED")).toHaveLength(2);
+    expect(screen.getByText("Build workbook")).toBeInTheDocument();
   });
 });
 

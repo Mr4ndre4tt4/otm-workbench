@@ -48,6 +48,7 @@ import {
   MetricGrid,
   ModuleObjectList,
   ModuleWorkspaceLayout,
+  NextActionPanel,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel
@@ -75,6 +76,47 @@ const loadPlanWorkflowStages = [
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
 
 const defaultEvidenceId = "SYN_EVIDENCE_001";
+
+function loadPlanNextAction({
+  checklist,
+  csvutilBuild,
+  cutoverPackageExport,
+  effectivePackageId,
+  goNoGoDecision,
+  packageReadiness,
+  readiness,
+  readinessExport,
+  reviewItems,
+  sequenceSnapshot,
+  zipAnalysis
+}: {
+  checklist: CutoverChecklist | null;
+  csvutilBuild: CsvutilBuild | null;
+  cutoverPackageExport: CutoverPackageExport | null;
+  effectivePackageId: string | null;
+  goNoGoDecision: CutoverGoNoGoDecision | null;
+  packageReadiness: LoadPlanCutoverReadiness | null;
+  readiness: CutoverChecklistReadiness | null;
+  readinessExport: LoadPlanReadinessExport | null;
+  reviewItems: LoadPlanReviewItem[];
+  sequenceSnapshot: LoadPlanSequenceSnapshot | null;
+  zipAnalysis: LoadPlanZipAnalysis | null;
+}) {
+  if (!effectivePackageId) {
+    return { description: "Select a registered package before starting the cutover workflow.", disabled: true, label: "Select package", status: "BLOCKED" };
+  }
+  if (!checklist) return { description: "Create the backend checklist for the selected package.", label: "Create checklist", status: "NEXT" };
+  if (!readiness) return { description: "Generate readiness from checklist evidence and package metadata.", label: "Generate readiness", status: "NEXT" };
+  if (!csvutilBuild) return { description: "Build OTM CSVUTIL files from the approved cutover checklist.", label: "Build CSVUTIL", status: "NEXT" };
+  if (!zipAnalysis) return { description: "Review the generated package before sequencing and handoff.", label: "Run ZIP analysis", status: "NEXT" };
+  if (!reviewItems.length) return { description: "Generate the review queue from package analysis findings.", label: "Generate review queue", status: "NEXT" };
+  if (!sequenceSnapshot) return { description: "Generate the load sequence snapshot for OTM import order.", label: "Generate sequence", status: "NEXT" };
+  if (!packageReadiness) return { description: "Evaluate package readiness with sequence and review evidence.", label: "Generate package readiness", status: "NEXT" };
+  if (!readinessExport) return { description: "Export the readiness evidence package.", label: "Export readiness", status: "NEXT" };
+  if (!cutoverPackageExport) return { description: "Export the final cutover package zip.", label: "Export cutover package", status: "NEXT" };
+  if (!goNoGoDecision) return { description: "Record the cutover decision before handoff.", label: "Record Go/No-Go", status: "NEXT" };
+  return { description: "Commit the cutover handoff once all gates are satisfied.", label: "Commit handoff", status: "NEXT" };
+}
 
 export function LoadPlanView({ token }: { token: string }) {
   const queryClient = useQueryClient();
@@ -113,9 +155,25 @@ export function LoadPlanView({ token }: { token: string }) {
     selectedPackage?.load_sequence.reduce((total, sequenceItem) => total + sequenceItem.row_count, 0) ??
     0;
   const effectiveReviewItems = reviewItems.length ? reviewItems : reviewQueue.data?.items ?? [];
+  const selectedPackageListItem = packageItems.find((item) => item.id === effectivePackageId) ?? null;
+  const visibleSelectedPackage = selectedPackage ?? selectedPackageListItem;
   const sequenceNextActions = Array.isArray(sequenceSnapshot?.summary.next_actions)
     ? sequenceSnapshot.summary.next_actions.map(String)
     : [];
+  const selectedLoadPlanNextAction = loadPlanNextAction({
+    checklist,
+    csvutilBuild,
+    cutoverPackageExport,
+    effectivePackageId,
+    goNoGoDecision,
+    packageReadiness,
+    readiness,
+    readinessExport,
+    reviewItems: effectiveReviewItems,
+    sequenceSnapshot,
+    zipAnalysis
+  });
+  const activeLoadPlanStageTitle = loadPlanWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
 
   const clearRouteSessionState = () => {
     setChecklist(null);
@@ -524,6 +582,20 @@ export function LoadPlanView({ token }: { token: string }) {
             </button>
           ))}
         </div>
+
+        <NextActionPanel
+          action={selectedLoadPlanNextAction}
+          ariaLabel="Load Plan next action"
+          context={[
+            visibleSelectedPackage?.source_module ?? "No source module",
+            visibleSelectedPackage?.summary.catalog_macro_object_code ?? "No catalog macro",
+            checklist?.status ? `Checklist ${checklist.status}` : "No checklist"
+          ]}
+          objectLabel="Package"
+          objectValue={visibleSelectedPackage?.package_type ?? effectivePackageId}
+          stageLabel={activeLoadPlanStageTitle}
+          title="Next action"
+        />
 
         {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
         {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}

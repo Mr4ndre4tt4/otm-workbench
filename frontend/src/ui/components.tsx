@@ -4,6 +4,8 @@ export { ArtifactList, DetailList, ModuleObjectList } from "./components/lists";
 export type { ArtifactListItem, DetailListItem, ModuleObjectListItem } from "./components/lists";
 export { MetricGrid } from "./components/metrics";
 export type { MetricItem } from "./components/metrics";
+export { NextActionPanel } from "./components/nextAction";
+export type { NextActionPanelAction } from "./components/nextAction";
 export { BlockerPanel, OperationalPanel, SelectedObjectPanel } from "./components/panels";
 export type { BlockerPanelItem, SelectedObjectField } from "./components/panels";
 export { Button, IconButton, StatusChip } from "./components/primitives";

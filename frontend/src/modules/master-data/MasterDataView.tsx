@@ -73,6 +73,7 @@ import {
   MetricGrid,
   ModuleObjectList,
   ModuleWorkspaceLayout,
+  NextActionPanel,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel
@@ -124,6 +125,19 @@ function masterDataActionGuidanceItems(scope: string, actions: AvailableAction[]
     status: action.disabled ? "BLOCKED" : action.recommended ? "NEXT" : "AVAILABLE",
     title: action.label
   }));
+}
+
+function pickMasterDataNextAction(template: MasterDataTemplate | undefined, batch: MasterDataBatch | null) {
+  const scopedActions = [
+    ...(template?.available_actions ?? []).map((action) => ({ action, scope: "Template" })),
+    ...(batch?.available_actions ?? []).map((action) => ({ action, scope: "Batch" }))
+  ];
+  return (
+    scopedActions.find((item) => item.action.recommended && !item.action.disabled) ??
+    scopedActions.find((item) => !item.action.disabled) ??
+    scopedActions[0] ??
+    null
+  );
 }
 
 const masterDataWorkflowStages = [
@@ -543,6 +557,9 @@ export function MasterDataView({ token }: { token: string }) {
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorScenarioDraftPayload ? [] : authorTables);
   const latestMatchingBatch = batches.data?.items[0] ?? null;
   const activeBatch = uploadedBatch ?? latestMatchingBatch;
+  const selectedMasterDataNextAction = pickMasterDataNextAction(selectedTemplate, activeBatch);
+  const activeMasterDataStageTitle =
+    masterDataWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
   const isInspectingHistoricalBatch = Boolean(
     uploadedBatch && latestMatchingBatch && uploadedBatch.batch_id !== latestMatchingBatch.batch_id
   );
@@ -1203,6 +1220,43 @@ export function MasterDataView({ token }: { token: string }) {
             </button>
           ))}
         </div>
+
+        <NextActionPanel
+          action={
+            selectedMasterDataNextAction
+              ? {
+                  description: selectedMasterDataNextAction.action.disabled
+                    ? selectedMasterDataNextAction.action.disabled_reason ?? "Blocked by backend rule."
+                    : selectedMasterDataNextAction.action.recommended
+                      ? "Backend marks this as the recommended next action for the selected object."
+                      : "Backend marks this action as available for the selected object.",
+                  disabled: selectedMasterDataNextAction.action.disabled,
+                  disabledReason: selectedMasterDataNextAction.action.disabled_reason,
+                  label: selectedMasterDataNextAction.action.label,
+                  status: selectedMasterDataNextAction.action.disabled
+                    ? "BLOCKED"
+                    : selectedMasterDataNextAction.action.recommended
+                      ? "NEXT"
+                      : "AVAILABLE"
+                }
+              : {
+                  description: "Choose a backend template before running the module workflow.",
+                  disabled: true,
+                  label: "Select template",
+                  status: "BLOCKED"
+                }
+          }
+          ariaLabel="Data Factory next action"
+          context={[
+            selectedMasterDataNextAction?.scope ?? "Template",
+            selectedTemplate?.catalog_macro_object_code ?? "No macro object",
+            activeBatch?.batch_id ? `Batch ${activeBatch.batch_id}` : "No active batch"
+          ]}
+          objectLabel="Template"
+          objectValue={selectedTemplate?.code ?? effectiveTemplateCode}
+          stageLabel={activeMasterDataStageTitle}
+          title="Next action"
+        />
 
         {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
         {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}

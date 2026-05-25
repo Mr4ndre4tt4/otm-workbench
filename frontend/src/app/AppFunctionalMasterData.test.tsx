@@ -941,8 +941,11 @@ describe("Functional Master Data journey", () => {
 
     await screen.findByRole("heading", { name: "Data Factory" });
     expect(screen.getByLabelText("Data Factory workflow")).toBeInTheDocument();
-    expect(screen.getByLabelText("Master Data templates")).toHaveTextContent("REGIONS_BASIC");
     await screen.findByText("Synthetic starter template for region master data.");
+    expect(screen.getByLabelText("Data Factory next action")).toHaveTextContent("Build workbook");
+    expect(screen.getByLabelText("Data Factory next action")).toHaveTextContent("NEXT");
+    expect(screen.getByLabelText("Data Factory next action")).toHaveTextContent("REGIONS_BASIC");
+    expect(screen.getByLabelText("Master Data templates")).toHaveTextContent("REGIONS_BASIC");
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Build workbook");
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("Recommended next");
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("TEMPLATE_ALREADY_PUBLISHED");

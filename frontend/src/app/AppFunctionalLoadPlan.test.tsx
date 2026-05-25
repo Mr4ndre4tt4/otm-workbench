@@ -765,6 +765,9 @@ describe("Functional Load Plan journey", () => {
 
     await screen.findByRole("heading", { name: "Load Plan" });
     expect(screen.getByLabelText("Load Plan workflow")).toBeInTheDocument();
+    expect(screen.getByLabelText("Load Plan next action")).toHaveTextContent("Create checklist");
+    expect(screen.getByLabelText("Load Plan next action")).toHaveTextContent("NEXT");
+    expect(screen.getByLabelText("Load Plan next action")).toHaveTextContent("rates_csv_zip");
     expect(screen.getByLabelText("Load plan packages")).toHaveTextContent("rates_csv_zip");
 
     await userEvent.click(screen.getByRole("button", { name: /2Checklist/ }));

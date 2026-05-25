@@ -106,9 +106,9 @@ artifacts, not product source.
 | Shell / Project Cockpit | Browser QA passed | Solid shell, preferences, context panel, navigation and empty state. | Needs reproducible demo seed for local QA; context onboarding should be more explicit for a clean DB. |
 | Rates Studio | Browser QA passed | Strong object list/detail workflow and a good reference implementation. | List density can degrade after many QA-generated batches. |
 | OTM Catalog Core | Browser QA passed | Clear validation-oriented utility with backend-owned table/column/reference checks. | Good MVP0 slice; future value depends on deeper guided reference browsing only if needed. |
-| Master Data / Data Factory | Browser QA passed | Broadest workflow and meets current acceptance scope, including templates, workbook, upload, output, export, direct import guard, and Load Plan handoff. | First state needs a stronger backend-owned next action panel; advanced spreadsheet audit remains future. |
+| Master Data / Data Factory | Browser QA passed | Broadest workflow and meets current acceptance scope, including templates, workbook, upload, output, export, direct import guard, Load Plan handoff, and backend-owned next-action guidance from template/batch actions. | Advanced spreadsheet audit remains future. |
 | Coordinate Quality | Browser QA passed | Correctly embedded in Data Factory as a quality stage rather than a detached module. | External provider governance and map diagnostics remain future. |
-| Load Plan / Cutover | Browser QA passed | Functional and valuable end-to-end; CSVUTIL, readiness, review, exports, Go/No-Go and handoff are connected. | First state is still stage-heavy; needs clearer recommended action/blocker panel. |
+| Load Plan / Cutover | Browser QA passed | Functional and valuable end-to-end; CSVUTIL, readiness, review, exports, Go/No-Go, handoff, and next-action guidance are connected. | Dedicated backend `available_actions` for cutover packages should replace the temporary UI-derived next-action sequence later. |
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
@@ -120,7 +120,7 @@ artifacts, not product source.
 | Linear | Priority | Finding |
 |---|---:|---|
 | `OTM-141` | High | Browser functional scripts require a synthetic demo user, but local backend does not seed it automatically or document a command. |
-| `OTM-142` | High | Staged modules need a backend-owned next-action panel so users do not infer the workflow from steps alone. |
+| `OTM-142` | High | Staged modules need a backend-owned next-action panel so users do not infer the workflow from steps alone. First slice delivered for Data Factory and Load Plan. |
 | `OTM-143` | Medium | Operational lists become noisy after seeded QA volume; need stronger filters, density and truncation. |
 | `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. |
 | `OTM-145` | High | Integration Mapping backend still needs cross-collection multi-hop joins, qualifier filters and aggregations. |
@@ -129,7 +129,7 @@ artifacts, not product source.
 ## 5. Recommended Next Queue
 
 1. Fix QA/dev reproducibility first: `OTM-141`.
-2. Add `NextActionPanel` contract and apply it to Data Factory and Load Plan: `OTM-142`.
+2. Browser-QA the `NextActionPanel` first slice and then roll it out to the next staged modules: `OTM-142`.
 3. Continue Integration Mapping accelerator hardening: `OTM-144`, then `OTM-145`.
 4. Add chaos/out-of-order browser QA once the next-action pattern exists: `OTM-146`.
 5. Harden list density and high-volume states: `OTM-143`.

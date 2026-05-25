@@ -217,6 +217,63 @@
   min-height: 260px;
 }
 
+.next-action-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.next-action-body {
+  display: grid;
+  gap: 10px;
+}
+
+.next-action-context,
+.next-action-meta,
+.next-action-blockers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.next-action-context > span {
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+}
+
+.next-action-context span span,
+.next-action-primary span,
+.next-action-meta span,
+.next-action-blockers span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.next-action-context strong,
+.next-action-primary strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.next-action-primary {
+  display: grid;
+  gap: 4px;
+}
+
+.next-action-meta span,
+.next-action-blockers span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.next-action-blockers span {
+  color: var(--danger);
+}
+
 .module-template-side ul {
   margin: 14px 0 0;
   padding-left: 18px;
