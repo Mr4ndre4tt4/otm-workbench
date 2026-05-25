@@ -5,6 +5,7 @@ import {
   createIntegrationDefinition,
   createIntegrationEndpoint,
   createIntegrationJoin,
+  createIntegrationJoinBinding,
   createIntegrationLookup,
   createIntegrationLoop,
   createIntegrationMapping,
@@ -17,6 +18,7 @@ import {
   useIntegrationArtifacts,
   useIntegrationDefinitionDetail,
   useIntegrationDefinitions,
+  useIntegrationJoinBindings,
   useIntegrationJoins,
   useIntegrationLookups,
   useIntegrationLoops,
@@ -77,6 +79,15 @@ type IntegrationReviewRow = {
   transform: string;
 };
 
+type IntegrationJoinBindingReview = {
+  hops: Array<{ result_alias: string }>;
+  id: string;
+  name: string;
+  root_collection_path: string;
+  status: string;
+  target_collection_path: string;
+};
+
 function mappingReviewGroup(targetPath: string) {
   const normalized = targetPath.toLowerCase();
   if (normalized.includes("entregas") || normalized.includes("deliveries") || normalized.includes("delivery")) {
@@ -87,12 +98,14 @@ function mappingReviewGroup(targetPath: string) {
 
 function buildIntegrationReviewRows({
   joins,
+  joinBindings,
   lookups,
   loops,
   mappings,
   validationResult
 }: {
   joins: Array<{ id: string; left_path: string; name: string; operator: string; right_path: string; status: string }>;
+  joinBindings: IntegrationJoinBindingReview[];
   lookups: Array<{ id: string; input_path: string; lookup_type: string; name: string; output_path: string; status: string }>;
   loops: Array<{ id: string; name: string; source_collection_path: string; status: string; target_collection_path: string }>;
   mappings: Array<{ id: string; source_path: string; status: string; target_path: string; transform_type: string }>;
@@ -131,6 +144,15 @@ function buildIntegrationReviewRows({
       status: join.left_path === join.right_path ? "BLOCKED" : join.status,
       target: join.right_path,
       transform: join.name
+    })),
+    ...joinBindings.map((binding) => ({
+      group: "Join bindings",
+      id: `join-binding-${binding.id}`,
+      policy: `${binding.hops.map((hop) => hop.result_alias).filter(Boolean).join(", ")} · ${binding.hops.length} hop(s)`,
+      source: binding.root_collection_path,
+      status: binding.status,
+      target: binding.target_collection_path,
+      transform: binding.name
     })),
     ...lookups.map((lookup) => ({
       group: "Lookups",
@@ -176,7 +198,7 @@ function buildIntegrationReviewRows({
 }
 
 function IntegrationGroupedReview({ rows }: { rows: IntegrationReviewRow[] }) {
-  const groups = ["Header", "Entregas loop", "Lookups", "Joins", "Transforms", "Aggregations", "Response Handling"];
+  const groups = ["Header", "Entregas loop", "Lookups", "Joins", "Join bindings", "Transforms", "Aggregations", "Response Handling"];
 
   return (
     <section className="integration-review-panel" aria-label="Integration mapping grouped executable review">
@@ -243,6 +265,10 @@ function SchemaNodeSelect({
   );
 }
 
+function collectionNodes(nodes: IntegrationSchemaNode[]) {
+  return nodes.filter((node) => ["array", "object"].includes(node.node_type.toLowerCase()));
+}
+
 export function IntegrationMappingView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
@@ -297,6 +323,21 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [joinRightPath, setJoinRightPath] = useState('');
   const [joinOperator, setJoinOperator] = useState('EQ');
   const [joinDescription, setJoinDescription] = useState('');
+  const [joinBindingSourceSchemaId, setJoinBindingSourceSchemaId] = useState('');
+  const [joinBindingName, setJoinBindingName] = useState('');
+  const [joinBindingRootCollectionPath, setJoinBindingRootCollectionPath] = useState('');
+  const [joinBindingTargetCollectionPath, setJoinBindingTargetCollectionPath] = useState('');
+  const [joinBindingHop1LeftCollectionPath, setJoinBindingHop1LeftCollectionPath] = useState('');
+  const [joinBindingHop1LeftValuePath, setJoinBindingHop1LeftValuePath] = useState('');
+  const [joinBindingHop1RightCollectionPath, setJoinBindingHop1RightCollectionPath] = useState('');
+  const [joinBindingHop1RightValuePath, setJoinBindingHop1RightValuePath] = useState('');
+  const [joinBindingHop1Alias, setJoinBindingHop1Alias] = useState('');
+  const [joinBindingHop2LeftCollectionPath, setJoinBindingHop2LeftCollectionPath] = useState('');
+  const [joinBindingHop2LeftValuePath, setJoinBindingHop2LeftValuePath] = useState('');
+  const [joinBindingHop2RightCollectionPath, setJoinBindingHop2RightCollectionPath] = useState('');
+  const [joinBindingHop2RightValuePath, setJoinBindingHop2RightValuePath] = useState('');
+  const [joinBindingHop2Alias, setJoinBindingHop2Alias] = useState('');
+  const [joinBindingDescription, setJoinBindingDescription] = useState('');
   const [lookupSourceSchemaId, setLookupSourceSchemaId] = useState('');
   const [lookupTargetSchemaId, setLookupTargetSchemaId] = useState('');
   const [lookupName, setLookupName] = useState('');
@@ -318,17 +359,20 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const loopSourceSchemaNodes = useIntegrationSchemaNodes(token, loopSourceSchemaId || null);
   const loopTargetSchemaNodes = useIntegrationSchemaNodes(token, loopTargetSchemaId || null);
   const joinSourceSchemaNodes = useIntegrationSchemaNodes(token, joinSourceSchemaId || null);
+  const joinBindingSourceSchemaNodes = useIntegrationSchemaNodes(token, joinBindingSourceSchemaId || null);
   const lookupSourceSchemaNodes = useIntegrationSchemaNodes(token, lookupSourceSchemaId || null);
   const lookupTargetSchemaNodes = useIntegrationSchemaNodes(token, lookupTargetSchemaId || null);
   const mappings = useIntegrationMappings(token, effectiveDefinitionId);
   const loops = useIntegrationLoops(token, effectiveDefinitionId);
   const joins = useIntegrationJoins(token, effectiveDefinitionId);
+  const joinBindings = useIntegrationJoinBindings(token, effectiveDefinitionId);
   const lookups = useIntegrationLookups(token, effectiveDefinitionId);
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
   const integrationReviewRows = buildIntegrationReviewRows({
     joins: joins.data?.items ?? [],
+    joinBindings: joinBindings.data?.items ?? [],
     lookups: lookups.data?.items ?? [],
     loops: loops.data?.items ?? [],
     mappings: mappings.data?.items ?? [],
@@ -344,6 +388,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "mappings"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "loops"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "joins"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "join-bindings"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "lookups"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "artifacts"] })
     ]);
@@ -375,6 +420,21 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setJoinRightPath('');
     setJoinOperator('EQ');
     setJoinDescription('');
+    setJoinBindingSourceSchemaId('');
+    setJoinBindingName('');
+    setJoinBindingRootCollectionPath('');
+    setJoinBindingTargetCollectionPath('');
+    setJoinBindingHop1LeftCollectionPath('');
+    setJoinBindingHop1LeftValuePath('');
+    setJoinBindingHop1RightCollectionPath('');
+    setJoinBindingHop1RightValuePath('');
+    setJoinBindingHop1Alias('');
+    setJoinBindingHop2LeftCollectionPath('');
+    setJoinBindingHop2LeftValuePath('');
+    setJoinBindingHop2RightCollectionPath('');
+    setJoinBindingHop2RightValuePath('');
+    setJoinBindingHop2Alias('');
+    setJoinBindingDescription('');
     setLookupSourceSchemaId('');
     setLookupTargetSchemaId('');
     setLookupName('');
@@ -653,6 +713,66 @@ export function IntegrationMappingView({ token }: { token: string }) {
     }
   };
 
+  const handleCreateJoinBinding = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a join binding.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const binding = await createIntegrationJoinBinding(token, effectiveDefinitionId, {
+        description: joinBindingDescription.trim(),
+        hops: [
+          {
+            hop_sequence: 1,
+            left_collection_path: joinBindingHop1LeftCollectionPath.trim(),
+            left_value_path: joinBindingHop1LeftValuePath.trim(),
+            operator: "EQ",
+            result_alias: joinBindingHop1Alias.trim(),
+            right_collection_path: joinBindingHop1RightCollectionPath.trim(),
+            right_value_path: joinBindingHop1RightValuePath.trim()
+          },
+          {
+            hop_sequence: 2,
+            left_collection_path: joinBindingHop2LeftCollectionPath.trim(),
+            left_value_path: joinBindingHop2LeftValuePath.trim(),
+            operator: "EQ",
+            result_alias: joinBindingHop2Alias.trim(),
+            right_collection_path: joinBindingHop2RightCollectionPath.trim(),
+            right_value_path: joinBindingHop2RightValuePath.trim()
+          }
+        ],
+        name: joinBindingName.trim(),
+        root_collection_path: joinBindingRootCollectionPath.trim(),
+        sequence_index: 35,
+        source_schema_document_id: joinBindingSourceSchemaId,
+        target_collection_path: joinBindingTargetCollectionPath.trim()
+      });
+      setOperationMessage(`Created join binding ${binding.name}.`);
+      setJoinBindingName('');
+      setJoinBindingRootCollectionPath('');
+      setJoinBindingTargetCollectionPath('');
+      setJoinBindingHop1LeftCollectionPath('');
+      setJoinBindingHop1LeftValuePath('');
+      setJoinBindingHop1RightCollectionPath('');
+      setJoinBindingHop1RightValuePath('');
+      setJoinBindingHop1Alias('');
+      setJoinBindingHop2LeftCollectionPath('');
+      setJoinBindingHop2LeftValuePath('');
+      setJoinBindingHop2RightCollectionPath('');
+      setJoinBindingHop2RightValuePath('');
+      setJoinBindingHop2Alias('');
+      setJoinBindingDescription('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create join binding.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const handleCreateLookup = async () => {
     if (!effectiveDefinitionId) {
       setOperationError("Select a definition before creating a lookup.");
@@ -920,6 +1040,20 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 meta: [join.left_path, join.operator, join.right_path],
                 status: join.status,
                 title: join.name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition join bindings"
+              emptyText="No join bindings defined for this definition."
+              items={(joinBindings.data?.items ?? []).map((binding) => ({
+                id: binding.id,
+                meta: [
+                  binding.root_collection_path,
+                  binding.target_collection_path,
+                  binding.hops.map((hop) => hop.result_alias).join(", ")
+                ],
+                status: binding.status,
+                title: binding.name
               }))}
             />
             <DetailList
@@ -1393,6 +1527,103 @@ export function IntegrationMappingView({ token }: { token: string }) {
             </label>
             <Button disabled={!effectiveDefinitionId || !joinSourceSchemaId || isMutating} type="submit" variant="primary">
               Create join
+            </Button>
+          </form>
+
+          <form
+            className="integration-join-binding-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateJoinBinding();
+            }}
+          >
+            <label>
+              Join binding source schema
+              <select onChange={(event) => setJoinBindingSourceSchemaId(event.target.value)} value={joinBindingSourceSchemaId}>
+                <option value="">Select source schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Join binding name
+              <input onChange={(event) => setJoinBindingName(event.target.value)} value={joinBindingName} />
+            </label>
+            <SchemaNodeSelect
+              label="Join binding root collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingRootCollectionPath}
+            />
+            <SchemaNodeSelect
+              label="Join binding target collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingTargetCollectionPath}
+            />
+            <label>
+              Join binding root collection path
+              <input onChange={(event) => setJoinBindingRootCollectionPath(event.target.value)} value={joinBindingRootCollectionPath} />
+            </label>
+            <label>
+              Join binding target collection path
+              <input onChange={(event) => setJoinBindingTargetCollectionPath(event.target.value)} value={joinBindingTargetCollectionPath} />
+            </label>
+            <SchemaNodeSelect
+              label="Hop 1 left collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingHop1LeftCollectionPath}
+            />
+            <label>
+              Hop 1 left value path
+              <input onChange={(event) => setJoinBindingHop1LeftValuePath(event.target.value)} value={joinBindingHop1LeftValuePath} />
+            </label>
+            <SchemaNodeSelect
+              label="Hop 1 right collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingHop1RightCollectionPath}
+            />
+            <label>
+              Hop 1 right value path
+              <input onChange={(event) => setJoinBindingHop1RightValuePath(event.target.value)} value={joinBindingHop1RightValuePath} />
+            </label>
+            <label>
+              Hop 1 result alias
+              <input onChange={(event) => setJoinBindingHop1Alias(event.target.value)} value={joinBindingHop1Alias} />
+            </label>
+            <SchemaNodeSelect
+              label="Hop 2 left collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingHop2LeftCollectionPath}
+            />
+            <label>
+              Hop 2 left value path
+              <input onChange={(event) => setJoinBindingHop2LeftValuePath(event.target.value)} value={joinBindingHop2LeftValuePath} />
+            </label>
+            <SchemaNodeSelect
+              label="Hop 2 right collection"
+              nodes={collectionNodes(joinBindingSourceSchemaNodes.data?.items ?? [])}
+              onSelect={setJoinBindingHop2RightCollectionPath}
+            />
+            <label>
+              Hop 2 right value path
+              <input onChange={(event) => setJoinBindingHop2RightValuePath(event.target.value)} value={joinBindingHop2RightValuePath} />
+            </label>
+            <label>
+              Hop 2 result alias
+              <input onChange={(event) => setJoinBindingHop2Alias(event.target.value)} value={joinBindingHop2Alias} />
+            </label>
+            <label className="integration-form-wide">
+              Join binding description
+              <input onChange={(event) => setJoinBindingDescription(event.target.value)} value={joinBindingDescription} />
+            </label>
+            <Button
+              disabled={!effectiveDefinitionId || !joinBindingSourceSchemaId || !joinBindingName.trim() || isMutating}
+              type="submit"
+              variant="primary"
+            >
+              Create join binding
             </Button>
           </form>
 

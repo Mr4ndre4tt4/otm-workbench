@@ -63,6 +63,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     const mappingRequests: unknown[] = [];
     const loopRequests: unknown[] = [];
     const joinRequests: unknown[] = [];
+    const joinBindingRequests: unknown[] = [];
     const lookupRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
     const actionRequests: string[] = [];
@@ -76,6 +77,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     let mappings: Array<Record<string, unknown>> = [];
     let loops: Array<Record<string, unknown>> = [];
     let joins: Array<Record<string, unknown>> = [];
+    let joinBindings: Array<Record<string, unknown>> = [];
     let lookups: Array<Record<string, unknown>> = [];
     let generatedArtifacts: Array<Record<string, unknown>> = [];
     const alternateDefinition = {
@@ -122,6 +124,60 @@ describe("Functional Integration Mapping Studio journey", () => {
         name: "StopSequence",
         node_type: "number",
         sequence_index: 5
+      },
+      {
+        id: "node_source_stop_ship_unit",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/ShipmentStop/ShipmentStopDetail/ShipUnitGid/Gid",
+        path: "/Transmission/Shipment/ShipmentStop/ShipmentStopDetail/ShipUnitGid/Gid/Xid",
+        name: "Xid",
+        node_type: "string",
+        sequence_index: 6
+      },
+      {
+        id: "node_source_ship_unit",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment",
+        path: "/Transmission/Shipment/ShipUnit",
+        name: "ShipUnit",
+        node_type: "object",
+        sequence_index: 7
+      },
+      {
+        id: "node_source_ship_unit_gid",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/ShipUnit/ShipUnitGid/Gid",
+        path: "/Transmission/Shipment/ShipUnit/ShipUnitGid/Gid/Xid",
+        name: "Xid",
+        node_type: "string",
+        sequence_index: 8
+      },
+      {
+        id: "node_source_ship_unit_release",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/ShipUnit/ShipUnitContent/ReleaseGid/Gid",
+        path: "/Transmission/Shipment/ShipUnit/ShipUnitContent/ReleaseGid/Gid/Xid",
+        name: "Xid",
+        node_type: "string",
+        sequence_index: 9
+      },
+      {
+        id: "node_source_release",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment",
+        path: "/Transmission/Shipment/Release",
+        name: "Release",
+        node_type: "object",
+        sequence_index: 10
+      },
+      {
+        id: "node_source_release_gid",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/Release/ReleaseGid/Gid",
+        path: "/Transmission/Shipment/Release/ReleaseGid/Gid/Xid",
+        name: "Xid",
+        node_type: "string",
+        sequence_index: 11
       }
     ];
     const targetSchemaNodes = [
@@ -427,6 +483,53 @@ describe("Functional Integration Mapping Studio journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: joins, total: joins.length, page: 1, page_size: 50 }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/join-bindings")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body));
+          joinBindingRequests.push(body);
+          expect(body).toEqual({
+            source_schema_document_id: "schema_source",
+            root_collection_path: "/Transmission/Shipment/ShipmentStop",
+            target_collection_path: "/Transmission/Shipment/Release",
+            name: "Stop to release binding",
+            description: "Synthetic two-hop binding metadata.",
+            sequence_index: 35,
+            hops: [
+              {
+                hop_sequence: 1,
+                left_collection_path: "/Transmission/Shipment/ShipmentStop",
+                left_value_path: "ShipmentStopDetail/ShipUnitGid/Gid/Xid",
+                right_collection_path: "/Transmission/Shipment/ShipUnit",
+                right_value_path: "ShipUnitGid/Gid/Xid",
+                operator: "EQ",
+                result_alias: "stop_ship_unit"
+              },
+              {
+                hop_sequence: 2,
+                left_collection_path: "/Transmission/Shipment/ShipUnit",
+                left_value_path: "ShipUnitContent/ReleaseGid/Gid/Xid",
+                right_collection_path: "/Transmission/Shipment/Release",
+                right_value_path: "ReleaseGid/Gid/Xid",
+                operator: "EQ",
+                result_alias: "ship_unit_release"
+              }
+            ]
+          });
+          const binding = {
+            id: "join_binding_1",
+            definition_id: "definition_1",
+            ...body,
+            status: "ACTIVE",
+            created_by: "admin@example.test",
+            created_at: "2026-05-21T10:05:30",
+            updated_at: "2026-05-21T10:05:30"
+          };
+          joinBindings = [binding];
+          return Promise.resolve(jsonResponse(binding));
+        }
+        return Promise.resolve(jsonResponse({ items: joinBindings, total: joinBindings.length, page: 1, page_size: 50 }));
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/lookups")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         if (init?.method === "POST") {
@@ -523,6 +626,7 @@ describe("Functional Integration Mapping Studio journey", () => {
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/mappings") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/loops") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/joins") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/join-bindings") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/lookups")
       ) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -696,6 +800,25 @@ describe("Functional Integration Mapping Studio journey", () => {
     await waitFor(() => expect(joinRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition joins")).findByText("Synthetic shipment stop join")).toBeInTheDocument();
 
+    await userEvent.selectOptions(screen.getByLabelText("Join binding source schema"), "schema_source");
+    await userEvent.type(screen.getByLabelText("Join binding name"), "Stop to release binding");
+    await userEvent.selectOptions(await screen.findByLabelText("Join binding root collection"), "/Transmission/Shipment/ShipmentStop");
+    await userEvent.selectOptions(await screen.findByLabelText("Join binding target collection"), "/Transmission/Shipment/Release");
+    await userEvent.selectOptions(await screen.findByLabelText("Hop 1 left collection"), "/Transmission/Shipment/ShipmentStop");
+    await userEvent.type(screen.getByLabelText("Hop 1 left value path"), "ShipmentStopDetail/ShipUnitGid/Gid/Xid");
+    await userEvent.selectOptions(await screen.findByLabelText("Hop 1 right collection"), "/Transmission/Shipment/ShipUnit");
+    await userEvent.type(screen.getByLabelText("Hop 1 right value path"), "ShipUnitGid/Gid/Xid");
+    await userEvent.type(screen.getByLabelText("Hop 1 result alias"), "stop_ship_unit");
+    await userEvent.selectOptions(await screen.findByLabelText("Hop 2 left collection"), "/Transmission/Shipment/ShipUnit");
+    await userEvent.type(screen.getByLabelText("Hop 2 left value path"), "ShipUnitContent/ReleaseGid/Gid/Xid");
+    await userEvent.selectOptions(await screen.findByLabelText("Hop 2 right collection"), "/Transmission/Shipment/Release");
+    await userEvent.type(screen.getByLabelText("Hop 2 right value path"), "ReleaseGid/Gid/Xid");
+    await userEvent.type(screen.getByLabelText("Hop 2 result alias"), "ship_unit_release");
+    await userEvent.type(screen.getByLabelText("Join binding description"), "Synthetic two-hop binding metadata.");
+    await userEvent.click(screen.getByRole("button", { name: "Create join binding" }));
+    await waitFor(() => expect(joinBindingRequests).toHaveLength(1));
+    expect(await within(await screen.findByLabelText("Selected definition join bindings")).findByText("Stop to release binding")).toBeInTheDocument();
+
     await userEvent.selectOptions(screen.getByLabelText("Lookup source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Lookup target schema"), "schema_target");
     await userEvent.type(screen.getByLabelText("Lookup name"), "Synthetic carrier lookup");
@@ -715,9 +838,12 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(reviewPanel).toHaveTextContent("Header");
     expect(reviewPanel).toHaveTextContent("Entregas loop");
     expect(reviewPanel).toHaveTextContent("Joins");
+    expect(reviewPanel).toHaveTextContent("Join bindings");
     expect(reviewPanel).toHaveTextContent("Lookups");
     expect(reviewPanel).toHaveTextContent("Response Handling");
     expect(reviewPanel).toHaveTextContent("Synthetic shipment stop join");
+    expect(reviewPanel).toHaveTextContent("Stop to release binding");
+    expect(reviewPanel).toHaveTextContent("stop_ship_unit, ship_unit_release");
     expect(reviewPanel).toHaveTextContent("Synthetic carrier lookup");
     expect(reviewPanel).toHaveTextContent("No response handling rules defined.");
 
@@ -738,6 +864,16 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Join left path")).toHaveValue("");
     expect(screen.getByLabelText("Join right path")).toHaveValue("");
     expect(screen.getByLabelText("Join operator")).toHaveValue("EQ");
+    expect(screen.getByLabelText("Join binding source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Join binding name")).toHaveValue("");
+    expect(screen.getByLabelText("Join binding root collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Join binding target collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 1 left value path")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 1 right value path")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 1 result alias")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 2 left value path")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 2 right value path")).toHaveValue("");
+    expect(screen.getByLabelText("Hop 2 result alias")).toHaveValue("");
     expect(screen.getByLabelText("Lookup source schema")).toHaveValue("");
     expect(screen.getByLabelText("Lookup target schema")).toHaveValue("");
     expect(screen.getByLabelText("Lookup name")).toHaveValue("");

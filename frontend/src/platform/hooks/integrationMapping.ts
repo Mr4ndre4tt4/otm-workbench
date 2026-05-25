@@ -9,6 +9,9 @@ import type {
   IntegrationEndpointCreatePayload,
   IntegrationEndpointsResponse,
   IntegrationJoinCreatePayload,
+  IntegrationJoinBinding,
+  IntegrationJoinBindingCreatePayload,
+  IntegrationJoinBindingsResponse,
   IntegrationJoinRule,
   IntegrationJoinsResponse,
   IntegrationLookupCreatePayload,
@@ -176,6 +179,17 @@ export function useIntegrationJoins(token: string | null, definitionId: string |
   });
 }
 
+export function useIntegrationJoinBindings(token: string | null, definitionId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "integration-mapping", "definitions", definitionId, "join-bindings"],
+    queryFn: () =>
+      apiGet<IntegrationJoinBindingsResponse>(`/api/v1/modules/integration-mapping/definitions/${definitionId}/join-bindings`, {
+        token
+      }),
+    enabled: Boolean(token && definitionId)
+  });
+}
+
 export function useIntegrationLookups(token: string | null, definitionId: string | null) {
   return useQuery({
     queryKey: ["modules", "integration-mapping", "definitions", definitionId, "lookups"],
@@ -214,6 +228,14 @@ export function createIntegrationJoin(token: string, definitionId: string, paylo
   return apiPost<IntegrationJoinRule>(`/api/v1/modules/integration-mapping/definitions/${definitionId}/joins`, payload, {
     token
   });
+}
+
+export function createIntegrationJoinBinding(token: string, definitionId: string, payload: IntegrationJoinBindingCreatePayload) {
+  return apiPost<IntegrationJoinBinding>(
+    `/api/v1/modules/integration-mapping/definitions/${definitionId}/join-bindings`,
+    payload,
+    { token }
+  );
 }
 
 export function createIntegrationLookup(token: string, definitionId: string, payload: IntegrationLookupCreatePayload) {

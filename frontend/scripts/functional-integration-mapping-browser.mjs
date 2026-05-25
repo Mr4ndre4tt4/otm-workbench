@@ -156,7 +156,13 @@ async function run() {
     await payloadForm
       .getByLabel("Payload content")
       .fill(
-        "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid><ShipmentStop><StopSequence>1</StopSequence></ShipmentStop></Shipment></Transmission>"
+        [
+          "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid>",
+          "<ShipmentStop><StopSequence>1</StopSequence><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
+          "<ShipUnit><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid><ShipUnitContent><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></ShipUnitContent></ShipUnit>",
+          "<Release><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></Release>",
+          "</Shipment></Transmission>"
+        ].join("")
       );
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload planned_shipment_manual_${suffix}.xml and schema Transmission created.`).waitFor();
@@ -197,9 +203,29 @@ async function run() {
     await page.getByLabel("Join right node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
     await page.getByLabel("Join operator").selectOption("EQ");
     await page.getByLabel("Join description").fill("Synthetic join metadata.");
-    await page.getByRole("button", { name: "Create join" }).click();
+    await page.locator(".integration-join-form").getByRole("button", { name: "Create join", exact: true }).click();
     await page.getByText("Created join Synthetic shipment stop join.").waitFor();
     await page.getByLabel("Selected definition joins").getByText("Synthetic shipment stop join", { exact: true }).waitFor();
+
+    await page.getByLabel("Join binding source schema").selectOption({ label: "Transmission" });
+    await page.getByLabel("Join binding name").fill("Stop to release binding");
+    const joinBindingSelects = page.locator(".integration-join-binding-form select");
+    await joinBindingSelects.nth(1).selectOption("/Transmission/Shipment/ShipmentStop");
+    await joinBindingSelects.nth(2).selectOption("/Transmission/Shipment/Release");
+    await joinBindingSelects.nth(3).selectOption("/Transmission/Shipment/ShipmentStop");
+    await page.getByLabel("Hop 1 left value path").fill("ShipmentStopDetail/ShipUnitGid/Gid/Xid");
+    await joinBindingSelects.nth(4).selectOption("/Transmission/Shipment/ShipUnit");
+    await page.getByLabel("Hop 1 right value path").fill("ShipUnitGid/Gid/Xid");
+    await page.getByLabel("Hop 1 result alias").fill("stop_ship_unit");
+    await joinBindingSelects.nth(5).selectOption("/Transmission/Shipment/ShipUnit");
+    await page.getByLabel("Hop 2 left value path").fill("ShipUnitContent/ReleaseGid/Gid/Xid");
+    await joinBindingSelects.nth(6).selectOption("/Transmission/Shipment/Release");
+    await page.getByLabel("Hop 2 right value path").fill("ReleaseGid/Gid/Xid");
+    await page.getByLabel("Hop 2 result alias").fill("ship_unit_release");
+    await page.getByLabel("Join binding description").fill("Synthetic two-hop binding metadata.");
+    await page.getByRole("button", { name: "Create join binding" }).click();
+    await page.getByText("Created join binding Stop to release binding.").waitFor();
+    await page.getByLabel("Selected definition join bindings").getByText("Stop to release binding", { exact: true }).waitFor();
 
     await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
@@ -229,6 +255,15 @@ async function run() {
     });
     await page.locator(".integration-join-form").getByLabel("Join source schema").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected join source schema after reset: ${element.value}`);
+    });
+    await page.locator(".integration-join-binding-form").getByLabel("Join binding source schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected join binding source schema after reset: ${element.value}`);
+    });
+    await page.locator(".integration-join-binding-form").getByLabel("Hop 1 left value path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected join binding hop 1 left value after reset: ${element.value}`);
+    });
+    await page.locator(".integration-join-binding-form").getByLabel("Hop 2 result alias").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected join binding hop 2 alias after reset: ${element.value}`);
     });
     await page.locator(".integration-lookup-form").getByLabel("Lookup mock response JSON").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected lookup mock JSON after reset: ${element.value}`);

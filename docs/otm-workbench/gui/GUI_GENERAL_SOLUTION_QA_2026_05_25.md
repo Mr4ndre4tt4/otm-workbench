@@ -112,7 +112,7 @@ artifacts, not product source.
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
-| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, and the preview engine now executes first-slice qualifier extraction, count-distinct aggregation, and explicit multi-hop join-binding provenance. | To become a full accelerator for NDD-like mappings, it still needs GUI authoring for join bindings, downstream alias-scoped mapping execution, and deeper semantic validation. |
+| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is now visible, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, and explicit multi-hop join-binding provenance. | To become a full accelerator for NDD-like mappings, it still needs downstream alias-scoped mapping execution and deeper semantic validation. |
 | Admin Console | Browser QA passed | Functional setup, capability, feature flag, jobs and audit visibility. | Advanced edit/delete/pagination and volume management remain future. |
 
 ## 4. Findings Added To Pipeline
@@ -124,7 +124,8 @@ artifacts, not product source.
 | `OTM-143` | Medium | Operational lists become noisy after seeded QA volume; need stronger filters, density and truncation. |
 | `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. First slice delivered in the Rules stage. |
 | `OTM-145` | High | Integration Mapping backend needed cross-collection multi-hop joins, qualifier filters and aggregations. First slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop joins moved to explicit binding follow-up `OTM-147`. |
-| `OTM-147` | High | Backend join-binding contract delivered for multi-hop relationships and scalar preview provenance. Remaining work is UI authoring/review plus alias-scoped downstream mapping execution. |
+| `OTM-147` | High | Backend join-binding contract delivered for multi-hop relationships and scalar preview provenance. |
+| `OTM-148` | High | Staged Rules UI authoring/review delivered for Integration Mapping join bindings. Remaining work is alias-scoped downstream mapping execution under `OTM-149`. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 
 ## 5. Recommended Next Queue

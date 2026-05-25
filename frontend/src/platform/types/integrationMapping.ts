@@ -116,6 +116,35 @@ export type IntegrationJoinRule = {
   updated_at: string | null;
 };
 
+export type IntegrationJoinBindingHop = {
+  id?: string;
+  binding_id?: string;
+  hop_sequence: number;
+  left_collection_path: string;
+  left_value_path: string;
+  right_collection_path: string;
+  right_value_path: string;
+  operator: string;
+  result_alias: string;
+  status?: string;
+};
+
+export type IntegrationJoinBinding = {
+  id: string;
+  definition_id: string;
+  source_schema_document_id: string;
+  root_collection_path: string;
+  target_collection_path: string;
+  name: string;
+  description: string;
+  sequence_index: number;
+  status: string;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  hops: IntegrationJoinBindingHop[];
+};
+
 export type IntegrationLookupDefinition = {
   id: string;
   definition_id: string;
@@ -241,6 +270,24 @@ export type IntegrationJoinCreatePayload = {
   sequence_index: number;
 };
 
+export type IntegrationJoinBindingCreatePayload = {
+  source_schema_document_id: string;
+  root_collection_path: string;
+  target_collection_path: string;
+  name: string;
+  description: string;
+  sequence_index: number;
+  hops: Array<{
+    hop_sequence: number;
+    left_collection_path: string;
+    left_value_path: string;
+    right_collection_path: string;
+    right_value_path: string;
+    operator: string;
+    result_alias: string;
+  }>;
+};
+
 export type IntegrationLookupCreatePayload = {
   source_schema_document_id: string;
   target_schema_document_id: string;
@@ -290,6 +337,7 @@ export type IntegrationSchemaNodesResponse = PageResponse<IntegrationSchemaNode>
 export type IntegrationMappingsResponse = PageResponse<IntegrationMapping>;
 export type IntegrationLoopsResponse = PageResponse<IntegrationLoopDefinition>;
 export type IntegrationJoinsResponse = PageResponse<IntegrationJoinRule>;
+export type IntegrationJoinBindingsResponse = PageResponse<IntegrationJoinBinding>;
 export type IntegrationLookupsResponse = PageResponse<IntegrationLookupDefinition>;
 export type IntegrationArtifactsResponse = PageResponse<IntegrationArtifact> & {
   definition_id: string;

@@ -78,8 +78,11 @@ test pass/fail:
    slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT.
 5. OTM-147: add explicit multi-hop join-binding contract for Integration
    Mapping. First backend slice delivered with persisted bindings/hops and
-   scalar preview provenance; UI authoring/review and alias-scoped mapping
-   execution remain the next hardening slice.
+   scalar preview provenance.
+6. OTM-148: expose join-binding authoring and grouped review in the staged
+   Integration Mapping Rules UI. Delivered with React and browser functional
+   QA.
+7. OTM-149: execute alias-scoped downstream mappings from join bindings.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```
