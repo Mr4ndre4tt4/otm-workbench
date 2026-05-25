@@ -32,6 +32,7 @@ import {
   useMasterDataScenarioPacks,
   useMasterDataTemplateDetail,
   useMasterDataTemplates,
+  useMasterDataWorkbookEditor,
   validateMasterDataTemplateDefinition,
   validateMasterDataRelationships,
   validateMasterDataTemplate
@@ -454,6 +455,10 @@ export function MasterDataView({ token }: { token: string }) {
   const effectiveTemplateCode = selectedTemplateCode ?? templateItems[0]?.code ?? null;
   const templateDetail = useMasterDataTemplateDetail(token, effectiveTemplateCode);
   const selectedTemplate = templateDetail.data;
+  const workbookEditor = useMasterDataWorkbookEditor(
+    token,
+    activeStage === "workbook" && selectedTemplate?.status === "PUBLISHED" ? effectiveTemplateCode : null
+  );
   const batchFilters = {
     file_name_contains: batchFileNameFilter.trim() || undefined,
     min_row_count: batchMinRowCountFilter ? Number(batchMinRowCountFilter) : undefined,
@@ -1479,6 +1484,23 @@ export function MasterDataView({ token }: { token: string }) {
                     ],
                     status: "GENERATED",
                     title: workbookArtifact.file_name
+                  }
+                ]}
+              />
+            ) : null}
+            {workbookEditor.data ? (
+              <DetailList
+                ariaLabel="Workbook editor contract"
+                items={[
+                  {
+                    id: workbookEditor.data.template_code,
+                    meta: [
+                      `${workbookEditor.data.sheets.length} editable sheet(s)`,
+                      `${workbookEditor.data.sheets.reduce((total, sheet) => total + sheet.fields.length, 0)} field(s)`,
+                      `${workbookEditor.data.relationship_rules.length} relationship rule(s)`
+                    ],
+                    status: "BACKEND_OWNED",
+                    title: workbookEditor.data.template_name ?? workbookEditor.data.template_code
                   }
                 ]}
               />

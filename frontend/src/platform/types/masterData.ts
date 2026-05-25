@@ -62,6 +62,61 @@ export type MasterDataWorkbookArtifact = {
   field_count: number;
 };
 
+export type MasterDataWorkbookEditor = {
+  template_code: string;
+  template_name?: string;
+  version?: string | number;
+  sheets: Array<{
+    code: string;
+    name: string;
+    target_table: string;
+    fields: Array<{
+      field_key: string;
+      label: string;
+      data_type: string;
+      required: boolean;
+    }>;
+    starter_rows: Array<{
+      row_id: string;
+      values: Record<string, string>;
+    }>;
+  }>;
+  relationship_rules: Array<Record<string, unknown>>;
+  documentation_refs: MasterDataTemplateDefinitionRef[];
+};
+
+export type MasterDataWorkbookEditorRowsRequest = {
+  file_name?: string;
+  sheets: Array<{
+    sheet_code: string;
+    rows: Array<{
+      row_id: string;
+      values: Record<string, string>;
+    }>;
+  }>;
+};
+
+export type MasterDataWorkbookEditorValidation = {
+  template_code: string;
+  valid: boolean;
+  status: "VALID" | "INVALID";
+  issues: Array<{
+    code: string;
+    message: string;
+    severity?: string;
+    sheet_code?: string;
+    row_id?: string;
+    field_key?: string;
+    parent_sheet_code?: string;
+    parent_field_key?: string;
+  }>;
+  summary: {
+    sheet_count: number;
+    row_count: number;
+    issue_count: number;
+  };
+};
+
 export type MasterDataBatch = {
   batch_id: string;
   template_code: string;

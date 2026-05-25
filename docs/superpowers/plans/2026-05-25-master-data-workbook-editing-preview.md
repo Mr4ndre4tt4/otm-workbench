@@ -372,7 +372,7 @@ Expected: all Master Data template tests pass.
 - Modify: `frontend/src/platform/hooks/masterData.ts`
 - Test: `frontend/src/app/AppFunctionalMasterData.test.tsx`
 
-- [ ] **Step 1: Add failing React assertion around editor fetch**
+- [x] **Step 1: Add failing React assertion around editor fetch**
 
 Extend the Master Data test mock so `/workbook-editor` is expected after selecting Workbook stage. Assert `apiCalls` includes:
 
@@ -380,7 +380,7 @@ Extend the Master Data test mock so `/workbook-editor` is expected after selecti
 expect(apiCalls).toContain("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor");
 ```
 
-- [ ] **Step 2: Run React test and verify it fails**
+- [x] **Step 2: Run React test and verify it fails**
 
 Run:
 
@@ -390,7 +390,7 @@ npm run test -- AppFunctionalMasterData.test.tsx
 
 Expected: missing API call or unhandled mock path.
 
-- [ ] **Step 3: Add types and hooks**
+- [x] **Step 3: Add types and hooks**
 
 Add:
 
@@ -420,7 +420,7 @@ export function useMasterDataWorkbookEditor(token: string, templateCode?: string
 }
 ```
 
-- [ ] **Step 4: Run React test and verify it passes**
+- [x] **Step 4: Run React test and verify it passes**
 
 Run:
 

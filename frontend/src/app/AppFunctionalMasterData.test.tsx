@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -314,6 +314,7 @@ describe("Functional Master Data journey", () => {
     const batchSummaryRequests: unknown[] = [];
     const artifactListRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
+    const workbookEditorRequests: string[] = [];
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -360,6 +361,48 @@ describe("Functional Master Data journey", () => {
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
         return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor")) {
+        workbookEditorRequests.push(parsedUrl.pathname);
+        return Promise.resolve(
+          jsonResponse({
+            documentation_refs: [],
+            relationship_rules: [
+              {
+                child_field_name: "region_gid",
+                child_sheet_code: "REGION_DETAILS",
+                parent_field_name: "region_gid",
+                parent_sheet_code: "REGIONS"
+              }
+            ],
+            sheets: [
+              {
+                code: "REGIONS",
+                fields: [
+                  { data_type: "string", field_key: "region_gid", label: "Region GID", required: true },
+                  { data_type: "string", field_key: "region_xid", label: "Region XID", required: true },
+                  { data_type: "string", field_key: "region_name", label: "Region Name", required: false }
+                ],
+                name: "Regions",
+                starter_rows: [{ row_id: "REGIONS-1", values: { region_gid: "", region_name: "", region_xid: "" } }],
+                target_table: "REGION"
+              },
+              {
+                code: "REGION_DETAILS",
+                fields: [
+                  { data_type: "string", field_key: "region_gid", label: "Region GID", required: true },
+                  { data_type: "string", field_key: "location_gid", label: "Location GID", required: true }
+                ],
+                name: "Region Details",
+                starter_rows: [{ row_id: "REGION_DETAILS-1", values: { location_gid: "", region_gid: "" } }],
+                target_table: "REGION_DETAIL"
+              }
+            ],
+            template_code: "REGIONS_BASIC",
+            template_name: "Regions Basic",
+            version: 1
+          })
+        );
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/LOCATIONS_RECOVERED")) {
         return Promise.resolve(jsonResponse(recoveredLocationsTemplate()));
@@ -787,6 +830,9 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByLabelText("Selected Master Data action guidance")).toHaveTextContent("TEMPLATE_ALREADY_PUBLISHED");
 
     await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));
+    await waitFor(() =>
+      expect(workbookEditorRequests).toContain("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor")
+    );
     await userEvent.click(screen.getByRole("button", { name: "Validate template" }));
     await screen.findByText("Template validation is VALID.");
     expect(screen.getByLabelText("Template validation summary")).toHaveTextContent("VALID");

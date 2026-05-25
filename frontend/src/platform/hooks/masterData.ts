@@ -21,7 +21,10 @@ import type {
   MasterDataTemplateDraftRequest,
   MasterDataTemplateValidation,
   MasterDataTemplatesResponse,
-  MasterDataWorkbookArtifact
+  MasterDataWorkbookArtifact,
+  MasterDataWorkbookEditor,
+  MasterDataWorkbookEditorRowsRequest,
+  MasterDataWorkbookEditorValidation
 } from "../types";
 
 export function useMasterDataTemplates(token: string | null) {
@@ -182,6 +185,41 @@ export function buildMasterDataWorkbook(token: string, templateCode: string) {
   return apiPost<MasterDataWorkbookArtifact>(
     `/api/v1/modules/master-data/templates/${templateCode}/build-workbook`,
     {},
+    { token }
+  );
+}
+
+export function useMasterDataWorkbookEditor(token: string | null, templateCode: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "workbook-editor", templateCode],
+    queryFn: () =>
+      apiGet<MasterDataWorkbookEditor>(`/api/v1/modules/master-data/templates/${templateCode}/workbook-editor`, {
+        token
+      }),
+    enabled: Boolean(token && templateCode)
+  });
+}
+
+export function validateMasterDataWorkbookEditorRows(
+  token: string,
+  templateCode: string,
+  payload: MasterDataWorkbookEditorRowsRequest
+) {
+  return apiPost<MasterDataWorkbookEditorValidation>(
+    `/api/v1/modules/master-data/templates/${templateCode}/workbook-editor/validate`,
+    payload,
+    { token }
+  );
+}
+
+export function createMasterDataBatchFromWorkbookEditorRows(
+  token: string,
+  templateCode: string,
+  payload: MasterDataWorkbookEditorRowsRequest
+) {
+  return apiPost<MasterDataBatch>(
+    `/api/v1/modules/master-data/templates/${templateCode}/workbook-editor/batches`,
+    payload,
     { token }
   );
 }
