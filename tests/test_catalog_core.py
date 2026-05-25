@@ -236,6 +236,33 @@ def test_catalog_macro_object_tables_endpoint(client, admin_header):
     assert all(item["allow_csvutil"] is True for item in payload["items"])
 
 
+def test_catalog_order_release_macro_object_is_transactional_schema_guidance_target(client, admin_header):
+    response = client.get("/api/v1/catalog/macro-objects/ORDER_RELEASE", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "ORDER_RELEASE"
+    assert payload["category"] == "TRANSACTIONAL"
+    assert payload["allow_cutover"] is False
+    assert payload["allow_csvutil"] is False
+    table_names = [item["table_name"] for item in payload["tables"]]
+    assert table_names == [
+        "ORDER_RELEASE",
+        "ORDER_RELEASE_LINE",
+        "ORDER_RELEASE_REFNUM",
+    ]
+    assert all(item["validated_by_datadict"] is True for item in payload["tables"])
+    assert all(item["allow_csvutil"] is False for item in payload["tables"])
+    assert payload["summary"] == {
+        "table_count": 3,
+        "dependency_count": 0,
+        "validated_table_count": 3,
+        "all_tables_validated": True,
+        "csvutil_table_count": 0,
+        "cutover_table_count": 0,
+    }
+
+
 def test_catalog_macro_object_load_plan_orders_dependencies_before_target(client, admin_header):
     response = client.get("/api/v1/catalog/macro-objects/RATE_RECORD/load-plan", headers=admin_header)
 

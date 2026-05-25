@@ -499,6 +499,23 @@ MACRO_OBJECT_SEED = [
         ],
         "dependencies": [],
     },
+    {
+        "code": "ORDER_RELEASE",
+        "name": "Order Release",
+        "category": "TRANSACTIONAL",
+        "description": "Order Release transactional payload family for XML generation and schema guidance.",
+        "default_load_order": 900,
+        "default_method": "XML",
+        "method_options": ["XML"],
+        "allow_cutover": False,
+        "allow_csvutil": False,
+        "tables": [
+            {"table_name": "ORDER_RELEASE", "relationship_role": "PRIMARY", "is_primary_table": True},
+            {"table_name": "ORDER_RELEASE_LINE", "relationship_role": "LINE", "is_primary_table": False},
+            {"table_name": "ORDER_RELEASE_REFNUM", "relationship_role": "REFNUM", "is_primary_table": False},
+        ],
+        "dependencies": [],
+    },
 ]
 
 

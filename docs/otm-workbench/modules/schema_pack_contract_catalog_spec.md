@@ -247,8 +247,7 @@ Examples:
 - RATE_RECORD -> RATE_GEO as SEMANTIC_ROOT / HIGH
 - LOCATION -> Location as SEMANTIC_ROOT / HIGH
 - ITEM -> Item as SEMANTIC_ROOT / HIGH
-- ORDER_RELEASE -> Release as SEMANTIC_ROOT / MEDIUM until Oracle docs validate
-  the final output contract.
+- ORDER_RELEASE -> Release as SEMANTIC_ROOT / HIGH for XML/schema guidance.
 ```
 
 Known roots can be auto-linked during Schema Pack indexing when the source
@@ -262,6 +261,10 @@ reference is already pinned and client-safe:
 - Item / ItemMaster -> ITEM
 - Release -> ORDER_RELEASE
 ```
+
+`ORDER_RELEASE` is treated as a transactional macro object for XML generation
+and schema guidance. It is not allowlisted for CSVUtil/cutover generation in
+MVP0.
 
 ## API Surface
 

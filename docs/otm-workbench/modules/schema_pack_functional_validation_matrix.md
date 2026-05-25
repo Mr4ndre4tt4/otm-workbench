@@ -99,6 +99,8 @@ Backend status:
   source reference is pinned and client-safe.
 - `GET /api/v1/catalog/schema-guidance/readiness` summarizes guidance readiness
   across macro objects for dashboards and backlog triage.
+- Catalog Core now seeds `ORDER_RELEASE` as a transactional macro object for
+  XML/schema guidance, blocked for CSVUtil/cutover in MVP0.
 ```
 
 ## Next Hardening Slices
