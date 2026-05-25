@@ -55,7 +55,11 @@ qa:functional:admin:browser                  passed
 The first browser attempt failed before application interaction because the
 local backend did not contain `demo@example.test / DemoPass123!`. This is a
 reproducibility gap in QA/dev setup, not a module UI regression. It was captured
-as `OTM-141`.
+as `OTM-141` and addressed with an explicit local CLI bootstrap command:
+
+```powershell
+python -m otm_workbench.cli bootstrap-qa-user
+```
 
 ### React Functional QA
 

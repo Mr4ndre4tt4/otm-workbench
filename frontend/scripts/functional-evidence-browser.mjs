@@ -35,7 +35,19 @@ async function apiRequest(path, { method = "GET", token, body } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   if (!response.ok) {
-    throw new Error(`${method} ${path} failed with HTTP ${response.status}: ${await response.text()}`);
+    const responseText = await response.text();
+    if (response.status === 401 && path === "/api/v1/platform/session/login") {
+      throw new Error(
+        [
+          `${method} ${path} failed with HTTP 401: ${responseText}`,
+          "Browser QA login user is not available in the local backend.",
+          "Run from the repository root after the backend schema is created:",
+          "  python -m otm_workbench.cli bootstrap-qa-user",
+          "Then rerun the browser QA script."
+        ].join("\n")
+      );
+    }
+    throw new Error(`${method} ${path} failed with HTTP ${response.status}: ${responseText}`);
   }
   return response.json();
 }

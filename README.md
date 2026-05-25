@@ -12,6 +12,16 @@ python -m pytest
 python -m uvicorn otm_workbench.main:app --reload
 ```
 
+For local browser functional QA, run this from the repository root after the
+backend schema is created, then execute the browser scripts from `frontend/`:
+
+```powershell
+python -m otm_workbench.cli bootstrap-qa-user
+```
+
+Default credentials are synthetic-only and intended for local/dev validation:
+`demo@example.test / DemoPass123!`.
+
 The MVP 0 surface is backend/API-only.
 
 Current Rates MVP0 backend state is documented in

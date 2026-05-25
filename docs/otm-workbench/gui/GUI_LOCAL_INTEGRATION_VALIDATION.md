@@ -33,6 +33,23 @@ Domain: OTM1
 
 No client names or client payloads were used.
 
+For browser functional QA scripts, create the default synthetic QA user from the
+repository root after the backend schema exists, before running
+`npm run qa:functional:*:browser` from `frontend/`:
+
+```powershell
+python -m otm_workbench.cli bootstrap-qa-user
+```
+
+Default local QA credentials:
+
+```text
+demo@example.test / DemoPass123!
+```
+
+This command is explicit on purpose. The backend must not silently create local
+QA users in production-like environments.
+
 ## Steps Validated
 
 1. Created the isolated SQLite schema with SQLAlchemy metadata.
