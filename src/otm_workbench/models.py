@@ -548,6 +548,23 @@ class IntegrationLookupDefinition(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationResponseHandler(Base, TimestampMixin):
+    __tablename__ = "integration_response_handlers"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    target_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    response_path: Mapped[str] = mapped_column(String, index=True)
+    success_condition: Mapped[str] = mapped_column(String, default="EXISTS", index=True)
+    expected_value: Mapped[str] = mapped_column(String, default="")
+    outcome: Mapped[str] = mapped_column(String, default="SUCCESS", index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 

@@ -21,6 +21,7 @@ from otm_workbench.models import (
     IntegrationLookupDefinition,
     IntegrationMapping,
     IntegrationPayloadArtifact,
+    IntegrationResponseHandler,
     IntegrationSchemaDocument,
     IntegrationSchemaNode,
     IntegrationSystem,
@@ -62,6 +63,10 @@ from otm_workbench.modules.integration_mapping.join_bindings import (
 from otm_workbench.modules.integration_mapping.lookups import (
     create_integration_lookup_definition,
     serialize_integration_lookup_definition,
+)
+from otm_workbench.modules.integration_mapping.response_handlers import (
+    create_integration_response_handler,
+    serialize_integration_response_handler,
 )
 from otm_workbench.modules.integration_mapping.schema_tree import parse_payload_artifact_schema_tree
 from otm_workbench.modules.integration_mapping.schema_documents import (
@@ -236,6 +241,17 @@ class IntegrationLookupDefinitionCreateRequest(BaseModel):
     name: str
     description: str = ""
     mock_response_json: str = ""
+    sequence_index: int = 0
+
+
+class IntegrationResponseHandlerCreateRequest(BaseModel):
+    target_schema_document_id: str
+    response_path: str
+    success_condition: str = "EXISTS"
+    expected_value: str = ""
+    outcome: str = "SUCCESS"
+    name: str
+    description: str = ""
     sequence_index: int = 0
 
 
@@ -1081,3 +1097,72 @@ def get_lookup_definition(
     if lookup is None:
         raise api_error(404, "INTEGRATION_LOOKUP_NOT_FOUND", "Integration lookup definition not found.")
     return serialize_integration_lookup_definition(lookup)
+
+
+@router.post("/definitions/{definition_id}/response-handlers")
+def create_response_handler(
+    definition_id: str,
+    payload: IntegrationResponseHandlerCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        handler = create_integration_response_handler(
+            db,
+            definition=definition,
+            payload=payload.model_dump(),
+            user=user,
+        )
+    except ValueError as exc:
+        if str(exc) == "target_schema_document_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_RESPONSE_HANDLER_SCHEMA_DOCUMENT_INVALID",
+                "Response handler schema document must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) == "success_condition_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_RESPONSE_HANDLER_CONDITION_INVALID",
+                "Response handler success_condition must be one of the controlled catalog values.",
+            ) from exc
+        if str(exc) == "outcome_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_RESPONSE_HANDLER_OUTCOME_INVALID",
+                "Response handler outcome must be SUCCESS, ERROR, or WARNING.",
+            ) from exc
+        if str(exc) == "expected_value_required":
+            raise api_error(
+                400,
+                "INTEGRATION_RESPONSE_HANDLER_EXPECTED_VALUE_REQUIRED",
+                "EQUALS response handlers must include expected_value.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_RESPONSE_HANDLER_PATH_INVALID",
+            "Response handler response_path must exist in the target schema document.",
+        ) from exc
+    return serialize_integration_response_handler(handler)
+
+
+@router.get("/definitions/{definition_id}/response-handlers")
+def list_response_handlers(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    handlers = (
+        db.query(IntegrationResponseHandler)
+        .filter(IntegrationResponseHandler.definition_id == definition.id)
+        .order_by(IntegrationResponseHandler.sequence_index, IntegrationResponseHandler.created_at)
+        .all()
+    )
+    items = [serialize_integration_response_handler(handler) for handler in handlers]
+    return PageResponse(items=items, total=len(items))

@@ -2,6 +2,10 @@ from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
 from tests.test_integration_mapping_mappings import create_source_and_target_documents, mapping_payload
+from tests.test_integration_mapping_response_handlers import (
+    create_documents_with_response_status,
+    response_handler_payload,
+)
 from tests.test_integration_mapping_validation import create_full_valid_definition
 
 
@@ -139,6 +143,26 @@ def test_generate_integration_spec_includes_persisted_transform_config(client, a
     artifact = db_session.get(Artifact, response.json()["artifact_id"])
     markdown = Path(artifact.file_path).read_text(encoding="utf-8")
     assert "config `source_format=OTM_GLOGDATE; target_format=ISO8601`" in markdown
+
+
+def test_generate_integration_spec_includes_response_handlers(client, admin_header, db_session):
+    definition, _source, target = create_documents_with_response_status(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/response-handlers",
+        json=response_handler_payload(target),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/generate-spec",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    artifact = db_session.get(Artifact, response.json()["artifact_id"])
+    markdown = Path(artifact.file_path).read_text(encoding="utf-8")
+    assert "`1` `SUCCESS`: `$.status` `EQUALS` `ACCEPTED`." in markdown
 
 
 def test_generate_integration_spec_rejects_missing_definition(client, admin_header):

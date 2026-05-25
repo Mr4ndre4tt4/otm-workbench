@@ -199,7 +199,7 @@ async function run() {
     await payloadForm.getByLabel("Payload description").fill("Synthetic browser target payload.");
     await payloadForm
       .getByLabel("Payload content")
-      .fill('{"header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
+      .fill('{"status":"ACCEPTED","header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload external_delivery_manual_${suffix}.json and schema $ created.`).waitFor();
 
@@ -291,6 +291,18 @@ async function run() {
     await page.getByText("Created lookup Synthetic carrier lookup.").waitFor();
     await page.getByLabel("Selected definition lookups").getByText("Synthetic carrier lookup", { exact: true }).waitFor();
 
+    await page.getByLabel("Response schema").selectOption({ label: "$" });
+    await page.getByLabel("Response handler name").fill("Accepted delivery response");
+    await page.getByLabel("Response path node").selectOption("$.status");
+    await page.getByLabel("Success condition").selectOption("EQUALS");
+    await page.getByLabel("Expected value").fill("ACCEPTED");
+    await page.getByLabel("Outcome").selectOption("SUCCESS");
+    await page.getByLabel("Response handler description").fill("Synthetic response handler metadata.");
+    await page.getByRole("button", { name: "Create response handler" }).click();
+    await page.getByText("Created response handler Accepted delivery response.").waitFor();
+    await page.getByLabel("Selected definition response handlers").getByText("Accepted delivery response", { exact: true }).waitFor();
+    await page.getByLabel("Integration mapping grouped executable review").getByText("EQUALS ACCEPTED", { exact: true }).waitFor();
+
     await page.getByRole("button", { name: "Reset mapping rule drafts" }).click();
     const mappingForm = page.locator(".integration-mapping-form");
     await mappingForm.getByLabel("Source schema").evaluate((element) => {
@@ -323,8 +335,23 @@ async function run() {
     await page.locator(".integration-lookup-form").getByLabel("Lookup mock response JSON").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected lookup mock JSON after reset: ${element.value}`);
     });
-    if (await page.getByText("Created lookup Synthetic carrier lookup.").isVisible().catch(() => false)) {
-      throw new Error("Lookup success feedback stayed visible after mapping rule reset.");
+    await page.locator(".integration-response-handler-form").getByLabel("Response schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected response schema after reset: ${element.value}`);
+    });
+    await page.locator(".integration-response-handler-form").getByLabel("Response handler name").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected response handler name after reset: ${element.value}`);
+    });
+    await page.locator(".integration-response-handler-form").getByRole("textbox", { name: "Response path" }).evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected response path after reset: ${element.value}`);
+    });
+    await page.locator(".integration-response-handler-form").getByLabel("Success condition").evaluate((element) => {
+      if (element.value !== "EXISTS") throw new Error(`Unexpected response condition after reset: ${element.value}`);
+    });
+    await page.locator(".integration-response-handler-form").getByLabel("Outcome").evaluate((element) => {
+      if (element.value !== "SUCCESS") throw new Error(`Unexpected response outcome after reset: ${element.value}`);
+    });
+    if (await page.getByText("Created response handler Accepted delivery response.").isVisible().catch(() => false)) {
+      throw new Error("Response handler success feedback stayed visible after mapping rule reset.");
     }
 
     await page.getByRole("button", { name: "Validate definition" }).click();

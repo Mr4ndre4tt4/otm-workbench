@@ -184,6 +184,9 @@ Recommended next backlog sequence:
 11. Expose required target scenario packs in validation and UI. `OTM-154`
     delivered the first backend-owned required target checklist for the
     synthetic NDD-like target JSON.
+12. Add backend-owned response handling rules. `OTM-155` delivered persisted
+    response handlers, schema-path validation, UI authoring/review, spec output,
+    and browser QA for `$.status EQUALS ACCEPTED -> SUCCESS`.
 ```
 
 ## OTM-152 Evidence
@@ -241,4 +244,25 @@ internals:
 - Browser QA creates a separate synthetic scenario definition with
   `EXTERNAL_DELIVERY_NDD`, validates missing targets, then adds mappings/loop
   until the checklist is fully covered without route reload.
+```
+
+## OTM-155 Evidence
+
+`OTM-155` closed the response-handling gap for the first Integration Mapping
+accelerator slice:
+
+```text
+- Backend table/model/API: integration_response_handlers.
+- API validates target schema ownership, response_path existence, controlled
+  success_condition values, controlled outcome values, and required expected
+  value for EQUALS.
+- Definition validation checks persisted response handlers so direct DB drift
+  is caught before preview/spec.
+- Generated markdown specs now include response handling rows without embedding
+  raw source/target payloads.
+- UI Rules stage can author response handlers and the grouped executable review
+  replaces the old empty response-handling placeholder with the real rule.
+- Browser QA creates `Accepted delivery response` with
+  `$.status EQUALS ACCEPTED -> SUCCESS`, validates grouped review visibility,
+  then resets drafts and verifies return-to-empty state.
 ```

@@ -10,6 +10,7 @@ import {
   createIntegrationLoop,
   createIntegrationMapping,
   createIntegrationPayloadArtifact,
+  createIntegrationResponseHandler,
   createIntegrationSchemaDocument,
   createIntegrationSystem,
   deleteIntegrationMapping,
@@ -25,6 +26,7 @@ import {
   useIntegrationLoops,
   useIntegrationMappings,
   useIntegrationPayloadArtifacts,
+  useIntegrationResponseHandlers,
   useIntegrationSchemaDocuments,
   useIntegrationSchemaNodes,
   useIntegrationEndpoints,
@@ -33,7 +35,7 @@ import {
   validateIntegrationDefinition
 } from '../../platform/hooks';
 import { ApiError } from '../../platform/api';
-import type { IntegrationDefinition, IntegrationSchemaNode, IntegrationValidationResult } from '../../platform/types';
+import type { IntegrationDefinition, IntegrationResponseHandler, IntegrationSchemaNode, IntegrationValidationResult } from '../../platform/types';
 import { MODULE_DESCRIPTIONS } from '../../app/routes/moduleDescriptions';
 import { PageHeader } from '../../app/shell';
 import {
@@ -103,6 +105,7 @@ function buildIntegrationReviewRows({
   lookups,
   loops,
   mappings,
+  responseHandlers,
   validationResult
 }: {
   joins: Array<{ id: string; left_path: string; name: string; operator: string; right_path: string; status: string }>;
@@ -110,6 +113,7 @@ function buildIntegrationReviewRows({
   lookups: Array<{ id: string; input_path: string; lookup_type: string; name: string; output_path: string; status: string }>;
   loops: Array<{ id: string; name: string; source_collection_path: string; status: string; target_collection_path: string }>;
   mappings: Array<{ id: string; source_path: string; status: string; target_path: string; transform_type: string }>;
+  responseHandlers: IntegrationResponseHandler[];
   validationResult: IntegrationValidationResult | null;
 }) {
   const validationStatus = validationResult
@@ -183,16 +187,26 @@ function buildIntegrationReviewRows({
       target: "QtdNFe / QtdCTe style fields",
       transform: "COUNT_DISTINCT"
     },
-    {
-      blocker: "RESPONSE_HANDLING_MODEL_PENDING",
+    ...(responseHandlers.length
+      ? responseHandlers.map((handler) => ({
+          group: "Response Handling",
+          id: `response-handler-${handler.id}`,
+          policy: `${handler.success_condition}${handler.expected_value ? ` ${handler.expected_value}` : ""}`,
+          source: handler.response_path,
+          status: handler.status,
+          target: handler.outcome,
+          transform: handler.name
+        }))
+      : [{
+      blocker: "RESPONSE_HANDLING_RULES_NOT_DEFINED",
       group: "Response Handling",
       id: "response-handling-future-scope",
-      policy: "Future scope",
+      policy: "Define success/error policy",
       source: "No response handling rules defined.",
-      status: "FUTURE_SCOPE",
+      status: "EMPTY",
       target: "Success/error response paths",
       transform: "RESPONSE_POLICY"
-    }
+    }])
   ];
 
   return rows;
@@ -349,6 +363,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [lookupType, setLookupType] = useState('MOCK');
   const [lookupDescription, setLookupDescription] = useState('');
   const [lookupMockResponseJson, setLookupMockResponseJson] = useState('');
+  const [responseHandlerTargetSchemaId, setResponseHandlerTargetSchemaId] = useState('');
+  const [responseHandlerName, setResponseHandlerName] = useState('');
+  const [responseHandlerPath, setResponseHandlerPath] = useState('');
+  const [responseHandlerCondition, setResponseHandlerCondition] = useState('EXISTS');
+  const [responseHandlerExpectedValue, setResponseHandlerExpectedValue] = useState('');
+  const [responseHandlerOutcome, setResponseHandlerOutcome] = useState('SUCCESS');
+  const [responseHandlerDescription, setResponseHandlerDescription] = useState('');
   const definitionItems = definitions.data?.items ?? [];
   const systemItems = systems.data?.items ?? [];
   const selectedEndpointSystemId = endpointSystemId || systemItems[0]?.id || null;
@@ -365,11 +386,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const joinBindingSourceSchemaNodes = useIntegrationSchemaNodes(token, joinBindingSourceSchemaId || null);
   const lookupSourceSchemaNodes = useIntegrationSchemaNodes(token, lookupSourceSchemaId || null);
   const lookupTargetSchemaNodes = useIntegrationSchemaNodes(token, lookupTargetSchemaId || null);
+  const responseHandlerTargetSchemaNodes = useIntegrationSchemaNodes(token, responseHandlerTargetSchemaId || null);
   const mappings = useIntegrationMappings(token, effectiveDefinitionId);
   const loops = useIntegrationLoops(token, effectiveDefinitionId);
   const joins = useIntegrationJoins(token, effectiveDefinitionId);
   const joinBindings = useIntegrationJoinBindings(token, effectiveDefinitionId);
   const lookups = useIntegrationLookups(token, effectiveDefinitionId);
+  const responseHandlers = useIntegrationResponseHandlers(token, effectiveDefinitionId);
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
@@ -379,6 +402,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
     lookups: lookups.data?.items ?? [],
     loops: loops.data?.items ?? [],
     mappings: mappings.data?.items ?? [],
+    responseHandlers: responseHandlers.data?.items ?? [],
     validationResult
   });
 
@@ -393,6 +417,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "joins"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "join-bindings"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "lookups"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "response-handlers"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "artifacts"] })
     ]);
   };
@@ -447,6 +472,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setLookupType('MOCK');
     setLookupDescription('');
     setLookupMockResponseJson('');
+    setResponseHandlerTargetSchemaId('');
+    setResponseHandlerName('');
+    setResponseHandlerPath('');
+    setResponseHandlerCondition('EXISTS');
+    setResponseHandlerExpectedValue('');
+    setResponseHandlerOutcome('SUCCESS');
+    setResponseHandlerDescription('');
     setOperationMessage(null);
     setOperationError(null);
     setValidationResult(null);
@@ -571,7 +603,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
         payload_role: "SOURCE_SAMPLE"
       });
       const target = await createIntegrationPayloadArtifact(token, effectiveDefinitionId, {
-        content: '{"header":{"shipmentId":"DEMO"},"deliveries":[{"sequence":1}]}',
+        content: '{"status":"ACCEPTED","header":{"shipmentId":"DEMO"},"deliveries":[{"sequence":1}]}',
         description: "Synthetic external delivery target sample.",
         file_name: "external_delivery_synthetic.json",
         payload_format: "JSON",
@@ -828,6 +860,38 @@ export function IntegrationMappingView({ token }: { token: string }) {
       await refreshDefinitionData(effectiveDefinitionId);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Could not create lookup.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateResponseHandler = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating a response handler.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const handler = await createIntegrationResponseHandler(token, effectiveDefinitionId, {
+        description: responseHandlerDescription.trim(),
+        expected_value: responseHandlerExpectedValue.trim(),
+        name: responseHandlerName.trim(),
+        outcome: responseHandlerOutcome,
+        response_path: responseHandlerPath.trim(),
+        sequence_index: 50,
+        success_condition: responseHandlerCondition,
+        target_schema_document_id: responseHandlerTargetSchemaId
+      });
+      setOperationMessage(`Created response handler ${handler.name}.`);
+      setResponseHandlerName('');
+      setResponseHandlerPath('');
+      setResponseHandlerExpectedValue('');
+      setResponseHandlerDescription('');
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create response handler.");
     } finally {
       setIsMutating(false);
     }
@@ -1118,6 +1182,16 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 meta: [lookup.input_path, lookup.lookup_type, lookup.output_path],
                 status: lookup.status,
                 title: lookup.name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition response handlers"
+              emptyText="No response handlers defined for this definition."
+              items={(responseHandlers.data?.items ?? []).map((handler) => ({
+                id: handler.id,
+                meta: [handler.response_path, handler.success_condition, handler.expected_value || "No expected value"],
+                status: handler.outcome,
+                title: handler.name
               }))}
             />
             <section aria-label="Integration mapping generated artifacts" className="integration-generated-artifacts">
@@ -1761,6 +1835,69 @@ export function IntegrationMappingView({ token }: { token: string }) {
             </label>
             <Button disabled={!effectiveDefinitionId || !lookupSourceSchemaId || !lookupTargetSchemaId || isMutating} type="submit" variant="primary">
               Create lookup
+            </Button>
+          </form>
+
+          <form
+            className="integration-response-handler-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleCreateResponseHandler();
+            }}
+          >
+            <label>
+              Response schema
+              <select onChange={(event) => setResponseHandlerTargetSchemaId(event.target.value)} value={responseHandlerTargetSchemaId}>
+                <option value="">Select target schema</option>
+                {(schemaDocuments.data?.items ?? []).map((schema) => (
+                  <option key={schema.id} value={schema.id}>
+                    {schema.root_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Response handler name
+              <input onChange={(event) => setResponseHandlerName(event.target.value)} value={responseHandlerName} />
+            </label>
+            <SchemaNodeSelect
+              label="Response path node"
+              nodes={responseHandlerTargetSchemaNodes.data?.items ?? []}
+              onSelect={setResponseHandlerPath}
+            />
+            <label>
+              Response path
+              <input onChange={(event) => setResponseHandlerPath(event.target.value)} value={responseHandlerPath} />
+            </label>
+            <label>
+              Success condition
+              <select onChange={(event) => setResponseHandlerCondition(event.target.value)} value={responseHandlerCondition}>
+                <option value="EXISTS">EXISTS</option>
+                <option value="EQUALS">EQUALS</option>
+              </select>
+            </label>
+            <label>
+              Expected value
+              <input onChange={(event) => setResponseHandlerExpectedValue(event.target.value)} value={responseHandlerExpectedValue} />
+            </label>
+            <label>
+              Outcome
+              <select onChange={(event) => setResponseHandlerOutcome(event.target.value)} value={responseHandlerOutcome}>
+                <option value="SUCCESS">SUCCESS</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARNING">WARNING</option>
+              </select>
+            </label>
+            <label className="integration-form-wide">
+              Response handler description
+              <input onChange={(event) => setResponseHandlerDescription(event.target.value)} value={responseHandlerDescription} />
+            </label>
+            <Button
+              disabled={!effectiveDefinitionId || !responseHandlerTargetSchemaId || !responseHandlerName.trim() || !responseHandlerPath.trim() || isMutating}
+              type="submit"
+              variant="primary"
+            >
+              Create response handler
             </Button>
           </form>
         </OperationalPanel>

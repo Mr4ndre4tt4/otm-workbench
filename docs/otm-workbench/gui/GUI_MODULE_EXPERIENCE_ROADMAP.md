@@ -336,29 +336,29 @@ module work should avoid adding frontend-owned module identity maps.
 
 ## 7. Immediate Recommendation
 
-Next implementation target:
+Next implementation target after the current Integration Mapping hardening:
 
 ```text
-Order Release Generator functional workflow
+Integration Mapping guided transform authoring and module review cleanup
 ```
 
 Reason:
 
 ```text
-- Load Plan proved the review queue + staged workflow pattern.
-- Master Data proved the template/batch staged workflow.
-- Evidence Hub proved the shared artifact/evidence workspace.
-- Order Release Generator is the next staged generator workflow already backed
-  by template, batch, XML artifact, and submit-guard APIs.
+- Integration Mapping now has backend-owned response handlers in addition to
+  systems, endpoints, definitions, payloads, schema trees, mappings, loops,
+  joins, join bindings, lookups, validation, required target packs, preview,
+  spec generation, artifacts, and browser QA.
+- The next value gap is not another stacked form; it is guided transform
+  authoring that makes the accelerator faster than manual mapping work.
+- Any next UI slice must keep the staged storytelling pattern and grouped review
+  as the central workspace.
 ```
 
-First GUI functional slice is now implemented: create/select template, create
-batch, preview XML, generate XML artifact, download the generated XML through
-the backend artifact endpoint, inspect guarded OTM submit state, and return with
-backend-owned recent batch state. OTM-125 module-completion hardening replaced
-raw JSON batch input with a backend-template-guided row editor, added invalid
-batch recovery, and added backend-owned custom template authoring for reusable
-v1 templates. Browser QA is covered by `qa:functional:order-release:browser`.
-Order Release should now pause for module-level review or move to the next
-roadmap module; direct OTM submit remains intentionally guarded until connection,
-credential, audit, and capability governance are designed.
+Order Release Generator first GUI functional slice remains implemented:
+create/select template, create batch, preview XML, generate XML artifact,
+download through the backend artifact endpoint, inspect guarded OTM submit
+state, and return with backend-owned recent batch state. Browser QA is covered
+by `qa:functional:order-release:browser`; direct OTM submit remains intentionally
+guarded until connection, credential, audit, and capability governance are
+designed.

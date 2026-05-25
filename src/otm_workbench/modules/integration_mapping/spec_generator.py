@@ -9,6 +9,7 @@ from otm_workbench.models import (
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
     IntegrationMapping,
+    IntegrationResponseHandler,
     IntegrationSchemaDocument,
     Job,
     utcnow,
@@ -55,6 +56,7 @@ def _build_markdown(
     loops: list[IntegrationLoopDefinition],
     joins: list[IntegrationJoinRule],
     lookups: list[IntegrationLookupDefinition],
+    response_handlers: list[IntegrationResponseHandler],
     validation: dict[str, object],
 ) -> str:
     document_rows = [
@@ -78,6 +80,11 @@ def _build_markdown(
     lookup_rows = [
         f"- `{lookup.sequence_index}` `{lookup.lookup_type}`: `{lookup.input_path}` -> `{lookup.output_path}`."
         for lookup in lookups
+    ]
+    response_handler_rows = [
+        f"- `{handler.sequence_index}` `{handler.outcome}`: `{handler.response_path}` "
+        f"`{handler.success_condition}` `{handler.expected_value}`."
+        for handler in response_handlers
     ]
 
     return "\n".join(
@@ -110,7 +117,7 @@ def _build_markdown(
             _rows_or_empty(lookup_rows),
             "",
             "## Response Handling",
-            "- MVP0 documents expected mappings and mock lookup behavior only.",
+            _rows_or_empty(response_handler_rows),
             "- Runtime external calls are not executed by this spec generator.",
             "",
             "## Synthetic Test Cases",
@@ -265,6 +272,12 @@ def generate_integration_markdown_spec(
         .order_by(IntegrationLookupDefinition.sequence_index, IntegrationLookupDefinition.created_at)
         .all()
     )
+    response_handlers = (
+        db.query(IntegrationResponseHandler)
+        .filter(IntegrationResponseHandler.definition_id == definition.id)
+        .order_by(IntegrationResponseHandler.sequence_index, IntegrationResponseHandler.created_at)
+        .all()
+    )
     markdown = _build_markdown(
         definition=definition,
         schema_documents=schema_documents,
@@ -272,6 +285,7 @@ def generate_integration_markdown_spec(
         loops=loops,
         joins=joins,
         lookups=lookups,
+        response_handlers=response_handlers,
         validation=validation,
     )
     artifact = create_spec_artifact(db, definition=definition, artifact_root=artifact_root, markdown=markdown)

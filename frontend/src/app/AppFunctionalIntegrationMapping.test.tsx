@@ -82,6 +82,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     const joinRequests: unknown[] = [];
     const joinBindingRequests: unknown[] = [];
     const lookupRequests: unknown[] = [];
+    const responseHandlerRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
     const actionRequests: string[] = [];
     const systemRequests: unknown[] = [];
@@ -96,6 +97,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     let joins: Array<Record<string, unknown>> = [];
     let joinBindings: Array<Record<string, unknown>> = [];
     let lookups: Array<Record<string, unknown>> = [];
+    let responseHandlers: Array<Record<string, unknown>> = [];
     let generatedArtifacts: Array<Record<string, unknown>> = [];
     const alternateDefinition = {
       id: "definition_2",
@@ -207,6 +209,15 @@ describe("Functional Integration Mapping Studio journey", () => {
       }
     ];
     const targetSchemaNodes = [
+      {
+        id: "node_target_status",
+        schema_document_id: "schema_target",
+        parent_path: "$",
+        path: "$.status",
+        name: "status",
+        node_type: "string",
+        sequence_index: 2
+      },
       {
         id: "node_target_shipment_id",
         schema_document_id: "schema_target",
@@ -604,6 +615,35 @@ describe("Functional Integration Mapping Studio journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: lookups, total: lookups.length, page: 1, page_size: 50 }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/response-handlers")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body));
+          responseHandlerRequests.push(body);
+          expect(body).toEqual({
+            target_schema_document_id: "schema_target",
+            response_path: "$.status",
+            success_condition: "EQUALS",
+            expected_value: "ACCEPTED",
+            outcome: "SUCCESS",
+            name: "Accepted delivery response",
+            description: "Synthetic response handler metadata.",
+            sequence_index: 50
+          });
+          const handler = {
+            id: "response_handler_1",
+            definition_id: "definition_1",
+            ...body,
+            status: "ACTIVE",
+            created_by: "admin@example.test",
+            created_at: "2026-05-21T10:06:30",
+            updated_at: "2026-05-21T10:06:30"
+          };
+          responseHandlers = [handler];
+          return Promise.resolve(jsonResponse(handler));
+        }
+        return Promise.resolve(jsonResponse({ items: responseHandlers, total: responseHandlers.length, page: 1, page_size: 50 }));
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/validate")) {
         actionRequests.push("validate");
         return Promise.resolve(
@@ -700,7 +740,8 @@ describe("Functional Integration Mapping Studio journey", () => {
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/loops") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/joins") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/join-bindings") ||
-        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/lookups")
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/lookups") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/response-handlers")
       ) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
@@ -932,6 +973,19 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create lookup" }));
     await waitFor(() => expect(lookupRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition lookups")).findByText("Synthetic carrier lookup")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Response schema"), "schema_target");
+    await userEvent.type(screen.getByLabelText("Response handler name"), "Accepted delivery response");
+    await userEvent.selectOptions(await screen.findByLabelText("Response path node"), "$.status");
+    expect(screen.getByLabelText("Response path")).toHaveValue("$.status");
+    await userEvent.selectOptions(screen.getByLabelText("Success condition"), "EQUALS");
+    await userEvent.type(screen.getByLabelText("Expected value"), "ACCEPTED");
+    await userEvent.selectOptions(screen.getByLabelText("Outcome"), "SUCCESS");
+    await userEvent.type(screen.getByLabelText("Response handler description"), "Synthetic response handler metadata.");
+    await userEvent.click(screen.getByRole("button", { name: "Create response handler" }));
+    await waitFor(() => expect(responseHandlerRequests).toHaveLength(1));
+    expect(await within(await screen.findByLabelText("Selected definition response handlers")).findByText("Accepted delivery response")).toBeInTheDocument();
+
     const reviewPanel = await screen.findByLabelText("Integration mapping grouped executable review");
     expect(reviewPanel).toHaveTextContent("Header");
     expect(reviewPanel).toHaveTextContent("Entregas loop");
@@ -943,7 +997,8 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(reviewPanel).toHaveTextContent("Stop to release binding");
     expect(reviewPanel).toHaveTextContent("stop_ship_unit, ship_unit_release");
     expect(reviewPanel).toHaveTextContent("Synthetic carrier lookup");
-    expect(reviewPanel).toHaveTextContent("No response handling rules defined.");
+    expect(reviewPanel).toHaveTextContent("Accepted delivery response");
+    expect(reviewPanel).toHaveTextContent("EQUALS ACCEPTED");
 
     await userEvent.click(screen.getByRole("button", { name: "Reset mapping rule drafts" }));
     expect(screen.getByLabelText("Source schema")).toHaveValue("");
@@ -981,6 +1036,13 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Lookup type")).toHaveValue("MOCK");
     expect(screen.getByLabelText("Lookup description")).toHaveValue("");
     expect(screen.getByLabelText("Lookup mock response JSON")).toHaveValue("");
+    expect(screen.getByLabelText("Response schema")).toHaveValue("");
+    expect(screen.getByLabelText("Response handler name")).toHaveValue("");
+    expect(screen.getByLabelText("Response path")).toHaveValue("");
+    expect(screen.getByLabelText("Success condition")).toHaveValue("EXISTS");
+    expect(screen.getByLabelText("Expected value")).toHaveValue("");
+    expect(screen.getByLabelText("Outcome")).toHaveValue("SUCCESS");
+    expect(screen.getByLabelText("Response handler description")).toHaveValue("");
     expect(screen.queryByText("Created lookup Synthetic carrier lookup.")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Validate definition" }));

@@ -163,6 +163,23 @@ export type IntegrationLookupDefinition = {
   updated_at: string | null;
 };
 
+export type IntegrationResponseHandler = {
+  id: string;
+  definition_id: string;
+  target_schema_document_id: string;
+  response_path: string;
+  success_condition: string;
+  expected_value: string;
+  outcome: string;
+  name: string;
+  description: string;
+  sequence_index: number;
+  status: string;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type IntegrationArtifact = {
   id: string;
   definition_id: string;
@@ -300,6 +317,17 @@ export type IntegrationLookupCreatePayload = {
   sequence_index: number;
 };
 
+export type IntegrationResponseHandlerCreatePayload = {
+  target_schema_document_id: string;
+  response_path: string;
+  success_condition: string;
+  expected_value: string;
+  outcome: string;
+  name: string;
+  description: string;
+  sequence_index: number;
+};
+
 export type IntegrationValidationResult = {
   is_valid: boolean;
   issue_count: number;
@@ -352,6 +380,7 @@ export type IntegrationLoopsResponse = PageResponse<IntegrationLoopDefinition>;
 export type IntegrationJoinsResponse = PageResponse<IntegrationJoinRule>;
 export type IntegrationJoinBindingsResponse = PageResponse<IntegrationJoinBinding>;
 export type IntegrationLookupsResponse = PageResponse<IntegrationLookupDefinition>;
+export type IntegrationResponseHandlersResponse = PageResponse<IntegrationResponseHandler>;
 export type IntegrationArtifactsResponse = PageResponse<IntegrationArtifact> & {
   definition_id: string;
 };

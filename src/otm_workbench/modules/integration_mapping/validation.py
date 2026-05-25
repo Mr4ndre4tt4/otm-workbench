@@ -9,10 +9,15 @@ from otm_workbench.models import (
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
     IntegrationMapping,
+    IntegrationResponseHandler,
 )
 from otm_workbench.modules.integration_mapping.joins import ALLOWED_JOIN_OPERATORS
 from otm_workbench.modules.integration_mapping.lookups import ALLOWED_LOOKUP_TYPES
 from otm_workbench.modules.integration_mapping.mappings import parse_transform_config, schema_path_exists
+from otm_workbench.modules.integration_mapping.response_handlers import (
+    ALLOWED_RESPONSE_CONDITIONS,
+    ALLOWED_RESPONSE_OUTCOMES,
+)
 from otm_workbench.modules.integration_mapping.transform_types import (
     transform_type_is_active,
     transform_type_requires_expression,
@@ -267,6 +272,27 @@ def validate_lookup(db: Session, lookup: IntegrationLookupDefinition) -> list[Va
     return issues
 
 
+def validate_response_handler(db: Session, handler: IntegrationResponseHandler) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    if not schema_path_exists(db, schema_document_id=handler.target_schema_document_id, path=handler.response_path):
+        issues.append(path_issue("response_handler", handler.id, "response_path", handler.response_path))
+    if handler.success_condition not in ALLOWED_RESPONSE_CONDITIONS:
+        issues.append(catalog_issue("response_handler", handler.id, "success_condition", handler.success_condition))
+    if handler.outcome not in ALLOWED_RESPONSE_OUTCOMES:
+        issues.append(catalog_issue("response_handler", handler.id, "outcome", handler.outcome))
+    if handler.success_condition == "EQUALS" and not handler.expected_value.strip():
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_RESPONSE_EXPECTED_VALUE_MISSING",
+                entity_type="response_handler",
+                entity_id=handler.id,
+                field="expected_value",
+                message="EQUALS response handlers must define expected_value.",
+            )
+        )
+    return issues
+
+
 def serialize_issue(validation_issue: ValidationIssue) -> dict[str, str]:
     return {
         "severity": validation_issue.severity,
@@ -474,6 +500,9 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     lookups = (
         db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).all()
     )
+    response_handlers = (
+        db.query(IntegrationResponseHandler).filter(IntegrationResponseHandler.definition_id == definition.id).all()
+    )
     alias_scopes = alias_scopes_for_definition(db, definition.id)
     for mapping in mappings:
         issues.extend(validate_mapping(db, mapping))
@@ -494,6 +523,8 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     for lookup in lookups:
         issues.extend(validate_lookup(db, lookup))
     issues.extend(validate_lookup_output_scopes(lookups=lookups, loops=loops))
+    for handler in response_handlers:
+        issues.extend(validate_response_handler(db, handler))
     return {
         "definition_id": definition.id,
         "is_valid": not issues,

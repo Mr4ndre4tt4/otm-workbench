@@ -28,6 +28,9 @@ import type {
   IntegrationPayloadArtifact,
   IntegrationPayloadArtifactCreatePayload,
   IntegrationPreviewResult,
+  IntegrationResponseHandler,
+  IntegrationResponseHandlerCreatePayload,
+  IntegrationResponseHandlersResponse,
   IntegrationSchemaDocument,
   IntegrationSchemaDocumentsResponse,
   IntegrationSchemaNodesResponse,
@@ -218,6 +221,18 @@ export function createIntegrationMapping(token: string, definitionId: string, pa
   });
 }
 
+export function useIntegrationResponseHandlers(token: string | null, definitionId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "integration-mapping", "definitions", definitionId, "response-handlers"],
+    queryFn: () =>
+      apiGet<IntegrationResponseHandlersResponse>(
+        `/api/v1/modules/integration-mapping/definitions/${definitionId}/response-handlers`,
+        { token }
+      ),
+    enabled: Boolean(token && definitionId)
+  });
+}
+
 export function deleteIntegrationMapping(token: string, mappingId: string) {
   return apiDelete<{ deleted: boolean; definition_id: string; id: string }>(
     `/api/v1/modules/integration-mapping/mappings/${mappingId}`,
@@ -248,6 +263,18 @@ export function createIntegrationJoinBinding(token: string, definitionId: string
 export function createIntegrationLookup(token: string, definitionId: string, payload: IntegrationLookupCreatePayload) {
   return apiPost<IntegrationLookupDefinition>(
     `/api/v1/modules/integration-mapping/definitions/${definitionId}/lookups`,
+    payload,
+    { token }
+  );
+}
+
+export function createIntegrationResponseHandler(
+  token: string,
+  definitionId: string,
+  payload: IntegrationResponseHandlerCreatePayload
+) {
+  return apiPost<IntegrationResponseHandler>(
+    `/api/v1/modules/integration-mapping/definitions/${definitionId}/response-handlers`,
     payload,
     { token }
   );
