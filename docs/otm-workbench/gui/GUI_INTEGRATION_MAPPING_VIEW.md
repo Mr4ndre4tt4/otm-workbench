@@ -13,7 +13,9 @@ authoring panels.
 This slice keeps the frontend as a renderer of backend-owned mapping contracts:
 definitions, transform types, payload artifact metadata, parsed schema
 documents, mapping rows, validation/preview/spec actions, and generated
-artifact metadata.
+artifact metadata. Validation readiness is rendered from the backend contract,
+separating definitions that are specification-ready from definitions that are
+executable in preview.
 
 ## Backend Contracts Consumed
 
@@ -64,6 +66,7 @@ Current panels:
 - Payload artifact metadata
 - Schema document metadata
 - Mapping rows
+- Specification readiness and preview executability
 - Generated preview/spec artifacts
 - Mapping-rule draft reset recovery
 - Definition-switch recovery
@@ -79,11 +82,17 @@ Generated artifact rows expose only client-safe metadata and download through
 guarded backend URLs. The frontend does not infer artifact paths, hashes,
 ownership, or eligibility.
 
+Validation readiness is not inferred by the GUI. The side panel only renders
+`readiness.specification_ready`, `readiness.preview_executable`,
+`specification_blockers`, and `preview_blockers` returned by backend
+validation, preview, or spec generation.
+
 Definition switching is definition-workspace scoped. Selecting another
 backend-owned definition clears payload draft fields, mapping/loop/join/lookup
-drafts, download state, and stale feedback from the previously selected
-definition. Generated artifacts, schemas, mappings, loops, joins, and lookups
-continue to come from backend queries keyed by the selected definition id.
+drafts, download state, stale readiness, and stale feedback from the previously
+selected definition. Generated artifacts, schemas, mappings, loops, joins, and
+lookups continue to come from backend queries keyed by the selected definition
+id.
 
 ## Test Coverage
 
@@ -106,8 +115,10 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Schema node selector usage
 - Mapping-rule draft reset after mapping, loop, join, and lookup authoring
 - Validate, preview, and generate-spec actions
+- Specification readiness and preview executability after validation
 - Generated artifact listing and guarded download
-- Definition-switch recovery after artifact download/spec generation
+- Definition-switch recovery after artifact download/spec generation, including
+  stale readiness clearance
 ```
 
 It also guards against disconnected stacked authoring panels through the staged

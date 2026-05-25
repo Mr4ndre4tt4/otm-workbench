@@ -255,6 +255,14 @@ export type IntegrationValidationResult = {
   is_valid: boolean;
   issue_count: number;
   issues?: unknown[];
+  readiness?: IntegrationValidationReadiness;
+};
+
+export type IntegrationValidationReadiness = {
+  specification_ready: boolean;
+  preview_executable: boolean;
+  specification_blockers: string[];
+  preview_blockers: string[];
 };
 
 export type IntegrationPreviewResult = {
