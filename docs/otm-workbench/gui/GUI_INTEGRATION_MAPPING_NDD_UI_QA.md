@@ -187,6 +187,9 @@ Recommended next backlog sequence:
 12. Add backend-owned response handling rules. `OTM-155` delivered persisted
     response handlers, schema-path validation, UI authoring/review, spec output,
     and browser QA for `$.status EQUALS ACCEPTED -> SUCCESS`.
+13. Add guided transform config authoring. `OTM-156` delivered Rules-stage
+    inputs for `CONSTANT` and `DATE_FORMAT`, while keeping backend validation and
+    preview execution as source of truth.
 ```
 
 ## OTM-152 Evidence
@@ -265,4 +268,25 @@ accelerator slice:
 - Browser QA creates `Accepted delivery response` with
   `$.status EQUALS ACCEPTED -> SUCCESS`, validates grouped review visibility,
   then resets drafts and verifies return-to-empty state.
+```
+
+## OTM-156 Evidence
+
+`OTM-156` made transform configuration explicit in the UI instead of implicit in
+payload JSON:
+
+```text
+- Rules-stage mapping form now exposes `Constant value` when transform_type is
+  CONSTANT.
+- Rules-stage mapping form now exposes source format, target format, and
+  timezone offset when transform_type is DATE_FORMAT.
+- Alias source context remains composable with transform_config instead of
+  replacing it.
+- React functional QA asserts CONSTANT sends `{ value: "ACCEPTED" }` and
+  DATE_FORMAT sends `{ source_format, target_format, timezone_offset }`.
+- Browser QA creates both mappings against the real backend and validates the
+  generated preview artifact:
+  - status = ACCEPTED
+  - issuedAt = 2026-05-25T10:30:00-03:00
+- Reset mapping drafts clears constant/date inputs back to backend-safe defaults.
 ```

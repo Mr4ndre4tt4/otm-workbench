@@ -310,6 +310,10 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
   const [mappingSourceAlias, setMappingSourceAlias] = useState('');
+  const [constantValue, setConstantValue] = useState('');
+  const [dateSourceFormat, setDateSourceFormat] = useState('OTM_GLOGDATE');
+  const [dateTargetFormat, setDateTargetFormat] = useState('ISO8601');
+  const [dateTimezoneOffset, setDateTimezoneOffset] = useState('-03:00');
   const [mappingDescription, setMappingDescription] = useState('');
   const [systemCode, setSystemCode] = useState('');
   const [systemName, setSystemName] = useState('');
@@ -436,6 +440,10 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setTargetPath('');
     setTransformType('DIRECT');
     setMappingSourceAlias('');
+    setConstantValue('');
+    setDateSourceFormat('OTM_GLOGDATE');
+    setDateTargetFormat('ISO8601');
+    setDateTimezoneOffset('-03:00');
     setMappingDescription('');
     setLoopSourceSchemaId('');
     setLoopTargetSchemaId('');
@@ -666,6 +674,20 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setOperationMessage(null);
     setOperationError(null);
     try {
+      const transformConfig: Record<string, unknown> = {};
+      if (mappingSourceAlias) {
+        transformConfig.source_alias = mappingSourceAlias;
+      }
+      if (transformType === "CONSTANT") {
+        transformConfig.value = constantValue;
+      }
+      if (transformType === "DATE_FORMAT") {
+        transformConfig.source_format = dateSourceFormat;
+        transformConfig.target_format = dateTargetFormat;
+        if (dateTimezoneOffset.trim()) {
+          transformConfig.timezone_offset = dateTimezoneOffset.trim();
+        }
+      }
       const mapping = await createIntegrationMapping(token, effectiveDefinitionId, {
         description: mappingDescription.trim(),
         sequence_index: 10,
@@ -673,13 +695,14 @@ export function IntegrationMappingView({ token }: { token: string }) {
         source_schema_document_id: sourceSchemaId,
         target_path: targetPath.trim(),
         target_schema_document_id: targetSchemaId,
-        transform_config: mappingSourceAlias ? { source_alias: mappingSourceAlias } : {},
+        transform_config: transformConfig,
         transform_type: transformType
       });
       setOperationMessage(`Created mapping ${mapping.target_path}.`);
       setSourcePath('');
       setTargetPath('');
       setMappingSourceAlias('');
+      setConstantValue('');
       setMappingDescription('');
       await refreshDefinitionData(effectiveDefinitionId);
     } catch (error) {
@@ -1532,6 +1555,38 @@ export function IntegrationMappingView({ token }: { token: string }) {
                   </option>
                 ))}
               </select>
+            </label>
+            <label>
+              Constant value
+              <input
+                disabled={transformType !== "CONSTANT"}
+                onChange={(event) => setConstantValue(event.target.value)}
+                value={constantValue}
+              />
+            </label>
+            <label>
+              Date source format
+              <input
+                disabled={transformType !== "DATE_FORMAT"}
+                onChange={(event) => setDateSourceFormat(event.target.value)}
+                value={dateSourceFormat}
+              />
+            </label>
+            <label>
+              Date target format
+              <input
+                disabled={transformType !== "DATE_FORMAT"}
+                onChange={(event) => setDateTargetFormat(event.target.value)}
+                value={dateTargetFormat}
+              />
+            </label>
+            <label>
+              Date timezone offset
+              <input
+                disabled={transformType !== "DATE_FORMAT"}
+                onChange={(event) => setDateTimezoneOffset(event.target.value)}
+                value={dateTimezoneOffset}
+              />
             </label>
             <label>
               Alias source context

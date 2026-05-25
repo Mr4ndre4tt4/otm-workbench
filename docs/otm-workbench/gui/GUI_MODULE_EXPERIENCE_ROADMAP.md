@@ -339,18 +339,19 @@ module work should avoid adding frontend-owned module identity maps.
 Next implementation target after the current Integration Mapping hardening:
 
 ```text
-Integration Mapping guided transform authoring and module review cleanup
+Integration Mapping complex transform authoring and module review cleanup
 ```
 
 Reason:
 
 ```text
-- Integration Mapping now has backend-owned response handlers in addition to
+- Integration Mapping now has backend-owned response handlers and guided
+  CONSTANT/DATE_FORMAT transform config authoring in addition to
   systems, endpoints, definitions, payloads, schema trees, mappings, loops,
   joins, join bindings, lookups, validation, required target packs, preview,
   spec generation, artifacts, and browser QA.
-- The next value gap is not another stacked form; it is guided transform
-  authoring that makes the accelerator faster than manual mapping work.
+- The next value gap is guided authoring for complex transforms such as
+  FILTER_BY_QUALIFIER and COUNT_DISTINCT plus mapping suggestions.
 - Any next UI slice must keep the staged storytelling pattern and grouped review
   as the central workspace.
 ```

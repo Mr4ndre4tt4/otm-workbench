@@ -271,9 +271,10 @@ A module journey is ready when it records:
 3. Catalog lookup/validation journey: OTM-90.
 4. Platform/Admin setup/jobs/audit journey: OTM-97.
 5. Integration Mapping authoring journey: OTM-96.
-   Current browser journey also covers OTM-152 through OTM-155: executable
+   Current browser journey also covers OTM-152 through OTM-156: executable
    preview artifact inspection, alias/path recovery, required target checklist,
-   and response handler authoring/review.
+   response handler authoring/review, and guided CONSTANT/DATE_FORMAT
+   transform_config authoring.
 6. Load Plan/Cutover/CSVUTIL journey: OTM-92.
 7. Master Data, Assets, Evidence, and Order Release module journeys.
 ```

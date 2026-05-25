@@ -184,6 +184,7 @@ async function run() {
       .fill(
         [
           "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid>",
+          "<StartDt><PlannedTime>20260525103000</PlannedTime></StartDt>",
           "<ShipmentStop><StopSequence>1</StopSequence><StopSequenceCopy>1</StopSequenceCopy><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
           "<ShipUnit><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid><ShipUnitContent><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></ShipUnitContent></ShipUnit>",
           "<Release><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid><ReleaseRefnum><ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid><ReleaseRefnumValue>KEY-001</ReleaseRefnumValue></ReleaseRefnum></Release>",
@@ -199,7 +200,7 @@ async function run() {
     await payloadForm.getByLabel("Payload description").fill("Synthetic browser target payload.");
     await payloadForm
       .getByLabel("Payload content")
-      .fill('{"status":"ACCEPTED","header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
+      .fill('{"status":"","issuedAt":"","header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload external_delivery_manual_${suffix}.json and schema $ created.`).waitFor();
 
@@ -279,6 +280,26 @@ async function run() {
     await page.getByText("Created mapping $.deliveries[].sequence.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.deliveries[].sequence", { exact: true }).waitFor();
 
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node").selectOption("$.status");
+    await page.getByLabel("Transform type").selectOption("CONSTANT");
+    await page.getByLabel("Constant value").fill("ACCEPTED");
+    await page.getByLabel("Mapping description").fill("Synthetic constant status mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.status.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.status", { exact: true }).waitFor();
+
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/StartDt/PlannedTime");
+    await page.getByLabel("Mapping target node").selectOption("$.issuedAt");
+    await page.getByLabel("Transform type").selectOption("DATE_FORMAT");
+    await page.getByLabel("Date source format").fill("OTM_GLOGDATE");
+    await page.getByLabel("Date target format").fill("ISO8601");
+    await page.getByLabel("Date timezone offset").fill("-03:00");
+    await page.getByLabel("Mapping description").fill("Synthetic planned time ISO mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.issuedAt.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.issuedAt", { exact: true }).waitFor();
+
     await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
     await page.getByLabel("Lookup name").fill("Synthetic carrier lookup");
@@ -316,6 +337,18 @@ async function run() {
     });
     await mappingForm.getByLabel("Alias source context").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping source alias after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Constant value").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected constant value after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Date source format").evaluate((element) => {
+      if (element.value !== "OTM_GLOGDATE") throw new Error(`Unexpected date source format after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Date target format").evaluate((element) => {
+      if (element.value !== "ISO8601") throw new Error(`Unexpected date target format after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Date timezone offset").evaluate((element) => {
+      if (element.value !== "-03:00") throw new Error(`Unexpected date timezone offset after reset: ${element.value}`);
     });
     await page.locator(".integration-loop-form").getByLabel("Loop source schema").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected loop source schema after reset: ${element.value}`);
@@ -384,6 +417,12 @@ async function run() {
     }
     if (preview.target_json?.header?.accessKey !== "KEY-001") {
       throw new Error(`Unexpected preview header access key: ${preview.target_json?.header?.accessKey}`);
+    }
+    if (preview.target_json?.status !== "ACCEPTED") {
+      throw new Error(`Unexpected preview status: ${preview.target_json?.status}`);
+    }
+    if (preview.target_json?.issuedAt !== "2026-05-25T10:30:00-03:00") {
+      throw new Error(`Unexpected preview issuedAt: ${preview.target_json?.issuedAt}`);
     }
     const firstDelivery = preview.target_json?.deliveries?.[0];
     if (firstDelivery?.sequence !== "1" || firstDelivery?.accessKey !== "KEY-001") {

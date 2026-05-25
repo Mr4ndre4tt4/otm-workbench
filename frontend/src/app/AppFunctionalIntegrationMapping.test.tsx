@@ -127,6 +127,15 @@ describe("Functional Integration Mapping Studio journey", () => {
         sequence_index: 3
       },
       {
+        id: "node_source_planned_time",
+        schema_document_id: "schema_source",
+        parent_path: "/Transmission/Shipment/StartDt",
+        path: "/Transmission/Shipment/StartDt/PlannedTime",
+        name: "PlannedTime",
+        node_type: "string",
+        sequence_index: 4
+      },
+      {
         id: "node_source_stop",
         schema_document_id: "schema_source",
         parent_path: "/Transmission/Shipment",
@@ -219,6 +228,15 @@ describe("Functional Integration Mapping Studio journey", () => {
         sequence_index: 2
       },
       {
+        id: "node_target_issued_at",
+        schema_document_id: "schema_target",
+        parent_path: "$",
+        path: "$.issuedAt",
+        name: "issuedAt",
+        node_type: "string",
+        sequence_index: 3
+      },
+      {
         id: "node_target_shipment_id",
         schema_document_id: "schema_target",
         parent_path: "$.header",
@@ -286,9 +304,33 @@ describe("Functional Integration Mapping Studio journey", () => {
                 system_seeded: true,
                 created_at: "2026-05-21T10:00:00",
                 updated_at: "2026-05-21T10:00:00"
+              },
+              {
+                id: "transform_constant",
+                code: "CONSTANT",
+                name: "Constant value",
+                description: "Use a controlled constant value.",
+                requires_expression: true,
+                status: "ACTIVE",
+                sequence_index: 2,
+                system_seeded: true,
+                created_at: "2026-05-21T10:00:00",
+                updated_at: "2026-05-21T10:00:00"
+              },
+              {
+                id: "transform_date_format",
+                code: "DATE_FORMAT",
+                name: "Date format",
+                description: "Declare date format conversion metadata.",
+                requires_expression: true,
+                status: "ACTIVE",
+                sequence_index: 3,
+                system_seeded: true,
+                created_at: "2026-05-21T10:00:00",
+                updated_at: "2026-05-21T10:00:00"
               }
             ],
-            total: 1,
+            total: 3,
             page: 1,
             page_size: 50
           })
@@ -470,7 +512,7 @@ describe("Functional Integration Mapping Studio journey", () => {
               description: "Synthetic direct mapping from shipment id.",
               sequence_index: 10
             });
-          } else {
+          } else if (body.target_path === "$.header.accessKey") {
             expect(body).toEqual({
               source_schema_document_id: "schema_source",
               target_schema_document_id: "schema_target",
@@ -479,6 +521,32 @@ describe("Functional Integration Mapping Studio journey", () => {
               transform_type: "DIRECT",
               transform_config: { source_alias: "ship_unit_release" },
               description: "Synthetic alias-backed access key mapping.",
+              sequence_index: 10
+            });
+          } else if (body.target_path === "$.status") {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/ShipmentGid",
+              target_path: "$.status",
+              transform_type: "CONSTANT",
+              transform_config: { value: "ACCEPTED" },
+              description: "Synthetic constant status mapping.",
+              sequence_index: 10
+            });
+          } else {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/StartDt/PlannedTime",
+              target_path: "$.issuedAt",
+              transform_type: "DATE_FORMAT",
+              transform_config: {
+                source_format: "OTM_GLOGDATE",
+                target_format: "ISO8601",
+                timezone_offset: "-03:00"
+              },
+              description: "Synthetic planned time ISO mapping.",
               sequence_index: 10
             });
           }
@@ -958,6 +1026,26 @@ describe("Functional Integration Mapping Studio journey", () => {
     await waitFor(() => expect(mappingRequests).toHaveLength(3));
     expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.accessKey")).toBeInTheDocument();
 
+    await userEvent.selectOptions(screen.getByLabelText("Mapping source node"), "/Transmission/Shipment/ShipmentGid");
+    await userEvent.selectOptions(screen.getByLabelText("Mapping target node"), "$.status");
+    await userEvent.selectOptions(screen.getByLabelText("Transform type"), "CONSTANT");
+    await userEvent.type(await screen.findByLabelText("Constant value"), "ACCEPTED");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic constant status mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(4));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.status")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Mapping source node"), "/Transmission/Shipment/StartDt/PlannedTime");
+    await userEvent.selectOptions(screen.getByLabelText("Mapping target node"), "$.issuedAt");
+    await userEvent.selectOptions(screen.getByLabelText("Transform type"), "DATE_FORMAT");
+    expect(screen.getByLabelText("Date source format")).toHaveValue("OTM_GLOGDATE");
+    expect(screen.getByLabelText("Date target format")).toHaveValue("ISO8601");
+    expect(screen.getByLabelText("Date timezone offset")).toHaveValue("-03:00");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic planned time ISO mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(5));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.issuedAt")).toBeInTheDocument();
+
     await userEvent.selectOptions(screen.getByLabelText("Lookup source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Lookup target schema"), "schema_target");
     await userEvent.type(screen.getByLabelText("Lookup name"), "Synthetic carrier lookup");
@@ -1007,6 +1095,10 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Target path")).toHaveValue("");
     expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");
     expect(screen.getByLabelText("Alias source context")).toHaveValue("");
+    expect(screen.getByLabelText("Constant value")).toHaveValue("");
+    expect(screen.getByLabelText("Date source format")).toHaveValue("OTM_GLOGDATE");
+    expect(screen.getByLabelText("Date target format")).toHaveValue("ISO8601");
+    expect(screen.getByLabelText("Date timezone offset")).toHaveValue("-03:00");
     expect(screen.getByLabelText("Mapping description")).toHaveValue("");
     expect(screen.getByLabelText("Loop source schema")).toHaveValue("");
     expect(screen.getByLabelText("Loop target schema")).toHaveValue("");
