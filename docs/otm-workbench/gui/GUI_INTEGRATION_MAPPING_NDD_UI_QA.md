@@ -110,7 +110,9 @@ called complete for this class of integration:
 
 ```text
 - FILTER_BY_QUALIFIER transform for refnum qualifier/value extraction.
+  First backend slice delivered in `OTM-145`.
 - COUNT_DISTINCT or COUNT_BY_FILTER for QtdNFe/QtdCTe.
+  COUNT_DISTINCT first backend slice delivered in `OTM-145`.
 - FORMAT_DATE_ISO8601 with expression/config fields, not just transform code.
 - LOOKUP_VALUE from mock/external lookup response into target fields.
 - DEFAULT_IF_EMPTY and controlled constant values with visible expression UI.
@@ -141,7 +143,8 @@ Recommended next backlog sequence:
 4. Add expression/config UI for CONSTANT, CONCAT, DATE_FORMAT and future
    transform types.
 5. Extend transform catalog with FILTER_BY_QUALIFIER, COUNT_DISTINCT,
-   LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601.
+   LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. `OTM-145` delivered
+   FILTER_BY_QUALIFIER and COUNT_DISTINCT for scalar executable preview.
 6. Add loop-scoped field mapping support for target collections.
 7. Add multi-hop join metadata and validation.
 8. Harden validation to catch same-path joins, duplicate target paths, missing

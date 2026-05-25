@@ -178,7 +178,35 @@ def mapping_value_from_source(mapping: IntegrationMapping, source_content: str) 
     if mapping.transform_type == "CONCAT":
         config = parse_transform_config(mapping.transform_config_json)
         return concat_value_from_config(source_content, config), "concat_from_transform_config"
+    if mapping.transform_type == "FILTER_BY_QUALIFIER":
+        config = parse_transform_config(mapping.transform_config_json)
+        values = filtered_collection_values_from_config(source_content, config)
+        return (values[0] if values else None), "filtered_by_qualifier_transform_config"
+    if mapping.transform_type == "COUNT_DISTINCT":
+        config = parse_transform_config(mapping.transform_config_json)
+        values = filtered_collection_values_from_config(source_content, config)
+        return len(set(values)), "count_distinct_from_transform_config"
     return None, None
+
+
+def filtered_collection_values_from_config(source_content: str, config: dict[str, object]) -> list[str]:
+    collection_path = str(config.get("collection_path") or "").strip()
+    value_path = str(config.get("value_path") or "").strip()
+    qualifier_path = str(config.get("qualifier_path") or "").strip()
+    qualifier_value = str(config.get("qualifier_value") or "").strip()
+    if not collection_path or not value_path:
+        return []
+    values: list[str] = []
+    for element in xml_elements_from_collection_path(source_content, collection_path):
+        if qualifier_path and qualifier_value:
+            current_qualifier = xml_child_value(element, qualifier_path)
+            if current_qualifier != qualifier_value:
+                continue
+        value = xml_child_value(element, value_path)
+        if value in (None, ""):
+            continue
+        values.append(str(value))
+    return values
 
 
 def concat_value_from_config(source_content: str, config: dict[str, object]) -> str | None:
@@ -330,7 +358,11 @@ def materialize_scalar_mappings(
     field_provenance: list[dict[str, object]],
 ) -> bool:
     for mapping in mappings:
-        if mapping.transform_type not in {"DIRECT", "CONSTANT", "DATE_FORMAT", "CONCAT"} or "[]" in mapping.target_path:
+        if (
+            mapping.transform_type
+            not in {"DIRECT", "CONSTANT", "DATE_FORMAT", "CONCAT", "FILTER_BY_QUALIFIER", "COUNT_DISTINCT"}
+            or "[]" in mapping.target_path
+        ):
             return False
         source_payload = document_payload_content(db, mapping.source_schema_document_id)
         target_payload = document_payload_content(db, mapping.target_schema_document_id)

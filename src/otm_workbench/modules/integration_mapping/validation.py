@@ -125,6 +125,32 @@ def validate_transform_config(mapping: IntegrationMapping) -> ValidationIssue | 
             field="transform_config",
             message="DATE_FORMAT transform_config must include source_format and target_format.",
         )
+    if transform_type == "FILTER_BY_QUALIFIER" and not (
+        has_text_value(config, "collection_path")
+        and has_text_value(config, "qualifier_path")
+        and has_text_value(config, "qualifier_value")
+        and has_text_value(config, "value_path")
+    ):
+        return issue(
+            code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+            entity_type="mapping",
+            entity_id=mapping.id,
+            field="transform_config",
+            message=(
+                "FILTER_BY_QUALIFIER transform_config must include collection_path, "
+                "qualifier_path, qualifier_value, and value_path."
+            ),
+        )
+    if transform_type == "COUNT_DISTINCT" and not (
+        has_text_value(config, "collection_path") and has_text_value(config, "value_path")
+    ):
+        return issue(
+            code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+            entity_type="mapping",
+            entity_id=mapping.id,
+            field="transform_config",
+            message="COUNT_DISTINCT transform_config must include collection_path and value_path.",
+        )
     return None
 
 

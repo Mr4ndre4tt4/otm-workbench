@@ -32,6 +32,20 @@ TRANSFORM_TYPE_SEEDS = (
         "requires_expression": True,
         "sequence_index": 40,
     },
+    {
+        "code": "FILTER_BY_QUALIFIER",
+        "name": "Filter by qualifier",
+        "description": "Select a source value from a repeated collection by qualifier metadata.",
+        "requires_expression": True,
+        "sequence_index": 50,
+    },
+    {
+        "code": "COUNT_DISTINCT",
+        "name": "Count distinct",
+        "description": "Count distinct source values from a controlled repeated collection.",
+        "requires_expression": True,
+        "sequence_index": 60,
+    },
 )
 
 

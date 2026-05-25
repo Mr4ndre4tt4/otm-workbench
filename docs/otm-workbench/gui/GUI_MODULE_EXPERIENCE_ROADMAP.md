@@ -74,7 +74,9 @@ test pass/fail:
    mappings are understandable as an accelerator. First slice delivered in the
    Rules stage; multi-hop/aggregation execution remains `OTM-145`.
 4. OTM-145: implement cross-collection/multi-hop joins, qualifier filters and
-   aggregations in the Integration Mapping backend preview.
+   aggregations in the Integration Mapping backend preview. First backend
+   slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop
+   joins remain explicit follow-up.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```

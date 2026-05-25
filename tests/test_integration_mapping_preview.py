@@ -296,6 +296,164 @@ def test_preview_integration_definition_materializes_concat_transform_with_prove
     ]
 
 
+def test_preview_integration_definition_filters_refnum_by_qualifier(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentRefnum>"
+            "<ShipmentRefnumQualifierGid><Gid><Xid>ABR.RFN_PJ_CNPJ</Xid></Gid></ShipmentRefnumQualifierGid>"
+            "<ShipmentRefnumValue>00000000000191</ShipmentRefnumValue>"
+            "</ShipmentRefnum>"
+            "<ShipmentRefnum>"
+            "<ShipmentRefnumQualifierGid><Gid><Xid>OTHER</Xid></Gid></ShipmentRefnumQualifierGid>"
+            "<ShipmentRefnumValue>IGNORED</ShipmentRefnumValue>"
+            "</ShipmentRefnum>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"cnpjEmissor":""}}',
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentRefnum/ShipmentRefnumValue",
+            "target_path": "$.header.cnpjEmissor",
+            "transform_type": "FILTER_BY_QUALIFIER",
+            "transform_config": {
+                "collection_path": "/Transmission/Shipment/ShipmentRefnum",
+                "qualifier_path": "ShipmentRefnumQualifierGid/Gid/Xid",
+                "qualifier_value": "ABR.RFN_PJ_CNPJ",
+                "value_path": "ShipmentRefnumValue",
+            },
+            "description": "Extract synthetic CNPJ by refnum qualifier.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"cnpjEmissor": "00000000000191"}}
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "mapping_id": created.json()["id"],
+            "source_path": "/Transmission/Shipment/ShipmentRefnum/ShipmentRefnumValue",
+            "target_path": "$.header.cnpjEmissor",
+            "transform_type": "FILTER_BY_QUALIFIER",
+            "value_policy": "filtered_by_qualifier_transform_config",
+        }
+    ]
+
+
+def test_preview_integration_definition_counts_distinct_filtered_refnum_values(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<Release>"
+            "<ReleaseRefnum>"
+            "<ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid>"
+            "<ReleaseRefnumValue>KEY-001</ReleaseRefnumValue>"
+            "</ReleaseRefnum>"
+            "<ReleaseRefnum>"
+            "<ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid>"
+            "<ReleaseRefnumValue>KEY-001</ReleaseRefnumValue>"
+            "</ReleaseRefnum>"
+            "<ReleaseRefnum>"
+            "<ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid>"
+            "<ReleaseRefnumValue>KEY-002</ReleaseRefnumValue>"
+            "</ReleaseRefnum>"
+            "<ReleaseRefnum>"
+            "<ReleaseRefnumQualifierGid><Gid><Xid>OTHER</Xid></Gid></ReleaseRefnumQualifierGid>"
+            "<ReleaseRefnumValue>IGNORED</ReleaseRefnumValue>"
+            "</ReleaseRefnum>"
+            "</Release>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"qtdNFe":0}}',
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.header.qtdNFe",
+            "transform_type": "COUNT_DISTINCT",
+            "transform_config": {
+                "collection_path": "/Transmission/Shipment/Release/ReleaseRefnum",
+                "qualifier_path": "ReleaseRefnumQualifierGid/Gid/Xid",
+                "qualifier_value": "RFN_CHAVE_ACESSO",
+                "value_path": "ReleaseRefnumValue",
+            },
+            "description": "Count distinct synthetic access keys.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"qtdNFe": 2}}
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "mapping_id": created.json()["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.header.qtdNFe",
+            "transform_type": "COUNT_DISTINCT",
+            "value_policy": "count_distinct_from_transform_config",
+        }
+    ]
+
+
 def test_preview_integration_definition_materializes_mock_lookup_with_provenance(
     client,
     admin_header,
