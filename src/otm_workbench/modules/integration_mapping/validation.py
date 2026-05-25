@@ -12,7 +12,10 @@ from otm_workbench.models import (
 from otm_workbench.modules.integration_mapping.joins import ALLOWED_JOIN_OPERATORS
 from otm_workbench.modules.integration_mapping.lookups import ALLOWED_LOOKUP_TYPES
 from otm_workbench.modules.integration_mapping.mappings import schema_path_exists
-from otm_workbench.modules.integration_mapping.transform_types import transform_type_is_active
+from otm_workbench.modules.integration_mapping.transform_types import (
+    transform_type_is_active,
+    transform_type_requires_expression,
+)
 
 
 NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS = (
@@ -81,6 +84,19 @@ def validate_mapping(db: Session, mapping: IntegrationMapping) -> list[Validatio
         issues.append(path_issue("mapping", mapping.id, "target_path", mapping.target_path))
     if not transform_type_is_active(db, mapping.transform_type):
         issues.append(catalog_issue("mapping", mapping.id, "transform_type", mapping.transform_type))
+    elif transform_type_requires_expression(db, mapping.transform_type):
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING",
+                entity_type="mapping",
+                entity_id=mapping.id,
+                field="transform_type",
+                message=(
+                    "transform_type requires expression/config metadata that is not persisted "
+                    f"for this mapping yet: {mapping.transform_type}"
+                ),
+            )
+        )
     return issues
 
 

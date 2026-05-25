@@ -77,6 +77,19 @@ def transform_type_is_active(db: Session, code: str) -> bool:
     )
 
 
+def transform_type_requires_expression(db: Session, code: str) -> bool:
+    seed_integration_transform_types(db)
+    transform_type = (
+        db.query(IntegrationTransformType)
+        .filter(
+            IntegrationTransformType.code == code,
+            IntegrationTransformType.status == "ACTIVE",
+        )
+        .first()
+    )
+    return bool(transform_type and transform_type.requires_expression)
+
+
 def list_active_transform_types(db: Session) -> list[IntegrationTransformType]:
     seed_integration_transform_types(db)
     return (

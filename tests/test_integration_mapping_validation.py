@@ -305,6 +305,39 @@ def test_validate_integration_definition_reports_lookup_output_without_loop_scop
     ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
 
 
+def test_validate_integration_definition_reports_missing_transform_config_for_expression_type(
+    client,
+    admin_header,
+):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            source_path="/Transmission/Shipment/ShipmentGid",
+            target_path="$.header.shipmentId",
+            transform_type="DATE_FORMAT",
+        ),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is False
+    assert (
+        "mapping",
+        "transform_type",
+        "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+
+
 def test_validate_integration_definition_rejects_missing_definition(client, admin_header):
     response = client.post(
         "/api/v1/modules/integration-mapping/definitions/missing-definition/validate",
