@@ -227,6 +227,17 @@ async function run() {
     await waitForSuccessOrThrow(page, "Definition validation is VALID.");
     await page.getByRole("button", { name: "Publish template" }).click();
     await waitForSuccessOrThrow(page, `Template ${authorTemplateCode} published.`);
+    await page.getByRole("button", { name: "Reset authoring draft" }).click();
+    await assertControlValue(page.getByLabel("Template code"), "LOCATIONS_DYNAMIC_UI", "Template code after authoring reset");
+    await assertControlValue(page.getByLabel("Template name"), "Locations Dynamic UI", "Template name after authoring reset");
+    await assertHidden(
+      page.getByText(`Template ${authorTemplateCode} published.`),
+      "Authoring publish feedback stayed visible after resetting the draft."
+    );
+    await assertHidden(
+      page.getByLabel("Catalog columns for LOCATION_ADDRESS"),
+      "LOCATION_ADDRESS columns remained visible after resetting the authoring draft."
+    );
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
     await page

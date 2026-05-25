@@ -1225,6 +1225,25 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("5 user field(s)");
     expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("7 OTM mapping(s)");
     expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("1 relationship rule(s)");
+    await userEvent.click(screen.getByRole("button", { name: "Reset authoring draft" }));
+    expect(screen.getByLabelText("Template code")).toHaveValue("LOCATIONS_DYNAMIC_UI");
+    expect(screen.getByLabelText("Template name")).toHaveValue("Locations Dynamic UI");
+    expect(screen.getByRole("checkbox", { name: "LOCATION_ADDRESS" })).not.toBeChecked();
+    expect(screen.queryByLabelText("Catalog columns for LOCATION_ADDRESS")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("LOCATION");
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("3 user field(s)");
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("4 OTM mapping(s)");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "LOCATION_ADDRESS" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "CITY" }));
+    const rebuiltAddressColumns = await screen.findByLabelText("Catalog columns for LOCATION_ADDRESS");
+    await userEvent.click(within(rebuiltAddressColumns).getByRole("checkbox", { name: "LOCATION_GID" }));
+    await userEvent.click(within(rebuiltAddressColumns).getByRole("checkbox", { name: "ADDRESS_LINE" }));
+    await userEvent.clear(screen.getByLabelText("Friendly label for LOCATION_ADDRESS.ADDRESS_LINE"));
+    await userEvent.type(screen.getByLabelText("Friendly label for LOCATION_ADDRESS.ADDRESS_LINE"), "Street line for user upload");
+    await userEvent.selectOptions(screen.getByLabelText("Source type for LOCATION.CITY"), "DEFAULT_VALUE");
+    await userEvent.type(screen.getByLabelText("Default value for LOCATION.CITY"), "UNKNOWN_CITY");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Require LOCATION parent for LOCATION_ADDRESS" }));
     await userEvent.clear(screen.getByLabelText("Template code"));
     await userEvent.type(screen.getByLabelText("Template code"), "LOCATIONS_DYNAMIC_UI");
     await userEvent.clear(screen.getByLabelText("Template name"));
@@ -1239,6 +1258,10 @@ describe("Functional Master Data journey", () => {
     await screen.findByText("Template LOCATIONS_DYNAMIC_UI published.");
     await userEvent.click(screen.getByRole("button", { name: "Create next version" }));
     await screen.findByText("Version LOCATIONS_DYNAMIC_UI_V2 created.");
+    await userEvent.click(screen.getByRole("button", { name: "Reset authoring draft" }));
+    expect(screen.getByLabelText("Template code")).toHaveValue("LOCATIONS_DYNAMIC_UI");
+    expect(screen.queryByText("Version LOCATIONS_DYNAMIC_UI_V2 created.")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Authoring result")).not.toBeInTheDocument();
 
     expect(columnRequests).toEqual([{ method: "GET" }]);
     expect(draftRequests).toEqual([

@@ -158,6 +158,8 @@ function parseJsonArray(text: string) {
 }
 
 const defaultAuthorColumns = ["LOCATION_GID", "LOCATION_XID", "LOCATION_NAME", "COUNTRY_CODE3_GID"];
+const defaultAuthorTemplateCode = "LOCATIONS_DYNAMIC_UI";
+const defaultAuthorTemplateName = "Locations Dynamic UI";
 
 const defaultCoordinateQualityRecords = [
   {
@@ -426,8 +428,8 @@ export function MasterDataView({ token }: { token: string }) {
   const [batchPageSize, setBatchPageSize] = useState(50);
   const [batchPage, setBatchPage] = useState(1);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
-  const [authorTemplateCode, setAuthorTemplateCode] = useState("LOCATIONS_DYNAMIC_UI");
-  const [authorTemplateName, setAuthorTemplateName] = useState("Locations Dynamic UI");
+  const [authorTemplateCode, setAuthorTemplateCode] = useState(defaultAuthorTemplateCode);
+  const [authorTemplateName, setAuthorTemplateName] = useState(defaultAuthorTemplateName);
   const [authorTables, setAuthorTables] = useState<string[]>(["LOCATION"]);
   const [authorColumnsByTable, setAuthorColumnsByTable] = useState<Record<string, string[]>>({
     LOCATION: defaultAuthorColumns,
@@ -645,6 +647,24 @@ export function MasterDataView({ token }: { token: string }) {
     setAuthorTemplate(null);
     setAuthorValidation(null);
     setAuthorVersion(null);
+  };
+
+  const resetAuthoringDraft = () => {
+    setAuthorTemplateCode(defaultAuthorTemplateCode);
+    setAuthorTemplateName(defaultAuthorTemplateName);
+    setAuthorMacroObjectCode("LOCATION");
+    setAuthorTables(["LOCATION"]);
+    setAuthorColumnsByTable({
+      LOCATION: defaultAuthorColumns,
+      LOCATION_ADDRESS: []
+    });
+    setAuthorMappingConfigByKey({});
+    setIncludeLocationAddressRelationship(false);
+    setAuthorTemplate(null);
+    setAuthorValidation(null);
+    setAuthorVersion(null);
+    setOperationMessage(null);
+    setOperationError(null);
   };
 
   const updateAuthorMappingConfig = (key: string, patch: AuthorMappingConfig) => {
@@ -1208,6 +1228,9 @@ export function MasterDataView({ token }: { token: string }) {
                 variant="secondary"
               >
                 Load selected template
+              </Button>
+              <Button disabled={isMutating} onClick={resetAuthoringDraft} variant="secondary">
+                Reset authoring draft
               </Button>
               <Button disabled={isMutating || !authorTemplateCode.trim()} onClick={handleCreateDraft} variant="primary">
                 Create draft

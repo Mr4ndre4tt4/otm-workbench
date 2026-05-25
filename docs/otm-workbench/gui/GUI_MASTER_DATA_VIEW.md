@@ -130,6 +130,12 @@ validates the definition, and publishes it before continuing through the
 workbook, upload, relationship validation, mapping, output, CSV, export, and
 return-state journey.
 
+The latest OTM-117 hardening slice adds explicit authoring-draft reset recovery.
+After table, column, mapping, relationship, and persisted draft/version state
+changes, the Author stage can return to the synthetic `LOCATION` baseline,
+clear stale feedback, and remove draft validation/version result panels without
+mutating backend-owned templates.
+
 The eighth OTM-117 slice adds explicit recovery of an existing backend-owned
 template definition into the Author stage. When a selected template carries a
 `master-data-template-definition/v2` definition, the user can load it into the
