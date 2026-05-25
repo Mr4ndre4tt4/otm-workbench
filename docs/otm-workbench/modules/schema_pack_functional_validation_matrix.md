@@ -82,6 +82,16 @@ Recommended backend-owned alias examples:
 Aliases should live in backend-owned metadata so future GUIs, desktop apps, and
 automation jobs consume the same vocabulary.
 
+Backend status:
+
+```text
+- `GET /api/v1/catalog/schema-roots` now returns `root_display_label`,
+  `canonical_root_name`, `schema_root_aliases`, and `data_dictionary_family`.
+- The `root_name` filter accepts known aliases such as `RateGeo` and resolves
+  them to canonical XSD roots such as `RATE_GEO`.
+- Macro-object schema links return the same root naming metadata.
+```
+
 ## Next Hardening Slices
 
 ```text
@@ -95,6 +105,7 @@ automation jobs consume the same vocabulary.
    Rate Geo, Release, and Planned Shipment macro objects.
 4. Add root alias normalization so APIs can present user-friendly labels while
    preserving canonical XSD names.
+   Status: backend serializer/filter slice started in OTM-164.
 5. Only after the above, define the UI path-picker/guidance contract.
 ```
 

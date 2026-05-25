@@ -120,6 +120,19 @@ Required fields:
 - documentation
 ```
 
+Serialized API responses also expose backend-owned naming metadata:
+
+```text
+- root_display_label
+- canonical_root_name
+- schema_root_aliases
+- data_dictionary_family
+```
+
+These values let future GUIs, desktop apps, and automation jobs present stable
+labels such as `Rate Record / Rate Geo` while preserving the canonical XSD root
+name `RATE_GEO`.
+
 Examples from OTM 26A:
 
 ```text
@@ -559,6 +572,8 @@ Remaining hardening before user-facing path guidance:
 4. Keep Rates CSV/table sequencing governed by Data Dictionary, not XSD.
 5. Keep direct OTM execution out of scope until governed connection,
    credential, environment, and capability controls exist.
+6. Keep root aliases backend-owned so UI labels do not drift between browser,
+   desktop, jobs, and evidence.
 ```
 
 Functional validation tracking:

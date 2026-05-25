@@ -660,6 +660,54 @@ def test_catalog_schema_roots_paths_and_operations_are_queryable(client, admin_h
     assert "C:/otm/contracts/26A" not in str(operations.json())
 
 
+def test_catalog_schema_roots_are_queryable_by_backend_owned_alias(client, admin_header, db_session):
+    pack = SchemaPack(
+        code="OTM_26A_CORE",
+        name="OTM 26A core contracts",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/otm/contracts/26A",
+        content_hash="hash-26a",
+        status="READY",
+    )
+    db_session.add(pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name="Rate.xsd",
+        relative_path="Rate.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    db_session.add(
+        SchemaRoot(
+            schema_pack_id=pack.id,
+            schema_file_id=schema_file.id,
+            root_name="RATE_GEO",
+            namespace="http://xmlns.oracle.com/apps/otm",
+            domain_area="RATE",
+            root_type="ROWSET",
+            envelope_role="NONE",
+            recommended_modules_json='["rates"]',
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/catalog/schema-roots?root_name=RateGeo", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["root_name"] == "RATE_GEO"
+    assert payload["items"][0]["root_display_label"] == "Rate Record / Rate Geo"
+    assert payload["items"][0]["canonical_root_name"] == "RATE_GEO"
+    assert "RateGeo" in payload["items"][0]["schema_root_aliases"]
+    assert payload["items"][0]["data_dictionary_family"] == "RATE_GEO"
+
+
 def test_catalog_macro_object_schema_links_return_official_roots(client, admin_header, db_session):
     pack = SchemaPack(
         code="OTM_26A_CORE",
@@ -722,3 +770,5 @@ def test_catalog_macro_object_schema_links_return_official_roots(client, admin_h
     assert payload["items"][0]["source_reference_status"] == "PINNED"
     assert payload["items"][0]["source_reference_label"] == "Oracle Rate Offering"
     assert payload["items"][0]["source_reference_url"].startswith("https://docs.oracle.com/")
+    assert payload["items"][0]["root_display_label"] == "Rate Offering"
+    assert payload["items"][0]["data_dictionary_family"] == "RATE_OFFERING"

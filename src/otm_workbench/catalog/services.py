@@ -31,6 +31,63 @@ SENSITIVE_SCHEMA_PATTERNS = (
 MAX_SCHEMA_PATH_DEPTH = 12
 MAX_SCHEMA_PATHS_PER_ROOT = 2000
 
+SCHEMA_ROOT_ALIAS_METADATA: dict[str, dict[str, object]] = {
+    "RATEOFFERING": {
+        "root_display_label": "Rate Offering",
+        "canonical_root_name": "RATE_OFFERING",
+        "schema_root_aliases": ["RateOffering", "RATE_OFFERING"],
+        "data_dictionary_family": "RATE_OFFERING",
+    },
+    "RATEGEO": {
+        "root_display_label": "Rate Record / Rate Geo",
+        "canonical_root_name": "RATE_GEO",
+        "schema_root_aliases": ["RateGeo", "Rate Record", "RATE_GEO"],
+        "data_dictionary_family": "RATE_GEO",
+    },
+    "XLANE": {
+        "root_display_label": "Lane",
+        "canonical_root_name": "X_LANE",
+        "schema_root_aliases": ["XLane", "X Lane", "X_LANE"],
+        "data_dictionary_family": "X_LANE",
+    },
+    "RELEASE": {
+        "root_display_label": "Order Release",
+        "canonical_root_name": "Release",
+        "schema_root_aliases": ["OrderRelease", "Order Release", "Release"],
+        "data_dictionary_family": "ORDER_RELEASE",
+    },
+    "PLANNEDSHIPMENT": {
+        "root_display_label": "Planned Shipment",
+        "canonical_root_name": "PlannedShipment",
+        "schema_root_aliases": ["Planned Shipment", "Shipment", "PlannedShipment"],
+        "data_dictionary_family": "SHIPMENT",
+    },
+    "LOCATION": {
+        "root_display_label": "Location",
+        "canonical_root_name": "Location",
+        "schema_root_aliases": ["Location"],
+        "data_dictionary_family": "LOCATION",
+    },
+    "ITEM": {
+        "root_display_label": "Item",
+        "canonical_root_name": "Item",
+        "schema_root_aliases": ["Item"],
+        "data_dictionary_family": "ITEM",
+    },
+    "ITEMMASTER": {
+        "root_display_label": "Item Master",
+        "canonical_root_name": "ItemMaster",
+        "schema_root_aliases": ["Item Master", "ItemMaster"],
+        "data_dictionary_family": "ITEM",
+    },
+    "TRANSMISSION": {
+        "root_display_label": "Transmission",
+        "canonical_root_name": "Transmission",
+        "schema_root_aliases": ["Transmission"],
+        "data_dictionary_family": "",
+    },
+}
+
 
 TRANSACTIONAL_TABLE_PREFIXES = (
     "SHIPMENT",
@@ -573,6 +630,38 @@ def _json_list(value: str) -> list[str]:
     return [str(item) for item in parsed]
 
 
+def _alias_key(value: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", value.upper())
+
+
+def _schema_root_metadata(root_name: str) -> dict[str, object]:
+    key = _alias_key(root_name)
+    return SCHEMA_ROOT_ALIAS_METADATA.get(
+        key,
+        {
+            "root_display_label": root_name,
+            "canonical_root_name": root_name,
+            "schema_root_aliases": [root_name],
+            "data_dictionary_family": "",
+        },
+    )
+
+
+def _schema_root_name_candidates(root_name: str) -> list[str]:
+    target_key = _alias_key(root_name)
+    candidates = {root_name}
+    for metadata in SCHEMA_ROOT_ALIAS_METADATA.values():
+        values = [
+            str(metadata["canonical_root_name"]),
+            str(metadata["root_display_label"]),
+            *[str(alias) for alias in metadata["schema_root_aliases"]],
+        ]
+        if any(_alias_key(value) == target_key for value in values):
+            candidates.add(str(metadata["canonical_root_name"]))
+            candidates.update(str(alias) for alias in metadata["schema_root_aliases"])
+    return sorted(candidates)
+
+
 def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
@@ -871,7 +960,7 @@ def list_schema_roots(
     if schema_pack_id:
         query = query.filter(SchemaRoot.schema_pack_id == schema_pack_id)
     if root_name:
-        query = query.filter(SchemaRoot.root_name == root_name)
+        query = query.filter(SchemaRoot.root_name.in_(_schema_root_name_candidates(root_name)))
     if domain_area:
         query = query.filter(SchemaRoot.domain_area == domain_area.upper())
     roots = query.order_by(SchemaRoot.domain_area, SchemaRoot.root_name).all()
@@ -886,11 +975,16 @@ def get_schema_root(db: Session, schema_root_id: str) -> SchemaRoot | None:
 
 
 def serialize_schema_root(root: SchemaRoot) -> dict[str, object]:
+    metadata = _schema_root_metadata(root.root_name)
     return {
         "id": root.id,
         "schema_pack_id": root.schema_pack_id,
         "schema_file_id": root.schema_file_id,
         "root_name": root.root_name,
+        "root_display_label": metadata["root_display_label"],
+        "canonical_root_name": metadata["canonical_root_name"],
+        "schema_root_aliases": metadata["schema_root_aliases"],
+        "data_dictionary_family": metadata["data_dictionary_family"],
         "namespace": root.namespace,
         "domain_area": root.domain_area,
         "root_type": root.root_type,
@@ -978,6 +1072,7 @@ def serialize_macro_object_schema_link(
     pack: SchemaPack,
     schema_file: SchemaFile,
 ) -> dict[str, object]:
+    root_metadata = _schema_root_metadata(root.root_name)
     return {
         "id": row.id,
         "macro_object_code": row.macro_object_code,
@@ -987,6 +1082,10 @@ def serialize_macro_object_schema_link(
         "otm_version": pack.otm_version,
         "schema_file": schema_file.file_name,
         "root_name": root.root_name,
+        "root_display_label": root_metadata["root_display_label"],
+        "canonical_root_name": root_metadata["canonical_root_name"],
+        "schema_root_aliases": root_metadata["schema_root_aliases"],
+        "data_dictionary_family": root_metadata["data_dictionary_family"],
         "domain_area": root.domain_area,
         "root_type": root.root_type,
         "relationship_role": row.relationship_role,
