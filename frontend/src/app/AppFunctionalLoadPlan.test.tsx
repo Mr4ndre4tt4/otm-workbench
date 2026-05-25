@@ -93,6 +93,27 @@ function loadPlanPackage(status = "REGISTERED") {
   };
 }
 
+function alternateLoadPlanPackage() {
+  const base = loadPlanPackage();
+  return {
+    ...base,
+    approval_evidence_id: "evidence_approval_2",
+    artifact_id: "artifact_export_2",
+    evidence_id: "evidence_package_2",
+    id: "package_2",
+    load_sequence: [{ position: 10, requirement_level: "REQUIRED", row_count: 1, table_name: "LOCATION" }],
+    manifest_id: "manifest_2",
+    source_entity_id: "batch_2",
+    summary: {
+      ...base.summary,
+      catalog_load_plan_path: "/api/v1/catalog/macro-objects/LOCATION_MASTER/load-plan",
+      catalog_macro_object_code: "LOCATION_MASTER",
+      row_count: 1,
+      table_count: 1
+    }
+  };
+}
+
 function cutoverChecklist(itemStatus = "PENDING") {
   return {
     catalog_macro_object_code: "RATE_RECORD",
@@ -500,19 +521,25 @@ describe("Functional Load Plan journey", () => {
       if (url.endsWith("/api/v1/modules/load-plan/summary")) {
         return Promise.resolve(
           jsonResponse({
-            by_catalog_macro_object: { RATE_RECORD: { catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan", package_count: 1 } },
-            by_source_module: { rates: 1 },
-            by_status: { REGISTERED: 1 },
+            by_catalog_macro_object: {
+              LOCATION_MASTER: { catalog_load_plan_path: "/api/v1/catalog/macro-objects/LOCATION_MASTER/load-plan", package_count: 1 },
+              RATE_RECORD: { catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan", package_count: 1 }
+            },
+            by_source_module: { rates: 2 },
+            by_status: { REGISTERED: 2 },
             next_actions: ["create_cutover_checklist"],
-            registered_packages: 1
+            registered_packages: 2
           })
         );
       }
       if (url.endsWith("/api/v1/modules/load-plan/packages")) {
-        return Promise.resolve(jsonResponse({ items: [loadPlanPackage()], total: 1 }));
+        return Promise.resolve(jsonResponse({ items: [loadPlanPackage(), alternateLoadPlanPackage()], total: 2 }));
       }
       if (url.endsWith("/api/v1/modules/load-plan/packages/package_1")) {
         return Promise.resolve(jsonResponse(loadPlanPackage()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages/package_2")) {
+        return Promise.resolve(jsonResponse(alternateLoadPlanPackage()));
       }
       if (url.endsWith("/api/v1/modules/load-plan/cutover-checklists/from-package/package_1")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -571,6 +598,9 @@ describe("Functional Load Plan journey", () => {
             total: reviewQueueGenerated ? 1 : 0
           })
         );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/review-queue?package_id=package_2")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/load-plan/review-queue/from-zip-analysis/zip_analysis_1")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -705,6 +735,25 @@ describe("Functional Load Plan journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_2")) {
+        return Promise.resolve(
+          jsonResponse({
+            archive_evidence_id: null,
+            blockers: [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
+            checklist_id: null,
+            checklist_readiness_evidence_id: null,
+            checklist_readiness_status: null,
+            eligible: false,
+            next_actions: ["CUTOVER_READINESS_MISSING"],
+            package_id: "package_2",
+            readiness_export_evidence_id: null,
+            readiness_export_id: null,
+            readiness_id: null,
+            readiness_status: null,
+            status: "INELIGIBLE"
+          })
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -799,6 +848,17 @@ describe("Functional Load Plan journey", () => {
     await screen.findByText("Cutover handoff handoff_1 committed.");
     expect(screen.getByLabelText("Cutover handoff commit")).toHaveTextContent("READY FOR CUTOVER");
     expect(screen.getByLabelText("Cutover handoff commit")).toHaveTextContent("evidence_cutover_handoff");
+
+    await userEvent.click(screen.getByRole("button", { name: /1Packages/ }));
+    await userEvent.click(within(screen.getByLabelText("Load plan packages")).getByRole("button", { name: /LOCATION_MASTER/ }));
+    expect(await screen.findByLabelText("Selected load plan package")).toHaveTextContent("LOCATION_MASTER");
+    expect(screen.queryByText("Cutover handoff handoff_1 committed.")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /8Handoff/ }));
+    await screen.findByText("CUTOVER_READINESS_MISSING");
+    expect(screen.queryByLabelText("Cutover go no-go decision")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Cutover handoff commit")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decide Go/No-Go" })).toBeDisabled();
 
     expect(checklistRequests).toEqual([{ method: "POST" }]);
     expect(csvutilRequests).toEqual([

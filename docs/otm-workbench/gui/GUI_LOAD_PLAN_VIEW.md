@@ -54,7 +54,7 @@ decide review item when present -> generate sequence snapshot and inspect blocke
 generate package readiness -> export readiness ZIP -> export cutover package ->
 download exported artifact through Evidence Hub -> inspect handoff eligibility ->
 archive readiness export through Evidence Hub -> record Go/No-Go decision ->
-commit cutover handoff when backend eligibility allows -> leave route ->
+commit cutover handoff when backend eligibility allows -> switch package with a clean route-session workspace -> leave route ->
 return with backend-owned package state visible
 ```
 
@@ -75,7 +75,11 @@ The screen uses shared components:
 ```
 
 The first selected package defaults to the first backend item. Selecting
-another package updates the detail query through backend-owned ids.
+another package updates the detail query through backend-owned ids and clears
+route-session state that belongs to the previous package: checklist draft,
+readiness, CSVUTIL build, ZIP analysis, review queue draft, sequence snapshot,
+exports, archive response, Go/No-Go decision, handoff commit, feedback, download
+state, and the checklist evidence draft.
 
 ## Safety
 
@@ -96,6 +100,9 @@ another package updates the detail query through backend-owned ids.
   creation, evidence, audit, and event records.
 - Exports use backend-owned readiness export and cutover package artifacts; the
   frontend only displays returned artifact/evidence/manifest ids.
+- Package switching is route-session scoped: backend package metadata reloads
+  from the selected package id, while previous-package operational results are
+  hidden until regenerated for the newly selected package.
 - No local artifact path rendering.
 - Artifact downloads use the guarded Evidence Hub artifact download endpoint.
 - Package status, catalog macro, evidence references, artifact references, and load sequence come from backend contracts.

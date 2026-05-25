@@ -117,6 +117,31 @@ export function LoadPlanView({ token }: { token: string }) {
     ? sequenceSnapshot.summary.next_actions.map(String)
     : [];
 
+  const clearRouteSessionState = () => {
+    setChecklist(null);
+    setReadiness(null);
+    setCsvutilBuild(null);
+    setZipAnalysis(null);
+    setReviewItems([]);
+    setSequenceSnapshot(null);
+    setPackageReadiness(null);
+    setReadinessExport(null);
+    setCutoverPackageExport(null);
+    setGoNoGoDecision(null);
+    setHandoffCommit(null);
+    setReadinessArchivePackage(null);
+    setOperationMessage(null);
+    setOperationError(null);
+    setDownloadingArtifactId(null);
+    setEvidenceId(defaultEvidenceId);
+  };
+
+  const handleSelectPackage = (packageId: string) => {
+    if (packageId === effectivePackageId) return;
+    setSelectedPackageId(packageId);
+    clearRouteSessionState();
+  };
+
   const handleCreateChecklist = async () => {
     if (!effectivePackageId) return;
     setIsMutating(true);
@@ -514,7 +539,7 @@ export function LoadPlanView({ token }: { token: string }) {
               subtitle: item.summary.catalog_macro_object_code ?? item.source_module,
               title: item.package_type
             }))}
-            onSelect={setSelectedPackageId}
+            onSelect={handleSelectPackage}
             selectedId={effectivePackageId}
           />
         ) : null}

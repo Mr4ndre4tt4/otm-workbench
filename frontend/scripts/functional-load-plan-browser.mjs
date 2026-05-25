@@ -189,6 +189,7 @@ async function run() {
   const context = await seedSyntheticContext(token);
   const suffix = syntheticSuffix();
   const seeded = await seedLoadPlanPackage(token, suffix);
+  const alternateSeeded = await seedLoadPlanPackage(token, `${suffix}_ALT`);
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1360, height: 980 } });
@@ -302,6 +303,23 @@ async function run() {
     await page.getByText(/^Go\/No-Go decision is .*\.$/).waitFor();
     await page.getByLabel("Cutover go no-go decision").waitFor();
 
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Packages" }).click();
+    await page.getByLabel("Load plan packages").locator('.module-row[aria-pressed="false"]').first().click();
+    await page.getByLabel("Selected load plan package").getByText("ACCESSORIAL_COST").waitFor();
+    if (await page.getByText(/^Go\/No-Go decision is .*\.$/).isVisible().catch(() => false)) {
+      throw new Error("Load Plan kept a stale Go/No-Go success message after switching packages.");
+    }
+
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Handoff" }).click();
+    await page.getByLabel("Cutover handoff eligibility", { exact: true }).waitFor();
+    await page.getByText("CUTOVER_READINESS_MISSING").first().waitFor();
+    if (await page.getByLabel("Cutover go no-go decision").isVisible().catch(() => false)) {
+      throw new Error("Load Plan kept a stale Go/No-Go decision panel after switching packages.");
+    }
+    if (!(await page.getByRole("button", { name: "Decide Go/No-Go" }).isDisabled())) {
+      throw new Error("Decide Go/No-Go stayed enabled from the previous package session.");
+    }
+
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/load-plan"]').click();
@@ -331,6 +349,7 @@ async function run() {
           profile_id: context.profile.id,
           environment_id: context.environment.id,
           package_id: seeded.package.id,
+          alternate_package_id: alternateSeeded.package.id,
           batch_id: seeded.batch.id,
           evidence_id: seeded.evidence.id
         },
