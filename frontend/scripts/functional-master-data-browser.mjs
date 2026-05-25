@@ -148,6 +148,7 @@ async function run() {
   const runId = Date.now().toString(36).toUpperCase();
   const authorTemplateCode = `LOC_BROWSER_${runId}`;
   const scenarioTemplateCode = `LOC_SCENARIO_${runId}`;
+  const itemScenarioTemplateCode = `ITEM_SCENARIO_${runId}`;
 
   const login = await apiRequest("/api/v1/platform/session/login", {
     method: "POST",
@@ -233,6 +234,38 @@ async function run() {
     await assertHidden(
       page.getByLabel("Authoring scenario story"),
       "Backend-owned scenario story stayed visible after resetting the authoring draft."
+    );
+
+    await page.getByLabel("Master Data scenario pack").selectOption("ITEM_PACKAGING_OPERATIONAL");
+    await waitForVisibleOrThrow(
+      page,
+      page.getByLabel("Authoring scenario story").getByText("Item setup with Ship Unit Spec"),
+      "backend-owned Item Packaging scenario story",
+      { consoleErrors, failedResponses }
+    );
+    await page.getByLabel("Authoring scenario story").getByText("TI_HI", { exact: true }).waitFor();
+    await page.getByLabel("Authoring scenario story").getByText(/ORACLE_OFFICIAL/).waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("40 user field(s)").waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("40 OTM mapping(s)").waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("5 relationship rule(s)").waitFor();
+    await assertHidden(
+      page.getByLabel("Catalog tables for ITEM"),
+      "Manual Catalog table picker stayed visible after selecting the Item Packaging scenario pack."
+    );
+    await page.getByLabel("Template code").fill(itemScenarioTemplateCode);
+    await page.getByLabel("Template name").fill(`Item Packaging Scenario Browser QA ${runId}`);
+    await page.getByRole("button", { name: "Create draft" }).click();
+    await waitForSuccessOrThrow(page, `Draft ${itemScenarioTemplateCode} created.`);
+    await page.getByRole("button", { name: "Validate definition" }).click();
+    await waitForSuccessOrThrow(page, "Definition validation is VALID.");
+    await page.getByRole("button", { name: "Publish template" }).click();
+    await waitForSuccessOrThrow(page, `Template ${itemScenarioTemplateCode} published.`);
+    await page.getByRole("button", { name: "Reset authoring draft" }).click();
+    await assertControlValue(page.getByLabel("Master Data scenario pack"), "CUSTOM", "Scenario pack after Item scenario reset");
+    await assertControlValue(page.getByLabel("Template code"), "LOCATIONS_DYNAMIC_UI", "Template code after Item scenario reset");
+    await assertHidden(
+      page.getByLabel("Authoring scenario story"),
+      "Item scenario story stayed visible after resetting the authoring draft."
     );
 
     await page.getByLabel("Template code").fill(authorTemplateCode);
@@ -392,8 +425,9 @@ async function run() {
         {
           status: "passed",
           journey:
-            "master-data-scenario-pack-author-manual-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
+            "master-data-scenario-packs-author-manual-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
           scenarioTemplateCode,
+          itemScenarioTemplateCode,
           authorTemplateCode,
           alternateTemplateCode,
           baseUrl,

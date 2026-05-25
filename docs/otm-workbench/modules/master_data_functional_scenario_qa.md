@@ -130,10 +130,10 @@ npm run qa:functional:master-data:browser
 
 The current pass covers backend scenario validity, the React functional GUI
 slice, and the browser journey against local FastAPI + Vite. The browser path
-selects the backend-owned Location scenario pack, verifies the scenario story
-and hidden manual authoring controls, creates/validates/publishes the scenario
-draft, and resets authoring before continuing through the manual template and
-batch/export handoff journey.
+selects the backend-owned Location and Item Packaging scenario packs, verifies
+each scenario story and hidden manual authoring controls, creates/validates/
+publishes each scenario draft, and resets authoring before continuing through
+the manual template and batch/export handoff journey.
 
 ## Replication Rule For Other Modules
 
