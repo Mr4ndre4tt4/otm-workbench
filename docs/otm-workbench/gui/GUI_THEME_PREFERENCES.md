@@ -52,6 +52,8 @@ The topbar preference controls now call the backend preference contract:
 - Rows icon toggles `density` between `comfortable` and `compact`
 - Sidebar icon inside the sidebar toggles `sidebar_mode` between `expanded`
   and `collapsed`
+- Sidebar persistence failures are caught in the shell and rendered as inline
+  backend error feedback instead of failing silently.
 
 The active preference is reflected with `aria-pressed`, an active button style,
 and root shell attributes:
@@ -76,3 +78,5 @@ client can map the same value to the OS theme source without changing the API.
   `tests/test_operational_context.py`.
 - GUI preference writes and active shell state covered by
   `frontend/src/app/App.test.tsx`.
+- Sidebar preference persistence, disabled unauthenticated state, and backend
+  error feedback covered by `frontend/src/app/shell/WorkbenchShell.test.tsx`.

@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { updateUserPreferences } from "../../platform/hooks";
+import { ApiError } from "../../platform/api";
 import type { NavigationItem, UserPreferences } from "../../platform/types";
 import { WorkbenchShell } from "./WorkbenchShell";
 
@@ -100,5 +101,16 @@ describe("WorkbenchShell", () => {
       ...preferences,
       sidebar_mode: "expanded"
     });
+  });
+
+  it("renders backend preference errors from the sidebar control", async () => {
+    vi.mocked(updateUserPreferences).mockRejectedValue(
+      new ApiError("Unable to persist sidebar preference.", "PREFERENCE_SAVE_FAILED", 503)
+    );
+    renderShell();
+
+    await userEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
+
+    expect(await screen.findByText("Unable to persist sidebar preference.")).toBeInTheDocument();
   });
 });

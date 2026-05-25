@@ -63,7 +63,9 @@ Those decisions remain in backend contracts or the platform auth/session layer.
 3. Render sign out only for authenticated sessions.
 4. Disable preference controls when no backend session token exists.
 5. Render sidebar collapse/expand from the sidebar, not as a topbar preference.
-6. Render route content through a child slot without inspecting module internals.
+6. Render backend preference save failures from the sidebar control as inline
+   shell feedback.
+7. Render route content through a child slot without inspecting module internals.
 ```
 
 ## 5. Guardrails
@@ -75,5 +77,6 @@ frontend/tests/reactBoundary.test.ts
 ```
 
 The tests verify shell rendering, backend-owned preference attributes, sign-out
-visibility, disabled unauthenticated preferences, shell barrel export, and that
-`App.tsx` does not own shell frame markup.
+visibility, disabled unauthenticated preferences, sidebar preference error
+feedback, shell barrel export, and that `App.tsx` does not own shell frame
+markup.
