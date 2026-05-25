@@ -82,6 +82,37 @@ def test_generate_integration_spec_rejects_invalid_metadata(client, admin_header
     assert db_session.query(Job).filter(Job.job_type == "INTEGRATION_MAPPING_GENERATE_SPEC").count() == 0
 
 
+def test_generate_integration_spec_allows_spec_ready_transform_config_gap(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    db_session.add(
+        IntegrationMapping(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            source_path="/Transmission/Shipment/ShipmentGid",
+            target_path="$.header.shipmentId",
+            transform_type="DATE_FORMAT",
+            description="Synthetic date format mapping without config.",
+            sequence_index=1,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        )
+    )
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/generate-spec",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["validation"]["is_valid"] is False
+    assert payload["validation"]["readiness"]["specification_ready"] is True
+    assert payload["validation"]["readiness"]["preview_executable"] is False
+    assert payload["status"] == "SUCCEEDED"
+
+
 def test_generate_integration_spec_rejects_missing_definition(client, admin_header):
     response = client.post(
         "/api/v1/modules/integration-mapping/definitions/missing-definition/generate-spec",

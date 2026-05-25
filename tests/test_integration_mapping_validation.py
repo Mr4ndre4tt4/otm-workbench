@@ -331,6 +331,9 @@ def test_validate_integration_definition_reports_missing_transform_config_for_ex
     assert validation.status_code == 200
     payload = validation.json()
     assert payload["is_valid"] is False
+    assert payload["readiness"]["specification_ready"] is True
+    assert payload["readiness"]["preview_executable"] is False
+    assert "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING" in payload["readiness"]["preview_blockers"]
     assert (
         "mapping",
         "transform_type",

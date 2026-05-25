@@ -359,11 +359,12 @@ def generate_definition_spec(
     if definition is None:
         raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
     validation = validate_integration_definition(db, definition)
-    if not validation["is_valid"]:
+    readiness = validation["readiness"]
+    if not readiness["specification_ready"]:
         raise api_error(
             409,
             "INTEGRATION_SPEC_VALIDATION_FAILED",
-            "Integration Mapping definition must pass validation before spec generation.",
+            "Integration Mapping definition must be specification-ready before spec generation.",
             {"issue_count": validation["issue_count"], "issues": validation["issues"]},
         )
     payload = generate_integration_markdown_spec(

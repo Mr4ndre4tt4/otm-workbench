@@ -26,6 +26,11 @@ NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS = (
     "$.Entregas[].ChaveAcesso",
 )
 
+SPECIFICATION_BLOCKING_ISSUE_CODES = {
+    "INTEGRATION_VALIDATION_PATH_MISSING",
+    "INTEGRATION_VALIDATION_CATALOG_INVALID",
+}
+
 
 @dataclass(frozen=True)
 class ValidationIssue:
@@ -149,6 +154,21 @@ def serialize_issue(validation_issue: ValidationIssue) -> dict[str, str]:
         "entity_id": validation_issue.entity_id,
         "field": validation_issue.field,
         "message": validation_issue.message,
+    }
+
+
+def validation_readiness(issues: list[ValidationIssue]) -> dict[str, object]:
+    issue_codes = [validation_issue.code for validation_issue in issues]
+    specification_blockers = [
+        validation_issue.code
+        for validation_issue in issues
+        if validation_issue.code in SPECIFICATION_BLOCKING_ISSUE_CODES
+    ]
+    return {
+        "specification_ready": not specification_blockers,
+        "preview_executable": not issues,
+        "specification_blockers": specification_blockers,
+        "preview_blockers": issue_codes,
     }
 
 
@@ -280,4 +300,5 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
         "is_valid": not issues,
         "issue_count": len(issues),
         "issues": [serialize_issue(validation_issue) for validation_issue in issues],
+        "readiness": validation_readiness(issues),
     }
