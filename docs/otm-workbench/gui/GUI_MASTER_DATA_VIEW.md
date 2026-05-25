@@ -1,7 +1,7 @@
 # GUI Master Data View
 
-**Status:** MVP workflow done; first preview, Coordinate Quality, and Load Plan handoff slices done; module-complete follow-ups remain
-**Linear:** OTM-114, OTM-117, OTM-118, OTM-91
+**Status:** OTM-115 completion acceptance met for MVP0; future enhancements remain explicit new scope
+**Linear:** OTM-114, OTM-115, OTM-117, OTM-118, OTM-91
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
 
@@ -73,14 +73,14 @@ GET  /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/results
 POST /api/v1/modules/master-data/coordinate-quality/batches/{batch_id}/export
 ```
 
-## Out Of Scope
+## Future Scope
 
 ```text
-- free-form template authoring from arbitrary N OTM tables
-- browser spreadsheet editor
-- direct OTM import
-- operational batch history analytics beyond list filtering and pagination
+- real governed direct OTM submission
+- deeper audited spreadsheet editing experience if operationally needed
+- operational batch history analytics beyond current filtered metrics
 - Coordinate Quality advanced map diagnostics and external geocoder setup
+- larger scenario library for additional Master Data families
 ```
 
 Batch workflow state is recoverable from backend batch list/detail endpoints.
@@ -342,13 +342,15 @@ Load Plan handoff, checklist readiness, and stale feedback before loading the
 new backend template. Durable batch history remains backend-owned and can still
 be reselected from the Output stage.
 
-OTM-119 closes the current Master Data MVP workflow hardening pass, OTM-91 now
-has its first GUI workflow slice, and OTM-127 adds the first backend-owned
-workbook editor path before upload. The module is not marked `Module complete`
-because real direct OTM import, richer audited workbook/spreadsheet editing,
-advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
-flows, deeper batch-history analytics beyond current-filter metrics, and
-broader negative/out-of-order QA are tracked as follow-up scope.
+OTM-119 closes the Master Data MVP workflow hardening pass, OTM-91 has its
+first GUI workflow slice, and OTM-127 adds the first backend-owned workbook
+editor path before upload. OTM-115 completion acceptance is now met for the
+MVP0 scope: template discovery, workbook download/upload/editor, dynamic
+template authoring, OTM CSV/ZIP parity, durable state, guarded artifact
+downloads, Load Plan handoff, and positive/negative/out-of-order QA evidence
+are covered. Future work such as real direct OTM submission, deeper spreadsheet
+editing, advanced Coordinate Quality map diagnostics, and larger scenario
+libraries remains explicit new scope.
 
 OTM-128 adds the first direct OTM import guardrail contract without performing
 any external submission. After a Master Data CSV package is exported, the Output
@@ -418,3 +420,9 @@ npm run qa:functional:master-data:browser
 For isolated local QA against a non-default backend port, the Vite development
 proxy can be pointed at another backend with `VITE_DEV_PROXY_TARGET`, for
 example `http://127.0.0.1:8032`.
+
+Completion review:
+
+```text
+docs/otm-workbench/gui/GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md
+```
