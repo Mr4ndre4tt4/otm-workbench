@@ -390,6 +390,16 @@ analysis errors, and the cutover family summary classifies the full stack under
 RATES.
 ```
 
+Implementation note, 2026-05-25, Rates LTL/TL negative sequence slice:
+
+```text
+The Load Plan ZIP analyzer now validates package table ordering against local
+Data Dictionary foreign-key parent tables when both parent and child tables are
+present in the package load sequence. A child-before-parent sequence is reported
+as LOAD_SEQUENCE_PARENT_AFTER_CHILD and blocks Cutover readiness through the
+existing ZIP_ANALYSIS_ERROR path, without exposing generated GIDs or row values.
+```
+
 ## Follow-Up Issues
 
 Recommended Linear/backlog follow-ups:
@@ -408,6 +418,8 @@ Recommended Linear/backlog follow-ups:
    validation flow with same-batch GID references]
    [SECOND SLICE DELIVERED: Rates export -> Load Plan package -> ZIP analysis
    -> Cutover readiness chain]
+   [THIRD SLICE DELIVERED: negative child-before-parent load sequence blocks
+   readiness through Data Dictionary order validation]
 4. Master Data QA: synthetic location/equipment/geography package family.
 5. Security: ensure reference archives and generated QA artifacts never leak
    real domains, emails, GIDs, local paths, or row values.

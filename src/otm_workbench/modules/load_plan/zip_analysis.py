@@ -85,6 +85,44 @@ def load_dictionary_table(dictionary_root: Path, table_name: str) -> DictionaryT
     return None
 
 
+def dictionary_parent_tables(dictionary_root: Path, table_name: str) -> list[str]:
+    for path in (dictionary_root / f"{table_name.upper()}.json", dictionary_root / f"{table_name.lower()}.json"):
+        if path.exists():
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return sorted(
+                {
+                    str(foreign_key.get("parentTableName", "")).upper()
+                    for foreign_key in payload.get("foreignKeys", [])
+                    if foreign_key.get("parentTableName")
+                }
+            )
+    return []
+
+
+def analyze_load_sequence_order(
+    *,
+    dictionary_root: Path,
+    load_sequence: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    positions = {str(item["table_name"]).upper(): index for index, item in enumerate(load_sequence) if item.get("table_name")}
+    findings: list[dict[str, object]] = []
+    for table_name, position in positions.items():
+        for parent_table_name in dictionary_parent_tables(dictionary_root, table_name):
+            parent_position = positions.get(parent_table_name)
+            if parent_position is None or parent_position <= position:
+                continue
+            findings.append(
+                finding(
+                    "ERROR",
+                    "LOAD_SEQUENCE_PARENT_AFTER_CHILD",
+                    "Load sequence places a Data Dictionary parent table after its child table.",
+                    table_name=table_name,
+                    details={"parent_table_name": parent_table_name},
+                )
+            )
+    return findings
+
+
 def ensure_analyzable_package(db: Session, package: LoadPlanPackage) -> tuple[Artifact, list[dict[str, object]]]:
     if package.status != "REGISTERED":
         raise ValueError("Load Plan package must be REGISTERED before ZIP analysis.")
@@ -328,7 +366,10 @@ def generate_zip_analysis(
     load_sequence_tables = {str(item["table_name"]).upper() for item in load_sequence}
     expected_rows_by_table = {str(item["table_name"]).upper(): int(item.get("row_count", 0)) for item in load_sequence}
     files: list[dict[str, object]] = []
-    findings: list[dict[str, object]] = []
+    findings: list[dict[str, object]] = analyze_load_sequence_order(
+        dictionary_root=dictionary_root,
+        load_sequence=load_sequence,
+    )
     analyzed_at = iso_now()
 
     with zipfile.ZipFile(artifact.file_path) as archive:

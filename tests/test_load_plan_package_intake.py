@@ -278,6 +278,55 @@ def test_ltl_tl_rates_package_reaches_zip_analysis_and_cutover_readiness(client,
     assert "OTM1.RO_LTL_TL_001" not in json.dumps(readiness_payload)
 
 
+def test_ltl_tl_rates_package_flags_child_before_parent_sequence(client, admin_header, db_session):
+    batch, export, approval = prepare_approved_exported_ltl_tl_rate_batch(client, admin_header)
+    package = client.post(
+        f"/api/v1/modules/load-plan/packages/from-rates/{batch['id']}",
+        headers=admin_header,
+    ).json()
+    model = db_session.query(LoadPlanPackage).filter(LoadPlanPackage.id == package["id"]).one()
+    sequence = json.loads(model.load_sequence_json)
+    cost = next(item for item in sequence if item["table_name"] == "RATE_GEO_COST")
+    group = next(item for item in sequence if item["table_name"] == "RATE_GEO_COST_GROUP")
+    reordered = [
+        item
+        for item in sequence
+        if item["table_name"] not in {"RATE_GEO_COST", "RATE_GEO_COST_GROUP"}
+    ]
+    insert_at = next(index for index, item in enumerate(reordered) if item["table_name"] == "RATE_GEO_STOPS") + 1
+    reordered[insert_at:insert_at] = [cost, group]
+    for index, item in enumerate(reordered, start=1):
+        item["position"] = index
+    model.load_sequence_json = json.dumps(reordered, sort_keys=True)
+    db_session.commit()
+
+    zip_analysis = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert zip_analysis.status_code == 200
+    payload = zip_analysis.json()
+    assert payload["summary"]["error_count"] == 1
+    finding = next(item for item in payload["findings"] if item["code"] == "LOAD_SEQUENCE_PARENT_AFTER_CHILD")
+    assert finding["severity"] == "ERROR"
+    assert finding["table_name"] == "RATE_GEO_COST"
+    assert finding["details"]["parent_table_name"] == "RATE_GEO_COST_GROUP"
+
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+    readiness = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    ).json()
+    assert readiness["status"] == "BLOCKED"
+    assert any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
+    assert "OTM1.RGCG_LTL_TL_001" not in json.dumps(readiness)
+
+
 def test_load_plan_package_list_and_detail(client, admin_header):
     batch, export, approval = prepare_approved_exported_rate_batch(client, admin_header)
     created = client.post(
