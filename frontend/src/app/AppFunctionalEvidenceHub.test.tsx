@@ -329,6 +329,10 @@ describe("Functional Evidence Hub journey", () => {
     expect(screen.getByLabelText("Archive package history")).toHaveTextContent("evidence_hub_archive.zip");
     expect(screen.getByLabelText("Archive package history")).toHaveTextContent("1 evidence");
 
+    await userEvent.click(within(screen.getByLabelText("Evidence entries")).getByRole("button", { name: /rates_csv_export/ }));
+    expect(await screen.findByLabelText("Selected evidence")).toHaveTextContent("synthetic_rates_export.zip");
+    expect(screen.queryByText("Archive package evidence_hub_archive.zip created.")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Evidence Hub/ }));
     await screen.findByRole("heading", { name: "Evidence Hub" });

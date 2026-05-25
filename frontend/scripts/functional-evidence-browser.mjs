@@ -196,6 +196,12 @@ async function run() {
     await page.getByLabel("Latest archive package").waitFor();
     await page.getByLabel("Archive package history").getByText(/evidence_hub_archive_/).first().waitFor();
 
+    await page.getByLabel("Evidence entries").getByRole("button", { name: new RegExp(seeded.evidenceType) }).click();
+    await page.getByLabel("Selected evidence").getByText(seeded.artifact.file_name, { exact: true }).first().waitFor();
+    if (await page.getByText(/^Archive package .+ created\.$/).isVisible().catch(() => false)) {
+      throw new Error("Evidence Hub kept stale archive feedback after switching selected evidence.");
+    }
+
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/evidence"]').click();

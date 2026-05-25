@@ -82,6 +82,14 @@ export function EvidenceHubView({ token }: { token: string }) {
     setDraftFilters((current) => ({ ...current, [key]: value }));
   };
 
+  const handleSelectEvidence = (evidenceId: string) => {
+    if (evidenceId === effectiveEvidenceId) return;
+    setSelectedEvidenceId(evidenceId);
+    setOperationMessage(null);
+    setOperationError(null);
+    setDownloadingArtifactId(null);
+  };
+
   const handleApplyFilters = () => {
     setAppliedFilters(normalizeFilters(draftFilters));
     setSelectedEvidenceId(null);
@@ -365,7 +373,7 @@ export function EvidenceHubView({ token }: { token: string }) {
             subtitle: item.source_module,
             title: item.evidence_type
           }))}
-          onSelect={setSelectedEvidenceId}
+          onSelect={handleSelectEvidence}
           selectedId={effectiveEvidenceId}
         />
       </ModuleWorkspaceLayout>

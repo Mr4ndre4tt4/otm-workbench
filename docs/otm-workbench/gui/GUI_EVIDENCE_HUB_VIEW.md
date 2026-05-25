@@ -13,7 +13,7 @@ Evidence Hub renders evidence index/detail from backend contracts and
 orchestrates the first operational story:
 
 ```text
-filter evidence -> inspect detail -> download guarded artifact -> create archive package -> review archive history
+filter evidence -> inspect detail -> download guarded artifact -> create archive package -> review archive history -> switch evidence with clean operation feedback
 ```
 
 ## Backend Contracts
@@ -44,7 +44,10 @@ The screen uses shared components:
 ```
 
 The first selected evidence defaults to the first backend item. Selecting
-another evidence record updates the detail query through backend-owned ids.
+another evidence record updates the detail query through backend-owned ids and
+clears operation feedback, operation errors, and artifact download state from
+the previously selected evidence. Archive history remains backend-owned and is
+not tied to a single selected record.
 
 ## Safety
 
@@ -68,6 +71,10 @@ The filter bar uses `Apply filters` and `Reset filters` instead of silently
 relying on route reloads. React and browser QA both assert that reset clears all
 filter inputs and returns to the unfiltered backend list before continuing the
 download/archive workflow.
+
+Evidence selection recovery is also covered: after creating an archive package,
+selecting another evidence record must not leave stale archive/download feedback
+visible as if it belonged to the newly selected record.
 
 ## Validation
 
