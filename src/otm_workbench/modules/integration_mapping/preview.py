@@ -223,9 +223,12 @@ def format_date_value(value: object, config: dict[str, object]) -> str | None:
 
 
 def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
-    joins_count = db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
-    if joins_count:
-        return None
+    joins = (
+        db.query(IntegrationJoinRule)
+        .filter(IntegrationJoinRule.definition_id == definition.id)
+        .order_by(IntegrationJoinRule.sequence_index, IntegrationJoinRule.created_at)
+        .all()
+    )
 
     lookups = (
         db.query(IntegrationLookupDefinition)
@@ -246,6 +249,8 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .all()
     )
     if loops:
+        if joins:
+            return None
         return build_loop_executable_json_preview(db, loops=loops, mappings=mappings, lookups=lookups)
     if not mappings:
         if lookups:
@@ -254,6 +259,9 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
+    join_provenance = materialize_scalar_join_guards(db, joins=joins)
+    if join_provenance is None:
+        return None
     if not materialize_scalar_mappings(db, mappings=mappings, target_json=target_json, field_provenance=field_provenance):
         return None
     if lookups and not materialize_scalar_lookups(
@@ -264,11 +272,51 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     ):
         return None
 
-    return {
+    preview = {
         "mode": "synthetic_executable_json",
         "target_json": target_json,
         "field_provenance": field_provenance,
     }
+    if join_provenance:
+        preview["join_provenance"] = join_provenance
+    return preview
+
+
+def materialize_scalar_join_guards(
+    db: Session,
+    *,
+    joins: list[IntegrationJoinRule],
+) -> list[dict[str, object]] | None:
+    provenance: list[dict[str, object]] = []
+    for join in joins:
+        source_payload = document_payload_content(db, join.source_schema_document_id)
+        if source_payload is None:
+            return None
+        source_format, source_content = source_payload
+        if source_format != "XML":
+            return None
+        left_value = source_value_from_xml_path(source_content, join.left_path)
+        right_value = source_value_from_xml_path(source_content, join.right_path)
+        if left_value in (None, "") or right_value in (None, ""):
+            return None
+        if join.operator == "EQ":
+            result = left_value == right_value
+        elif join.operator == "NE":
+            result = left_value != right_value
+        else:
+            return None
+        if not result:
+            return None
+        provenance.append(
+            {
+                "join_id": join.id,
+                "left_path": join.left_path,
+                "right_path": join.right_path,
+                "operator": join.operator,
+                "result": result,
+            }
+        )
+    return provenance
 
 
 def materialize_scalar_mappings(

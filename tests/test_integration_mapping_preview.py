@@ -4,6 +4,7 @@ from pathlib import Path
 from otm_workbench.models import Artifact, IntegrationMapping, Job
 from tests.test_integration_mapping_loops import loop_payload
 from tests.test_integration_mapping_lookups import lookup_payload
+from tests.test_integration_mapping_joins import join_payload
 from tests.test_integration_mapping_mappings import (
     create_definition,
     create_schema_document,
@@ -431,6 +432,80 @@ def test_preview_integration_definition_materializes_scalar_mapping_and_mock_loo
             "lookup_type": "MOCK",
             "value_policy": "mock_lookup_response",
         },
+    ]
+
+
+def test_preview_integration_definition_allows_scalar_join_guard_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentGid>OTM1.SHIPMENT_001</ShipmentGid>"
+            "<ShipmentRef>OTM1.SHIPMENT_001</ShipmentRef>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"shipmentId":""}}',
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.shipmentId",
+            "transform_type": "DIRECT",
+            "description": "Direct shipment mapping guarded by join.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    join = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/joins",
+        json=join_payload(
+            source,
+            left_path="/Transmission/Shipment/ShipmentGid",
+            right_path="/Transmission/Shipment/ShipmentRef",
+            operator="EQ",
+            sequence_index=2,
+        ),
+        headers=admin_header,
+    )
+    assert mapping.status_code == 200
+    assert join.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"shipmentId": "OTM1.SHIPMENT_001"}}
+    assert payload["preview"]["join_provenance"] == [
+        {
+            "join_id": join.json()["id"],
+            "left_path": "/Transmission/Shipment/ShipmentGid",
+            "right_path": "/Transmission/Shipment/ShipmentRef",
+            "operator": "EQ",
+            "result": True,
+        }
     ]
 
 
