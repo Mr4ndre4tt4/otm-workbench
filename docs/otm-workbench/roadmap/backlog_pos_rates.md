@@ -812,6 +812,7 @@ transformacoes e refnums sem editar codigo.
 
 **Fonte:** `docs/otm-workbench/discovery/OTM_26A_WSDL_XSD_DISCOVERY.md`
 **Linear:** `OTM-163`
+**Spec:** `docs/otm-workbench/modules/schema_pack_contract_catalog_spec.md`
 
 ### Decisao
 
