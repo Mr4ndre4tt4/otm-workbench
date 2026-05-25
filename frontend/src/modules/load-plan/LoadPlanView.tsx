@@ -74,6 +74,8 @@ const loadPlanWorkflowStages = [
 
 type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
 
+const defaultEvidenceId = "SYN_EVIDENCE_001";
+
 export function LoadPlanView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const summary = useLoadPlanSummary(token);
@@ -96,7 +98,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
-  const [evidenceId, setEvidenceId] = useState("SYN_EVIDENCE_001");
+  const [evidenceId, setEvidenceId] = useState(defaultEvidenceId);
   const packageItems = packages.data?.items ?? [];
   const effectivePackageId = selectedPackageId ?? packageItems[0]?.id ?? null;
   const packageDetail = useLoadPlanPackageDetail(token, effectivePackageId);
@@ -130,6 +132,12 @@ export function LoadPlanView({ token }: { token: string }) {
     } finally {
       setIsMutating(false);
     }
+  };
+
+  const resetEvidenceDraft = () => {
+    setEvidenceId(defaultEvidenceId);
+    setOperationMessage(null);
+    setOperationError(null);
   };
 
   const handleCompleteChecklistItem = async (itemId: string) => {
@@ -526,6 +534,9 @@ export function LoadPlanView({ token }: { token: string }) {
               </label>
               <Button disabled={!effectivePackageId || isMutating} onClick={() => void handleCreateChecklist()} variant="primary">
                 Create checklist
+              </Button>
+              <Button disabled={isMutating} onClick={resetEvidenceDraft}>
+                Reset evidence draft
               </Button>
             </div>
             {checklist ? (

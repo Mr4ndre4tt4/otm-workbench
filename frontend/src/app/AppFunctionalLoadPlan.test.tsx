@@ -729,6 +729,12 @@ describe("Functional Load Plan journey", () => {
     await userEvent.click(within(checklistPanel).getByRole("button", { name: "Mark CSVUTIL ready" }));
     await screen.findByText("Checklist item updated.");
 
+    await userEvent.clear(screen.getByLabelText("Evidence id"));
+    await userEvent.type(screen.getByLabelText("Evidence id"), "TEMP_EVIDENCE_DRAFT");
+    await userEvent.click(screen.getByRole("button", { name: "Reset evidence draft" }));
+    expect(screen.getByLabelText("Evidence id")).toHaveValue("SYN_EVIDENCE_001");
+    expect(screen.queryByText("Checklist item updated.")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: /3Readiness/ }));
     await userEvent.click(screen.getByRole("button", { name: "Generate readiness" }));
     await screen.findByText("Checklist readiness is READY.");

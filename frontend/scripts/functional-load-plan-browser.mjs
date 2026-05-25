@@ -226,6 +226,14 @@ async function run() {
     await page.getByLabel("Evidence id").fill(seeded.evidence.id);
     await checklistPanel.getByRole("button", { name: "Mark CSVUTIL ready" }).first().click();
     await page.getByText("Checklist item updated.").waitFor();
+    await page.getByLabel("Evidence id").fill("TEMP_EVIDENCE_DRAFT");
+    await page.getByRole("button", { name: "Reset evidence draft" }).click();
+    await page.getByLabel("Evidence id").evaluate((element) => {
+      if (element.value !== "SYN_EVIDENCE_001") throw new Error(`Evidence draft was not reset: ${element.value}`);
+    });
+    if (await page.getByText("Checklist item updated.").isVisible().catch(() => false)) {
+      throw new Error("Checklist success feedback stayed visible after evidence draft reset.");
+    }
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Readiness" }).click();
     await page.getByRole("button", { name: "Generate readiness" }).click();

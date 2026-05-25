@@ -47,6 +47,7 @@ First delivered story:
 
 ```text
 select package -> create checklist -> mark item CSVUTIL-ready with evidence ->
+reset evidence draft when a checklist evidence id needs to return to baseline ->
 generate checklist readiness -> build CSVUTIL CTL/CL artifacts from checklist ->
 download generated CSVUTIL artifact -> run ZIP analysis -> generate review queue ->
 decide review item when present -> generate sequence snapshot and inspect blockers/next actions ->
@@ -69,6 +70,8 @@ The screen uses shared components:
 - ArtifactList for downloadable CSVUTIL and exported Load Plan artifacts;
 - OperationalPanel, FeedbackMessage, Button, and BlockerPanel for checklist,
   readiness, CSVUTIL, ZIP review, exports, and handoff stages.
+- Checklist evidence draft reset to restore the synthetic baseline and clear
+  stale feedback without mutating backend checklist state.
 ```
 
 The first selected package defaults to the first backend item. Selecting
