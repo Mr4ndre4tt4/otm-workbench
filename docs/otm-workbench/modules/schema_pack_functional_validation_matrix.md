@@ -1,8 +1,8 @@
 # Schema Pack Functional Validation Matrix
 
-**Status:** hardening started  
-**Date:** 2026-05-25  
-**Linear:** `OTM-163` follow-up track  
+**Status:** hardening started
+**Date:** 2026-05-25
+**Linear:** `OTM-163` follow-up track
 **Related spec:** `docs/otm-workbench/modules/schema_pack_contract_catalog_spec.md`
 
 ## Objective
@@ -109,4 +109,3 @@ automation jobs consume the same vocabulary.
 - Add scenario QA using synthetic data for Location, Item/Packaged Item, Rate
   Offering/Rate Geo, Order Release, and the NDD-style integration mapping.
 ```
-
