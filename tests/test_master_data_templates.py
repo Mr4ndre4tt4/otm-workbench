@@ -1434,6 +1434,69 @@ def test_master_data_workbook_editor_contract_uses_backend_template_definition(c
     assert payload["relationship_rules"][0]["parent_sheet_code"] == "ITEMS"
 
 
+def test_master_data_workbook_editor_validation_reports_required_fields(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/validate",
+        headers=admin_header,
+        json={
+            "file_name": "items_editor.xlsx",
+            "sheets": [{"sheet_code": "ITEMS", "rows": [{"row_id": "ITEMS-1", "values": {"item_gid": ""}}]}],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is False
+    assert payload["status"] == "INVALID"
+    assert payload["issues"][0]["code"] == "REQUIRED_FIELD_MISSING"
+    assert payload["issues"][0]["field_key"] == "item_gid"
+    assert payload["issues"][0]["row_id"] == "ITEMS-1"
+
+
+def test_master_data_workbook_editor_validation_reports_relationship_orphans(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/validate",
+        headers=admin_header,
+        json={
+            "file_name": "items_editor.xlsx",
+            "sheets": [
+                {
+                    "sheet_code": "ITEMS",
+                    "rows": [
+                        {
+                            "row_id": "ITEMS-1",
+                            "values": {"item_gid": "SYN.ITEM_1", "item_xid": "ITEM_1"},
+                        }
+                    ],
+                },
+                {
+                    "sheet_code": "PACKAGING",
+                    "rows": [
+                        {
+                            "row_id": "PACKAGING-1",
+                            "values": {
+                                "packaged_item_gid": "SYN.PKG_1",
+                                "packaged_item_xid": "PKG_1",
+                                "item_gid": "SYN.MISSING_ITEM",
+                            },
+                        }
+                    ],
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is False
+    assert any(
+        issue["code"] == "RELATIONSHIP_PARENT_NOT_FOUND"
+        and issue["sheet_code"] == "PACKAGING"
+        and issue["field_key"] == "item_gid"
+        for issue in payload["issues"]
+    )
+
+
 def test_master_data_locations_template_detail_and_validation(client, admin_header):
     detail = client.get(
         "/api/v1/modules/master-data/templates/LOCATIONS_BASIC",

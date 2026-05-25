@@ -223,7 +223,7 @@ Expected: `1 passed`.
 - Modify: `src/otm_workbench/modules/master_data/routes.py`
 - Test: `tests/test_master_data_templates.py`
 
-- [ ] **Step 1: Write failing tests for required field and relationship validation**
+- [x] **Step 1: Write failing tests for required field and relationship validation**
 
 Add:
 
@@ -264,7 +264,7 @@ def test_master_data_workbook_editor_validation_reports_relationship_orphans(cli
     assert any(issue["code"] == "RELATIONSHIP_PARENT_NOT_FOUND" for issue in payload["issues"])
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
 Run:
 
@@ -274,7 +274,7 @@ python -m pytest tests/test_master_data_templates.py::test_master_data_workbook_
 
 Expected: route missing or validation not implemented.
 
-- [ ] **Step 3: Implement validation**
+- [x] **Step 3: Implement validation**
 
 In `workbook_editor.py`, add `validate_master_data_workbook_rows(template, payload)`.
 
@@ -293,7 +293,7 @@ def validate_master_data_workbook_editor_rows(template_code: str, payload: dict[
     return validate_master_data_workbook_rows(template, payload)
 ```
 
-- [ ] **Step 4: Run tests and verify they pass**
+- [x] **Step 4: Run tests and verify they pass**
 
 Run:
 
