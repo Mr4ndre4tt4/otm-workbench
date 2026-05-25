@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import AuditLog, Job, JobEvent, utcnow
+from otm_workbench.models import AuditLog, Job, JobEvent, SchemaPack, utcnow
 
 
 TERMINAL_STATUSES = {"SUCCEEDED", "FAILED", "CANCELLED"}
@@ -17,15 +17,38 @@ class JobRunResult:
     message: str = "Job completed."
 
 
-JobHandler = Callable[[dict[str, object]], JobRunResult]
+class JobHandlerError(Exception):
+    def __init__(self, code: str, message: str, details: dict[str, object] | None = None):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.details = details or {}
 
 
-def demo_echo_handler(input_payload: dict[str, object]) -> JobRunResult:
+JobHandler = Callable[[Session, dict[str, object]], JobRunResult]
+
+
+def demo_echo_handler(db: Session, input_payload: dict[str, object]) -> JobRunResult:
     return JobRunResult(result={"echo": input_payload}, message="Demo job completed.")
+
+
+def schema_pack_index_handler(db: Session, input_payload: dict[str, object]) -> JobRunResult:
+    from otm_workbench.catalog.services import index_schema_pack
+
+    schema_pack_id = str(input_payload.get("schema_pack_id") or "")
+    pack = db.get(SchemaPack, schema_pack_id)
+    if pack is None:
+        raise JobHandlerError("SCHEMA_PACK_JOB_FAILED", "Schema pack index job failed.")
+    try:
+        result = index_schema_pack(db, pack)
+    except FileNotFoundError as exc:
+        raise JobHandlerError("SCHEMA_PACK_JOB_FAILED", "Schema pack index job failed.") from exc
+    return JobRunResult(result=result, message="Schema pack indexed.")
 
 
 JOB_HANDLERS: dict[str, JobHandler] = {
     "DEMO_ECHO": demo_echo_handler,
+    "SCHEMA_PACK_INDEX": schema_pack_index_handler,
 }
 
 
@@ -232,7 +255,29 @@ def run_job_now(db: Session, *, job: Job, actor: str) -> None:
         audit_job(db, actor=actor, action="job.fail", job=job, metadata={"error_code": job.error_code})
         return
 
-    result = handler(parse_json_object(job.input_json))
+    try:
+        result = handler(db, parse_json_object(job.input_json))
+    except JobHandlerError as exc:
+        job.status = "FAILED"
+        job.progress = 100
+        job.message = "Job failed."
+        job.result_json = "{}"
+        job.error_code = exc.code
+        job.error_message = exc.message
+        job.error_details_json = dumps_limited_json_object(exc.details, label="error details")
+        job.finished_at = utcnow()
+        emit_job_event(
+            db,
+            job=job,
+            event_type="JOB_FAILED",
+            status_before="RUNNING",
+            status_after="FAILED",
+            message="Job failed.",
+            created_by=actor,
+            payload={"error_code": job.error_code},
+        )
+        audit_job(db, actor=actor, action="job.fail", job=job, metadata={"error_code": job.error_code})
+        return
     job.status = "SUCCEEDED"
     job.progress = 100
     job.message = result.message

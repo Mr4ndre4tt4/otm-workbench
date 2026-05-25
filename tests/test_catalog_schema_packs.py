@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from otm_workbench.models import (
     Evidence,
+    JobEvent,
     MacroObjectSchemaLink,
     SchemaFile,
     SchemaPack,
@@ -172,6 +173,66 @@ def test_catalog_schema_pack_index_rejects_missing_local_folder(client, admin_he
     assert indexed.status_code == 400
     assert indexed.json()["code"] == "SCHEMA_PACK_SOURCE_NOT_FOUND"
     assert str(missing_folder) not in str(indexed.json())
+
+
+def test_schema_pack_index_job_runs_through_jobs_processing(client, admin_header, db_session):
+    schema_folder = workspace_test_folder("job_synthetic_26a")
+    write_synthetic_schema_pack(schema_folder)
+    pack = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_JOB",
+            "name": "Synthetic job-indexed OTM 26A pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+            "content_hash": "synthetic-hash",
+        },
+        headers=admin_header,
+    ).json()
+
+    job = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "SCHEMA_PACK_INDEX",
+            "source_module": "catalog",
+            "input": {"schema_pack_id": pack["id"]},
+            "execute_now": True,
+        },
+        headers=admin_header,
+    )
+
+    assert job.status_code == 200
+    payload = job.json()
+    assert payload["status"] == "SUCCEEDED"
+    assert payload["result"]["schema_pack_id"] == pack["id"]
+    assert payload["result"]["roots_created"] == 1
+    assert payload["result"]["paths_created"] == 4
+    assert payload["result"]["evidence_id"]
+    assert "source_path" not in str(payload["result"])
+    assert str(schema_folder) not in str(payload)
+    events = db_session.query(JobEvent).filter(JobEvent.job_id == payload["id"]).order_by(JobEvent.created_at).all()
+    assert [event.event_type for event in events] == ["JOB_CREATED", "JOB_STARTED", "JOB_SUCCEEDED"]
+
+
+def test_schema_pack_index_job_fails_safely_for_missing_pack(client, admin_header):
+    job = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "SCHEMA_PACK_INDEX",
+            "source_module": "catalog",
+            "input": {"schema_pack_id": "missing-pack"},
+            "execute_now": True,
+        },
+        headers=admin_header,
+    )
+
+    assert job.status_code == 200
+    payload = job.json()
+    assert payload["status"] == "FAILED"
+    assert payload["error"]["code"] == "SCHEMA_PACK_JOB_FAILED"
+    assert "missing-pack" not in payload["error"]["message"]
+    assert payload["result"] == {}
 
 
 def test_catalog_schema_roots_paths_and_operations_are_queryable(client, admin_header, db_session):

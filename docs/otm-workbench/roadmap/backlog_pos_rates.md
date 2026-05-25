@@ -868,9 +868,11 @@ Status da primeira fatia:
   macro-object schema links.
 - Indexer local minimo entregue para inventario XSD/WSDL, roots top-level,
   paths same-file, operations WSDL e evidence client-safe.
-- Ainda falta job engine real para indexacao assincrona, validacao contra
-  fixtures 26A completas, resolucao cross-file e QA negativo de parse mais
-  amplo.
+- Job Processing integrado via handler `SCHEMA_PACK_INDEX` com input
+  `schema_pack_id`, lifecycle/eventos/audit do motor existente e falha
+  client-safe.
+- Ainda falta validacao contra fixtures 26A completas, resolucao cross-file e
+  QA negativo de parse mais amplo.
 ```
 
 ### Fora do primeiro recorte

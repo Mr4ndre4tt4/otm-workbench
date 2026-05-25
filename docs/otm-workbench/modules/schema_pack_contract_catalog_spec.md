@@ -262,7 +262,7 @@ API rules:
 Recommended job types:
 
 ```text
-- SCHEMA_PACK_INDEX
+- SCHEMA_PACK_INDEX [delivered]
 - SCHEMA_PACK_VALIDATE
 - SCHEMA_PACK_EXTRACT_PATHS
 - SCHEMA_PACK_EXTRACT_OPERATIONS
@@ -408,6 +408,8 @@ Slice 2 - Local folder indexer:
 Status: delivered as a minimal local-folder indexer for XSD/WSDL inventory,
 top-level roots, same-file path extraction, WSDL operations, and client-safe
 index evidence.
+The same indexer is also available through Jobs Processing as
+`SCHEMA_PACK_INDEX` with `input.schema_pack_id`.
 
 Slice 3 - Path extraction:
 - support same-file complexType traversal and bounded recursion;
