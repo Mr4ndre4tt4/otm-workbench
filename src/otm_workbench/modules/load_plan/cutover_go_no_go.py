@@ -3,6 +3,7 @@ import json
 from sqlalchemy.orm import Session
 
 from otm_workbench.models import AuditLog, CutoverChecklist, DomainEvent, Evidence, LoadPlanPackage
+from otm_workbench.modules.load_plan.cutover_checklist import checklist_readiness_payload
 from otm_workbench.modules.load_plan.cutover_package import (
     catalog_context_for_checklist,
     latest_checklist_readiness_evidence,
@@ -46,6 +47,9 @@ def decide_cutover_go_no_go(
     cutover_package_evidence = latest_cutover_package_evidence(db, checklist.id)
     blockers: list[dict[str, object]] = []
     readiness_status = None
+    live_readiness = checklist_readiness_payload(db, checklist)
+    live_readiness_status = live_readiness["status"]
+    live_readiness_blockers = list(live_readiness["blockers"])
 
     if readiness_evidence is None:
         blockers.append(
@@ -53,11 +57,13 @@ def decide_cutover_go_no_go(
         )
     else:
         readiness_summary = parse_json_object(readiness_evidence.summary_json)
-        readiness_status = readiness_summary.get("status")
-        if readiness_status != "READY":
-            blockers.append(
-                decision_blocker("CUTOVER_CHECKLIST_NOT_READY", "Latest Cutover Checklist readiness is not READY.")
-            )
+        readiness_status = live_readiness_status or readiness_summary.get("status")
+        if live_readiness_status != "READY":
+            blockers.extend(live_readiness_blockers)
+            if not live_readiness_blockers:
+                blockers.append(
+                    decision_blocker("CUTOVER_CHECKLIST_NOT_READY", "Current Cutover Checklist readiness is not READY.")
+                )
 
     if cutover_package_evidence is None:
         blockers.append(decision_blocker("CUTOVER_PACKAGE_EXPORT_MISSING", "Export the Cutover package first."))
@@ -71,6 +77,7 @@ def decide_cutover_go_no_go(
         "readiness_status": readiness_status,
         "readiness_evidence_id": readiness_evidence.id if readiness_evidence else None,
         "cutover_package_evidence_id": cutover_package_evidence.id if cutover_package_evidence else None,
+        "live_readiness_summary": live_readiness["summary"],
         "blocker_count": len(blockers),
         "decided_at": iso_now(),
         "decided_by": decided_by,

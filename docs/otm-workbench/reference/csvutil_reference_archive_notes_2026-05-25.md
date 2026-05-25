@@ -338,6 +338,15 @@ review, even when manual checklist items are DONE. The readiness payload
 includes only client-safe finding details and analyzer counts.
 ```
 
+Implementation note, 2026-05-25, Go/No-Go readiness recheck:
+
+```text
+Cutover Go/No-Go now rechecks live readiness at decision time instead of
+trusting only the latest persisted readiness evidence. If a later ZIP analysis
+introduces ERROR or WARNING findings, the decision becomes NO_GO with the live
+readiness blockers.
+```
+
 ### Rates And Master Data Tests
 
 Use the archive only to design synthetic scenarios:
