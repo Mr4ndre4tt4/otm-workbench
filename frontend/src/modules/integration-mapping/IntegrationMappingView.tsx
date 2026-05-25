@@ -53,6 +53,7 @@ import {
   MetricGrid,
   ModuleObjectList,
   ModuleWorkspaceLayout,
+  NextActionPanel,
   OperationalPanel,
   SelectedObjectPanel,
   StatePanel,
@@ -78,6 +79,15 @@ const integrationWorkflowStages = [
 ] as const;
 
 type IntegrationWorkflowStage = (typeof integrationWorkflowStages)[number]["id"];
+type IntegrationNextActionInput = {
+  artifactTypes: string[];
+  definitionId: string | null;
+  mappingCount: number;
+  payloadCount: number;
+  schemaCount: number;
+  selectedDefinition: IntegrationDefinition | null;
+  validationResult: IntegrationValidationResult | null;
+};
 type IntegrationReviewRow = {
   blocker?: string;
   group: string;
@@ -104,6 +114,85 @@ function mappingReviewGroup(targetPath: string) {
     return "Entregas loop";
   }
   return "Header";
+}
+
+function integrationNextAction({
+  artifactTypes,
+  definitionId,
+  mappingCount,
+  payloadCount,
+  schemaCount,
+  selectedDefinition,
+  validationResult
+}: IntegrationNextActionInput) {
+  if (!definitionId || !selectedDefinition) {
+    return {
+      description: "Select or create a backend definition before authoring payloads and mappings.",
+      disabled: true,
+      label: "Select definition",
+      status: "BLOCKED"
+    };
+  }
+  if (!payloadCount) {
+    return {
+      description: "Create source and target payload samples so the backend can parse schemas.",
+      label: "Create payload samples",
+      status: "NEXT"
+    };
+  }
+  if (schemaCount < 2) {
+    return {
+      description: "Create source and target schema documents before mapping fields.",
+      label: "Create schema documents",
+      status: "NEXT"
+    };
+  }
+  if (!mappingCount) {
+    return {
+      description: "Author the first mapping rule against parsed source and target schemas.",
+      label: "Create mapping rules",
+      status: "NEXT"
+    };
+  }
+  if (!validationResult) {
+    return {
+      description: "Run backend validation to expose readiness, blockers, and scenario-pack coverage.",
+      label: "Validate definition",
+      status: "NEXT"
+    };
+  }
+  if (!validationResult.readiness?.specification_ready || !validationResult.readiness?.preview_executable) {
+    const blockers = [
+      ...(validationResult.readiness?.specification_blockers ?? []),
+      ...(validationResult.readiness?.preview_blockers ?? [])
+    ];
+    return {
+      description: "Backend validation found blockers that must be resolved before preview/spec generation.",
+      disabled: true,
+      disabledReason: blockers[0] ?? `${validationResult.issue_count} validation issue(s).`,
+      label: "Resolve validation blockers",
+      status: "BLOCKED"
+    };
+  }
+  if (!artifactTypes.includes("integration_preview")) {
+    return {
+      description: "Generate an executable preview artifact from the validated definition.",
+      label: "Preview definition",
+      status: "NEXT"
+    };
+  }
+  if (!artifactTypes.includes("integration_markdown_spec")) {
+    return {
+      description: "Generate the implementation spec from validated mappings and response handling.",
+      label: "Generate spec",
+      status: "NEXT"
+    };
+  }
+  return {
+    description: "Review and download generated preview/spec artifacts for handoff evidence.",
+    label: "Review generated artifacts",
+    status: "AVAILABLE"
+  };
 }
 
 function buildIntegrationReviewRows({
@@ -424,6 +513,17 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
+  const selectedIntegrationNextAction = integrationNextAction({
+    artifactTypes: (artifacts.data?.items ?? []).map((artifact) => artifact.artifact_type),
+    definitionId: effectiveDefinitionId,
+    mappingCount: mappings.data?.total ?? 0,
+    payloadCount: payloadArtifacts.data?.total ?? 0,
+    schemaCount: schemaDocuments.data?.total ?? 0,
+    selectedDefinition,
+    validationResult
+  });
+  const activeIntegrationStageTitle =
+    integrationWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
 
   const loadMappingSuggestionsForSchemas = async (nextSourceSchemaId: string, nextTargetSchemaId: string) => {
     if (!effectiveDefinitionId || !nextSourceSchemaId || !nextTargetSchemaId) {
@@ -1318,6 +1418,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
             </button>
           ))}
         </div>
+
+        <NextActionPanel
+          action={selectedIntegrationNextAction}
+          ariaLabel="Integration Mapping next action"
+          context={[
+            selectedDefinition
+              ? `${selectedDefinition.source_system} -> ${selectedDefinition.target_system}`
+              : "No selected definition",
+            `${payloadArtifacts.data?.total ?? 0} payload(s)`,
+            `${schemaDocuments.data?.total ?? 0} schema(s)`,
+            `${mappings.data?.total ?? 0} mapping(s)`
+          ]}
+          objectLabel="Definition"
+          objectValue={selectedDefinition?.code ?? effectiveDefinitionId}
+          stageLabel={activeIntegrationStageTitle}
+          title="Next action"
+        />
 
         {activeStage === "systems" ? (
         <OperationalPanel

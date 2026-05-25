@@ -51,6 +51,7 @@ MetricGrid
 ModuleObjectList
 SelectedObjectPanel
 DetailList
+NextActionPanel
 StatusChip
 ```
 
@@ -72,6 +73,7 @@ Current panels:
 - Generated preview/spec artifacts
 - Mapping-rule draft reset recovery
 - Definition-switch recovery
+- Next action panel for the selected definition and active workflow stage
 ```
 
 ## Safety Boundaries
@@ -95,6 +97,12 @@ drafts, download state, stale readiness, and stale feedback from the previously
 selected definition. Generated artifacts, schemas, mappings, loops, joins, and
 lookups continue to come from backend queries keyed by the selected definition
 id.
+
+The `NextActionPanel` remains an informational renderer. Until Integration
+Mapping exposes a dedicated `available_actions` contract, it derives a small
+temporary recommendation from backend-returned definition, payload/schema,
+mapping, validation, and generated artifact state. It does not execute actions
+or invent permission/readiness decisions.
 
 ## Test Coverage
 
@@ -121,6 +129,8 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Validate, preview, and generate-spec actions
 - Specification readiness and preview executability after validation
 - Generated artifact listing and guarded download
+- Next action progression from blocked definition selection through payloads,
+  mappings, validation, preview, spec generation, and artifact review
 - Definition-switch recovery after artifact download/spec generation, including
   stale readiness clearance
 ```

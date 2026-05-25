@@ -49,13 +49,17 @@ available.
 Component: frontend/src/ui/components/nextAction.tsx
 Style: frontend/src/ui/layouts.css
 Tests: frontend/src/ui/components.test.tsx
-Applied modules: Data Factory and Load Plan
+Applied modules: Data Factory, Load Plan, and Integration Mapping
 ```
 
 Data Factory uses template and batch `available_actions`.
 
 Load Plan uses package/checklist/readiness/export state until a dedicated
 backend action contract is exposed for cutover packages.
+
+Integration Mapping uses selected definition, payload/schema, mapping,
+validation, preview/spec, and generated artifact state until a dedicated
+backend action contract is exposed for mapping definitions.
 
 ## 4. Interaction Rules
 
