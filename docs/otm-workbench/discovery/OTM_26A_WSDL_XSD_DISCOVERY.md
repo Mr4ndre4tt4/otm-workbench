@@ -253,6 +253,374 @@ DBXML artifacts can become first-class backend artifacts with schema-aware
 validation, import/export metadata, and traceable evidence.
 ```
 
+## Phase 2.1 - Prioritized Root Path Samples
+
+The first path extraction was run with an XML parser, not text matching. The
+parser follows named `complexType`, anonymous `complexType`, `sequence`,
+`choice`, `complexContent`, and `extension` nodes inside the same XSD file.
+
+Limitations of this pass:
+
+```text
+- It does not yet resolve named types across imported XSD files.
+- It samples paths up to a controlled depth and row count.
+- It is good enough for functional shape and first product insights, but not
+  yet a complete schema catalog.
+```
+
+### Transmission
+
+Representative paths:
+
+```text
+/Transmission
+/Transmission/TransmissionHeader
+/Transmission/TransmissionHeader/Version
+/Transmission/TransmissionHeader/TransmissionType
+/Transmission/TransmissionHeader/TransmissionCreateDt
+/Transmission/TransmissionHeader/TransactionCount
+/Transmission/TransmissionHeader/SenderSystemID
+/Transmission/TransmissionHeader/UserName
+/Transmission/TransmissionHeader/Password
+/Transmission/TransmissionHeader/AckSpec
+/Transmission/TransmissionHeader/ProcessGrouping
+/Transmission/TransmissionHeader/NotifyInfo
+/Transmission/TransmissionBody
+/Transmission/TransmissionBody/GLogXMLElement
+```
+
+Technical interpretation:
+
+```text
+Transmission is the envelope. `TransmissionBody/GLogXMLElement` is the
+repeatable payload container. Integration Mapping and XML generators should
+treat Transmission as a wrapper around domain payloads, not as the only
+business object.
+```
+
+Product insight:
+
+```text
+The app should eventually model "schema root" separately from "envelope":
+for example, Transmission -> GLogXMLElement -> PlannedShipment/Release/etc.
+This matters for Integration Mapping and Order Release Generator because users
+often think in business documents, while OTM imports/exports may require the
+Transmission wrapper.
+```
+
+### PlannedShipment
+
+Representative paths:
+
+```text
+/PlannedShipment
+/PlannedShipment/Shipment
+/PlannedShipment/Shipment/ShipmentHeader
+/PlannedShipment/Shipment/ShipmentHeader/ShipmentGid
+/PlannedShipment/Shipment/ShipmentHeader/ShipmentRefnum
+/PlannedShipment/Shipment/ShipmentHeader/TransactionCode
+/PlannedShipment/Shipment/ShipmentHeader/PlannedShipmentInfo
+/PlannedShipment/Shipment/ShipmentHeader/ServiceProviderGid
+/PlannedShipment/Shipment/ShipmentHeader/RateOfferingGid
+/PlannedShipment/Shipment/ShipmentHeader/RateGeoGid
+/PlannedShipment/Shipment/ShipmentHeader/ShipmentCost
+/PlannedShipment/Shipment/ShipmentHeader2
+/PlannedShipment/Shipment/SEquipment
+/PlannedShipment/Shipment/SEquipment/SEquipmentGid
+/PlannedShipment/Shipment/SEquipment/EquipmentGroupGid
+/PlannedShipment/Shipment/SEquipment/Equipment
+```
+
+Technical interpretation:
+
+```text
+PlannedShipment is a wrapper around `Shipment`. The schema shows rich header,
+cost, refnum, equipment, and downstream shipment structures. It aligns with
+the synthetic NDD-like mapping scenario already used in Integration Mapping.
+```
+
+Product insight:
+
+```text
+Integration Mapping should gain an XSD-backed path catalog for
+PlannedShipment/Shipment so users can search official paths even when a sample
+payload is incomplete. This would directly improve the NDD-style accelerator.
+```
+
+### Release
+
+Representative paths:
+
+```text
+/Release
+/Release/SendReason
+/Release/ReleaseGid
+/Release/TransactionCode
+/Release/ReplaceChildren
+/Release/TransOrderGid
+/Release/ReleaseHeader
+/Release/ReleaseHeader/ReleaseName
+/Release/ReleaseHeader/RateServiceGid
+/Release/ReleaseHeader/ServiceProviderGid
+/Release/ReleaseHeader/TransportModeGid
+/Release/ReleaseHeader/EquipmentGroupGid
+/Release/ShipFromLocationRef
+/Release/ShipToLocationRef
+/Release/TimeWindow
+/Release/DeclaredValue
+/Release/ReleaseLine
+/Release/ReleaseLine/ReleaseLineGid
+/Release/ReleaseLine/PackagedItemRef
+/Release/ReleaseLine/ItemQuantity
+/Release/ReleaseLine/PackageDimensions
+/Release/ReleaseLine/PackagedItemSpecRef
+/Release/ReleaseLine/NumLayersPerShipUnit
+/Release/ReleaseLine/QuantityPerLayer
+/Release/ReleaseLine/TransportHandlingUnitRef
+/Release/ReleaseLine/Refnum
+```
+
+Technical interpretation:
+
+```text
+`TransactionCode` is required at the Release root. Release lines are repeatable.
+Header fields include many planning/rating constraints. This shape is useful
+for the Order Release Generator, but it is too broad to expose raw as a single
+flat form.
+```
+
+Product insight:
+
+```text
+Order Release Generator should use backend-owned templates grouped by business
+story: header/source-destination/time window, line/item/quantity/package, and
+ship-unit/handling-unit settings. The raw XSD path catalog should support the
+template builder, not replace curated templates.
+```
+
+### Location
+
+Representative paths:
+
+```text
+/Location
+/Location/TransactionCode
+/Location/LocationGid
+/Location/LocationName
+/Location/Address
+/Location/Address/AddressLine1
+/Location/Address/City
+/Location/Address/ProvinceCode
+/Location/Address/PostalCode
+/Location/Address/CountryCode3Gid
+/Location/Address/Latitude
+/Location/Address/Longitude
+/Location/Address/CountyQualifier
+/Location/LocationRefnum
+/Location/LocationRefnum/LocationRefnumQualifierGid
+/Location/LocationRefnum/LocationRefnumValue
+/Location/Contact
+/Location/LocationRole
+/Location/Corporation
+/Location/ServiceProvider
+/Location/EquipmentGroupProfileGid
+/Location/LoadUnloadPoint
+```
+
+Technical interpretation:
+
+```text
+Location has a required `Address` object and a required `TransactionCode`.
+It also directly exposes refnums, contacts, roles, corporation/service
+provider information, equipment group profile, and load/unload point concepts.
+```
+
+Product insight:
+
+```text
+This validates the user's Master Data acceptance scenario: location templates
+should include basic customer/location fields, address, activity/dock-related
+concepts, and equipment group profile restrictions. Data Dictionary remains
+the table/load-order source for CSVUTIL, while XSD can provide XML path and
+functional grouping hints.
+```
+
+### Item
+
+Representative paths:
+
+```text
+/Item
+/Item/TransactionCode
+/Item/ItemGid
+/Item/ItemName
+/Item/Description
+/Item/EffectiveDate
+/Item/ExpirationDate
+/Item/CommodityGid
+/Item/NMFCClassGid
+/Item/STCCGid
+/Item/HTSGid
+/Item/AccessorialCodeGid
+/Item/SpecialServiceGid
+/Item/Remark
+/Item/ItemFeature
+/Item/ItemFeature/ItemFeatureQualGid
+/Item/ItemFeature/ItemFeatureValue
+/Item/Refnum
+/Item/UnitOfMeasure
+/Item/PricePerUnit
+```
+
+Technical interpretation:
+
+```text
+Item supports recursive/nested Item structures, refnums, text, commodity,
+classification, and features. This means the future path catalog must handle
+cycles and cap recursion safely.
+```
+
+Product insight:
+
+```text
+Master Data and Order Release Generator should not present recursive Item
+paths directly to users. They need curated "Item basics", "packaging/class",
+and "reference/features" sections backed by the schema catalog.
+```
+
+### RATE_OFFERING
+
+Representative paths:
+
+```text
+/RATE_OFFERING
+/RATE_OFFERING/SendReason
+/RATE_OFFERING/RATE_OFFERING_ROW
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_OFFERING_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_OFFERING_XID
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_OFFERING_TYPE_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_OFFERING_DESC
+/RATE_OFFERING/RATE_OFFERING_ROW/SERVPROV_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/CURRENCY_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/TRANSPORT_MODE_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/EQUIPMENT_GROUP_PROFILE_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_SERVICE_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/RATE_VERSION_GID
+/RATE_OFFERING/RATE_OFFERING_ROW/TARIFF_NAME
+```
+
+Technical interpretation:
+
+```text
+Rate XSDs are row/table-shaped. `RATE_OFFERING_ROW` is repeatable and many
+field names match table-like OTM column names.
+```
+
+Product insight:
+
+```text
+Rates Studio can use Rate.xsd as an XML/export schema companion, but the CSV
+module should remain table-first. This XSD is especially useful to enrich
+labels, documentation, and XML artifact validation around Rate Offering.
+```
+
+### RATE_GEO
+
+Representative paths:
+
+```text
+/RATE_GEO
+/RATE_GEO/SendReason
+/RATE_GEO/RATE_GEO_ROW
+/RATE_GEO/RATE_GEO_ROW/RATE_GEO_GID
+/RATE_GEO/RATE_GEO_ROW/RATE_GEO_XID
+/RATE_GEO/RATE_GEO_ROW/RATE_OFFERING_GID
+/RATE_GEO/RATE_GEO_ROW/X_LANE_GID
+/RATE_GEO/RATE_GEO_ROW/EQUIPMENT_GROUP_PROFILE_GID
+/RATE_GEO/RATE_GEO_ROW/RATE_SERVICE_GID
+/RATE_GEO/RATE_GEO_ROW/MIN_COST
+/RATE_GEO/RATE_GEO_ROW/TOTAL_STOPS_CONSTRAINT
+/RATE_GEO/RATE_GEO_ROW/DOMAIN_NAME
+/RATE_GEO/RATE_GEO_ROW/EFFECTIVE_DATE
+/RATE_GEO/RATE_GEO_ROW/EXPIRATION_DATE
+```
+
+Technical interpretation:
+
+```text
+RATE_GEO links back to RATE_OFFERING and X_LANE concepts. It also exposes cost,
+stop, equipment, service, domain, and effective/expiration fields.
+```
+
+Product insight:
+
+```text
+Rates validation and generated documentation can use the XSD to explain why a
+rate geo belongs to an offering and lane, while Data Dictionary continues to
+validate real table dependencies and CSV import order.
+```
+
+### DBXML
+
+Representative paths:
+
+```text
+/DBObject
+/DBObject/Name
+/DBObject/Predicate
+
+/xml2sql
+/xml2sql/TransactionCode
+/xml2sql/SchemaOwner
+/xml2sql/UpdateCache
+/xml2sql/RaiseEvents
+/xml2sql/CommitScope
+/xml2sql/ManagedTables
+/xml2sql/ManagedTables/Table
+/xml2sql/TRANSACTION_SET
+```
+
+Technical interpretation:
+
+```text
+`xml2sql` wraps control metadata and a `TRANSACTION_SET`. The transaction set
+allows arbitrary content through `xsd:any processContents="skip"`.
+```
+
+Product insight:
+
+```text
+DBXML support should be governed as a backend artifact workflow rather than a
+fully schema-expanded editor. The app can validate wrapper fields, managed
+tables, and evidence, but payload internals need Data Dictionary and/or domain
+specific validators.
+```
+
+## Phase 2.2 - Cardinality and Enumerations
+
+Observed patterns:
+
+```text
+- `TransactionCodeType` is the most important reusable enum discovered so far:
+  I, U, IU, UI, D, RC, RP, R, II, DR, NP.
+- Service.xsd has small enums for service object type, action type, result
+  detail, and reply status.
+- Most domain files model structure through complex types and documentation
+  annotations rather than many local simpleType enumerations.
+- Cardinality is highly useful: roots often require TransactionCode, row-like
+  rate objects are repeatable, refnums/remarks/lines are often unbounded, and
+  Location requires Address.
+```
+
+Product insight:
+
+```text
+The first reusable schema feature should be a path/cardinality/documentation
+catalog, not an enum-heavy validation engine. Enumerations should be extracted
+where present, but most validation value sets will still need Data Dictionary,
+OTM reference data, or official functional docs.
+```
+
 ## Phase 3 - Reusable Contract Candidates
 
 These are candidates only. They are not roadmap commitments yet.
