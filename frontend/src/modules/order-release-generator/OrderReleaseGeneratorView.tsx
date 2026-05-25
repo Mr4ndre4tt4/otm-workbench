@@ -132,18 +132,6 @@ function emptyDraftRow(template: OrderReleaseTemplate | null): DraftOrderRelease
   return row;
 }
 
-function draftRowsForTemplate(template: OrderReleaseTemplate | null, existingRows: DraftOrderReleaseRow[]) {
-  const columns = templateColumns(template);
-  if (!template || !columns.length) return existingRows;
-  return existingRows.map((row) => {
-    const next = emptyDraftRow(template);
-    for (const column of columns) {
-      next[column] = row[column] ?? next[column] ?? "";
-    }
-    return next;
-  });
-}
-
 function serializeDraftRows(rows: DraftOrderReleaseRow[]) {
   return rows.map((row) =>
     Object.fromEntries(
@@ -314,7 +302,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const handleSelectTemplate = (templateId: string) => {
     const nextTemplate = templateItems.find((item) => item.id === templateId) ?? null;
     setSelectedTemplateId(templateId);
-    setDraftRows((currentRows) => draftRowsForTemplate(nextTemplate, currentRows));
+    setDraftRows([emptyDraftRow(nextTemplate)]);
     setCreatedBatch(null);
     setSelectedBatchId(null);
     setSuppressBatchFallback(true);

@@ -150,6 +150,62 @@ async function seedAssetsChaosData(token) {
   return { alternate, primary, suffix };
 }
 
+async function createOrderReleaseTemplate(token, payload) {
+  return apiRequest("/api/v1/modules/order-release-generator/templates", {
+    method: "POST",
+    token,
+    body: payload
+  });
+}
+
+async function seedOrderReleaseChaosData(token) {
+  const suffix = Date.now().toString(36).toUpperCase();
+  const primary = await createOrderReleaseTemplate(token, {
+    code: `CHAOS_OR_PRIMARY_${suffix}`,
+    name: `Chaos Order Release Primary ${suffix}`,
+    description: "Client-safe chaos QA primary Order Release template.",
+    required_columns: [
+      "release_gid",
+      "source_location_gid",
+      "destination_location_gid",
+      "early_pickup_date",
+      "late_delivery_date",
+      "item_gid",
+      "packaged_item_gid",
+      "weight",
+      "weight_uom"
+    ],
+    optional_columns: ["remarks"],
+    defaults: {
+      release_gid: `OTM1.OR_CHAOS_PRIMARY_${suffix}`,
+      source_location_gid: "OTM1.SOURCE_PRIMARY",
+      destination_location_gid: "OTM1.DEST_PRIMARY",
+      early_pickup_date: "2026-05-20 08:00:00",
+      late_delivery_date: "2026-05-21 17:00:00",
+      item_gid: "OTM1.ITEM_PRIMARY",
+      packaged_item_gid: "OTM1.PACK_PRIMARY",
+      weight: "100",
+      weight_uom: "KG",
+      remarks: "Primary chaos row"
+    }
+  });
+  const alternate = await createOrderReleaseTemplate(token, {
+    code: `CHAOS_OR_ALT_${suffix}`,
+    name: `Chaos Order Release Alternate ${suffix}`,
+    description: "Client-safe chaos QA alternate Order Release template.",
+    required_columns: ["release_gid", "source_location_gid", "item_gid"],
+    optional_columns: ["transport_mode"],
+    defaults: {
+      release_gid: `OTM1.OR_CHAOS_ALT_${suffix}`,
+      source_location_gid: "OTM1.SOURCE_ALT",
+      item_gid: "OTM1.ITEM_ALT",
+      transport_mode: "LTL"
+    }
+  });
+
+  return { alternate, primary, suffix };
+}
+
 async function signIn(page) {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email").fill(email);
@@ -168,6 +224,12 @@ async function selectAsset(page, name) {
   await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
   await page.getByLabel("Assets").getByRole("button", { name: new RegExp(name) }).first().click();
   await page.getByLabel("Selected asset", { exact: true }).getByText(name).waitFor();
+}
+
+async function selectOrderReleaseTemplate(page, code) {
+  await page.getByRole("button", { name: /1Templates/ }).click();
+  await page.getByLabel("Order Release templates").getByRole("button").filter({ hasText: code }).click();
+  await page.getByLabel("Selected Order Release template").getByText(code).waitFor();
 }
 
 async function assertControlValue(locator, expected, description) {
@@ -298,6 +360,95 @@ async function runAssetsChaosJourney(page, seeded) {
   await page.getByLabel("Selected asset", { exact: true }).getByText(seeded.alternate.name).waitFor();
 }
 
+async function runOrderReleaseChaosJourney(page, seeded) {
+  await page.locator('a[href="/order-release-generator"]').click();
+  await page.getByRole("heading", { name: "Order Release Generator" }).waitFor();
+
+  await selectOrderReleaseTemplate(page, seeded.primary.code);
+  await page.getByRole("button", { name: /2Batch/ }).click();
+  await assertControlValue(
+    page.getByLabel("Row 1 release_gid", { exact: true }),
+    seeded.primary.defaults.release_gid,
+    "Primary Order Release default release_gid"
+  );
+  await page.getByLabel("Row 1 release_gid", { exact: true }).fill("OTM1.DIRTY_RELEASE_THAT_MUST_NOT_LEAK");
+  await page.getByLabel("Row 1 source_location_gid", { exact: true }).fill("OTM1.DIRTY_SOURCE");
+  await page.getByLabel("Row 1 destination_location_gid", { exact: true }).fill("OTM1.DIRTY_DEST");
+  await page.getByLabel("Row 1 early_pickup_date", { exact: true }).fill("2026-05-20 08:00:00");
+  await page.getByLabel("Row 1 late_delivery_date", { exact: true }).fill("2026-05-21 17:00:00");
+  await page.getByLabel("Row 1 item_gid", { exact: true }).fill("OTM1.DIRTY_ITEM");
+  await page.getByLabel("Row 1 packaged_item_gid", { exact: true }).fill("OTM1.DIRTY_PACK");
+  await page.getByLabel("Row 1 weight", { exact: true }).fill("125");
+  await page.getByLabel("Row 1 weight_uom", { exact: true }).fill("KG");
+  await page.getByLabel("Batch file name").fill("dirty_order_release_rows.json");
+  await page.getByRole("button", { name: "Add row" }).click();
+  await page.getByLabel("Order Release row editor").getByText("Row 2").waitFor();
+  await page.getByRole("button", { name: "Remove row" }).last().click();
+  await page.getByRole("button", { name: "Create batch" }).click();
+  await page.getByText(/Order Release batch .* created\./).waitFor();
+  await page.getByLabel("Active Order Release batch").getByText("VALID").waitFor();
+
+  await page.getByRole("button", { name: /3Preview/ }).click();
+  await page.getByRole("button", { name: "Preview XML" }).click();
+  await page.getByText("Order Release XML preview generated.").waitFor();
+  await page.getByLabel("Order Release XML preview").getByText("Transmission", { exact: true }).waitFor();
+
+  await page.getByRole("button", { name: /5Submit/ }).click();
+  await page.getByRole("button", { name: "Verify OTM submit guard" }).click();
+  await page.getByText("Direct OTM submission is disabled in MVP0.").waitFor();
+  await page.getByLabel("OTM submit guard").getByText("order_release_generator.submit_otm").waitFor();
+
+  await selectOrderReleaseTemplate(page, seeded.alternate.code);
+  await page.getByRole("button", { name: /2Batch/ }).click();
+  await assertControlValue(
+    page.getByLabel("Row 1 release_gid", { exact: true }),
+    seeded.alternate.defaults.release_gid,
+    "Alternate Order Release release_gid after template switch"
+  );
+  await assertControlValue(
+    page.getByLabel("Row 1 source_location_gid", { exact: true }),
+    seeded.alternate.defaults.source_location_gid,
+    "Alternate Order Release source after template switch"
+  );
+  await assertControlValue(
+    page.getByLabel("Row 1 item_gid", { exact: true }),
+    seeded.alternate.defaults.item_gid,
+    "Alternate Order Release item after template switch"
+  );
+  await assertControlValue(
+    page.getByLabel("Row 1 transport_mode", { exact: true }),
+    "LTL",
+    "Alternate Order Release transport mode after template switch"
+  );
+  if ((await page.getByLabel("Order Release row editor").getByText("Row 2").count()) > 0) {
+    throw new Error("Order Release template switch kept a stale extra row.");
+  }
+  if ((await page.getByLabel("Order Release row editor").getByText("destination_location_gid").count()) > 0) {
+    throw new Error("Order Release template switch kept a field that belongs only to the previous template.");
+  }
+  if (await page.getByLabel("Active Order Release batch", { exact: true }).isVisible().catch(() => false)) {
+    throw new Error("Order Release template switch kept the previous active batch.");
+  }
+
+  await page.getByRole("button", { name: /3Preview/ }).click();
+  if (await page.getByLabel("Order Release XML preview", { exact: true }).isVisible().catch(() => false)) {
+    throw new Error("Order Release template switch left stale XML preview visible.");
+  }
+  if (await page.getByText("Direct OTM submission is disabled in MVP0.").isVisible().catch(() => false)) {
+    throw new Error("Order Release template switch left stale submit guard feedback visible.");
+  }
+  await page.getByRole("button", { name: /5Submit/ }).click();
+  if (await page.getByLabel("OTM submit guard", { exact: true }).isVisible().catch(() => false)) {
+    throw new Error("Order Release template switch left stale submit guard details visible.");
+  }
+
+  await page.locator('a[href="/home"]').click();
+  await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
+  await page.locator('a[href="/order-release-generator"]').click();
+  await page.getByRole("heading", { name: "Order Release Generator" }).waitFor();
+  await page.getByLabel("Order Release templates").getByText(seeded.alternate.code).waitFor();
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -319,18 +470,19 @@ async function run() {
   });
   const integrationMappingSeed = await seedIntegrationMappingChaosData(token);
   const assetsSeed = await seedAssetsChaosData(token);
+  const orderReleaseSeed = await seedOrderReleaseChaosData(token);
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 840 } });
   const consoleErrors = [];
   const failedResponses = [];
   page.on("console", (message) => {
-    if (message.type() === "error") {
+    if (message.type() === "error" && !message.text().includes("409 (Conflict)")) {
       consoleErrors.push(message.text());
     }
   });
   page.on("response", (response) => {
-    if (response.status() >= 400) {
+    if (response.status() >= 400 && !response.url().endsWith("/submit-otm")) {
       failedResponses.push(`${response.status()} ${response.url()}`);
     }
   });
@@ -339,6 +491,7 @@ async function run() {
     await signIn(page);
     await runIntegrationMappingChaosJourney(page, integrationMappingSeed);
     await runAssetsChaosJourney(page, assetsSeed);
+    await runOrderReleaseChaosJourney(page, orderReleaseSeed);
 
     if (consoleErrors.length || failedResponses.length) {
       throw new Error(
@@ -358,14 +511,17 @@ async function run() {
           status: "passed",
           journeys: [
             "integration-mapping-out-of-order-definition-switch",
-            "assets-dirty-draft-file-link-selection-switch"
+            "assets-dirty-draft-file-link-selection-switch",
+            "order-release-template-switch-dirty-row-preview-submit-guard"
           ],
           baseUrl,
           apiBaseUrl,
           primary_definition_code: integrationMappingSeed.primary.code,
           alternate_definition_code: integrationMappingSeed.alternate.code,
           primary_asset_name: assetsSeed.primary.name,
-          alternate_asset_name: assetsSeed.alternate.name
+          alternate_asset_name: assetsSeed.alternate.name,
+          primary_order_release_template_code: orderReleaseSeed.primary.code,
+          alternate_order_release_template_code: orderReleaseSeed.alternate.code
         },
         null,
         2

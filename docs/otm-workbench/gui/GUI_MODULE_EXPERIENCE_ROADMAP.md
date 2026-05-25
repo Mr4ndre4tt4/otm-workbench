@@ -51,7 +51,7 @@ For each module:
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done; out-of-order chaos slice done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, selected-asset switch recovery, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered. `OTM-146` now proves dirty metadata drafts, selected file upload state, and link target drafts are cleared when switching assets out of order; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | Functional slice plus archive history done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. |
-| Order Release Generator | First functional slice plus row, invalid-batch recovery, template authoring, and template versioning hardening done | Template list/create/version, batch, XML artifact/list/download APIs ready | Staged workflow | Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; the Templates stage can create reusable backend-owned custom templates and new versions; governed direct OTM submit remains a guarded follow-up outside MVP0. |
+| Order Release Generator | First functional slice plus row, invalid-batch recovery, template authoring, template versioning, and out-of-order chaos hardening done | Template list/create/version, batch, XML artifact/list/download APIs ready | Staged workflow | Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; the Templates stage can create reusable backend-owned custom templates and new versions; template switching resets row drafts to the selected template defaults and clears active batch, stale preview, artifact, and submit guard state; governed direct OTM submit remains a guarded follow-up outside MVP0. |
 
 ## 4. Recommended Next GUI Queue
 
@@ -108,9 +108,10 @@ test pass/fail:
     and `ReleaseRefnumValue -> accessKey`.
 15. OTM-146: add destructive/out-of-order browser journeys by module. First
     slices delivered with `npm run qa:chaos:browser` for Integration Mapping
-    definition switching and Assets Library asset switching: dirty drafts,
-    selected upload files, link target drafts, and stale backend-owned
-    suggestions are cleared when the selected backend object changes.
+    definition switching, Assets Library asset switching, and Order Release
+    template switching: dirty drafts, selected upload files, link target drafts,
+    generated preview/submit guard state, and stale backend-owned suggestions
+    are cleared when the selected backend object changes.
 16. OTM-143: harden high-volume list density and signal quality.
 ```
 

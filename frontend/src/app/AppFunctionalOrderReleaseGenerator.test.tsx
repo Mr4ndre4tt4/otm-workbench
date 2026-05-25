@@ -399,6 +399,9 @@ describe("Functional Order Release Generator journey", () => {
     await userEvent.click(screen.getByText("SYN_LTL_ORDER_RELEASE"));
     await userEvent.click(screen.getByRole("button", { name: /2Batch/ }));
     expect(screen.getByLabelText("Order Release row editor")).toHaveTextContent("transport_mode");
+    expect(screen.getByLabelText("Row 1 release_gid")).toHaveValue("");
+    expect(screen.getByLabelText("Row 1 source_location_gid")).toHaveValue("");
+    expect(screen.getByLabelText("Row 1 transport_mode")).toHaveValue("LTL");
     expect(screen.queryByLabelText("Active Order Release batch")).not.toBeInTheDocument();
     expect(screen.queryByText("Direct OTM submission is disabled in MVP0.")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /3Preview/ }));
