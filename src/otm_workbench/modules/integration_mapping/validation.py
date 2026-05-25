@@ -15,6 +15,15 @@ from otm_workbench.modules.integration_mapping.mappings import schema_path_exist
 from otm_workbench.modules.integration_mapping.transform_types import transform_type_is_active
 
 
+NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS = (
+    "$.NumeroViagem",
+    "$.DataEmissao",
+    "$.Entregas[]",
+    "$.Entregas[].NumeroDocumento",
+    "$.Entregas[].ChaveAcesso",
+)
+
+
 @dataclass(frozen=True)
 class ValidationIssue:
     severity: str
@@ -151,6 +160,40 @@ def validate_duplicate_target_paths(mappings: list[IntegrationMapping]) -> list[
     return issues
 
 
+def required_target_paths_for_definition(definition: IntegrationDefinition) -> tuple[str, ...]:
+    if definition.code.upper().startswith("PS_TO_EXTERNAL_DELIVERY_NDD"):
+        return NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS
+    return ()
+
+
+def validate_required_target_paths(
+    *,
+    definition: IntegrationDefinition,
+    mappings: list[IntegrationMapping],
+    loops: list[IntegrationLoopDefinition],
+    lookups: list[IntegrationLookupDefinition],
+) -> list[ValidationIssue]:
+    required_paths = required_target_paths_for_definition(definition)
+    if not required_paths:
+        return []
+
+    covered_paths = {mapping.target_path for mapping in mappings}
+    covered_paths.update(loop.target_collection_path for loop in loops)
+    covered_paths.update(lookup.output_path for lookup in lookups)
+
+    return [
+        issue(
+            code="INTEGRATION_VALIDATION_REQUIRED_TARGET_MISSING",
+            entity_type="definition",
+            entity_id=definition.id,
+            field=target_path,
+            message=f"Required target path is not covered by this scenario pack: {target_path}",
+        )
+        for target_path in required_paths
+        if target_path not in covered_paths
+    ]
+
+
 def validate_integration_definition(db: Session, definition: IntegrationDefinition) -> dict[str, object]:
     issues: list[ValidationIssue] = []
     mappings = db.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition.id).all()
@@ -162,6 +205,14 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     for mapping in mappings:
         issues.extend(validate_mapping(db, mapping))
     issues.extend(validate_duplicate_target_paths(mappings))
+    issues.extend(
+        validate_required_target_paths(
+            definition=definition,
+            mappings=mappings,
+            loops=loops,
+            lookups=lookups,
+        )
+    )
     for loop in loops:
         issues.extend(validate_loop(db, loop))
     for join_rule in joins:
