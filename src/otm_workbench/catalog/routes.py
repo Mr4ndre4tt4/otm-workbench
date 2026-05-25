@@ -13,6 +13,7 @@ from otm_workbench.catalog.services import (
     get_macro_object,
     get_schema_pack,
     get_schema_root,
+    index_schema_pack,
     list_dictionary_tables,
     list_macro_object_schema_links,
     list_macro_objects,
@@ -263,6 +264,21 @@ def get_catalog_schema_pack(
     if pack is None:
         raise api_error(404, "SCHEMA_PACK_NOT_FOUND", "Schema pack not found.")
     return serialize_schema_pack(pack)
+
+
+@router.post("/schema-packs/{schema_pack_id}/index")
+def index_catalog_schema_pack(
+    schema_pack_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    pack = get_schema_pack(db, schema_pack_id)
+    if pack is None:
+        raise api_error(404, "SCHEMA_PACK_NOT_FOUND", "Schema pack not found.")
+    try:
+        return index_schema_pack(db, pack, created_by=user.email)
+    except FileNotFoundError:
+        raise api_error(400, "SCHEMA_PACK_SOURCE_NOT_FOUND", "Schema pack source folder was not found.")
 
 
 @router.get("/schema-roots")

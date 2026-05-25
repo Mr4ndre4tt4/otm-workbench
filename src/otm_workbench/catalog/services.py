@@ -1,11 +1,14 @@
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 from sqlalchemy.orm import Session
 
 from otm_workbench.catalog.canonical import MASTERDATA_TABLES, RATES_TABLES
 from otm_workbench.models import (
+    Evidence,
     MacroObjectSchemaLink,
     OtmMacroObject,
     OtmMacroObjectDependency,
@@ -553,6 +556,160 @@ def _json_list(value: str) -> list[str]:
     return [str(item) for item in parsed]
 
 
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _direct_children(element: ET.Element, child_name: str) -> list[ET.Element]:
+    return [child for child in list(element) if _local_name(child.tag) == child_name]
+
+
+def _first_direct_child(element: ET.Element, child_name: str) -> ET.Element | None:
+    for child in list(element):
+        if _local_name(child.tag) == child_name:
+            return child
+    return None
+
+
+def _strip_prefix(value: str | None) -> str:
+    if not value:
+        return ""
+    return value.split(":", 1)[-1]
+
+
+def _documentation(element: ET.Element) -> str:
+    annotation = _first_direct_child(element, "annotation")
+    if annotation is None:
+        return ""
+    doc = _first_direct_child(annotation, "documentation")
+    if doc is None or doc.text is None:
+        return ""
+    return " ".join(doc.text.split())
+
+
+def _domain_area(root_name: str, file_name: str) -> str:
+    upper_root = root_name.upper()
+    upper_file = file_name.upper()
+    if upper_root.startswith("RATE_") or upper_root == "X_LANE" or "RATE" in upper_file:
+        return "RATE"
+    if upper_root in {"RELEASE", "TRANSORDER", "ORDERMOVEMENT"} or "ORDER" in upper_file:
+        return "ORDER"
+    if "SHIPMENT" in upper_root or "SHIPMENT" in upper_file:
+        return "SHIPMENT"
+    if upper_root in {"LOCATION", "CONTACT", "CORPORATION"} or "LOCATION" in upper_file:
+        return "MASTER_DATA"
+    if upper_root in {"ITEM", "ITEMMASTER", "SKU"} or "ITEM" in upper_file:
+        return "MASTER_DATA"
+    if upper_root in {"TRANSMISSION", "TRANSMISSIONACK"} or "TRANSMISSION" in upper_file:
+        return "TRANSMISSION"
+    if upper_root in {"DBOBJECT", "XML2SQL", "SQL2XML", "TRANSACTION_SET"} or "DBXML" in upper_file:
+        return "DBXML"
+    return "OTHER"
+
+
+def _root_type(root_name: str) -> str:
+    upper = root_name.upper()
+    if upper == "TRANSMISSION":
+        return "ENVELOPE"
+    if upper in {"DBOBJECT", "XML2SQL", "SQL2XML", "TRANSACTION_SET"}:
+        return "DBXML"
+    if upper.startswith("RATE_") or upper == "X_LANE":
+        return "ROWSET"
+    return "DOMAIN_ROOT"
+
+
+def _envelope_role(root_name: str) -> str:
+    upper = root_name.upper()
+    if upper == "TRANSMISSION":
+        return "TRANSMISSION"
+    if upper in {"DBOBJECT", "XML2SQL", "SQL2XML", "TRANSACTION_SET"}:
+        return "DBXML"
+    return "NONE"
+
+
+def _recommended_modules(root_name: str, file_name: str) -> list[str]:
+    area = _domain_area(root_name, file_name)
+    upper = root_name.upper()
+    if area == "RATE":
+        return ["rates"]
+    if upper == "RELEASE":
+        return ["order_release_generator", "integration_mapping"]
+    if area == "SHIPMENT" or upper == "TRANSMISSION":
+        return ["integration_mapping"]
+    if area == "MASTER_DATA":
+        return ["master_data"]
+    if area == "DBXML":
+        return ["cutover", "assets", "evidence"]
+    return []
+
+
+def _iter_xsd_nested_elements(element: ET.Element) -> list[ET.Element]:
+    nested: list[ET.Element] = []
+    for child in list(element):
+        name = _local_name(child.tag)
+        if name == "element":
+            nested.append(child)
+        elif name in {"complexType", "sequence", "choice", "complexContent", "extension"}:
+            nested.extend(_iter_xsd_nested_elements(child))
+    return nested
+
+
+def _schema_paths_for_root(schema: ET.Element, root_element: ET.Element, file_name: str) -> list[dict[str, object]]:
+    complex_types = {
+        child.attrib["name"]: child
+        for child in _direct_children(schema, "complexType")
+        if child.attrib.get("name")
+    }
+    root_name = str(root_element.attrib["name"])
+    rows: list[dict[str, object]] = [
+        {
+            "parent_path": None,
+            "path": f"/{root_name}",
+            "node_name": root_name,
+            "data_type": _strip_prefix(root_element.attrib.get("type")) or None,
+            "min_occurs": root_element.attrib.get("minOccurs", "1"),
+            "max_occurs": root_element.attrib.get("maxOccurs", "1"),
+            "is_required": root_element.attrib.get("minOccurs", "1") != "0",
+            "is_repeatable": root_element.attrib.get("maxOccurs", "1") not in {"0", "1"},
+            "documentation": _documentation(root_element),
+            "source_file": file_name,
+        }
+    ]
+
+    def add_children(parent: ET.Element, parent_path: str, visited_types: set[str]) -> None:
+        child_source = _first_direct_child(parent, "complexType")
+        named_type = _strip_prefix(parent.attrib.get("type"))
+        if child_source is None and named_type in complex_types and named_type not in visited_types:
+            child_source = complex_types[named_type]
+            visited_types = {*visited_types, named_type}
+        if child_source is None:
+            return
+        for child in _iter_xsd_nested_elements(child_source):
+            child_name = child.attrib.get("name")
+            if not child_name:
+                continue
+            path = f"{parent_path}/{child_name}"
+            max_occurs = child.attrib.get("maxOccurs", "1")
+            rows.append(
+                {
+                    "parent_path": parent_path,
+                    "path": path,
+                    "node_name": child_name,
+                    "data_type": _strip_prefix(child.attrib.get("type")) or None,
+                    "min_occurs": child.attrib.get("minOccurs", "1"),
+                    "max_occurs": max_occurs,
+                    "is_required": child.attrib.get("minOccurs", "1") != "0",
+                    "is_repeatable": max_occurs not in {"0", "1"},
+                    "documentation": _documentation(child),
+                    "source_file": file_name,
+                }
+            )
+            add_children(child, path, visited_types)
+
+    add_children(root_element, f"/{root_name}", set())
+    return rows
+
+
 def create_schema_pack(
     db: Session,
     *,
@@ -751,4 +908,206 @@ def serialize_macro_object_schema_link(
         "relationship_role": row.relationship_role,
         "confidence": row.confidence,
         "notes": row.notes,
+    }
+
+
+def _clear_schema_pack_index(db: Session, pack: SchemaPack) -> None:
+    root_ids = [row.id for row in db.query(SchemaRoot).filter(SchemaRoot.schema_pack_id == pack.id).all()]
+    file_ids = [row.id for row in db.query(SchemaFile).filter(SchemaFile.schema_pack_id == pack.id).all()]
+    if root_ids:
+        db.query(MacroObjectSchemaLink).filter(MacroObjectSchemaLink.schema_root_id.in_(root_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(SchemaPath).filter(SchemaPath.schema_root_id.in_(root_ids)).delete(synchronize_session=False)
+    db.query(ServiceOperation).filter(ServiceOperation.schema_pack_id == pack.id).delete(synchronize_session=False)
+    if root_ids:
+        db.query(SchemaRoot).filter(SchemaRoot.id.in_(root_ids)).delete(synchronize_session=False)
+    if file_ids:
+        db.query(SchemaFile).filter(SchemaFile.id.in_(file_ids)).delete(synchronize_session=False)
+
+
+def _index_xsd_file(db: Session, pack: SchemaPack, file_path: Path, source_root: Path) -> dict[str, int]:
+    tree = ET.parse(file_path)
+    schema = tree.getroot()
+    target_namespace = schema.attrib.get("targetNamespace", "")
+    imports = _direct_children(schema, "import") + _direct_children(schema, "include")
+    top_level_elements = [element for element in _direct_children(schema, "element") if element.attrib.get("name")]
+    complex_types = _direct_children(schema, "complexType")
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name=file_path.name,
+        relative_path=str(file_path.relative_to(source_root)),
+        file_type="XSD",
+        namespace=target_namespace,
+        import_count=len(imports),
+        top_level_element_count=len(top_level_elements),
+        complex_type_count=len(complex_types),
+        status="PARSED",
+    )
+    db.add(schema_file)
+    db.flush()
+
+    paths_created = 0
+    for element in top_level_elements:
+        root_name = str(element.attrib["name"])
+        root = SchemaRoot(
+            schema_pack_id=pack.id,
+            schema_file_id=schema_file.id,
+            root_name=root_name,
+            namespace=target_namespace,
+            domain_area=_domain_area(root_name, file_path.name),
+            root_type=_root_type(root_name),
+            envelope_role=_envelope_role(root_name),
+            recommended_modules_json=json.dumps(_recommended_modules(root_name, file_path.name), sort_keys=True),
+            documentation=_documentation(element),
+        )
+        db.add(root)
+        db.flush()
+        for index, path_payload in enumerate(_schema_paths_for_root(schema, element, file_path.name), start=1):
+            db.add(
+                SchemaPath(
+                    schema_root_id=root.id,
+                    sequence_index=index,
+                    **path_payload,
+                )
+            )
+            paths_created += 1
+
+    return {
+        "files_parsed": 1,
+        "roots_created": len(top_level_elements),
+        "paths_created": paths_created,
+        "operations_created": 0,
+    }
+
+
+def _index_wsdl_file(db: Session, pack: SchemaPack, file_path: Path, source_root: Path) -> dict[str, int]:
+    tree = ET.parse(file_path)
+    definitions = tree.getroot()
+    target_namespace = definitions.attrib.get("targetNamespace", "")
+    service = _first_direct_child(definitions, "service")
+    service_name = service.attrib.get("name", file_path.stem) if service is not None else file_path.stem
+    operations = []
+    for port_type in _direct_children(definitions, "portType"):
+        operations.extend(_direct_children(port_type, "operation"))
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name=file_path.name,
+        relative_path=str(file_path.relative_to(source_root)),
+        file_type="WSDL",
+        namespace=target_namespace,
+        import_count=len(_direct_children(definitions, "import")),
+        top_level_element_count=0,
+        complex_type_count=0,
+        status="PARSED",
+    )
+    db.add(schema_file)
+    db.flush()
+
+    for operation in operations:
+        input_node = _first_direct_child(operation, "input")
+        output_node = _first_direct_child(operation, "output")
+        fault_node = _first_direct_child(operation, "fault")
+        db.add(
+            ServiceOperation(
+                schema_pack_id=pack.id,
+                schema_file_id=schema_file.id,
+                service_name=service_name,
+                operation_name=operation.attrib.get("name", ""),
+                input_message=_strip_prefix(input_node.attrib.get("message")) if input_node is not None else "",
+                output_message=_strip_prefix(output_node.attrib.get("message")) if output_node is not None else "",
+                fault_message=_strip_prefix(fault_node.attrib.get("message")) if fault_node is not None else "",
+                target_namespace=target_namespace,
+                related_roots_json="[]",
+            )
+        )
+
+    return {
+        "files_parsed": 1,
+        "roots_created": 0,
+        "paths_created": 0,
+        "operations_created": len(operations),
+    }
+
+
+def index_schema_pack(db: Session, pack: SchemaPack, *, created_by: str | None = None) -> dict[str, object]:
+    source_root = Path(pack.source_path)
+    if pack.source_type != "LOCAL_FOLDER" or not source_root.exists() or not source_root.is_dir():
+        raise FileNotFoundError("Schema pack source folder was not found.")
+
+    _clear_schema_pack_index(db, pack)
+    pack.status = "INDEXING"
+    db.flush()
+
+    totals = {
+        "files_seen": 0,
+        "files_parsed": 0,
+        "files_failed": 0,
+        "roots_created": 0,
+        "paths_created": 0,
+        "operations_created": 0,
+    }
+    namespaces: set[str] = set()
+    hasher = sha256()
+    for file_path in sorted([*source_root.rglob("*.xsd"), *source_root.rglob("*.wsdl")]):
+        totals["files_seen"] += 1
+        hasher.update(file_path.name.encode("utf-8"))
+        hasher.update(file_path.read_bytes())
+        try:
+            if file_path.suffix.lower() == ".xsd":
+                result = _index_xsd_file(db, pack, file_path, source_root)
+            else:
+                result = _index_wsdl_file(db, pack, file_path, source_root)
+        except ET.ParseError as exc:
+            db.add(
+                SchemaFile(
+                    schema_pack_id=pack.id,
+                    file_name=file_path.name,
+                    relative_path=str(file_path.relative_to(source_root)),
+                    file_type=file_path.suffix.upper().lstrip(".") or "OTHER",
+                    status="FAILED",
+                    parse_error=str(exc),
+                )
+            )
+            totals["files_failed"] += 1
+            continue
+        totals["files_parsed"] += int(result["files_parsed"])
+        totals["roots_created"] += int(result["roots_created"])
+        totals["paths_created"] += int(result["paths_created"])
+        totals["operations_created"] += int(result["operations_created"])
+
+    for schema_file in db.query(SchemaFile).filter(SchemaFile.schema_pack_id == pack.id).all():
+        if schema_file.namespace:
+            namespaces.add(schema_file.namespace)
+
+    pack.status = "READY" if totals["files_failed"] == 0 else "FAILED"
+    pack.namespace_count = len(namespaces)
+    pack.root_count = int(totals["roots_created"])
+    pack.operation_count = int(totals["operations_created"])
+    pack.content_hash = hasher.hexdigest() if totals["files_seen"] else pack.content_hash
+
+    summary = {
+        "schema_pack_id": pack.id,
+        "schema_pack_code": pack.code,
+        "otm_version": pack.otm_version,
+        "content_hash": pack.content_hash,
+        "status": pack.status,
+        **totals,
+    }
+    evidence = Evidence(
+        source_module="catalog",
+        evidence_type="schema_pack_index",
+        status=pack.status,
+        summary_json=json.dumps(summary, sort_keys=True),
+        client_safe=True,
+        sensitivity_level="client_safe",
+    )
+    db.add(evidence)
+    db.commit()
+    db.refresh(pack)
+    db.refresh(evidence)
+    return {
+        **summary,
+        "evidence_id": evidence.id,
+        "created_by": created_by,
     }

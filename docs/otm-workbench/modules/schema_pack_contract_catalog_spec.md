@@ -405,11 +405,17 @@ Slice 2 - Local folder indexer:
 - parse WSDL/XSD inventory;
 - extract top-level elements and services;
 - produce client-safe evidence.
+Status: delivered as a minimal local-folder indexer for XSD/WSDL inventory,
+top-level roots, same-file path extraction, WSDL operations, and client-safe
+index evidence.
 
 Slice 3 - Path extraction:
 - support same-file complexType traversal and bounded recursion;
 - create high-value path catalog for Transmission, PlannedShipment, Release,
   Location, Item, RATE_OFFERING, RATE_GEO, DBObject, xml2sql.
+Status: partially delivered for same-file named/anonymous complexType traversal.
+High-value roots still need real 26A fixture validation and cross-file import
+resolution.
 
 Slice 4 - Catalog Core API:
 - expose read-only endpoints for packs, roots, paths, operations, and macro

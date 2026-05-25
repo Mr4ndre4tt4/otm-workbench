@@ -1,4 +1,10 @@
+import json
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
 from otm_workbench.models import (
+    Evidence,
     MacroObjectSchemaLink,
     SchemaFile,
     SchemaPack,
@@ -6,6 +12,55 @@ from otm_workbench.models import (
     SchemaRoot,
     ServiceOperation,
 )
+
+
+def workspace_test_folder(prefix: str) -> Path:
+    root = Path("var/test_schema_packs")
+    root.mkdir(parents=True, exist_ok=True)
+    folder = root / f"{prefix}_{uuid4().hex}"
+    if folder.exists():
+        shutil.rmtree(folder)
+    return folder
+
+
+def write_synthetic_schema_pack(folder):
+    folder.mkdir()
+    (folder / "Order.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm">
+  <xs:element name="Release" type="ReleaseType"/>
+  <xs:complexType name="ReleaseType">
+    <xs:sequence>
+      <xs:element name="TransactionCode" type="xs:string" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="ReleaseLine" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="LineNumber" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+    (folder / "OrderReleaseService.wsdl").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/OrderReleaseService">
+  <wsdl:service name="OrderReleaseService"/>
+  <wsdl:portType name="OrderReleaseServicePortType">
+    <wsdl:operation name="processAction">
+      <wsdl:input message="tns:AgentMessage"/>
+      <wsdl:output message="tns:AgentReplyMessage"/>
+    </wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>
+""",
+        encoding="utf-8",
+    )
 
 
 def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header):
@@ -37,6 +92,86 @@ def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header
     assert list_payload["total"] == 1
     assert list_payload["items"][0]["code"] == "OTM_26A_CORE"
     assert "C:/otm/contracts/26A" not in str(list_payload)
+
+
+def test_catalog_schema_pack_index_local_folder_extracts_roots_paths_operations_and_evidence(
+    client,
+    admin_header,
+    db_session,
+):
+    schema_folder = workspace_test_folder("synthetic_26a")
+    write_synthetic_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_SYNTH",
+            "name": "Synthetic OTM 26A pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+            "content_hash": "synthetic-hash",
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+
+    assert indexed.status_code == 200
+    index_payload = indexed.json()
+    assert index_payload["status"] == "READY"
+    assert index_payload["files_parsed"] == 2
+    assert index_payload["roots_created"] == 1
+    assert index_payload["paths_created"] == 4
+    assert index_payload["operations_created"] == 1
+    assert "source_path" not in str(index_payload)
+    assert str(schema_folder) not in str(index_payload)
+
+    roots = client.get("/api/v1/catalog/schema-roots?root_name=Release", headers=admin_header)
+    paths = client.get(
+        f"/api/v1/catalog/schema-roots/{roots.json()['items'][0]['id']}/paths",
+        headers=admin_header,
+    )
+    operations = client.get(
+        "/api/v1/catalog/schema-operations?service_name=OrderReleaseService",
+        headers=admin_header,
+    )
+    evidence = db_session.get(Evidence, index_payload["evidence_id"])
+
+    assert roots.json()["items"][0]["recommended_modules"] == [
+        "order_release_generator",
+        "integration_mapping",
+    ]
+    assert "/Release/ReleaseLine" in [item["path"] for item in paths.json()["items"]]
+    assert "/Release/ReleaseLine/LineNumber" in [item["path"] for item in paths.json()["items"]]
+    assert operations.json()["items"][0]["operation_name"] == "processAction"
+    assert evidence is not None
+    assert evidence.client_safe is True
+    assert evidence.evidence_type == "schema_pack_index"
+    summary = json.loads(evidence.summary_json)
+    assert summary["schema_pack_code"] == "OTM_26A_SYNTH"
+    assert summary["files_parsed"] == 2
+    assert "source_path" not in summary
+
+
+def test_catalog_schema_pack_index_rejects_missing_local_folder(client, admin_header):
+    missing_folder = workspace_test_folder("missing")
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_MISSING",
+            "name": "Missing OTM 26A pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(missing_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+
+    assert indexed.status_code == 400
+    assert indexed.json()["code"] == "SCHEMA_PACK_SOURCE_NOT_FOUND"
+    assert str(missing_folder) not in str(indexed.json())
 
 
 def test_catalog_schema_roots_paths_and_operations_are_queryable(client, admin_header, db_session):

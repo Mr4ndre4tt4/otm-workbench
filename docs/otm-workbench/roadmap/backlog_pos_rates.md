@@ -866,7 +866,11 @@ Status da primeira fatia:
   SchemaPath, ServiceOperation e MacroObjectSchemaLink.
 - Endpoints read-only/admin criados para packs, roots, paths, operations e
   macro-object schema links.
-- Ainda falta indexer real de pasta local, job/evidence e QA negativo de parse.
+- Indexer local minimo entregue para inventario XSD/WSDL, roots top-level,
+  paths same-file, operations WSDL e evidence client-safe.
+- Ainda falta job engine real para indexacao assincrona, validacao contra
+  fixtures 26A completas, resolucao cross-file e QA negativo de parse mais
+  amplo.
 ```
 
 ### Fora do primeiro recorte
