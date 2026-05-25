@@ -363,10 +363,21 @@ Use the archive only to design synthetic scenarios:
 
 ```text
 - high-row-count rates cost/unit break tables
-- accessorial cost with unit break children
-- rate offering -> rate geo -> rate geo cost group -> rate geo cost hierarchy
+- accessorial cost with unit break children [DONE rates LTL/TL first slice]
+- rate offering -> rate geo -> rate geo cost group -> rate geo cost hierarchy [DONE rates LTL/TL first slice]
 - equipment group profile dependencies
 - location/region/geography dependencies
+```
+
+Implementation note, 2026-05-25, Rates LTL/TL first slice:
+
+```text
+Rates now exposes a `LTL_TL_RATE_STACK` scenario using the canonical
+Data-Dictionary-validated sequence: rate offering, unit break profile/break,
+lane, rate geo, accessorial children, stops, cost group, and rate geo cost. The
+validator now allows references to GIDs created by owner tables in the same
+batch while preserving external reference policy checks such as invalid
+currency/domain references.
 ```
 
 ## Follow-Up Issues
@@ -383,6 +394,8 @@ Recommended Linear/backlog follow-ups:
    [SECOND SLICE DELIVERED: readiness summary now includes table-level package
    family statuses]
 3. Rates QA: synthetic LTL/TL rate stack based on the observed table sequence.
+   [FIRST SLICE DELIVERED: backend scenario, Data Dictionary sequence check,
+   validation flow with same-batch GID references]
 4. Master Data QA: synthetic location/equipment/geography package family.
 5. Security: ensure reference archives and generated QA artifacts never leak
    real domains, emails, GIDs, local paths, or row values.

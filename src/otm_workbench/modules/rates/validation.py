@@ -36,6 +36,22 @@ def add_issue(
     return issue
 
 
+def collect_batch_gid_values(
+    rows_by_table: dict[str, list[RateBatchRow]],
+    tables_by_id: dict[str, RateBatchTable],
+) -> set[str]:
+    values: set[str] = set()
+    for table_id, rows in rows_by_table.items():
+        table = tables_by_id[table_id]
+        created_gid_column = f"{table.table_name}_GID"
+        for row in rows:
+            payload = json.loads(row.normalized_payload_json or "{}")
+            for column, value in payload.items():
+                if column.upper() == created_gid_column and value not in (None, ""):
+                    values.add(str(value))
+    return values
+
+
 def validate_rate_batch(
     db: Session,
     *,
@@ -51,6 +67,17 @@ def validate_rate_batch(
     )
     table_names = [item.table_name for item in tables]
     scenario = get_rate_scenario(batch.scenario_code)
+    tables_by_id = {table.id: table for table in tables}
+    rows_by_table = {
+        table.id: (
+            db.query(RateBatchRow)
+            .filter(RateBatchRow.batch_table_id == table.id)
+            .order_by(RateBatchRow.row_index)
+            .all()
+        )
+        for table in tables
+    }
+    batch_gid_values = collect_batch_gid_values(rows_by_table, tables_by_id)
 
     for required_table in scenario.required_tables:
         if required_table not in table_names:
@@ -86,12 +113,7 @@ def validate_rate_batch(
                 message=f"{table.table_name} does not exist in the OTM Data Dictionary.",
             )
             continue
-        rows = (
-            db.query(RateBatchRow)
-            .filter(RateBatchRow.batch_table_id == table.id)
-            .order_by(RateBatchRow.row_index)
-            .all()
-        )
+        rows = rows_by_table[table.id]
         for row in rows:
             payload = json.loads(row.normalized_payload_json or "{}")
             for column in payload:
@@ -126,6 +148,8 @@ def validate_rate_batch(
                     str(payload[column]),
                 )
                 if not reference_result.valid:
+                    if str(payload[column]) in batch_gid_values:
+                        continue
                     add_issue(
                         db,
                         batch=batch,
