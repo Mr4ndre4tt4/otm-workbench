@@ -1,6 +1,6 @@
 # GUI Functional QA Journeys
 
-**Status:** active baseline
+**Status:** active baseline; OTM-86 route reconciliation complete
 **Date:** 2026-05-21
 **Scope:** functional UI journeys, state transitions, and backend contract validation.
 
@@ -42,6 +42,11 @@ Layer 3: backend functional confirmation
 
 No journey is considered complete until the UI assertion and the backend state
 assertion agree.
+
+The OTM-86 reconciliation umbrella is closed by
+`GUI_MODULE_RECONCILIATION_COMPLETION_REVIEW_OTM86.md`. Future route expansion
+should create or update explicit module issues instead of reopening the
+reconciliation umbrella.
 
 ## 3. Required Journey Pattern
 

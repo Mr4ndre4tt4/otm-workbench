@@ -1,7 +1,7 @@
 # GUI Module API Contract Matrix
 
 **Status:** delivered  
-**Linear:** `OTM-88`  
+**Linear:** `OTM-88`, completed under `OTM-86`
 **Scope:** backend API contracts consumed by GUI module journeys and readiness gaps.
 
 ## Purpose
@@ -73,4 +73,5 @@ FUTURE       Purpose is known, but work should wait for explicit new scope or go
 ```text
 OTM-92 closed after Load Plan READY validation.
 OTM-98 implemented artifact trust-boundary hardening for platform helpers and Evidence Hub downloads.
+OTM-86 closed after all module route families reached accepted READY journeys or explicit future scope.
 ```
