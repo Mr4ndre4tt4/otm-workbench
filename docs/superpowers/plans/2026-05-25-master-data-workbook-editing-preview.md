@@ -437,7 +437,7 @@ Expected: pass after mocks are aligned.
 - Modify: `frontend/src/ui/layouts.css`
 - Test: `frontend/src/app/AppFunctionalMasterData.test.tsx`
 
-- [ ] **Step 1: Write failing React test for row validation recovery**
+- [x] **Step 1: Write failing React test for row validation recovery**
 
 Add a test path that:
 - opens `/master-data`
@@ -450,7 +450,7 @@ Add a test path that:
 - clicks `Create batch from edited rows`
 - sees `Workbook editor batch ... created.`
 
-- [ ] **Step 2: Run React test and verify it fails**
+- [x] **Step 2: Run React test and verify it fails**
 
 Run:
 
@@ -460,7 +460,7 @@ npm run test -- AppFunctionalMasterData.test.tsx
 
 Expected: controls missing.
 
-- [ ] **Step 3: Implement UI**
+- [x] **Step 3: Implement UI**
 
 Render a compact row editor inside the Workbook stage:
 - one tab/section per sheet
@@ -470,7 +470,7 @@ Render a compact row editor inside the Workbook stage:
 - validation issues render through `BlockerPanel`
 - successful batch creation sets the same `uploadedBatch`/`activeBatch` path used by file upload
 
-- [ ] **Step 4: Run React test and lint**
+- [x] **Step 4: Run React test and lint**
 
 Run:
 

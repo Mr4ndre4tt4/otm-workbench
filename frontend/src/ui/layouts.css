@@ -968,6 +968,62 @@
   font-size: 11px;
 }
 
+.master-data-workbook-editor {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.master-data-workbook-sheet {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.master-data-workbook-sheet-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.master-data-workbook-sheet-header span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.master-data-workbook-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.master-data-workbook-row label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 5px;
+}
+
+.master-data-workbook-row label span {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.master-data-workbook-row input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
 .master-data-mapping-editor {
   display: grid;
   gap: 8px;

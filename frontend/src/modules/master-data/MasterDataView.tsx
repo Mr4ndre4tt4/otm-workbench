@@ -4,6 +4,7 @@ import {
   buildMasterDataCsv,
   buildMasterDataOutput,
   buildMasterDataWorkbook,
+  createMasterDataBatchFromWorkbookEditorRows,
   createCoordinateQualityBatch,
   createCutoverChecklistFromPackage,
   createMasterDataTemplateDraft,
@@ -34,6 +35,7 @@ import {
   useMasterDataTemplates,
   useMasterDataWorkbookEditor,
   validateMasterDataTemplateDefinition,
+  validateMasterDataWorkbookEditorRows,
   validateMasterDataRelationships,
   validateMasterDataTemplate
 } from '../../platform/hooks';
@@ -52,6 +54,8 @@ import type {
   MasterDataTemplateDraftRequest,
   MasterDataTemplateValidation,
   MasterDataWorkbookArtifact,
+  MasterDataWorkbookEditorRowsRequest,
+  MasterDataWorkbookEditorValidation,
   LoadPlanPackage,
   AvailableAction
 } from '../../platform/types';
@@ -447,6 +451,9 @@ export function MasterDataView({ token }: { token: string }) {
   const [authorTemplate, setAuthorTemplate] = useState<MasterDataTemplate | null>(null);
   const [authorValidation, setAuthorValidation] = useState<MasterDataTemplateValidation | null>(null);
   const [authorVersion, setAuthorVersion] = useState<MasterDataTemplate | null>(null);
+  const [workbookEditorRows, setWorkbookEditorRows] = useState<MasterDataWorkbookEditorRowsRequest | null>(null);
+  const [workbookEditorValidation, setWorkbookEditorValidation] =
+    useState<MasterDataWorkbookEditorValidation | null>(null);
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
@@ -459,6 +466,19 @@ export function MasterDataView({ token }: { token: string }) {
     token,
     activeStage === "workbook" && selectedTemplate?.status === "PUBLISHED" ? effectiveTemplateCode : null
   );
+  const workbookEditorDefaultRows = workbookEditor.data
+    ? {
+        file_name: `${workbookEditor.data.template_code.toLowerCase()}_editor.xlsx`,
+        sheets: workbookEditor.data.sheets.map((sheet) => ({
+          sheet_code: sheet.code,
+          rows: sheet.starter_rows.map((row) => ({
+            row_id: row.row_id,
+            values: { ...row.values }
+          }))
+        }))
+      }
+    : null;
+  const effectiveWorkbookEditorRows = workbookEditorRows ?? workbookEditorDefaultRows;
   const batchFilters = {
     file_name_contains: batchFileNameFilter.trim() || undefined,
     min_row_count: batchMinRowCountFilter ? Number(batchMinRowCountFilter) : undefined,
@@ -494,6 +514,8 @@ export function MasterDataView({ token }: { token: string }) {
   function clearTemplateWorkspaceState() {
     setTemplateValidation(null);
     setWorkbookArtifact(null);
+    setWorkbookEditorRows(null);
+    setWorkbookEditorValidation(null);
     setUploadedBatch(null);
     setSelectedUploadFile(null);
     clearBatchWorkflowState();
@@ -817,6 +839,61 @@ export function MasterDataView({ token }: { token: string }) {
         return result;
       },
       (result) => `Workbook ${result.file_name} generated.`
+    );
+  };
+
+  const updateWorkbookEditorValue = (sheetCode: string, rowId: string, fieldKey: string, value: string) => {
+    setWorkbookEditorRows((current) => {
+      const baseRows = current ?? workbookEditorDefaultRows;
+      if (!baseRows) return current;
+      return {
+        ...baseRows,
+        sheets: baseRows.sheets.map((sheet) =>
+          sheet.sheet_code === sheetCode
+            ? {
+                ...sheet,
+                rows: sheet.rows.map((row) =>
+                  row.row_id === rowId ? { ...row, values: { ...row.values, [fieldKey]: value } } : row
+                )
+              }
+            : sheet
+        )
+      };
+    });
+  };
+
+  const resetWorkbookEditorRows = () => {
+    if (!workbookEditorDefaultRows) return;
+    setWorkbookEditorRows(workbookEditorDefaultRows);
+    setWorkbookEditorValidation(null);
+    setOperationMessage(null);
+    setOperationError(null);
+  };
+
+  const handleValidateWorkbookEditorRows = () => {
+    if (!effectiveTemplateCode || !effectiveWorkbookEditorRows) return;
+    void runAction(
+      async () => {
+        const result = await validateMasterDataWorkbookEditorRows(token, effectiveTemplateCode, effectiveWorkbookEditorRows);
+        setWorkbookEditorValidation(result);
+        return result;
+      },
+      (result) => `Edited rows validation is ${result.status}.`
+    );
+  };
+
+  const handleCreateWorkbookEditorBatch = () => {
+    if (!effectiveTemplateCode || !effectiveWorkbookEditorRows) return;
+    void runAction(
+      async () => {
+        const result = await createMasterDataBatchFromWorkbookEditorRows(token, effectiveTemplateCode, effectiveWorkbookEditorRows);
+        setUploadedBatch(result);
+        setWorkbookEditorValidation(null);
+        clearBatchWorkflowState();
+        await batches.refetch();
+        return result;
+      },
+      (result) => `Workbook editor batch ${result.batch_id} created.`
     );
   };
 
@@ -1489,21 +1566,97 @@ export function MasterDataView({ token }: { token: string }) {
               />
             ) : null}
             {workbookEditor.data ? (
-              <DetailList
-                ariaLabel="Workbook editor contract"
-                items={[
-                  {
-                    id: workbookEditor.data.template_code,
-                    meta: [
-                      `${workbookEditor.data.sheets.length} editable sheet(s)`,
-                      `${workbookEditor.data.sheets.reduce((total, sheet) => total + sheet.fields.length, 0)} field(s)`,
-                      `${workbookEditor.data.relationship_rules.length} relationship rule(s)`
-                    ],
-                    status: "BACKEND_OWNED",
-                    title: workbookEditor.data.template_name ?? workbookEditor.data.template_code
-                  }
-                ]}
-              />
+              <>
+                <DetailList
+                  ariaLabel="Workbook editor contract"
+                  items={[
+                    {
+                      id: workbookEditor.data.template_code,
+                      meta: [
+                        `${workbookEditor.data.sheets.length} editable sheet(s)`,
+                        `${workbookEditor.data.sheets.reduce((total, sheet) => total + sheet.fields.length, 0)} field(s)`,
+                        `${workbookEditor.data.relationship_rules.length} relationship rule(s)`
+                      ],
+                      status: "BACKEND_OWNED",
+                      title: workbookEditor.data.template_name ?? workbookEditor.data.template_code
+                    }
+                  ]}
+                />
+                <div aria-label="Workbook editor rows" className="master-data-workbook-editor">
+                  {workbookEditor.data.sheets.map((sheet) => {
+                    const sheetRows =
+                      effectiveWorkbookEditorRows?.sheets.find((item) => item.sheet_code === sheet.code)?.rows ?? [];
+                    return (
+                      <section className="master-data-workbook-sheet" key={sheet.code}>
+                        <div className="master-data-workbook-sheet-header">
+                          <strong>{sheet.code}</strong>
+                          <span>{sheet.target_table}</span>
+                        </div>
+                        {sheetRows.map((row, rowIndex) => (
+                          <div className="master-data-workbook-row" key={row.row_id}>
+                            {sheet.fields.map((field) => (
+                              <label key={field.field_key}>
+                                {field.label}
+                                {field.required ? <span>Required</span> : null}
+                                <input
+                                  aria-label={`${sheet.code} row ${rowIndex + 1} ${field.label}`}
+                                  onChange={(event) =>
+                                    updateWorkbookEditorValue(
+                                      sheet.code,
+                                      row.row_id,
+                                      field.field_key,
+                                      event.target.value
+                                    )
+                                  }
+                                  value={row.values[field.field_key] ?? ""}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        ))}
+                      </section>
+                    );
+                  })}
+                </div>
+                <div className="master-data-action-bar">
+                  <Button disabled={!effectiveWorkbookEditorRows || isMutating} onClick={handleValidateWorkbookEditorRows} variant="secondary">
+                    Validate edited rows
+                  </Button>
+                  <Button disabled={!effectiveWorkbookEditorRows || isMutating} onClick={handleCreateWorkbookEditorBatch} variant="primary">
+                    Create batch from edited rows
+                  </Button>
+                  <Button disabled={!workbookEditor.data || isMutating} onClick={resetWorkbookEditorRows} variant="secondary">
+                    Reset edited rows
+                  </Button>
+                </div>
+                {workbookEditorValidation ? (
+                  <>
+                    <DetailList
+                      ariaLabel="Workbook editor validation summary"
+                      items={[
+                        {
+                          id: "workbook-editor-validation",
+                          meta: [
+                            `${workbookEditorValidation.summary.row_count} row(s)`,
+                            `${workbookEditorValidation.summary.issue_count} issue(s)`
+                          ],
+                          status: workbookEditorValidation.status,
+                          title: workbookEditorValidation.status
+                        }
+                      ]}
+                    />
+                    <BlockerPanel
+                      emptyText="Edited workbook rows have no blockers."
+                      items={workbookEditorValidation.issues.map((issue, index) => ({
+                        codes: [issue.code],
+                        id: `${issue.code}-${issue.sheet_code ?? "sheet"}-${issue.row_id ?? index}`,
+                        message: issue.message
+                      }))}
+                      title="Workbook editor issues"
+                    />
+                  </>
+                ) : null}
+              </>
             ) : null}
           </OperationalPanel>
         ) : null}

@@ -315,6 +315,8 @@ describe("Functional Master Data journey", () => {
     const artifactListRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
     const workbookEditorRequests: string[] = [];
+    const workbookEditorValidationRequests: unknown[] = [];
+    const workbookEditorBatchRequests: unknown[] = [];
 
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -401,6 +403,62 @@ describe("Functional Master Data journey", () => {
             template_code: "REGIONS_BASIC",
             template_name: "Regions Basic",
             version: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor/validate")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        workbookEditorValidationRequests.push(body);
+        const regionRow = body.sheets?.find((sheet: { sheet_code: string }) => sheet.sheet_code === "REGIONS")?.rows?.[0];
+        if (!regionRow?.values?.region_gid) {
+          return Promise.resolve(
+            jsonResponse({
+              issues: [
+                {
+                  code: "REQUIRED_FIELD_MISSING",
+                  field_key: "region_gid",
+                  message: "Region GID is required.",
+                  row_id: "REGIONS-1",
+                  severity: "ERROR",
+                  sheet_code: "REGIONS"
+                }
+              ],
+              status: "INVALID",
+              summary: { issue_count: 1, row_count: 2, sheet_count: 2 },
+              template_code: "REGIONS_BASIC",
+              valid: false
+            })
+          );
+        }
+        return Promise.resolve(
+          jsonResponse({
+            issues: [],
+            status: "VALID",
+            summary: { issue_count: 0, row_count: 2, sheet_count: 2 },
+            template_code: "REGIONS_BASIC",
+            valid: true
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor/batches")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        workbookEditorBatchRequests.push(body);
+        return Promise.resolve(
+          jsonResponse({
+            batch_id: "batch_editor",
+            csv_file_count: 0,
+            file_name: "regions_basic_editor.xlsx",
+            issue_count: 0,
+            row_count: 2,
+            sheet_count: 2,
+            sheet_summaries: [
+              { row_count: 1, sheet_code: "REGIONS", target_table: "REGION" },
+              { row_count: 1, sheet_code: "REGION_DETAILS", target_table: "REGION_DETAIL" }
+            ],
+            status: "PARSED",
+            template_code: "REGIONS_BASIC"
           })
         );
       }
@@ -833,6 +891,18 @@ describe("Functional Master Data journey", () => {
     await waitFor(() =>
       expect(workbookEditorRequests).toContain("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor")
     );
+    await userEvent.click(screen.getByRole("button", { name: "Validate edited rows" }));
+    await screen.findByText("Edited rows validation is INVALID.");
+    expect(screen.getByText("REQUIRED_FIELD_MISSING")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("REGIONS row 1 Region GID"), "SYN.REGION_UI");
+    await userEvent.type(screen.getByLabelText("REGIONS row 1 Region XID"), "REGION_UI");
+    await userEvent.type(screen.getByLabelText("REGION_DETAILS row 1 Region GID"), "SYN.REGION_UI");
+    await userEvent.type(screen.getByLabelText("REGION_DETAILS row 1 Location GID"), "SYN.LOCATION_UI");
+    await userEvent.click(screen.getByRole("button", { name: "Create batch from edited rows" }));
+    await screen.findByText("Workbook editor batch batch_editor created.");
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_editor");
+    expect(workbookEditorValidationRequests).toHaveLength(1);
+    expect(workbookEditorBatchRequests).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Validate template" }));
     await screen.findByText("Template validation is VALID.");
     expect(screen.getByLabelText("Template validation summary")).toHaveTextContent("VALID");
