@@ -24,6 +24,7 @@ import type {
   IntegrationMappingCreatePayload,
   IntegrationDefinitionsResponse,
   IntegrationMappingsResponse,
+  IntegrationMappingSuggestionsResponse,
   IntegrationPayloadArtifactsResponse,
   IntegrationPayloadArtifact,
   IntegrationPayloadArtifactCreatePayload,
@@ -158,6 +159,48 @@ export function useIntegrationMappings(token: string | null, definitionId: strin
       }),
     enabled: Boolean(token && definitionId)
   });
+}
+
+export function useIntegrationMappingSuggestions(
+  token: string | null,
+  definitionId: string | null,
+  sourceSchemaDocumentId: string | null,
+  targetSchemaDocumentId: string | null
+) {
+  const params =
+    sourceSchemaDocumentId && targetSchemaDocumentId
+      ? `?source_schema_document_id=${encodeURIComponent(sourceSchemaDocumentId)}&target_schema_document_id=${encodeURIComponent(targetSchemaDocumentId)}`
+      : "";
+  return useQuery({
+    queryKey: [
+      "modules",
+      "integration-mapping",
+      "definitions",
+      definitionId,
+      "mapping-suggestions",
+      sourceSchemaDocumentId,
+      targetSchemaDocumentId
+    ],
+    queryFn: () =>
+      apiGet<IntegrationMappingSuggestionsResponse>(
+        `/api/v1/modules/integration-mapping/definitions/${definitionId}/mapping-suggestions${params}`,
+        { token }
+      ),
+    enabled: Boolean(token && definitionId && sourceSchemaDocumentId && targetSchemaDocumentId)
+  });
+}
+
+export function listIntegrationMappingSuggestions(
+  token: string,
+  definitionId: string,
+  sourceSchemaDocumentId: string,
+  targetSchemaDocumentId: string
+) {
+  const params = `?source_schema_document_id=${encodeURIComponent(sourceSchemaDocumentId)}&target_schema_document_id=${encodeURIComponent(targetSchemaDocumentId)}`;
+  return apiGet<IntegrationMappingSuggestionsResponse>(
+    `/api/v1/modules/integration-mapping/definitions/${definitionId}/mapping-suggestions${params}`,
+    { token }
+  );
 }
 
 export function useIntegrationLoops(token: string | null, definitionId: string | null) {

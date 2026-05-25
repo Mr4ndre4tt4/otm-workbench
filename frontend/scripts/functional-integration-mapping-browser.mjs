@@ -208,6 +208,11 @@ async function run() {
     await page.getByLabel("Selected definition schema documents").getByText("$", { exact: true }).waitFor();
 
     await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
+    const mappingRuleForm = page.locator(".integration-mapping-form").first();
+    await mappingRuleForm.waitFor();
+    await mappingRuleForm.getByLabel("Source schema").selectOption({ label: "Transmission" });
+    await mappingRuleForm.getByLabel("Target schema").selectOption({ label: "$" });
+    await page.getByRole("button", { name: "Load backend suggestions" }).click();
     await page.getByLabel("Mapping source node search").fill("shipment");
     await page.getByLabel("Mapping target node search").fill("shipment");
     await page

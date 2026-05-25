@@ -45,7 +45,7 @@ For each module:
 | Rates Studio | Functional journey done | Batch, validation, artifacts, approval ready | Object list/detail + operational surfaces | Treat as reference implementation. |
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice; macro-object validation-result switch recovery is delivered. |
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later; selected-job feedback recovery is delivered. |
-| Integration Mapping Studio | Functional journey done; NDD-like executable positive, negative, and required-target browser slices done | Authoring, validation, mapping removal, required target checklist, spec/preview readiness, executable preview/spec artifacts ready | Staged workflow | `OTM-152` proves mixed header + `Entregas[]` alias mappings and loop-scoped lookup through downloaded preview artifact content. `OTM-153` proves invalid alias/path blocker, blocked preview, backend-owned mapping removal, and correction without route reload. `OTM-154` proves backend-owned required target scenario-pack checklist. |
+| Integration Mapping Studio | Functional journey done; NDD-like executable positive, negative, required-target, and backend-owned suggestion browser slices done | Authoring, validation, backend-owned mapping suggestions, mapping removal, required target checklist, spec/preview readiness, executable preview/spec artifacts ready | Staged workflow | `OTM-152` proves mixed header + `Entregas[]` alias mappings and loop-scoped lookup through downloaded preview artifact content. `OTM-153` proves invalid alias/path blocker, blocked preview, backend-owned mapping removal, and correction without route reload. `OTM-154` proves backend-owned required target scenario-pack checklist. `OTM-159` moves mapping suggestions to backend contract with schema ownership validation and explicit UI load/apply. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, Evidence Hub archive convenience, Go/No-Go, guarded handoff commit UI, and next-action panel done | Backend flows mostly ready | Review queue + staged workflow + next action | Current GUI journey is accepted; keep future work to hardening or explicit new scope. |
 | Master Data / Data Factory | OTM-115 completion acceptance met for MVP0; next-action panel first slice delivered | Backend flows ready for template authoring, backend-owned scenario packs, workbook editor contract/validation/batch creation, filtered/paginated batches, output/CSV preview, CSV/ZIP export, guarded direct OTM import readiness/submit refusal, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail + next action | Completion review captured in `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`. Real governed direct OTM submission, deeper Load Plan analytics, advanced Coordinate Quality diagnostics, larger scenario library, and richer audited spreadsheet editing remain future scope. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
@@ -99,8 +99,11 @@ test pass/fail:
 12. OTM-154: expose Integration Mapping required target scenario packs in
     backend validation, UI checklist, and browser QA. Delivered for the
     synthetic NDD-like checklist.
-13. OTM-146: add destructive/out-of-order browser journeys by module.
-14. OTM-143: harden high-volume list density and signal quality.
+13. OTM-159: move Integration Mapping suggestions from frontend-local heuristic
+    to backend-owned contract. Delivered with schema ownership validation,
+    explicit Rules-stage load/apply action, React QA, and browser QA.
+14. OTM-146: add destructive/out-of-order browser journeys by module.
+15. OTM-143: harden high-volume list density and signal quality.
 ```
 
 ### 4.1 Load Plan / Cutover

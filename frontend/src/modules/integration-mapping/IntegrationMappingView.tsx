@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
   createIntegrationDefinition,
@@ -16,6 +16,7 @@ import {
   deleteIntegrationMapping,
   downloadBackendArtifact,
   generateIntegrationSpec,
+  listIntegrationMappingSuggestions,
   previewIntegrationDefinition,
   useIntegrationArtifacts,
   useIntegrationDefinitionDetail,
@@ -35,7 +36,13 @@ import {
   validateIntegrationDefinition
 } from '../../platform/hooks';
 import { ApiError } from '../../platform/api';
-import type { IntegrationDefinition, IntegrationResponseHandler, IntegrationSchemaNode, IntegrationValidationResult } from '../../platform/types';
+import type {
+  IntegrationDefinition,
+  IntegrationMappingSuggestion,
+  IntegrationResponseHandler,
+  IntegrationSchemaNode,
+  IntegrationValidationResult
+} from '../../platform/types';
 import { MODULE_DESCRIPTIONS } from '../../app/routes/moduleDescriptions';
 import { PageHeader } from '../../app/shell';
 import {
@@ -290,32 +297,6 @@ function collectionNodes(nodes: IntegrationSchemaNode[]) {
   return nodes.filter((node) => ["array", "object"].includes(node.node_type.toLowerCase()));
 }
 
-function semanticNodeKey(node: IntegrationSchemaNode) {
-  return node.name
-    .toLowerCase()
-    .replace(/gid$/, "id")
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function mappingSuggestions(sourceNodes: IntegrationSchemaNode[], targetNodes: IntegrationSchemaNode[]) {
-  const sourceLeafNodes = sourceNodes.filter((node) => !["array", "object"].includes(node.node_type.toLowerCase()));
-  const targetLeafNodes = targetNodes.filter((node) => !["array", "object"].includes(node.node_type.toLowerCase()));
-  const suggestions = [];
-  for (const sourceNode of sourceLeafNodes) {
-    const sourceKey = semanticNodeKey(sourceNode);
-    const targetNode = targetLeafNodes.find((candidate) => semanticNodeKey(candidate) === sourceKey);
-    if (targetNode) {
-      suggestions.push({
-        id: `${sourceNode.id}-${targetNode.id}`,
-        source_path: sourceNode.path,
-        target_path: targetNode.path,
-        transform_type: "DIRECT"
-      });
-    }
-  }
-  return suggestions.slice(0, 5);
-}
-
 export function IntegrationMappingView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
@@ -338,8 +319,11 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [targetFormat, setTargetFormat] = useState('JSON');
   const [sourceSchemaId, setSourceSchemaId] = useState('');
   const [targetSchemaId, setTargetSchemaId] = useState('');
+  const sourceSchemaIdRef = useRef('');
+  const targetSchemaIdRef = useRef('');
   const [mappingSourceNodeSearch, setMappingSourceNodeSearch] = useState('');
   const [mappingTargetNodeSearch, setMappingTargetNodeSearch] = useState('');
+  const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
@@ -440,6 +424,20 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
+
+  const loadMappingSuggestionsForSchemas = async (nextSourceSchemaId: string, nextTargetSchemaId: string) => {
+    if (!effectiveDefinitionId || !nextSourceSchemaId || !nextTargetSchemaId) {
+      setMappingSuggestionItems([]);
+      return;
+    }
+    try {
+      const response = await listIntegrationMappingSuggestions(token, effectiveDefinitionId, nextSourceSchemaId, nextTargetSchemaId);
+      setMappingSuggestionItems(response.items);
+    } catch {
+      setMappingSuggestionItems([]);
+    }
+  };
+
   const integrationReviewRows = buildIntegrationReviewRows({
     joins: joins.data?.items ?? [],
     joinBindings: joinBindings.data?.items ?? [],
@@ -449,11 +447,6 @@ export function IntegrationMappingView({ token }: { token: string }) {
     responseHandlers: responseHandlers.data?.items ?? [],
     validationResult
   });
-  const mappingSuggestionItems = mappingSuggestions(
-    sourceSchemaNodes.data?.items ?? [],
-    targetSchemaNodes.data?.items ?? []
-  );
-
   const refreshDefinitionData = async (definitionId = effectiveDefinitionId) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions"] }),
@@ -1570,7 +1563,15 @@ export function IntegrationMappingView({ token }: { token: string }) {
           >
             <label>
               Source schema
-              <select onChange={(event) => setSourceSchemaId(event.target.value)} value={sourceSchemaId}>
+              <select
+                onChange={(event) => {
+                  const nextSourceSchemaId = event.target.value;
+                  sourceSchemaIdRef.current = nextSourceSchemaId;
+                  setSourceSchemaId(nextSourceSchemaId);
+                  void loadMappingSuggestionsForSchemas(nextSourceSchemaId, targetSchemaIdRef.current);
+                }}
+                value={sourceSchemaId}
+              >
                 <option value="">Select source schema</option>
                 {(schemaDocuments.data?.items ?? []).map((schema) => (
                   <option key={schema.id} value={schema.id}>
@@ -1581,7 +1582,15 @@ export function IntegrationMappingView({ token }: { token: string }) {
             </label>
             <label>
               Target schema
-              <select onChange={(event) => setTargetSchemaId(event.target.value)} value={targetSchemaId}>
+              <select
+                onChange={(event) => {
+                  const nextTargetSchemaId = event.target.value;
+                  targetSchemaIdRef.current = nextTargetSchemaId;
+                  setTargetSchemaId(nextTargetSchemaId);
+                  void loadMappingSuggestionsForSchemas(sourceSchemaIdRef.current, nextTargetSchemaId);
+                }}
+                value={targetSchemaId}
+              >
                 <option value="">Select target schema</option>
                 {(schemaDocuments.data?.items ?? []).map((schema) => (
                   <option key={schema.id} value={schema.id}>
@@ -1611,6 +1620,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
               search={mappingTargetNodeSearch}
             />
             <div className="integration-action-bar" aria-label="Mapping suggestions">
+              <Button
+                disabled={!effectiveDefinitionId || !sourceSchemaId || !targetSchemaId}
+                onClick={() => void loadMappingSuggestionsForSchemas(sourceSchemaId, targetSchemaId)}
+                type="button"
+              >
+                Load backend suggestions
+              </Button>
               {mappingSuggestionItems.length ? (
                 mappingSuggestionItems.map((suggestion) => (
                   <Button

@@ -180,6 +180,18 @@ export type IntegrationResponseHandler = {
   updated_at: string | null;
 };
 
+export type IntegrationMappingSuggestion = {
+  id: string;
+  definition_id: string;
+  source_schema_document_id: string;
+  target_schema_document_id: string;
+  source_path: string;
+  target_path: string;
+  transform_type: string;
+  confidence: number;
+  reason: string;
+};
+
 export type IntegrationArtifact = {
   id: string;
   definition_id: string;
@@ -381,6 +393,7 @@ export type IntegrationJoinsResponse = PageResponse<IntegrationJoinRule>;
 export type IntegrationJoinBindingsResponse = PageResponse<IntegrationJoinBinding>;
 export type IntegrationLookupsResponse = PageResponse<IntegrationLookupDefinition>;
 export type IntegrationResponseHandlersResponse = PageResponse<IntegrationResponseHandler>;
+export type IntegrationMappingSuggestionsResponse = PageResponse<IntegrationMappingSuggestion>;
 export type IntegrationArtifactsResponse = PageResponse<IntegrationArtifact> & {
   definition_id: string;
 };

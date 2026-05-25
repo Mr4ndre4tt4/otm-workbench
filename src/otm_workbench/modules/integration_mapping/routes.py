@@ -80,6 +80,7 @@ from otm_workbench.modules.integration_mapping.systems import (
     serialize_integration_endpoint,
     serialize_integration_system,
 )
+from otm_workbench.modules.integration_mapping.suggestions import suggest_integration_mappings
 from otm_workbench.modules.integration_mapping.transform_types import (
     list_active_transform_types,
     serialize_transform_type,
@@ -706,6 +707,33 @@ def list_schema_nodes(
         .all()
     )
     items = [serialize_schema_node(node) for node in nodes]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/definitions/{definition_id}/mapping-suggestions")
+def list_mapping_suggestions(
+    definition_id: str,
+    source_schema_document_id: str,
+    target_schema_document_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        items = suggest_integration_mappings(
+            db,
+            definition_id=definition.id,
+            source_schema_document_id=source_schema_document_id,
+            target_schema_document_id=target_schema_document_id,
+        )
+    except ValueError as exc:
+        raise api_error(
+            400,
+            "INTEGRATION_MAPPING_SUGGESTION_SCHEMA_DOCUMENT_INVALID",
+            "Mapping suggestion schema documents must belong to the Integration Definition.",
+        ) from exc
     return PageResponse(items=items, total=len(items))
 
 

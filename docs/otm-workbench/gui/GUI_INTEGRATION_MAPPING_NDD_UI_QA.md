@@ -53,7 +53,8 @@ Delivered behavior observed through the UI:
 - Definition creation works.
 - Source and target payload artifact creation works.
 - XML/JSON schema parsing works for the simplified synthetic payload.
-- Mapping rows can be created from schema node selectors.
+- Mapping rows can be created from schema node selectors or from backend-owned
+  mapping suggestions after selecting source/target schemas.
 - Loop, semantic loop join, multi-hop join binding, alias-backed mappings, and
   loop-scoped lookup metadata can be created.
 - Validation passes when referenced paths exist.
@@ -82,6 +83,9 @@ Current accelerator value:
 - Useful to prevent raw payload/spec material from living only in documents.
 - Useful as a first executable test harness for header + Entregas[] mappings
   when the scenario fits the supported transforms and alias model.
+- Useful as a first path-hunting accelerator because mapping suggestions are now
+  served by the backend from parsed schema documents, not inferred only in the
+  browser.
 ```
 
 Current limits:
@@ -91,7 +95,8 @@ Current limits:
   transformation without external interpretation.
 - Not yet enough to cover all complex transformations from the reference
   mapping: filtered refnums, date formatting, aggregations, response handling,
-  and deeper required target semantics beyond the first backend-owned checklist.
+- Suggestion scoring is still intentionally simple and needs richer Catalog/Data
+  Dictionary semantics before it can be treated as a smart mapper.
 - Negative browser recovery for invalid alias/path authoring is covered by
   `OTM-153`.
 ```
@@ -197,6 +202,10 @@ Recommended next backlog sequence:
     delivered source/target node search plus an apply-suggestion action that
     fills source path, target path, and transform type without auto-creating a
     mapping.
+16. Move mapping suggestions to a backend-owned contract. `OTM-159` delivered
+    `GET /definitions/{definition_id}/mapping-suggestions`, schema ownership
+    validation, frontend consumption through an explicit `Load backend
+    suggestions` action, and browser QA that applies the returned suggestion.
 ```
 
 ## OTM-152 Evidence

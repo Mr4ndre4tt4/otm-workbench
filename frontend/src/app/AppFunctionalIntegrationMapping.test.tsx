@@ -77,6 +77,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     const payloadRequests: unknown[] = [];
     const schemaRequests: string[] = [];
     const mappingRequests: unknown[] = [];
+    const mappingSuggestionRequests: string[] = [];
     const deletedMappingRequests: string[] = [];
     const loopRequests: unknown[] = [];
     const joinRequests: unknown[] = [];
@@ -537,6 +538,34 @@ describe("Functional Integration Mapping Studio journey", () => {
       if (url.endsWith("/api/v1/modules/integration-mapping/schema-documents/schema_target/nodes")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse({ items: targetSchemaNodes, total: targetSchemaNodes.length, page: 1, page_size: 50 }));
+      }
+      if (url.includes("/api/v1/modules/integration-mapping/definitions/") && url.includes("/mapping-suggestions")) {
+        const requestUrl = new URL(url, "http://localhost");
+        mappingSuggestionRequests.push(url);
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        expect(url).toContain("/api/v1/modules/integration-mapping/definitions/definition_1/mapping-suggestions");
+        expect(requestUrl.searchParams.get("source_schema_document_id")).toBe("schema_source");
+        expect(requestUrl.searchParams.get("target_schema_document_id")).toBe("schema_target");
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                id: "schema_source:/Transmission/Shipment/ShipmentGid->schema_target:$.header.shipmentId",
+                definition_id: "definition_1",
+                source_schema_document_id: "schema_source",
+                target_schema_document_id: "schema_target",
+                source_path: "/Transmission/Shipment/ShipmentGid",
+                target_path: "$.header.shipmentId",
+                transform_type: "DIRECT",
+                confidence: 0.9,
+                reason: "Normalized schema leaf names match: shipmentid"
+              }
+            ],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
       }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/mappings")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -1010,15 +1039,16 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.queryByLabelText("Integration system authoring")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Integration definition authoring")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Integration payload and schema authoring")).not.toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText("Source schema"), "schema_source");
-    await userEvent.selectOptions(screen.getByLabelText("Target schema"), "schema_target");
+    fireEvent.change(screen.getByLabelText("Source schema"), { target: { value: "schema_source" } });
+    fireEvent.change(screen.getByLabelText("Target schema"), { target: { value: "schema_target" } });
+    expect(screen.getByLabelText("Source schema")).toHaveValue("schema_source");
+    expect(screen.getByLabelText("Target schema")).toHaveValue("schema_target");
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
     await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
-      })
-    );
+    await userEvent.selectOptions(await screen.findByLabelText("Mapping source node", { exact: true }), "/Transmission/Shipment/ShipmentGid");
+    await userEvent.selectOptions(await screen.findByLabelText("Mapping target node", { exact: true }), "$.header.shipmentId");
+    fireEvent.change(screen.getByLabelText("Mapping source node search"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Mapping target node search"), { target: { value: "" } });
     expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
     expect(screen.getByLabelText("Target path")).toHaveValue("$.header.shipmentId");
     expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");
