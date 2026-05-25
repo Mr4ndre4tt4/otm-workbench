@@ -27,6 +27,8 @@ from otm_workbench.platform.jobs import audit_job, dumps_limited_json_object, em
 SOURCE_MODULE = "integration_mapping"
 PREVIEW_JOB_TYPE = "INTEGRATION_MAPPING_PREVIEW"
 
+JoinAliasContext = dict[str, dict[str, object]]
+
 
 def preview_counts(db: Session, definition_id: str) -> dict[str, int]:
     return {
@@ -296,7 +298,16 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     join_provenance = materialize_scalar_join_guards(db, joins=joins)
     if join_provenance is None:
         return None
-    if not materialize_scalar_mappings(db, mappings=mappings, target_json=target_json, field_provenance=field_provenance):
+    multi_hop_join_provenance, join_alias_contexts = materialize_multi_hop_join_bindings(db, bindings=join_bindings)
+    if multi_hop_join_provenance is None:
+        return None
+    if not materialize_scalar_mappings(
+        db,
+        mappings=mappings,
+        target_json=target_json,
+        field_provenance=field_provenance,
+        join_alias_contexts=join_alias_contexts,
+    ):
         return None
     if lookups and not materialize_scalar_lookups(
         db,
@@ -313,9 +324,6 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     }
     if join_provenance:
         preview["join_provenance"] = join_provenance
-    multi_hop_join_provenance = materialize_multi_hop_join_bindings(db, bindings=join_bindings)
-    if multi_hop_join_provenance is None:
-        return None
     if multi_hop_join_provenance:
         preview["multi_hop_join_provenance"] = multi_hop_join_provenance
     return preview
@@ -376,20 +384,21 @@ def materialize_multi_hop_join_bindings(
     db: Session,
     *,
     bindings: list[IntegrationJoinBinding],
-) -> list[dict[str, object]] | None:
+) -> tuple[list[dict[str, object]] | None, JoinAliasContext]:
     provenance: list[dict[str, object]] = []
+    alias_contexts: JoinAliasContext = {}
     for binding in bindings:
         source_payload = document_payload_content(db, binding.source_schema_document_id)
         if source_payload is None:
-            return None
+            return None, {}
         source_format, source_content = source_payload
         if source_format != "XML":
-            return None
+            return None, {}
         for hop in binding_hops(db, binding.id):
             left_items = xml_elements_from_collection_path(source_content, hop.left_collection_path)
             right_items = xml_elements_from_collection_path(source_content, hop.right_collection_path)
             if not left_items or not right_items:
-                return None
+                return None, {}
             matched = False
             for left_index, left_item in enumerate(left_items):
                 left_value = xml_child_value(left_item, hop.left_value_path)
@@ -401,10 +410,19 @@ def materialize_multi_hop_join_bindings(
                         continue
                     result = evaluate_join_operator(hop.operator, left_value, right_value)
                     if result is None:
-                        return None
+                        return None, {}
                     if not result:
                         continue
                     matched = True
+                    alias_contexts.setdefault(
+                        hop.result_alias,
+                        {
+                            "binding_id": binding.id,
+                            "collection_path": hop.right_collection_path,
+                            "element": right_item,
+                            "item_index": right_index,
+                        },
+                    )
                     provenance.append(
                         {
                             "binding_id": binding.id,
@@ -423,8 +441,8 @@ def materialize_multi_hop_join_bindings(
                         }
                     )
             if not matched:
-                return None
-    return provenance
+                return None, {}
+    return provenance, alias_contexts
 
 
 def materialize_scalar_mappings(
@@ -433,7 +451,9 @@ def materialize_scalar_mappings(
     mappings: list[IntegrationMapping],
     target_json: dict[str, object],
     field_provenance: list[dict[str, object]],
+    join_alias_contexts: JoinAliasContext | None = None,
 ) -> bool:
+    join_alias_contexts = join_alias_contexts or {}
     for mapping in mappings:
         if (
             mapping.transform_type
@@ -449,7 +469,15 @@ def materialize_scalar_mappings(
         target_format, _target_content = target_payload
         if source_format != "XML" or target_format != "JSON":
             return False
-        value, value_policy = mapping_value_from_source(mapping, source_content)
+        transform_config = parse_transform_config(mapping.transform_config_json)
+        alias_value = mapping_value_from_join_alias(mapping, join_alias_contexts, config=transform_config)
+        if alias_value is None:
+            if str(transform_config.get("source_alias") or "").strip():
+                return False
+            value, value_policy = mapping_value_from_source(mapping, source_content)
+            alias_provenance: dict[str, object] = {}
+        else:
+            value, value_policy, alias_provenance = alias_value
         if value in (None, ""):
             return False
         set_json_path_value(target_json, mapping.target_path, value)
@@ -460,9 +488,44 @@ def materialize_scalar_mappings(
                 "target_path": mapping.target_path,
                 "transform_type": mapping.transform_type,
                 "value_policy": value_policy,
+                **alias_provenance,
             }
         )
     return bool(field_provenance)
+
+
+def mapping_value_from_join_alias(
+    mapping: IntegrationMapping,
+    join_alias_contexts: JoinAliasContext,
+    *,
+    config: dict[str, object] | None = None,
+) -> tuple[object | None, str, dict[str, object]] | None:
+    config = config or parse_transform_config(mapping.transform_config_json)
+    source_alias = str(config.get("source_alias") or "").strip()
+    if not source_alias:
+        return None
+    context = join_alias_contexts.get(source_alias)
+    if context is None:
+        return None
+    if mapping.transform_type != "DIRECT":
+        return None
+    collection_path = str(context["collection_path"])
+    if not mapping.source_path.startswith(f"{collection_path}/"):
+        return None
+    relative_path = mapping.source_path.removeprefix(f"{collection_path}/")
+    element = context["element"]
+    if not isinstance(element, ET.Element):
+        return None
+    value = xml_child_value(element, relative_path)
+    item_index = int(context["item_index"])
+    return (
+        value,
+        "copied_from_join_binding_alias",
+        {
+            "source_alias": source_alias,
+            "source_item_path": f"{collection_path}[{item_index + 1}]/{relative_path}",
+        },
+    )
 
 
 def materialize_scalar_lookups(

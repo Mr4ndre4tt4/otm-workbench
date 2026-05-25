@@ -193,3 +193,117 @@ def test_preview_integration_definition_emits_multi_hop_join_binding_provenance(
             "result": True,
         },
     ]
+
+
+def test_preview_integration_definition_uses_join_binding_alias_for_downstream_mapping(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_alias.json",
+        content='{"header":{"shipmentId":"","accessKey":""}}',
+    )
+    binding = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/join-bindings",
+        json=join_binding_payload(source),
+        headers=admin_header,
+    )
+    scalar_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.shipmentId",
+            "transform_type": "DIRECT",
+            "description": "Scalar shipment id mapping.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    alias_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.header.accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {
+                "source_alias": "ship_unit_release",
+            },
+            "description": "Read Release data from the explicit join-binding alias.",
+            "sequence_index": 2,
+        },
+        headers=admin_header,
+    )
+    assert binding.status_code == 200
+    assert scalar_mapping.status_code == 200
+    assert alias_mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    preview = response.json()["preview"]
+    assert preview["target_json"] == {
+        "header": {
+            "shipmentId": "OTM1.SHIPMENT_001",
+            "accessKey": "KEY-001",
+        }
+    }
+    assert {
+        "mapping_id": alias_mapping.json()["id"],
+        "source_alias": "ship_unit_release",
+        "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+        "source_item_path": "/Transmission/Shipment/Release[1]/ReleaseRefnum/ReleaseRefnumValue",
+        "target_path": "$.header.accessKey",
+        "transform_type": "DIRECT",
+        "value_policy": "copied_from_join_binding_alias",
+    } in preview["field_provenance"]
+
+
+def test_preview_integration_definition_rejects_missing_join_binding_alias(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_missing_alias.json",
+        content='{"header":{"accessKey":""}}',
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.header.accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {
+                "source_alias": "missing_alias",
+            },
+            "description": "Alias must be produced by a join binding.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["preview"]["mode"] == "synthetic_metadata_only"
+    assert "target_json" not in response.json()["preview"]

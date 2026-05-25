@@ -83,6 +83,9 @@ test pass/fail:
    Integration Mapping Rules UI. Delivered with React and browser functional
    QA.
 7. OTM-149: execute alias-scoped downstream mappings from join bindings.
+   First backend slice delivered for scalar mappings with
+   `transform_config.source_alias`; loop-scoped alias execution remains future
+   accelerator hardening.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```

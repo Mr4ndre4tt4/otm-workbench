@@ -208,10 +208,17 @@ No visual canvas is required for the first slice.
 - scalar executable preview provenance under multi_hop_join_provenance
 ```
 
-The current execution slice proves hop relationships and emits provenance. It
-does not yet route downstream field mappings through alias-scoped joined
-collections; that remains a UI/backend hardening step before calling the
-NDD-like scenario a full accelerator.
+`OTM-148` exposes the binding in the staged Rules UI.
+
+`OTM-149` adds the first alias-scoped mapping execution slice. Scalar mappings
+can set `transform_config.source_alias` to a join-binding hop alias such as
+`ship_unit_release`; preview then reads the mapping value from the matched
+joined collection item and emits `source_alias` plus `source_item_path` in
+field provenance. Missing aliases block executable preview instead of silently
+falling back to global XML traversal.
+
+Remaining accelerator hardening is loop-scoped alias mapping for full
+`Entregas[]` materialization and deeper semantic validation.
 
 Verification run:
 
