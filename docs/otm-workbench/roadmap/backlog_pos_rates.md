@@ -701,7 +701,7 @@ Backlog gerado pela rodada:
 19. Schema tree picker pesquisavel com contexto, tipo de no e caminho completo. [BACKLOG pos-MVP0]
 20. Review table agrupada por Header, Entregas, Lookups, Joins, Aggregations e Response Handling. [BACKLOG pos-MVP0]
 21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [ENTREGUE primeira fatia backend OTM-130: contrato persistido `transform_config`, validacao controlada e spec markdown em 2026-05-25; UI authoring segue backlog]
-22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [ENTREGUE primeira fatia backend OTM-133: execucao CONSTANT via transform_config.value no preview em 2026-05-25; demais transforms seguem backlog]
+22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [ENTREGUE fatias backend OTM-133/OTM-134: execucao CONSTANT e DATE_FORMAT OTM_GLOGDATE -> ISO8601 com timezone_offset explicito no preview em 2026-05-25; demais transforms seguem backlog]
 23. Mapping escopado por loop para campos de colecao como Entregas[]. [ENTREGUE primeira fatia backend OTM-132: single XML loop -> JSON array com proveniencia em 2026-05-25; loops aninhados e multi-hop seguem backlog]
 24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [BACKLOG pos-MVP0]
 25. Validacao semantica para join com mesmo path, target duplicado, target obrigatorio ausente, output lookup fora do escopo, config de transform ausente e readiness separado para spec vs preview. [ENTREGUE primeira fatia: join mesmo path, target duplicado, required targets NDD-like, lookup output scope, transform config missing e readiness spec/preview em 2026-05-25]

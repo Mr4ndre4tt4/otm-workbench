@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import re
 import xml.etree.ElementTree as ET
 
 from sqlalchemy.orm import Session
@@ -166,7 +167,29 @@ def mapping_value_from_source(mapping: IntegrationMapping, source_content: str) 
     if mapping.transform_type == "CONSTANT":
         config = parse_transform_config(mapping.transform_config_json)
         return config.get("value"), "constant_from_transform_config"
+    if mapping.transform_type == "DATE_FORMAT":
+        raw_value = source_value_from_xml_path(source_content, mapping.source_path)
+        config = parse_transform_config(mapping.transform_config_json)
+        return format_date_value(raw_value, config), "date_format_from_transform_config"
     return None, None
+
+
+def format_date_value(value: object, config: dict[str, object]) -> str | None:
+    if not isinstance(value, str):
+        return None
+    source_format = str(config.get("source_format") or "").strip().upper()
+    target_format = str(config.get("target_format") or "").strip().upper()
+    timezone_offset = str(config.get("timezone_offset") or "").strip()
+    if source_format != "OTM_GLOGDATE" or target_format != "ISO8601":
+        return None
+    if not re.fullmatch(r"[+-]\d{2}:\d{2}", timezone_offset):
+        return None
+    if not re.fullmatch(r"\d{14}", value):
+        return None
+    return (
+        f"{value[0:4]}-{value[4:6]}-{value[6:8]}T"
+        f"{value[8:10]}:{value[10:12]}:{value[12:14]}{timezone_offset}"
+    )
 
 
 def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
@@ -197,7 +220,7 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
     for mapping in mappings:
-        if mapping.transform_type not in {"DIRECT", "CONSTANT"} or "[]" in mapping.target_path:
+        if mapping.transform_type not in {"DIRECT", "CONSTANT", "DATE_FORMAT"} or "[]" in mapping.target_path:
             return None
         source_payload = document_payload_content(db, mapping.source_schema_document_id)
         target_payload = document_payload_content(db, mapping.target_schema_document_id)
