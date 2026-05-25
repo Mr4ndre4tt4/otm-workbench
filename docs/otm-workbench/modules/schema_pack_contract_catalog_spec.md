@@ -505,6 +505,8 @@ Current Catalog Core GUI slice delivered:
 - schema root inspector action that fetches
   /catalog/schema-roots/{schema_root_id}/paths only after the user selects a
   root;
+- schema path search sends the user query back to the Catalog API instead of
+  applying hidden frontend filtering;
 - selected macro-object schema links from Data Dictionary cross-check;
 - no frontend inference of root aliases, readiness, confidence, or reference
   status.

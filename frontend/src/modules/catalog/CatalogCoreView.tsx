@@ -67,6 +67,7 @@ export function CatalogCoreView({ token }: { token: string }) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [runningValidation, setRunningValidation] = useState<string | null>(null);
   const [selectedSchemaRootId, setSelectedSchemaRootId] = useState<string | null>(null);
+  const [schemaPathQuery, setSchemaPathQuery] = useState("");
   const macroItems = macroObjects.data?.items ?? [];
   const effectiveMacroCode = selectedMacroCode ?? macroItems[0]?.code ?? null;
   const macroDetail = useCatalogMacroObjectDetail(token, effectiveMacroCode);
@@ -76,7 +77,7 @@ export function CatalogCoreView({ token }: { token: string }) {
   const schemaReadiness = useCatalogSchemaGuidanceReadiness(token);
   const envelopeRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
   const macroRoots = useCatalogSchemaRootsByRole(token, "MACRO_OBJECT");
-  const schemaRootPaths = useCatalogSchemaRootPaths(token, selectedSchemaRootId);
+  const schemaRootPaths = useCatalogSchemaRootPaths(token, selectedSchemaRootId, schemaPathQuery);
   const selectedMacro = macroDetail.data;
   const tableItems = macroTables.data?.items ?? [];
   const loadPlanItems = macroLoadPlan.data?.items ?? [];
@@ -261,7 +262,10 @@ export function CatalogCoreView({ token }: { token: string }) {
             <Button
               key={item.id}
               aria-pressed={selectedSchemaRootId === item.id}
-              onClick={() => setSelectedSchemaRootId(item.id)}
+              onClick={() => {
+                setSelectedSchemaRootId(item.id);
+                setSchemaPathQuery("");
+              }}
               type="button"
               variant={selectedSchemaRootId === item.id ? "primary" : "secondary"}
             >
@@ -280,6 +284,16 @@ export function CatalogCoreView({ token }: { token: string }) {
               </p>
             </div>
           </div>
+          {selectedSchemaRoot ? (
+            <label className="catalog-schema-path-search">
+              Schema path search
+              <input
+                value={schemaPathQuery}
+                onChange={(event) => setSchemaPathQuery(event.target.value)}
+                placeholder="Search indexed paths"
+              />
+            </label>
+          ) : null}
           <DetailList
             ariaLabel="Selected schema root paths"
             emptyText={

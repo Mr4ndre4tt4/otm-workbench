@@ -84,10 +84,14 @@ export function useCatalogSchemaRootsByRole(token: string | null, schemaGuidance
   });
 }
 
-export function useCatalogSchemaRootPaths(token: string | null, schemaRootId: string | null) {
+export function useCatalogSchemaRootPaths(token: string | null, schemaRootId: string | null, query = "") {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("query", query.trim());
+  const queryString = params.toString();
+  const suffix = queryString ? `?${queryString}` : "";
   return useQuery({
-    queryKey: ["catalog", "schema-roots", schemaRootId, "paths"],
-    queryFn: () => apiGet<CatalogSchemaPathsResponse>(`/api/v1/catalog/schema-roots/${schemaRootId}/paths`, { token }),
+    queryKey: ["catalog", "schema-roots", schemaRootId, "paths", query.trim()],
+    queryFn: () => apiGet<CatalogSchemaPathsResponse>(`/api/v1/catalog/schema-roots/${schemaRootId}/paths${suffix}`, { token }),
     enabled: Boolean(token && schemaRootId)
   });
 }

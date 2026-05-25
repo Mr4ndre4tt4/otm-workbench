@@ -603,6 +603,25 @@
   padding-top: 12px;
 }
 
+.catalog-schema-path-search {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalog-schema-path-search input {
+  min-height: 38px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+}
+
 .catalog-validation-form {
   display: grid;
   align-content: start;

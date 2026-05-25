@@ -392,7 +392,7 @@ function schemaRootsByRole(role: string) {
   };
 }
 
-function schemaRootPaths(schemaRootId: string) {
+function schemaRootPaths(schemaRootId: string, query = "") {
   const paths = {
     root_transmission: [
       {
@@ -427,11 +427,13 @@ function schemaRootPaths(schemaRootId: string) {
       }
     ]
   };
+  const allItems = paths[schemaRootId as keyof typeof paths] ?? [];
+  const items = query ? allItems.filter((item) => item.path.includes(query)) : allItems;
   return {
-    items: paths[schemaRootId as keyof typeof paths] ?? [],
-    total: paths[schemaRootId as keyof typeof paths]?.length ?? 0,
+    items,
+    total: items.length,
     page: 1,
-    page_size: paths[schemaRootId as keyof typeof paths]?.length ?? 0
+    page_size: items.length
   };
 }
 
@@ -446,6 +448,7 @@ describe("Functional Catalog journey", () => {
     const tableValidationRequests: unknown[] = [];
     const columnValidationRequests: unknown[] = [];
     const referenceValidationRequests: unknown[] = [];
+    const schemaPathRequests: string[] = [];
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -497,9 +500,11 @@ describe("Functional Catalog journey", () => {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
       }
-      if (url.endsWith("/api/v1/catalog/schema-roots/root_transmission/paths")) {
+      if (url.includes("/api/v1/catalog/schema-roots/root_transmission/paths")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        return Promise.resolve(jsonResponse(schemaRootPaths("root_transmission")));
+        schemaPathRequests.push(url);
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootPaths("root_transmission", parsedUrl.searchParams.get("query") ?? "")));
       }
       if (url.includes("/api/v1/catalog/schema-roots")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -599,6 +604,10 @@ describe("Functional Catalog journey", () => {
     expect(await within(await screen.findByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionHeader")).toBeInTheDocument();
     expect(within(screen.getByLabelText("Selected schema root paths")).getByText("/Transmission/TransmissionBody")).toBeInTheDocument();
     expect(screen.getByText("Synthetic repeatable transmission body path.")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Schema path search"), "Body");
+    expect(await within(screen.getByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionBody")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Selected schema root paths")).queryByText("/Transmission/TransmissionHeader")).not.toBeInTheDocument();
+    expect(schemaPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=Body"))).toBe(true);
     expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object load plan")).findByText("RATE_OFFERING")).toBeInTheDocument();
 
