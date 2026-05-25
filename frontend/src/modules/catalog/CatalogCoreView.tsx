@@ -74,6 +74,20 @@ export function CatalogCoreView({ token }: { token: string }) {
   const cutoverMacroCount = macroItems.filter((item) => item.allow_cutover).length;
   const validatedTableCount = tableItems.filter((item) => item.validated_by_datadict).length;
 
+  function clearCatalogValidationResults() {
+    setTableValidation(null);
+    setColumnValidation(null);
+    setReferenceValidation(null);
+    setValidationError(null);
+    setRunningValidation(null);
+  }
+
+  function handleSelectMacroObject(macroCode: string) {
+    if (macroCode === effectiveMacroCode) return;
+    clearCatalogValidationResults();
+    setSelectedMacroCode(macroCode);
+  }
+
   if (macroObjects.isLoading) {
     return <StatePanel>Loading OTM Catalog Core...</StatePanel>;
   }
@@ -144,11 +158,7 @@ export function CatalogCoreView({ token }: { token: string }) {
     setReferenceFieldName(defaultCatalogValidation.referenceFieldName);
     setReferenceValue(defaultCatalogValidation.referenceValue);
     setReferenceDomainName(defaultCatalogValidation.referenceDomainName);
-    setTableValidation(null);
-    setColumnValidation(null);
-    setReferenceValidation(null);
-    setValidationError(null);
-    setRunningValidation(null);
+    clearCatalogValidationResults();
   }
 
   return (
@@ -328,7 +338,7 @@ export function CatalogCoreView({ token }: { token: string }) {
             subtitle: item.name,
             title: item.code
           }))}
-          onSelect={setSelectedMacroCode}
+          onSelect={handleSelectMacroObject}
           selectedId={effectiveMacroCode}
         />
       </ModuleWorkspaceLayout>

@@ -94,6 +94,11 @@ async function run() {
     }
   });
   const context = await seedSyntheticContext(token);
+  const macroObjects = await apiRequest("/api/v1/catalog/macro-objects", { token });
+  const alternateMacroCode = macroObjects.items?.find((item) => item.code !== "RATE_RECORD")?.code;
+  if (!alternateMacroCode) {
+    throw new Error("Catalog browser functional QA requires a second macro object for macro-switch recovery.");
+  }
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -154,6 +159,19 @@ async function run() {
     await page.getByText("Reference validation: ERROR").waitFor();
     await page.getByText(/outside|not found|does not exist|not allowed/i).waitFor();
 
+    await page.getByLabel("Catalog macro objects").getByRole("button", { name: new RegExp(alternateMacroCode) }).click();
+    if (await page.getByText("Reference validation: ERROR").isVisible().catch(() => false)) {
+      throw new Error("Reference validation result stayed visible after selecting another macro object.");
+    }
+    await page
+      .getByLabel("Selected catalog macro object")
+      .locator(".detail-stack > div")
+      .first()
+      .getByText(alternateMacroCode)
+      .waitFor();
+    await page.getByLabel("Catalog macro objects").getByRole("button", { name: /RATE_RECORD/ }).click();
+    await page.getByLabel("Selected macro object tables").getByText("RATE_GEO_COST", { exact: true }).waitFor();
+
     await page.getByRole("button", { name: "Reset catalog validation" }).click();
     await page.getByLabel("Table name").evaluate((element) => {
       if (element.value !== "RATE_GEO_COST") throw new Error(`Unexpected table reset value: ${element.value}`);
@@ -193,9 +211,10 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "catalog-macro-load-plan-table-column-reference-validation",
+          journey: "catalog-macro-load-plan-table-column-reference-validation-switch-recovery",
           baseUrl,
           apiBaseUrl,
+          alternate_macro_code: alternateMacroCode,
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id

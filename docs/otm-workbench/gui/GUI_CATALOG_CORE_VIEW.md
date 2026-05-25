@@ -35,11 +35,15 @@ The screen uses shared components:
 - DetailList for load plan dependency/target steps;
 - Catalog validation reset action to restore the default synthetic table,
   column, and reference fields and clear stale validation results.
+- Macro-object switch recovery clears route-session table, column, reference,
+  error, and running validation results before loading the newly selected
+  backend macro object.
 ```
 
 The first selected macro object defaults to the first backend item. Selecting
 another macro object updates detail, table, and load plan queries through
-backend-owned codes.
+backend-owned codes and clears validation results that belonged to the previous
+macro object context.
 
 ## Safety
 
@@ -61,8 +65,9 @@ Commands executed:
 
 ```text
 cd frontend
-npm run test -- App.test.tsx
+npm run test -- AppFunctionalCatalog.test.tsx
+npm run qa:functional:catalog:browser
 npm run lint
-npm run test
 npm run build
+python -m pytest tests/test_catalog_core.py -q
 ```

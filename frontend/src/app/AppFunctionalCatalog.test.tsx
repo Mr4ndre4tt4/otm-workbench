@@ -189,6 +189,59 @@ function rateRecordLoadPlan() {
   };
 }
 
+function regionDetail() {
+  return {
+    ...macroObjectSummary().items[1],
+    tables: [],
+    dependencies: []
+  };
+}
+
+function regionTables() {
+  return {
+    items: [
+      {
+        id: "macro_table_region",
+        table_name: "REGION",
+        relationship_role: "TARGET",
+        is_primary_table: true,
+        is_required: true,
+        data_category: "MASTER_DATA",
+        validated_by_datadict: true,
+        allow_csvutil: true,
+        allow_cutover: true
+      }
+    ],
+    total: 1,
+    page: 1,
+    page_size: 50
+  };
+}
+
+function regionLoadPlan() {
+  return {
+    macro_object_code: "REGION",
+    items: [
+      {
+        macro_object_code: "REGION",
+        macro_object_name: "Region",
+        dependency_role: "TARGET",
+        dependency_type: "TARGET",
+        is_required: true,
+        tables: ["REGION"],
+        table_count: 1,
+        all_tables_validated: true
+      }
+    ],
+    summary: {
+      step_count: 1,
+      dependency_count: 0,
+      target_table_count: 1,
+      all_target_tables_validated: true
+    }
+  };
+}
+
 describe("Functional Catalog journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -242,6 +295,18 @@ describe("Functional Catalog journey", () => {
       if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/load-plan")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(rateRecordLoadPlan()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionDetail()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/tables")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionTables()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/load-plan")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionLoadPlan()));
       }
       if (url.endsWith("/api/v1/catalog/validate/table")) {
         expect(init?.method).toBe("POST");
@@ -335,6 +400,13 @@ describe("Functional Catalog journey", () => {
     expect(await screen.findByText("Reference validation: ERROR")).toBeInTheDocument();
     expect(screen.getByText("Reference is outside the active domain scope.")).toBeInTheDocument();
     expect(referenceValidationRequests).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: /REGION/ }));
+    expect(screen.queryByText("Reference validation: ERROR")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reference is outside the active domain scope.")).not.toBeInTheDocument();
+    expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("REGION")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /RATE_RECORD/ }));
+    expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Reset catalog validation" }));
     expect(screen.getByLabelText("Table name")).toHaveValue("RATE_GEO_COST");
