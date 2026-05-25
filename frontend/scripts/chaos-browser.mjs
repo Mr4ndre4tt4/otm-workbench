@@ -110,6 +110,117 @@ async function seedIntegrationMappingChaosData(token) {
   return { alternate, primary, suffix };
 }
 
+async function seedSyntheticContext(token) {
+  const projects = await apiRequest("/api/v1/platform/projects", { token });
+  let project = projects.items?.[0];
+  if (!project) {
+    const workspace = await apiRequest("/api/v1/platform/workspaces", {
+      method: "POST",
+      token,
+      body: { name: "Synthetic QA Workspace" }
+    });
+    project = await apiRequest("/api/v1/platform/projects", {
+      method: "POST",
+      token,
+      body: { workspace_id: workspace.id, name: "Synthetic QA Project" }
+    });
+  }
+
+  const profiles = await apiRequest(`/api/v1/platform/profiles?project_id=${project.id}`, { token });
+  const profile =
+    profiles.items?.[0] ??
+    (await apiRequest("/api/v1/platform/profiles", {
+      method: "POST",
+      token,
+      body: { project_id: project.id, name: "Synthetic QA Profile" }
+    }));
+
+  const environments = await apiRequest(`/api/v1/platform/environments?project_id=${project.id}`, { token });
+  const environment =
+    environments.items?.[0] ??
+    (await apiRequest("/api/v1/platform/environments", {
+      method: "POST",
+      token,
+      body: { project_id: project.id, name: "DEV", environment_type: "DEV" }
+    }));
+
+  await apiRequest("/api/v1/platform/active-context", {
+    method: "POST",
+    token,
+    body: {
+      project_id: project.id,
+      profile_id: profile.id,
+      environment_id: environment.id,
+      domain_name: "otm1",
+      can_view_all_domains: false
+    }
+  });
+
+  return { environment, profile, project };
+}
+
+async function seedLoadPlanPackage(token, suffix) {
+  const xid = `LP_CHAOS_${suffix}`;
+  const batch = await apiRequest("/api/v1/modules/rates/batches", {
+    method: "POST",
+    token,
+    body: {
+      scenario_code: "ACCESSORIAL_ONLY",
+      name: `Synthetic Load Plan chaos batch ${suffix}`,
+      domain_name: "OTM1"
+    }
+  });
+  await apiRequest(`/api/v1/modules/rates/batches/${batch.id}/tables`, {
+    method: "POST",
+    token,
+    body: {
+      tables: [
+        {
+          table_name: "ACCESSORIAL_COST",
+          rows: [
+            {
+              ACCESSORIAL_COST_GID: `OTM1.${xid}`,
+              ACCESSORIAL_COST_XID: xid
+            }
+          ]
+        }
+      ]
+    }
+  });
+  await apiRequest(`/api/v1/modules/rates/batches/${batch.id}/csv-preview`, { method: "POST", token });
+  await apiRequest(`/api/v1/modules/rates/batches/${batch.id}/export-csv`, { method: "POST", token });
+  await apiRequest(`/api/v1/modules/rates/batches/${batch.id}/approve`, {
+    method: "POST",
+    token,
+    body: { approval_note: "Reviewed for synthetic Load Plan chaos QA." }
+  });
+  const loadPlanPackage = await apiRequest(`/api/v1/modules/load-plan/packages/from-rates/${batch.id}`, {
+    method: "POST",
+    token
+  });
+  const evidence = await apiRequest("/api/v1/platform/evidence", {
+    method: "POST",
+    token,
+    body: {
+      source_module: "load_plan",
+      evidence_type: "cutover_table_readiness",
+      summary_json: JSON.stringify({
+        source_entity_type: "browser_chaos",
+        package_id: loadPlanPackage.id,
+        table_name: "ACCESSORIAL_COST"
+      })
+    }
+  });
+  return { batch, evidence, package: loadPlanPackage };
+}
+
+async function seedLoadPlanChaosData(token) {
+  const suffix = Date.now().toString(36).toUpperCase();
+  const primary = await seedLoadPlanPackage(token, suffix);
+  const alternate = await seedLoadPlanPackage(token, `${suffix}_ALT`);
+  return { alternate, primary, suffix };
+}
+
 async function seedAssetsChaosData(token) {
   const suffix = Date.now().toString(36).toUpperCase();
   const primary = await apiRequest("/api/v1/modules/assets/assets", {
@@ -246,6 +357,28 @@ async function assertSelectValue(locator, expected, description) {
   }
 }
 
+async function waitForCsvutilBuildResult(page) {
+  try {
+    await page.getByText(/^CSVUTIL build .* is BUILT\.$/).waitFor({ timeout: 10000 });
+    return;
+  } catch (error) {
+    const visibleText = await page.locator("body").innerText().catch(() => "");
+    const csvutilLines = visibleText
+      .split("\n")
+      .filter((line) => /CSVUTIL|eligible|evidence|required|failed|error|build/i.test(line))
+      .join("\n");
+    throw new Error(
+      [
+        "CSVUTIL build success message did not appear.",
+        csvutilLines ? `Visible diagnostic lines:\n${csvutilLines}` : "",
+        error instanceof Error ? `Original wait error: ${error.message}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+}
+
 async function runIntegrationMappingChaosJourney(page, seeded) {
   await page.locator('a[href="/integration-mapping"]').click();
   await page.getByRole("heading", { name: "Integration Mapping Studio" }).waitFor();
@@ -360,6 +493,67 @@ async function runAssetsChaosJourney(page, seeded) {
   await page.getByLabel("Selected asset", { exact: true }).getByText(seeded.alternate.name).waitFor();
 }
 
+async function runLoadPlanChaosJourney(page, seeded) {
+  await page.locator('a[href="/load-plan"]').click();
+  await page.getByRole("heading", { name: "Load Plan" }).waitFor();
+  await page.getByLabel("Load Plan workflow").waitFor();
+  await page.getByLabel("Load plan packages").getByText("rates_csv_zip").first().waitFor();
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "Checklist" }).click();
+  await page.getByRole("button", { name: "Create checklist" }).click();
+  await page.getByText("Checklist MVP0_STANDARD_CUTOVER created for selected package.").waitFor();
+  const checklistPanel = page.getByLabel("Cutover checklist review queue");
+  await checklistPanel.getByText("ACCESSORIAL_COST").waitFor();
+  await page.getByLabel("Evidence id").fill(seeded.alternate.evidence.id);
+  await checklistPanel.getByRole("button", { name: "Mark CSVUTIL ready" }).first().click();
+  await page.getByText("Checklist item updated.").waitFor();
+  await page.getByLabel("Evidence id").fill("DIRTY_EVIDENCE_THAT_MUST_NOT_LEAK");
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "Readiness" }).click();
+  await page.getByRole("button", { name: "Generate readiness" }).click();
+  await page.getByText(/^Checklist readiness is (READY|BLOCKED|NEEDS_REVIEW)\.$/).waitFor();
+  await page.getByLabel("Cutover readiness summary").waitFor();
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "CSVUTIL" }).click();
+  await page.getByRole("button", { name: "Build CSVUTIL" }).click();
+  await waitForCsvutilBuildResult(page);
+  await page.getByLabel("CSVUTIL build artifacts").waitFor();
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "Packages" }).click();
+  await page.getByLabel("Load plan packages").locator('.module-row[aria-pressed="false"]').first().click();
+  await page.getByLabel("Selected load plan package").getByText("ACCESSORIAL_COST").waitFor();
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "Checklist" }).click();
+  await assertControlValue(page.getByLabel("Evidence id"), "SYN_EVIDENCE_001", "Load Plan evidence draft after package switch");
+  if (await page.getByText("Checklist item updated.").isVisible().catch(() => false)) {
+    throw new Error("Load Plan kept stale checklist success feedback after switching packages.");
+  }
+  if (await page.getByLabel("Cutover checklist items").isVisible().catch(() => false)) {
+    throw new Error("Load Plan kept stale checklist items after switching packages.");
+  }
+
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "Readiness" }).click();
+  if (await page.getByLabel("Cutover readiness counts").isVisible().catch(() => false)) {
+    throw new Error("Load Plan kept stale readiness summary after switching packages.");
+  }
+  await page.locator(".load-plan-workflow-step").filter({ hasText: "CSVUTIL" }).click();
+  if (await page.getByLabel("CSVUTIL artifact ids").isVisible().catch(() => false)) {
+    throw new Error("Load Plan kept stale CSVUTIL artifact ids after switching packages.");
+  }
+  if (await page.getByLabel("CSVUTIL build artifacts").getByText("CTL artifact").isVisible().catch(() => false)) {
+    throw new Error("Load Plan kept stale CSVUTIL artifact rows after switching packages.");
+  }
+  if (await page.getByRole("button", { name: "Build CSVUTIL" }).isEnabled()) {
+    throw new Error("Load Plan CSVUTIL build stayed enabled before creating a checklist for the new package.");
+  }
+
+  await page.locator('a[href="/home"]').click();
+  await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
+  await page.locator('a[href="/load-plan"]').click();
+  await page.getByRole("heading", { name: "Load Plan" }).waitFor();
+  await page.getByLabel("Load plan packages").getByText("rates_csv_zip").first().waitFor();
+}
+
 async function runOrderReleaseChaosJourney(page, seeded) {
   await page.locator('a[href="/order-release-generator"]').click();
   await page.getByRole("heading", { name: "Order Release Generator" }).waitFor();
@@ -468,7 +662,9 @@ async function run() {
       sidebar_mode: "expanded"
     }
   });
+  await seedSyntheticContext(token);
   const integrationMappingSeed = await seedIntegrationMappingChaosData(token);
+  const loadPlanSeed = await seedLoadPlanChaosData(token);
   const assetsSeed = await seedAssetsChaosData(token);
   const orderReleaseSeed = await seedOrderReleaseChaosData(token);
 
@@ -490,6 +686,7 @@ async function run() {
   try {
     await signIn(page);
     await runIntegrationMappingChaosJourney(page, integrationMappingSeed);
+    await runLoadPlanChaosJourney(page, loadPlanSeed);
     await runAssetsChaosJourney(page, assetsSeed);
     await runOrderReleaseChaosJourney(page, orderReleaseSeed);
 
@@ -511,6 +708,7 @@ async function run() {
           status: "passed",
           journeys: [
             "integration-mapping-out-of-order-definition-switch",
+            "load-plan-package-switch-checklist-readiness-csvutil",
             "assets-dirty-draft-file-link-selection-switch",
             "order-release-template-switch-dirty-row-preview-submit-guard"
           ],
@@ -518,6 +716,8 @@ async function run() {
           apiBaseUrl,
           primary_definition_code: integrationMappingSeed.primary.code,
           alternate_definition_code: integrationMappingSeed.alternate.code,
+          primary_load_plan_package_id: loadPlanSeed.primary.package.id,
+          alternate_load_plan_package_id: loadPlanSeed.alternate.package.id,
           primary_asset_name: assetsSeed.primary.name,
           alternate_asset_name: assetsSeed.alternate.name,
           primary_order_release_template_code: orderReleaseSeed.primary.code,
