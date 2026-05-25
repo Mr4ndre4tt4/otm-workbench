@@ -91,7 +91,7 @@ Current limits:
   transformation without external interpretation.
 - Not yet enough to cover all complex transformations from the reference
   mapping: filtered refnums, date formatting, aggregations, response handling,
-  and all required target semantics.
+  and deeper required target semantics beyond the first backend-owned checklist.
 - Negative browser recovery for invalid alias/path authoring is covered by
   `OTM-153`.
 ```
@@ -140,7 +140,7 @@ called complete for this class of integration:
 - Semantic validation for joins, loop scope, duplicate target fields, missing
   required target fields, and transform configuration. `OTM-151` delivered
   missing/out-of-scope alias blockers; fuller scenario required-field semantics
-  remain open.
+  got a first visible scenario-pack checklist in `OTM-154`.
 - Executable local preview that materializes synthetic target JSON from
   mappings, loops, joins, lookups, and transforms. First mixed
   header/Entregas[] alias-backed slice delivered by `OTM-152`.
@@ -181,6 +181,9 @@ Recommended next backlog sequence:
     path selection, reset/recovery, definition switching, and generated
     artifact review. `OTM-152` delivered the positive executable artifact
     review; `OTM-153` delivered negative alias/path browser recovery.
+11. Expose required target scenario packs in validation and UI. `OTM-154`
+    delivered the first backend-owned required target checklist for the
+    synthetic NDD-like target JSON.
 ```
 
 ## OTM-152 Evidence
@@ -221,4 +224,21 @@ creation. The script now:
 - Removes the invalid mapping through a backend-owned delete action.
 - Recreates the mapping with a release-scoped source path.
 - Validates and previews again without route reload.
+```
+
+## OTM-154 Evidence
+
+`OTM-154` made required target semantics visible instead of hidden in validation
+internals:
+
+```text
+- Validation now returns a `scenario_pack` object when the definition activates
+  the synthetic PlannedShipment -> External Delivery checklist.
+- The checklist includes required targets, covered/missing state, coverage
+  type, and missing target list.
+- The UI renders `Integration mapping required target checklist` in the
+  selected definition panel after validation.
+- Browser QA creates a separate synthetic scenario definition with
+  `EXTERNAL_DELIVERY_NDD`, validates missing targets, then adds mappings/loop
+  until the checklist is fully covered without route reload.
 ```

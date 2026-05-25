@@ -112,7 +112,7 @@ artifacts, not product source.
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
-| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, invalid mappings can be removed through a backend-owned action, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, mixed header + loop alias mappings, loop-scoped lookup values, and artifact-level executable JSON assertions for the synthetic NDD-like browser scenario. | To become a full accelerator for NDD-like mappings, it still needs richer required-field semantics, response handling, and more transform expression UI. |
+| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, invalid mappings can be removed through a backend-owned action, required target scenario packs are visible as a checklist, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, mixed header + loop alias mappings, loop-scoped lookup values, and artifact-level executable JSON assertions for the synthetic NDD-like browser scenario. | To become a full accelerator for NDD-like mappings, it still needs response handling and more transform expression UI. |
 | Admin Console | Browser QA passed | Functional setup, capability, feature flag, jobs and audit visibility. | Advanced edit/delete/pagination and volume management remain future. |
 
 ## 4. Findings Added To Pipeline
@@ -131,6 +131,7 @@ artifacts, not product source.
 | `OTM-151` | High | Alias-backed mappings now validate missing/out-of-scope aliases and the UI exposes an alias source selector during mapping authoring. |
 | `OTM-152` | High | Synthetic NDD-like browser scenario now downloads and inspects executable preview artifacts for mixed header + `Entregas[]` alias mappings and loop-scoped lookup output. |
 | `OTM-153` | High | Negative browser QA delivered for Integration Mapping alias/path recovery, blocked preview messaging, backend-owned mapping removal, and correction without route reload. |
+| `OTM-154` | High | Required target scenario-pack checklist delivered for synthetic NDD-like Integration Mapping validation and browser recovery. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 
 ## 5. Recommended Next Queue

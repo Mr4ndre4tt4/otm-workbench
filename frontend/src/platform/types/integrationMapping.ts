@@ -305,6 +305,7 @@ export type IntegrationValidationResult = {
   issue_count: number;
   issues?: unknown[];
   readiness?: IntegrationValidationReadiness;
+  scenario_pack?: IntegrationScenarioPack | null;
 };
 
 export type IntegrationValidationReadiness = {
@@ -312,6 +313,18 @@ export type IntegrationValidationReadiness = {
   preview_executable: boolean;
   specification_blockers: string[];
   preview_blockers: string[];
+};
+
+export type IntegrationScenarioPack = {
+  code: string;
+  name: string;
+  description: string;
+  missing_required_targets: string[];
+  required_targets: Array<{
+    path: string;
+    covered: boolean;
+    coverage_type: string;
+  }>;
 };
 
 export type IntegrationPreviewResult = {

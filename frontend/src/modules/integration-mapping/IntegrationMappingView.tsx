@@ -1015,9 +1015,24 @@ export function IntegrationMappingView({ token }: { token: string }) {
                         title: "Preview executable"
                       }
                     ]
-                  : []
+                : []
               }
             />
+            {validationResult?.scenario_pack ? (
+              <section aria-label="Integration mapping required target checklist" className="integration-generated-artifacts">
+                <h3>{validationResult.scenario_pack.name}</h3>
+                <DetailList
+                  ariaLabel="Integration mapping required target rows"
+                  emptyText="No required target rows returned for this scenario pack."
+                  items={validationResult.scenario_pack.required_targets.map((target) => ({
+                    id: target.path,
+                    meta: [target.coverage_type],
+                    status: target.covered ? "COVERED" : "MISSING",
+                    title: target.path
+                  }))}
+                />
+              </section>
+            ) : null}
             <DetailList
               ariaLabel="Selected definition payload artifacts"
               emptyText="No payload artifacts linked to this definition."

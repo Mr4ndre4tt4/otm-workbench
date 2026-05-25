@@ -268,6 +268,78 @@ def test_validate_integration_definition_reports_missing_required_targets_for_nd
     assert missing_paths == {"$.DataEmissao", "$.Entregas[]", "$.Entregas[].NumeroDocumento", "$.Entregas[].ChaveAcesso"}
 
 
+def test_validate_integration_definition_returns_required_target_scenario_pack(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentHeader>"
+            "<ShipmentGid><Gid><Xid>SHIP_SYN_001</Xid></Gid></ShipmentGid>"
+            "</ShipmentHeader>"
+            "<ShipmentStop><StopSequence>1</StopSequence></ShipmentStop>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="external_delivery_ndd_checklist.json",
+        content=(
+            '{"NumeroViagem":"","DataEmissao":"","Entregas":['
+            '{"NumeroDocumento":"","ChaveAcesso":""}]}'
+        ),
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            source_path="/Transmission/Shipment/ShipmentHeader/ShipmentGid/Gid/Xid",
+            target_path="$.NumeroViagem",
+        ),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    from otm_workbench.database import session_scope
+    from otm_workbench.models import IntegrationDefinition
+
+    with session_scope() as db:
+        row = db.get(IntegrationDefinition, definition["id"])
+        row.code = "PS_TO_EXTERNAL_DELIVERY_NDD_CHECKLIST"
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    scenario_pack = validation.json()["scenario_pack"]
+    assert scenario_pack["code"] == "PS_TO_EXTERNAL_DELIVERY_NDD"
+    assert scenario_pack["name"] == "PlannedShipment to External Delivery"
+    assert scenario_pack["missing_required_targets"] == [
+        "$.DataEmissao",
+        "$.Entregas[]",
+        "$.Entregas[].NumeroDocumento",
+        "$.Entregas[].ChaveAcesso",
+    ]
+    assert scenario_pack["required_targets"] == [
+        {"path": "$.NumeroViagem", "covered": True, "coverage_type": "mapping"},
+        {"path": "$.DataEmissao", "covered": False, "coverage_type": "missing"},
+        {"path": "$.Entregas[]", "covered": False, "coverage_type": "missing"},
+        {"path": "$.Entregas[].NumeroDocumento", "covered": False, "coverage_type": "missing"},
+        {"path": "$.Entregas[].ChaveAcesso", "covered": False, "coverage_type": "missing"},
+    ]
+
+
 def test_validate_integration_definition_reports_lookup_output_without_loop_scope(
     client,
     admin_header,

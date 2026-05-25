@@ -27,6 +27,12 @@ NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS = (
     "$.Entregas[].ChaveAcesso",
 )
 
+NDD_EXTERNAL_DELIVERY_SCENARIO_PACK = {
+    "code": "PS_TO_EXTERNAL_DELIVERY_NDD",
+    "name": "PlannedShipment to External Delivery",
+    "description": "Synthetic NDD-like required target checklist for PlannedShipment to external delivery JSON.",
+}
+
 SPECIFICATION_BLOCKING_ISSUE_CODES = {
     "INTEGRATION_VALIDATION_PATH_MISSING",
     "INTEGRATION_VALIDATION_CATALOG_INVALID",
@@ -311,10 +317,79 @@ def validate_duplicate_target_paths(mappings: list[IntegrationMapping]) -> list[
     return issues
 
 
+def required_target_scenario_pack_for_definition(definition: IntegrationDefinition) -> dict[str, str] | None:
+    normalized_code = definition.code.upper()
+    normalized_target_system = definition.target_system.upper()
+    if normalized_code.startswith("PS_TO_EXTERNAL_DELIVERY_NDD") or normalized_target_system in {
+        "EXTERNAL_DELIVERY_NDD",
+        "NDD_EXTERNAL_DELIVERY",
+    }:
+        return NDD_EXTERNAL_DELIVERY_SCENARIO_PACK
+    return None
+
+
 def required_target_paths_for_definition(definition: IntegrationDefinition) -> tuple[str, ...]:
-    if definition.code.upper().startswith("PS_TO_EXTERNAL_DELIVERY_NDD"):
+    if required_target_scenario_pack_for_definition(definition):
         return NDD_EXTERNAL_DELIVERY_REQUIRED_TARGETS
     return ()
+
+
+def required_target_coverage(
+    *,
+    definition: IntegrationDefinition,
+    mappings: list[IntegrationMapping],
+    loops: list[IntegrationLoopDefinition],
+    lookups: list[IntegrationLookupDefinition],
+) -> list[dict[str, object]]:
+    required_paths = required_target_paths_for_definition(definition)
+    mapping_paths = {mapping.target_path for mapping in mappings}
+    loop_paths = {loop.target_collection_path for loop in loops}
+    lookup_paths = {lookup.output_path for lookup in lookups}
+    coverage: list[dict[str, object]] = []
+    for target_path in required_paths:
+        if target_path in mapping_paths:
+            coverage_type = "mapping"
+        elif target_path in loop_paths:
+            coverage_type = "loop"
+        elif target_path in lookup_paths:
+            coverage_type = "lookup"
+        else:
+            coverage_type = "missing"
+        coverage.append(
+            {
+                "path": target_path,
+                "covered": coverage_type != "missing",
+                "coverage_type": coverage_type,
+            }
+        )
+    return coverage
+
+
+def scenario_pack_summary(
+    *,
+    definition: IntegrationDefinition,
+    mappings: list[IntegrationMapping],
+    loops: list[IntegrationLoopDefinition],
+    lookups: list[IntegrationLookupDefinition],
+) -> dict[str, object] | None:
+    scenario_pack = required_target_scenario_pack_for_definition(definition)
+    if scenario_pack is None:
+        return None
+    required_targets = required_target_coverage(
+        definition=definition,
+        mappings=mappings,
+        loops=loops,
+        lookups=lookups,
+    )
+    return {
+        **scenario_pack,
+        "required_targets": required_targets,
+        "missing_required_targets": [
+            str(item["path"])
+            for item in required_targets
+            if not item["covered"]
+        ],
+    }
 
 
 def validate_required_target_paths(
@@ -328,9 +403,16 @@ def validate_required_target_paths(
     if not required_paths:
         return []
 
-    covered_paths = {mapping.target_path for mapping in mappings}
-    covered_paths.update(loop.target_collection_path for loop in loops)
-    covered_paths.update(lookup.output_path for lookup in lookups)
+    covered_paths = {
+        str(item["path"])
+        for item in required_target_coverage(
+            definition=definition,
+            mappings=mappings,
+            loops=loops,
+            lookups=lookups,
+        )
+        if item["covered"]
+    }
 
     return [
         issue(
@@ -418,4 +500,10 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
         "issue_count": len(issues),
         "issues": [serialize_issue(validation_issue) for validation_issue in issues],
         "readiness": validation_readiness(issues),
+        "scenario_pack": scenario_pack_summary(
+            definition=definition,
+            mappings=mappings,
+            loops=loops,
+            lookups=lookups,
+        ),
     }
