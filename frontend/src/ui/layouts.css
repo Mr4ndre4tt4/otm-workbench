@@ -894,6 +894,30 @@
   margin-bottom: 12px;
 }
 
+.master-data-scenario-strip {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.master-data-scenario-strip label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.master-data-scenario-strip select,
+.master-data-author-grid select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
 .master-data-author-grid label {
   color: var(--muted);
   display: grid;

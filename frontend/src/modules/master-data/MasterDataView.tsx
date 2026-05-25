@@ -29,6 +29,7 @@ import {
   useMasterDataBatches,
   useMasterDataCsvFiles,
   useMasterDataOutputRecords,
+  useMasterDataScenarioPacks,
   useMasterDataTemplateDetail,
   useMasterDataTemplates,
   validateMasterDataTemplateDefinition,
@@ -395,6 +396,7 @@ function locationDraftPayload(
 
 export function MasterDataView({ token }: { token: string }) {
   const templates = useMasterDataTemplates(token);
+  const scenarioPacks = useMasterDataScenarioPacks(token);
   const coordinateQualityBatches = useCoordinateQualityBatches(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
   const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
@@ -437,6 +439,10 @@ export function MasterDataView({ token }: { token: string }) {
   });
   const [authorMappingConfigByKey, setAuthorMappingConfigByKey] = useState<Record<string, AuthorMappingConfig>>({});
   const [includeLocationAddressRelationship, setIncludeLocationAddressRelationship] = useState(false);
+  const [authorScenarioPackCode, setAuthorScenarioPackCode] = useState("CUSTOM");
+  const [authorScenarioDraftPayload, setAuthorScenarioDraftPayload] = useState<MasterDataTemplateDraftRequest | null>(
+    null
+  );
   const [authorTemplate, setAuthorTemplate] = useState<MasterDataTemplate | null>(null);
   const [authorValidation, setAuthorValidation] = useState<MasterDataTemplateValidation | null>(null);
   const [authorVersion, setAuthorVersion] = useState<MasterDataTemplate | null>(null);
@@ -502,7 +508,7 @@ export function MasterDataView({ token }: { token: string }) {
     selectedTemplate?.sheets.reduce((total, sheet) => total + sheet.fields.length, 0) ??
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
   const authorSelectedColumns = selectedAuthorColumns(authorTables, authorColumnsByTable);
-  const authorColumnsCatalog = useCatalogColumnsByTable(token, authorTables);
+  const authorColumnsCatalog = useCatalogColumnsByTable(token, authorScenarioDraftPayload ? [] : authorTables);
   const latestMatchingBatch = batches.data?.items[0] ?? null;
   const activeBatch = uploadedBatch ?? latestMatchingBatch;
   const isInspectingHistoricalBatch = Boolean(
@@ -527,6 +533,13 @@ export function MasterDataView({ token }: { token: string }) {
     authorMappingConfigByKey,
     includeLocationAddressRelationship
   );
+  const effectiveAuthorDraftPayload = authorScenarioDraftPayload
+    ? {
+        ...authorScenarioDraftPayload,
+        code: authorTemplateCode.trim().toUpperCase() || authorScenarioDraftPayload.code,
+        name: authorTemplateName.trim() || authorScenarioDraftPayload.name
+      }
+    : authorDraftPreview;
 
   const runAction = async <T,>(action: () => Promise<T>, onSuccess: (result: T) => string) => {
     setIsMutating(true);
@@ -603,15 +616,7 @@ export function MasterDataView({ token }: { token: string }) {
       async () => {
         const result = await createMasterDataTemplateDraft(
           token,
-          locationDraftPayload(
-            code,
-            authorTemplateName.trim(),
-            authorMacroObjectCode,
-            authorTables,
-            authorColumnsByTable,
-            authorMappingConfigByKey,
-            includeLocationAddressRelationship
-          )
+          effectiveAuthorDraftPayload
         );
         setAuthorTemplate(result);
         setAuthorValidation(null);
@@ -623,6 +628,8 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleToggleAuthorTableColumn = (tableName: string, columnName: string) => {
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorColumnsByTable((current) => {
       const columns = current[tableName] ?? [];
       return {
@@ -635,6 +642,8 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleToggleAuthorTable = (tableName: string) => {
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorTables((current) => {
       if (!current.includes(tableName)) return [...current, tableName];
       if (tableName === "LOCATION_ADDRESS") {
@@ -653,6 +662,8 @@ export function MasterDataView({ token }: { token: string }) {
 
   const handleAuthorMacroObjectChange = (macroObjectCode: string) => {
     const primaryTable = macroObjectCode === "LOCATION" ? "LOCATION" : "";
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorMacroObjectCode(macroObjectCode);
     setAuthorTables(primaryTable ? [primaryTable] : []);
     setAuthorColumnsByTable(primaryTable === "LOCATION" ? { LOCATION: defaultAuthorColumns } : {});
@@ -661,6 +672,28 @@ export function MasterDataView({ token }: { token: string }) {
     setAuthorTemplate(null);
     setAuthorValidation(null);
     setAuthorVersion(null);
+  };
+
+  const handleAuthorScenarioPackChange = (scenarioPackCode: string) => {
+    setAuthorScenarioPackCode(scenarioPackCode);
+    const pack = scenarioPacks.data?.items.find((item) => item.code === scenarioPackCode);
+    if (!pack) {
+      setAuthorScenarioDraftPayload(null);
+      return;
+    }
+    setAuthorScenarioDraftPayload(pack.draft_payload);
+    setAuthorTemplateCode(pack.draft_payload.code);
+    setAuthorTemplateName(pack.draft_payload.name);
+    setAuthorMacroObjectCode(pack.catalog_macro_object_code);
+    setAuthorTables(pack.target_tables);
+    setAuthorColumnsByTable({});
+    setAuthorMappingConfigByKey({});
+    setIncludeLocationAddressRelationship(false);
+    setAuthorTemplate(null);
+    setAuthorValidation(null);
+    setAuthorVersion(null);
+    setOperationMessage(`Scenario pack ${pack.name} applied.`);
+    setOperationError(null);
   };
 
   const resetAuthoringDraft = () => {
@@ -674,6 +707,8 @@ export function MasterDataView({ token }: { token: string }) {
     });
     setAuthorMappingConfigByKey({});
     setIncludeLocationAddressRelationship(false);
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorTemplate(null);
     setAuthorValidation(null);
     setAuthorVersion(null);
@@ -682,6 +717,8 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const updateAuthorMappingConfig = (key: string, patch: AuthorMappingConfig) => {
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorMappingConfigByKey((current) => ({
       ...current,
       [key]: {
@@ -702,6 +739,8 @@ export function MasterDataView({ token }: { token: string }) {
     setAuthorColumnsByTable(recoveredState.columnsByTable);
     setAuthorMappingConfigByKey(recoveredState.mappingConfigByKey);
     setIncludeLocationAddressRelationship(recoveredState.hasLocationAddressRelationship);
+    setAuthorScenarioPackCode("CUSTOM");
+    setAuthorScenarioDraftPayload(null);
     setAuthorTemplate(selectedTemplate);
     setAuthorValidation(null);
     setAuthorVersion(null);
@@ -717,15 +756,7 @@ export function MasterDataView({ token }: { token: string }) {
         const result = await updateMasterDataTemplateDraft(
           token,
           code,
-          locationDraftPayload(
-            code,
-            authorTemplateName.trim(),
-            authorMacroObjectCode,
-            authorTables,
-            authorColumnsByTable,
-            authorMappingConfigByKey,
-            includeLocationAddressRelationship
-          )
+          effectiveAuthorDraftPayload
         );
         setAuthorTemplate(result);
         setAuthorVersion(null);
@@ -1088,6 +1119,54 @@ export function MasterDataView({ token }: { token: string }) {
             status={authorVersion?.status ?? authorTemplate?.status ?? "DRAFT"}
             title="Author template"
           >
+            <div className="master-data-scenario-strip">
+              <label>
+                Scenario pack
+                <select
+                  aria-label="Master Data scenario pack"
+                  onChange={(event) => handleAuthorScenarioPackChange(event.target.value)}
+                  value={authorScenarioPackCode}
+                >
+                  <option value="CUSTOM">Custom table mapping</option>
+                  {(scenarioPacks.data?.items ?? []).map((pack) => (
+                    <option key={pack.code} value={pack.code}>
+                      {pack.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {authorScenarioDraftPayload ? (
+                <DetailList
+                  ariaLabel="Authoring scenario story"
+                  items={[
+                    {
+                      id: "scenario-objective",
+                      meta: [
+                        `${effectiveAuthorDraftPayload.target_tables.length} table(s)`,
+                        `${effectiveAuthorDraftPayload.fields.length} upload field(s)`,
+                        `${effectiveAuthorDraftPayload.relationship_rules.length} relationship rule(s)`
+                      ],
+                      status: "SCENARIO",
+                      title:
+                        scenarioPacks.data?.items.find((pack) => pack.code === authorScenarioPackCode)?.description ??
+                        "Backend-owned scenario pack"
+                    },
+                    {
+                      id: "scenario-flow",
+                      meta: effectiveAuthorDraftPayload.target_tables.map((table) => table.table_name),
+                      status: "TABLES",
+                      title: "OTM target flow"
+                    },
+                    {
+                      id: "scenario-docs",
+                      meta: effectiveAuthorDraftPayload.documentation_refs.map((ref) => `${ref.source_type}: ${ref.scope}`),
+                      status: "DOCS",
+                      title: "Documentation basis"
+                    }
+                  ]}
+                />
+              ) : null}
+            </div>
             <div className="master-data-author-grid">
               <label>
                 Template code
@@ -1118,6 +1197,8 @@ export function MasterDataView({ token }: { token: string }) {
                 </select>
               </label>
             </div>
+            {!authorScenarioDraftPayload ? (
+              <>
             <div aria-label={`Catalog tables for ${authorMacroObjectCode}`} className="master-data-column-picker">
               {(catalogAuthorTables.data?.items ?? []).map((table) => (
                 <label key={table.table_name}>
@@ -1219,19 +1300,21 @@ export function MasterDataView({ token }: { token: string }) {
                 </label>
               </div>
             ) : null}
+              </>
+            ) : null}
             <DetailList
               ariaLabel="Authoring mapping preview"
               items={[
                 {
                   id: "author-draft-preview",
                   meta: [
-                    `${authorDraftPreview.fields.length} user field(s)`,
-                    `${authorDraftPreview.mappings.length} OTM mapping(s)`,
-                    `${authorDraftPreview.relationship_rules.length} relationship rule(s)`,
-                    authorDraftPreview.documentation_refs.map((ref) => ref.source_type).join(" + ")
+                    `${effectiveAuthorDraftPayload.fields.length} user field(s)`,
+                    `${effectiveAuthorDraftPayload.mappings.length} OTM mapping(s)`,
+                    `${effectiveAuthorDraftPayload.relationship_rules.length} relationship rule(s)`,
+                    effectiveAuthorDraftPayload.documentation_refs.map((ref) => ref.source_type).join(" + ")
                   ],
                   status: "READY",
-                  title: authorDraftPreview.target_tables.map((table) => table.table_name).join(" + ")
+                  title: effectiveAuthorDraftPayload.target_tables.map((table) => table.table_name).join(" + ")
                 }
               ]}
             />

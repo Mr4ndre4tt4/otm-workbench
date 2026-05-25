@@ -20,6 +20,7 @@ from otm_workbench.models import (
     User,
 )
 from otm_workbench.modules.master_data.coordinate_quality.routes import router as coordinate_quality_router
+from otm_workbench.modules.master_data.scenario_packs import list_master_data_scenario_packs
 from otm_workbench.modules.master_data.templates import (
     build_master_data_csv_files,
     build_master_data_template_workbook,
@@ -352,6 +353,12 @@ def list_master_data_templates(
     seed_master_data_templates(db)
     templates = db.query(MasterDataTemplate).order_by(MasterDataTemplate.code).all()
     items = [serialize_master_data_template(template) for template in templates]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/scenario-packs")
+def list_master_data_scenario_packs_endpoint(user: User = Depends(require_user)):
+    items = list_master_data_scenario_packs()
     return PageResponse(items=items, total=len(items))
 
 

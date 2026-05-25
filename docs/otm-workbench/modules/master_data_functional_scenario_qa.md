@@ -110,21 +110,26 @@ Delivered backend changes:
 
 - Catalog Core now classifies Location dependent setup tables as Master Data and
   includes them in the `LOCATION` macro object.
+- `GET /api/v1/modules/master-data/scenario-packs` exposes backend-owned
+  scenario packs and their complete `draft_payload`.
 - Master Data dynamic template runtime now blocks mapping when dynamic
   relationship rules exist and the batch has not been relationship-validated.
 - Dynamic workbook sheets can include relationship-only fields without forcing a
   fake OTM target column.
+- The Author stage can apply a backend-owned scenario pack, show its objective,
+  target-table flow, documentation basis, and create the draft from the server
+  payload without duplicating the mapping rules in frontend state.
 
 Tests:
 
 ```text
 python -m pytest tests/test_master_data_templates.py -q
+npm run test -- AppFunctionalMasterData.test.tsx
 ```
 
-The current pass covers backend scenario validity. Frontend/browser scenario
-expansion should reuse this pack by making the Author stage able to construct
-these richer scenario templates from Catalog Core selections instead of relying
-on hand-built backend payloads.
+The current pass covers backend scenario validity plus the first React
+functional GUI slice. Browser QA should reuse this pack next, proving the same
+story against local FastAPI + Vite.
 
 ## Replication Rule For Other Modules
 

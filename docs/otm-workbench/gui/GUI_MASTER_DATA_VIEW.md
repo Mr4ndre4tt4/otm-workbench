@@ -233,6 +233,15 @@ Author stage without stacking disconnected controls. The user should experience
 them as a staged template story: choose macro object, choose scenario/tables,
 review relationships, then generate workbook.
 
+The first OTM-126 GUI slice exposes those richer templates through a
+backend-owned scenario pack selector. `GET /api/v1/modules/master-data/scenario-packs`
+returns each scenario's complete `draft_payload`; the Author stage applies that
+payload, shows objective, target-table flow, documentation basis, and creates
+the draft from the server-owned definition. While a scenario pack is active,
+manual table/column/mapping controls are hidden so the screen remains a guided
+story rather than stacked disconnected editors. Switching back to Custom table
+mapping restores the manual authoring path.
+
 The first backend-owned preview slice adds read-only output and CSV previews to
 the Output stage. `GET /output-records` returns generated OTM target-table
 payloads, and `GET /csv-files` returns generated CSV file metadata plus a short

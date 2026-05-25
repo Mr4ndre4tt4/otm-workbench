@@ -16,6 +16,7 @@ import type {
   MasterDataCsvFilesResponse,
   MasterDataOutputRecordsResponse,
   MasterDataRelationshipValidation,
+  MasterDataScenarioPacksResponse,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
   MasterDataTemplateValidation,
@@ -36,6 +37,14 @@ export function useMasterDataTemplateDetail(token: string | null, templateCode: 
     queryKey: ["modules", "master-data", "templates", templateCode],
     queryFn: () => apiGet<MasterDataTemplate>(`/api/v1/modules/master-data/templates/${templateCode}`, { token }),
     enabled: Boolean(token && templateCode)
+  });
+}
+
+export function useMasterDataScenarioPacks(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "scenario-packs"],
+    queryFn: () => apiGet<MasterDataScenarioPacksResponse>("/api/v1/modules/master-data/scenario-packs", { token }),
+    enabled: Boolean(token)
   });
 }
 

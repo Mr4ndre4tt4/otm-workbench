@@ -230,6 +230,65 @@ function recoveredLocationsTemplate() {
   };
 }
 
+function operationalLocationScenarioPack() {
+  const draftPayload = {
+    catalog_macro_object_code: "LOCATION",
+    code: "LOCATIONS_OPERATIONAL_QA",
+    data_category: "MASTER_DATA",
+    documentation_refs: [
+      { note: "Validated against local OTM Data Dictionary 26B.", scope: "LOCATION", source_type: "DATA_DICTIONARY" },
+      { note: "Oracle Help confirms operational setup concepts.", scope: "Equipment Group Profile", source_type: "ORACLE_OFFICIAL" }
+    ],
+    fields: Array.from({ length: 34 }, (_, index) => ({
+      data_type: "string",
+      field_key: `scenario_field_${index + 1}`,
+      label: `Scenario Field ${index + 1}`,
+      required: index < 2,
+      sheet_code: index < 12 ? "LOCATIONS" : "LOCATION_DETAILS"
+    })),
+    mappings: Array.from({ length: 33 }, (_, index) => ({
+      mapping_key: `scenario_mapping_${index + 1}`,
+      required: index < 2,
+      source_field_key: `scenario_field_${index + 1}`,
+      source_type: "USER_FIELD",
+      target_column: index === 10 ? "SHUTTLE_LOT_EQ_GRP_PROFILE_GID" : `SCENARIO_COLUMN_${index + 1}`,
+      target_table: index < 12 ? "LOCATION" : "LOCATION_ADDRESS"
+    })),
+    name: "Locations Operational QA",
+    relationship_rules: Array.from({ length: 6 }, (_, index) => ({
+      child_field_key: `scenario_child_${index + 1}`,
+      child_sheet_code: index === 0 ? "LOCATION_ADDRESSES" : "LOCATION_DETAILS",
+      parent_field_key: "location_gid",
+      parent_sheet_code: "LOCATIONS",
+      rule_key: index === 0 ? "location_address_parent" : `scenario_relationship_${index + 1}`,
+      severity: "ERROR"
+    })),
+    sheets: [
+      { code: "LOCATIONS", field_keys: ["scenario_field_1"], name: "Locations", sequence: 10 },
+      { code: "LOCATION_DETAILS", field_keys: ["scenario_field_13"], name: "Location Details", sequence: 20 }
+    ],
+    target_tables: [
+      { required: true, sequence: 10, table_name: "LOCATION" },
+      { required: false, sequence: 20, table_name: "LOCATION_ADDRESS" },
+      { required: false, sequence: 30, table_name: "LOCATION_CAPACITY" },
+      { required: false, sequence: 40, table_name: "LOCATION_ACTIVITY_TIME_DEF" },
+      { required: false, sequence: 50, table_name: "LOCATION_LOAD_UNLOAD_POINT" },
+      { required: false, sequence: 60, table_name: "EQUIPMENT_GROUP_PROFILE" },
+      { required: false, sequence: 70, table_name: "EQUIPMENT_GROUP_PROFILE_D" }
+    ]
+  };
+  return {
+    catalog_macro_object_code: "LOCATION",
+    code: "LOCATION_OPERATIONAL",
+    description: "Location setup with address, capacity reference, activity time, dock configuration, and equipment restrictions.",
+    documentation_refs: draftPayload.documentation_refs,
+    draft_payload: draftPayload,
+    name: "Operational Location",
+    summary: { field_count: 34, mapping_count: 33, relationship_rule_count: 6, sheet_count: 7 },
+    target_tables: draftPayload.target_tables.map((table) => table.table_name)
+  };
+}
+
 describe("Functional Master Data journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -1309,6 +1368,144 @@ describe("Functional Master Data journey", () => {
     expect(validateDefinitionRequests).toEqual([{ method: "POST" }]);
     expect(publishRequests).toEqual([{ method: "POST" }]);
     expect(versionRequests).toEqual([{ method: "POST", new_code: "LOCATIONS_DYNAMIC_UI_V2" }]);
+  }, 60000);
+
+  it("applies a backend-owned Master Data scenario pack in the Author stage", async () => {
+    const draftRequests: unknown[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects") || url.endsWith("/api/v1/platform/profiles") || url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [regionsTemplate()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
+        return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/scenario-packs")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: [operationalLocationScenarioPack()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ code: "LOCATION", name: "Location", category: "MASTER_DATA" }],
+            total: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/LOCATION/tables")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.includes("/api/v1/catalog/tables/")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/summary")) {
+        return Promise.resolve(
+          jsonResponse({ latest_batch_id: null, status_breakdown: [], template_breakdown: [], total_batches: 0, total_issues: 0, total_rows: 0 })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/drafts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        draftRequests.push({
+          code: body.code,
+          documentation_refs: body.documentation_refs.map((ref: { source_type: string }) => ref.source_type),
+          field_count: body.fields.length,
+          mapping_count: body.mappings.length,
+          relationship_rule_count: body.relationship_rules.length,
+          target_tables: body.target_tables.map((table: { table_name: string }) => table.table_name)
+        });
+        return Promise.resolve(
+          jsonResponse({
+            ...regionsTemplate(),
+            catalog_macro_object_code: "LOCATION",
+            code: body.code,
+            id: "template_location_operational",
+            name: body.name,
+            status: "DRAFT",
+            target_tables: body.target_tables.map((table: { table_name: string }) => table.table_name)
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Data Factory" });
+    await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
+    await screen.findByLabelText("Master Data scenario pack");
+    await userEvent.selectOptions(screen.getByLabelText("Master Data scenario pack"), "LOCATION_OPERATIONAL");
+
+    await screen.findByText("Scenario pack Operational Location applied.");
+    expect(screen.getByLabelText("Authoring scenario story")).toHaveTextContent("Location setup with address");
+    expect(screen.getByLabelText("Authoring scenario story")).toHaveTextContent("LOCATION_CAPACITY");
+    expect(screen.getByLabelText("Authoring scenario story")).toHaveTextContent("ORACLE_OFFICIAL");
+    expect(screen.queryByLabelText("Catalog tables for LOCATION")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("34 user field(s)");
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("33 OTM mapping(s)");
+    expect(screen.getByLabelText("Authoring mapping preview")).toHaveTextContent("6 relationship rule(s)");
+
+    await userEvent.clear(screen.getByLabelText("Template code"));
+    await userEvent.type(screen.getByLabelText("Template code"), "LOC_SCENARIO_UI");
+    await userEvent.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByText("Draft LOC_SCENARIO_UI created.");
+
+    expect(draftRequests).toEqual([
+      {
+        code: "LOC_SCENARIO_UI",
+        documentation_refs: ["DATA_DICTIONARY", "ORACLE_OFFICIAL"],
+        field_count: 34,
+        mapping_count: 33,
+        relationship_rule_count: 6,
+        target_tables: [
+          "LOCATION",
+          "LOCATION_ADDRESS",
+          "LOCATION_CAPACITY",
+          "LOCATION_ACTIVITY_TIME_DEF",
+          "LOCATION_LOAD_UNLOAD_POINT",
+          "EQUIPMENT_GROUP_PROFILE",
+          "EQUIPMENT_GROUP_PROFILE_D"
+        ]
+      }
+    ]);
   }, 60000);
 
   it("recovers an existing backend-owned template definition into the Author stage", async () => {

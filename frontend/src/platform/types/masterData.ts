@@ -234,6 +234,24 @@ export type MasterDataTemplateDraftRequest = {
   documentation_refs: MasterDataTemplateDefinition["documentation_refs"];
 };
 
+export type MasterDataScenarioPack = {
+  code: string;
+  name: string;
+  description: string;
+  catalog_macro_object_code: string;
+  target_tables: string[];
+  summary: {
+    sheet_count: number;
+    field_count: number;
+    mapping_count: number;
+    relationship_rule_count: number;
+  };
+  documentation_refs: MasterDataTemplateDefinitionRef[];
+  draft_payload: MasterDataTemplateDraftRequest;
+};
+
+export type MasterDataScenarioPacksResponse = PageResponse<MasterDataScenarioPack>;
+
 export type CoordinateQualityRecord = {
   location_gid: string;
   location_name?: string | null;

@@ -154,6 +154,46 @@ def test_master_data_template_validation_uses_catalog_dictionary(client, admin_h
     }
 
 
+def test_master_data_scenario_packs_expose_backend_owned_draft_payloads(client, admin_header):
+    response = client.get("/api/v1/modules/master-data/scenario-packs", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 2
+    packs = {pack["code"]: pack for pack in payload["items"]}
+
+    location_pack = packs["LOCATION_OPERATIONAL"]
+    assert location_pack["catalog_macro_object_code"] == "LOCATION"
+    assert location_pack["target_tables"] == [
+        "LOCATION",
+        "LOCATION_ADDRESS",
+        "LOCATION_CAPACITY",
+        "LOCATION_ACTIVITY_TIME_DEF",
+        "LOCATION_LOAD_UNLOAD_POINT",
+        "EQUIPMENT_GROUP_PROFILE",
+        "EQUIPMENT_GROUP_PROFILE_D",
+    ]
+    assert location_pack["summary"] == {
+        "sheet_count": 7,
+        "field_count": 34,
+        "mapping_count": 33,
+        "relationship_rule_count": 6,
+    }
+    assert location_pack["draft_payload"]["code"] == "LOCATIONS_OPERATIONAL_QA"
+    assert location_pack["draft_payload"]["relationship_rules"][0]["rule_key"] == "location_address_parent"
+    assert location_pack["draft_payload"]["documentation_refs"][1]["source_type"] == "ORACLE_OFFICIAL"
+
+    item_pack = packs["ITEM_PACKAGING_OPERATIONAL"]
+    assert item_pack["catalog_macro_object_code"] == "ITEM"
+    assert item_pack["target_tables"] == ["ITEM", "SHIP_UNIT_SPEC", "PACKAGED_ITEM", "TI_HI"]
+    assert item_pack["summary"]["relationship_rule_count"] == 5
+    assert any(
+        mapping["target_column"] == "TRANSPORT_HANDLING_UNIT_GID"
+        for mapping in item_pack["draft_payload"]["mappings"]
+        if mapping["target_table"] == "TI_HI"
+    )
+
+
 def dynamic_locations_template_payload(code: str = "LOCATIONS_DYNAMIC") -> dict[str, object]:
     return {
         "code": code,
