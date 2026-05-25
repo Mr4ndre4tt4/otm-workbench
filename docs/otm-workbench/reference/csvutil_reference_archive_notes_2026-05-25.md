@@ -347,6 +347,16 @@ introduces ERROR or WARNING findings, the decision becomes NO_GO with the live
 readiness blockers.
 ```
 
+Implementation note, 2026-05-25, package family readiness slice:
+
+```text
+Cutover Checklist readiness now summarizes table-level status by operational
+family: Agents/Refnums, Master Data, Rates, Misc, Parameter Set, and
+Unclassified. Family status follows table checklist items plus ZIP analysis
+findings, so a rate-table CTL error blocks only the Rates family while other
+families can remain READY.
+```
+
 ### Rates And Master Data Tests
 
 Use the archive only to design synthetic scenarios:
@@ -370,6 +380,8 @@ Recommended Linear/backlog follow-ups:
 2. Cutover checklist: package-family readiness from CTL/CSV analyzer output.
    [FIRST SLICE DELIVERED: latest ZIP analysis findings now feed readiness
    blockers/review state]
+   [SECOND SLICE DELIVERED: readiness summary now includes table-level package
+   family statuses]
 3. Rates QA: synthetic LTL/TL rate stack based on the observed table sequence.
 4. Master Data QA: synthetic location/equipment/geography package family.
 5. Security: ensure reference archives and generated QA artifacts never leak

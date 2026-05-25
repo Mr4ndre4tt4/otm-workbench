@@ -22,6 +22,47 @@ ALLOWED_ITEM_METHODS = {"CSVUTIL", "REVIEW", "MANUAL", "SYSTEM"}
 READY_STATUS = "READY"
 BLOCKED_STATUS = "BLOCKED"
 NEEDS_REVIEW_STATUS = "NEEDS_REVIEW"
+PACKAGE_FAMILY_ORDER = ["AGENTS_REFNUMS", "MASTER_DATA", "RATES", "MISC", "PARAMETER_SET", "UNCLASSIFIED"]
+PACKAGE_FAMILY_LABELS = {
+    "AGENTS_REFNUMS": "Agents and refnums",
+    "MASTER_DATA": "Master data",
+    "RATES": "Rates",
+    "MISC": "Misc operational setup",
+    "PARAMETER_SET": "Parameter set",
+    "UNCLASSIFIED": "Unclassified",
+}
+AGENTS_REFNUM_TABLES = {
+    "AGENT",
+    "AGENT_ACTION_DETAILS",
+    "AGENT_EVENT",
+    "AGENT_EVENT_DETAILS",
+    "LOCATION_REFNUM",
+    "LOCATION_REFNUM_QUAL",
+    "ORDER_RELEASE_REFNUM_QUAL",
+    "SAVED_CONDITION",
+    "SAVED_CONDITION_QUERY",
+    "SAVED_QUERY",
+    "SAVED_QUERY_ACCESS",
+    "SAVED_QUERY_VALUES",
+    "SHIPMENT_REFNUM_QUAL",
+}
+MASTER_DATA_TABLES = {
+    "EQUIPMENT_GROUP",
+    "EQUIPMENT_GROUP_PROFILE",
+    "EQUIPMENT_GROUP_PROFILE_D",
+    "ITEM",
+    "LOCATION",
+    "LOCATION_ACTIVITY_TIME_DEF",
+    "LOCATION_ADDRESS",
+    "LOCATION_CAPACITY",
+    "LOCATION_LOAD_UNLOAD_POINT",
+    "PACKAGED_ITEM",
+    "REGION",
+    "REGION_DETAIL",
+    "SHIP_UNIT_SPEC",
+    "TI_HI",
+}
+PARAMETER_SET_TABLES = {"PARAMETER_SET", "PARAMETER_SET_DETAIL"}
 
 DEFAULT_TEMPLATE_ITEMS = [
     {
@@ -335,6 +376,71 @@ def readiness_blocker(item: CutoverChecklistItem, code: str, severity: str, mess
     }
 
 
+def package_family_for_table(table_name: str | None) -> str:
+    if not table_name:
+        return "UNCLASSIFIED"
+    normalized = table_name.upper()
+    if normalized in AGENTS_REFNUM_TABLES:
+        return "AGENTS_REFNUMS"
+    if normalized in PARAMETER_SET_TABLES or normalized.startswith("PARAMETER_"):
+        return "PARAMETER_SET"
+    if normalized.startswith("RATE_") or normalized in {"ACCESSORIAL_CODE", "ACCESSORIAL_COST", "X_LANE"}:
+        return "RATES"
+    if normalized in MASTER_DATA_TABLES or normalized.startswith("GEO_"):
+        return "MASTER_DATA"
+    return "MISC"
+
+
+def package_family_readiness(
+    items: list[CutoverChecklistItem],
+    blockers: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    families: dict[str, dict[str, object]] = {}
+
+    def ensure_family(family_code: str) -> dict[str, object]:
+        if family_code not in families:
+            families[family_code] = {
+                "family_code": family_code,
+                "label": PACKAGE_FAMILY_LABELS.get(family_code, family_code.replace("_", " ").title()),
+                "status": READY_STATUS,
+                "table_count": 0,
+                "item_count": 0,
+                "blocker_count": 0,
+                "error_count": 0,
+                "warning_count": 0,
+            }
+        return families[family_code]
+
+    for item in items:
+        if not item.table_name:
+            continue
+        family = ensure_family(package_family_for_table(item.table_name))
+        family["item_count"] = int(family["item_count"]) + 1
+        family["table_count"] = int(family["table_count"]) + 1
+
+    for blocker in blockers:
+        family = ensure_family(package_family_for_table(blocker.get("table_name")))
+        family["blocker_count"] = int(family["blocker_count"]) + 1
+        if blocker.get("severity") == "ERROR":
+            family["error_count"] = int(family["error_count"]) + 1
+        elif blocker.get("severity") == "WARNING":
+            family["warning_count"] = int(family["warning_count"]) + 1
+
+    for family in families.values():
+        if int(family["error_count"]):
+            family["status"] = BLOCKED_STATUS
+        elif int(family["warning_count"]):
+            family["status"] = NEEDS_REVIEW_STATUS
+        else:
+            family["status"] = READY_STATUS
+
+    return [
+        families[family_code]
+        for family_code in PACKAGE_FAMILY_ORDER
+        if family_code in families
+    ]
+
+
 def latest_zip_analysis_for_package(db: Session, package_id: str) -> LoadPlanZipAnalysis | None:
     return (
         db.query(LoadPlanZipAnalysis)
@@ -414,6 +520,7 @@ def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dic
     status_counts = checklist_status_counts(db, checklist.id)
     error_count = sum(1 for blocker in blockers if blocker["severity"] == "ERROR")
     warning_count = sum(1 for blocker in blockers if blocker["severity"] == "WARNING")
+    package_families = package_family_readiness(items, blockers)
     status = READY_STATUS
     if error_count:
         status = BLOCKED_STATUS
@@ -435,6 +542,7 @@ def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dic
         "error_count": error_count,
         "warning_count": warning_count,
         "status_counts": status_counts,
+        "package_families": package_families,
     }
     if latest_zip_analysis is not None:
         readiness_summary.update(

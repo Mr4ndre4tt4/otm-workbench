@@ -49,6 +49,41 @@ def create_registered_locations_package(db_session) -> LoadPlanPackage:
     return package
 
 
+def create_registered_mixed_operational_package(db_session) -> LoadPlanPackage:
+    package = LoadPlanPackage(
+        source_module="load_plan",
+        source_entity_type="csvutil_reference_package",
+        source_entity_id="synthetic_mixed_package",
+        package_type="csvutil_reference_zip",
+        status="REGISTERED",
+        artifact_id="artifact_mixed_csvutil_zip",
+        manifest_id="manifest_mixed_csvutil_zip",
+        load_sequence_json=json.dumps(
+            [
+                {"position": 1, "table_name": "AGENT", "row_count": 1, "requirement_level": "REQUIRED"},
+                {"position": 2, "table_name": "LOCATION", "row_count": 1, "requirement_level": "REQUIRED"},
+                {"position": 3, "table_name": "RATE_OFFERING", "row_count": 1, "requirement_level": "REQUIRED"},
+                {"position": 4, "table_name": "PARAMETER_SET", "row_count": 1, "requirement_level": "REQUIRED"},
+            ],
+            sort_keys=True,
+        ),
+        summary_json=json.dumps(
+            {
+                "source_module": "load_plan",
+                "catalog_macro_object_code": "CUTOVER_PACKAGE",
+                "catalog_load_plan_path": "/api/v1/catalog/macro-objects/CUTOVER_PACKAGE/load-plan",
+                "table_count": 4,
+                "row_count": 4,
+            },
+            sort_keys=True,
+        ),
+        created_by="admin@example.com",
+    )
+    db_session.add(package)
+    db_session.commit()
+    return package
+
+
 def test_cutover_checklist_tables_exist_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
@@ -419,6 +454,59 @@ def test_cutover_checklist_readiness_blocks_on_latest_zip_analysis_findings(clie
     assert blocker["details"]["source_code"] == "CSVUTIL_CTL_TABLE_MISMATCH"
     assert blocker["details"]["csv_file_name"] == "export/001_LOCATION.csv"
     assert "synthetic_locations_batch" not in json.dumps(payload)
+
+
+def test_cutover_checklist_readiness_groups_package_family_status(client, admin_header, db_session):
+    package = create_registered_mixed_operational_package(db_session)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    mark_all_checklist_items_done(client, admin_header, db_session, checklist)
+    analysis = LoadPlanZipAnalysis(
+        package_id=package.id,
+        status="ANALYZED",
+        source_artifact_id=package.artifact_id,
+        source_manifest_id=package.manifest_id,
+        summary_json=json.dumps(
+            {"package_id": package.id, "error_count": 1, "warning_count": 0, "finding_count": 1},
+            sort_keys=True,
+        ),
+        findings_json=json.dumps(
+            [
+                {
+                    "severity": "ERROR",
+                    "code": "CSVUTIL_CTL_TABLE_MISMATCH",
+                    "message": "Synthetic rate package structure mismatch.",
+                    "table_name": "RATE_OFFERING",
+                    "file_name": "csvutil.ctl",
+                    "details": {"csv_file_name": "export/003_RATE_OFFERING.csv"},
+                }
+            ],
+            sort_keys=True,
+        ),
+        created_by="admin@example.com",
+    )
+    db_session.add(analysis)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    families = {item["family_code"]: item for item in payload["summary"]["package_families"]}
+    assert list(families) == ["AGENTS_REFNUMS", "MASTER_DATA", "RATES", "PARAMETER_SET"]
+    assert families["AGENTS_REFNUMS"]["status"] == "READY"
+    assert families["MASTER_DATA"]["status"] == "READY"
+    assert families["RATES"]["status"] == "BLOCKED"
+    assert families["RATES"]["table_count"] == 1
+    assert families["RATES"]["error_count"] == 1
+    assert families["PARAMETER_SET"]["status"] == "READY"
+    assert payload["status"] == "BLOCKED"
+    assert "synthetic_mixed_package" not in json.dumps(payload)
 
 
 def test_cutover_checklist_readiness_is_ready_when_required_items_done(
