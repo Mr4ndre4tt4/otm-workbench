@@ -362,7 +362,7 @@ Artifacts + Evidence
 3. Relationship, Output Object e Output Mapping.
 4. Seed do template Regions Basic. [ENTREGUE MVP0 inicial]
 5. API de list/detail de templates. [ENTREGUE MVP0 inicial]
-6. Template Builder para gerar Excel. [INICIADO com endpoint build-workbook gerando XLSX sintético e Artifact client-safe]
+6. Template Builder para gerar Excel. [INICIADO com endpoint build-workbook gerando XLSX sintético, Artifact client-safe e download escopado por template com hash]
 7. Batch upload/parse. [INICIADO com upload XLSX, parse por sheet e persistencia em master_data_batches]
 8. Validacao estrutural e de relacionamento. [INICIADO com validacao Catalog/Data Dictionary de tabelas/colunas, issues estruturais de workbook, relacionamento same-batch e bloqueio de mapping quando templates possuem regras pendentes]
 9. Mapping Engine basico. [INICIADO com mapeamento de batch validado para canonical records por target_column]

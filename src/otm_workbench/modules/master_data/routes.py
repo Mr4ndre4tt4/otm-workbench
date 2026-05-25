@@ -347,6 +347,25 @@ def get_batch_artifact_or_404(db: Session, batch_id: str, artifact_id: str) -> t
     raise api_error(404, "MASTER_DATA_ARTIFACT_NOT_FOUND", "Master Data artifact not found for this batch.")
 
 
+def get_template_artifact_or_404(template: MasterDataTemplate, artifact_id: str, db: Session) -> Artifact:
+    artifact = (
+        db.query(Artifact)
+        .filter(Artifact.id == artifact_id)
+        .filter(Artifact.source_module == "master_data")
+        .filter(Artifact.artifact_type == "master_data_template_workbook")
+        .filter(Artifact.sensitivity_level == "client_safe")
+        .first()
+    )
+    expected_file_name = f"{template.code.lower()}_v{template.version}.xlsx"
+    if artifact is None or artifact.file_name != expected_file_name:
+        raise api_error(
+            404,
+            "MASTER_DATA_TEMPLATE_ARTIFACT_NOT_FOUND",
+            "Master Data template artifact not found for this template.",
+        )
+    return artifact
+
+
 def master_data_submit_guard_error(batch_id: str, readiness: dict[str, object]):
     return api_error(
         409,
@@ -776,6 +795,50 @@ def download_master_data_batch_artifact(
                     "artifact_id": artifact.id,
                     "batch_id": batch_id,
                     "evidence_id": evidence.id,
+                    "sha256": artifact.sha256,
+                    "size_bytes": actual_size,
+                },
+                sort_keys=True,
+            ),
+        )
+    )
+    db.commit()
+    return FileResponse(
+        path,
+        media_type=artifact.content_type,
+        filename=artifact.file_name,
+        headers={"X-Artifact-SHA256": artifact.sha256},
+    )
+
+
+@router.get("/templates/{template_code}/artifacts/{artifact_id}/download")
+def download_master_data_template_artifact(
+    template_code: str,
+    artifact_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    seed_master_data_templates(db)
+    template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == template_code.upper()).first()
+    if template is None:
+        raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
+    artifact = get_template_artifact_or_404(template, artifact_id, db)
+    path = Path(artifact.file_path)
+    if not path.exists() or not path.is_file():
+        raise api_error(404, "MASTER_DATA_TEMPLATE_ARTIFACT_FILE_NOT_FOUND", "Master Data template artifact file not found.")
+    actual_sha256, actual_size = file_sha256(str(path))
+    if actual_sha256 != artifact.sha256:
+        raise api_error(409, "MASTER_DATA_TEMPLATE_ARTIFACT_HASH_MISMATCH", "Master Data template artifact hash mismatch.")
+    db.add(
+        AuditLog(
+            actor_user_id=user.email,
+            action="master_data.template.artifact.download",
+            target_type="artifact",
+            target_id=artifact.id,
+            metadata_json=json.dumps(
+                {
+                    "artifact_id": artifact.id,
+                    "template_code": template.code,
                     "sha256": artifact.sha256,
                     "size_bytes": actual_size,
                 },

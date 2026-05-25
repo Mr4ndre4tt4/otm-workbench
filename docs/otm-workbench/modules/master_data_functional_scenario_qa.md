@@ -120,6 +120,9 @@ Delivered backend changes:
   dynamic mappings that infer sheet ownership from field metadata.
 - Relationship-only target columns are parsed as intentional blanks instead of
   data rows.
+- Template workbook build now returns a scoped `download_url`, SHA-256, and
+  size metadata, and the download endpoint verifies template ownership and file
+  hash without exposing local filesystem paths.
 - Master Data CSV generation now orders output files by
   `target_tables.sequence`, allowing the sheet/story order to stay user-friendly
   while the CSV/Load Plan order follows Data Dictionary dependencies.
@@ -143,6 +146,7 @@ Tests:
 
 ```text
 python -m pytest tests/test_master_data_templates.py -q
+python -m pytest tests/test_master_data_templates.py::test_master_data_template_workbook_download_is_client_safe_and_scoped -q
 python -m pytest tests/test_load_plan_package_intake.py::test_operational_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
 python -m pytest tests/test_load_plan_package_intake.py::test_operational_location_master_data_blocks_orphan_dock_before_batch_creation -q
 python -m pytest tests/test_load_plan_package_intake.py::test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_readiness -q

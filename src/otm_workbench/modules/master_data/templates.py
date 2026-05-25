@@ -1086,6 +1086,9 @@ def build_master_data_template_workbook(
         "artifact_id": artifact.id,
         "file_name": artifact.file_name,
         "content_type": artifact.content_type,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "download_url": f"/api/v1/modules/master-data/templates/{template.code}/artifacts/{artifact.id}/download",
         "sheet_count": len(sheets),
         "field_count": field_count,
     }

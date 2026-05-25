@@ -1620,6 +1620,30 @@ def test_master_data_template_build_workbook_creates_artifact(client, admin_head
     assert [cell.value for cell in workbook["REGION_DETAILS"][1]] == ["Region GID", "Location GID"]
 
 
+def test_master_data_template_workbook_download_is_client_safe_and_scoped(client, admin_header):
+    built = client.post(
+        "/api/v1/modules/master-data/templates/REGIONS_BASIC/build-workbook",
+        headers=admin_header,
+    ).json()
+
+    assert built["download_url"].endswith(
+        f"/api/v1/modules/master-data/templates/REGIONS_BASIC/artifacts/{built['artifact_id']}/download"
+    )
+    download = client.get(built["download_url"], headers=admin_header)
+    cross_template = client.get(
+        f"/api/v1/modules/master-data/templates/LOCATIONS_BASIC/artifacts/{built['artifact_id']}/download",
+        headers=admin_header,
+    )
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert download.headers["x-artifact-sha256"] == built["sha256"]
+    assert download.content.startswith(b"PK")
+    assert "file_path" not in json.dumps(built)
+    assert cross_template.status_code == 404
+    assert cross_template.json()["code"] == "MASTER_DATA_TEMPLATE_ARTIFACT_NOT_FOUND"
+
+
 def test_master_data_template_batch_upload_parses_workbook(client, admin_header, db_session):
     workbook = Workbook()
     regions = workbook.active
