@@ -808,6 +808,66 @@ transformacoes e refnums sem editar codigo.
 13. Expandir Evidence Hub para visoes consolidadas entre Rates, Jobs, Catalog, Master Data, Cutover, Assets, Order Release Generator e Integrations.
 ```
 
+### Insercao transversal: OTM 26A Schema Pack / Contract Catalog
+
+**Fonte:** `docs/otm-workbench/discovery/OTM_26A_WSDL_XSD_DISCOVERY.md`
+**Linear:** `OTM-163`
+
+### Decisao
+
+Os WSDL/XSD OTM 26A devem virar uma capacidade transversal de plataforma,
+nao uma implementacao local dentro de um unico modulo.
+
+O melhor recorte e tratar os arquivos oficiais como `SchemaPack` governado,
+indexar `SchemaRoot`, `SchemaPath` e `ServiceOperation`, e expor essa base para:
+
+```text
+- Integration Mapping Studio: path browsing oficial, alem de samples XML/JSON.
+- Order Release Generator: validacao de Release/Transmission e TransactionCode.
+- Master Data Template Factory: hints de paths/documentacao para Location e Item.
+- Rates Studio: companion XML para RATE_OFFERING, RATE_GEO e X_LANE.
+- Assets Library: governanca/versionamento dos packs.
+- Jobs Processing: ingestion, path extraction e XML validation.
+- Evidence Hub: evidencia client-safe da validacao usada.
+```
+
+### Posicao recomendada na fila
+
+```text
+1. Nao furar as entregas funcionais ja priorizadas.
+2. Entrar depois de Assets Library e Jobs estarem bons o bastante para governar
+   arquivos e executar parse/validacao rastreavel.
+3. Pode entrar antes do Integration Mapping completo, porque reduz duplicacao
+   entre Integration Mapping, Order Release, Master Data e Rates.
+4. Catalog Core deve expor a API de consulta, mas a posse dos arquivos deve
+   continuar como asset governado.
+5. Antes de virar UI, validar tecnicamente contra Data Dictionary e contra
+   documentacao oficial Oracle para cada modulo que usar o schema pack.
+```
+
+### Primeiro recorte recomendado
+
+```text
+1. Persistir SchemaPack apontando para asset/path local, versao OTM e namespace.
+2. Extrair roots XSD/WSDL e service operations com job rastreavel.
+3. Extrair path catalog com cardinalidade/documentacao basica.
+4. Linkar macro object Catalog Core -> schema roots por relacao semantica.
+5. Criar API read-only para listar roots e paths filtrando por modulo/root.
+6. Gerar evidence client-safe do parsing/validacao, sem armazenar payload real.
+7. Criar QA negativo para XSD invalido, import faltante, root desconhecido e
+   arquivo com dado sensivel em nome/conteudo.
+```
+
+### Fora do primeiro recorte
+
+```text
+- Editor visual de XSD.
+- Import completo de todos os tipos complexos com resolucao perfeita de ciclos.
+- Validacao produtiva contra OTM real.
+- OpenAPI/WSDL client runtime automatico.
+- Expor dados reais de payloads ou nomes de cliente nos assets/evidencias.
+```
+
 ---
 
 ## 11. Guardrails permanentes
