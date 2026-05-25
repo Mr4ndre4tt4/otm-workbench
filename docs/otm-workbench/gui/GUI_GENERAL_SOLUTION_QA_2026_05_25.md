@@ -112,7 +112,7 @@ artifacts, not product source.
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
-| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, invalid mappings can be removed through a backend-owned action, required target scenario packs are visible as a checklist, response handling rules are backend-owned and visible in review/spec output, guided transform config authoring exists for CONSTANT, DATE_FORMAT, FILTER_BY_QUALIFIER, and COUNT_DISTINCT, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, mixed header + loop alias mappings, loop-scoped lookup values, constant values, date formatting, and artifact-level executable JSON assertions for the synthetic NDD-like browser scenario. | To become a full accelerator for NDD-like mappings, it still needs mapping suggestions, richer schema search, and dedicated aggregation objects if needed. |
+| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, invalid mappings can be removed through a backend-owned action, required target scenario packs are visible as a checklist, response handling rules are backend-owned and visible in review/spec output, guided transform config authoring exists for CONSTANT, DATE_FORMAT, FILTER_BY_QUALIFIER, and COUNT_DISTINCT, schema node search and deterministic mapping suggestions reduce path-hunting, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, mixed header + loop alias mappings, loop-scoped lookup values, constant values, date formatting, and artifact-level executable JSON assertions for the synthetic NDD-like browser scenario. | To become a full accelerator for NDD-like mappings, it still needs richer schema search, stronger suggestion scoring, and dedicated aggregation objects if needed. |
 | Admin Console | Browser QA passed | Functional setup, capability, feature flag, jobs and audit visibility. | Advanced edit/delete/pagination and volume management remain future. |
 
 ## 4. Findings Added To Pipeline
@@ -135,13 +135,14 @@ artifacts, not product source.
 | `OTM-155` | High | Backend-owned Integration Mapping response handlers delivered with schema-path validation, Rules-stage authoring/review, generated spec rows, and browser QA. |
 | `OTM-156` | Medium | Guided transform config authoring delivered for CONSTANT and DATE_FORMAT, with React functional QA and browser preview artifact assertions. |
 | `OTM-157` | Medium | Guided transform config authoring delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT, with React functional QA and browser preview artifact assertions. |
+| `OTM-158` | Medium | Schema node search and deterministic mapping suggestions delivered for Integration Mapping Rules stage, with React/browser QA. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 
 ## 5. Recommended Next Queue
 
 1. Fix QA/dev reproducibility first: `OTM-141`.
 2. Browser-QA the `NextActionPanel` first slice and then roll it out to the next staged modules: `OTM-142`.
-3. Continue Integration Mapping accelerator hardening: mapping suggestions, schema search, and complex expression usability.
+3. Continue Integration Mapping accelerator hardening: suggestion scoring, schema path facets, and complex expression usability.
 4. Add chaos/out-of-order browser QA once the next-action pattern exists: `OTM-146`.
 5. Harden list density and high-volume states: `OTM-143`.
 

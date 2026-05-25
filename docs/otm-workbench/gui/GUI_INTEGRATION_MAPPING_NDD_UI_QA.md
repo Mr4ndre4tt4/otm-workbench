@@ -193,6 +193,10 @@ Recommended next backlog sequence:
 14. Add guided complex transform authoring. `OTM-157` delivered Rules-stage
     inputs for `FILTER_BY_QUALIFIER` and `COUNT_DISTINCT`, with executable
     preview assertions for filtered access key and release count.
+15. Add schema search and deterministic mapping suggestions. `OTM-158`
+    delivered source/target node search plus an apply-suggestion action that
+    fills source path, target path, and transform type without auto-creating a
+    mapping.
 ```
 
 ## OTM-152 Evidence
@@ -313,4 +317,24 @@ mapping cases:
 - Reset mapping drafts clears the complex transform fields back to empty values.
 - The grouped review no longer implies COUNT_DISTINCT itself is pending; only a
   future dedicated aggregation-rule object remains out of scope.
+```
+
+## OTM-158 Evidence
+
+`OTM-158` reduced path-hunting friction in the Rules stage:
+
+```text
+- Mapping source and target schema node selectors now have dedicated search
+  inputs.
+- Loaded source/target schema nodes generate deterministic semantic suggestions
+  when leaf node names match after normalization, such as
+  ShipmentGid -> shipmentId.
+- Applying a suggestion fills source_path, target_path, and DIRECT transform
+  type; it does not create the mapping automatically.
+- Applying a suggestion clears the search inputs so the next mapping is not
+  accidentally filtered.
+- Schema node selects now expose explicit aria-labels, avoiding ambiguous
+  browser automation labels after search inputs were added.
+- React and browser QA prove suggestion application, normal create flow,
+  return/reset state, and executable preview still work.
 ```

@@ -1012,13 +1012,16 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.queryByLabelText("Integration payload and schema authoring")).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Target schema"), "schema_target");
-    await userEvent.selectOptions(
-      await screen.findByLabelText("Mapping source node"),
-      "/Transmission/Shipment/ShipmentGid"
+    await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
+    await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
+      })
     );
-    await userEvent.selectOptions(await screen.findByLabelText("Mapping target node"), "$.header.shipmentId");
     expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
     expect(screen.getByLabelText("Target path")).toHaveValue("$.header.shipmentId");
+    expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");
     await userEvent.selectOptions(screen.getByLabelText("Transform type"), "DIRECT");
     await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic direct mapping from shipment id.");
     await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
@@ -1185,6 +1188,8 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Reset mapping rule drafts" }));
     expect(screen.getByLabelText("Source schema")).toHaveValue("");
     expect(screen.getByLabelText("Target schema")).toHaveValue("");
+    expect(screen.getByLabelText("Mapping source node search")).toHaveValue("");
+    expect(screen.getByLabelText("Mapping target node search")).toHaveValue("");
     expect(screen.getByLabelText("Source path")).toHaveValue("");
     expect(screen.getByLabelText("Target path")).toHaveValue("");
     expect(screen.getByLabelText("Transform type")).toHaveValue("DIRECT");

@@ -208,8 +208,13 @@ async function run() {
     await page.getByLabel("Selected definition schema documents").getByText("$", { exact: true }).waitFor();
 
     await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Mapping target node").selectOption("$.header.shipmentId");
+    await page.getByLabel("Mapping source node search").fill("shipment");
+    await page.getByLabel("Mapping target node search").fill("shipment");
+    await page
+      .getByRole("button", {
+        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
+      })
+      .click();
     await page.getByLabel("Transform type").selectOption("DIRECT");
     await page.getByLabel("Mapping description").fill("Synthetic direct mapping from shipment id.");
     await page.getByRole("button", { name: "Create mapping" }).click();
@@ -257,31 +262,31 @@ async function run() {
     await page.getByLabel("Selected definition join bindings").getByText("Stop to release binding", { exact: true }).waitFor();
 
     await page.getByLabel("Alias source context").selectOption("ship_unit_release");
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.accessKey");
     await page.getByLabel("Mapping description").fill("Synthetic alias-backed access key mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.header.accessKey.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.header.accessKey", { exact: true }).waitFor();
 
     await page.getByLabel("Alias source context").selectOption("ship_unit_release");
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.deliveries[].accessKey");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.deliveries[].accessKey");
     await page.getByLabel("Mapping description").fill("Synthetic delivery alias-backed access key mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.deliveries[].accessKey.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.deliveries[].accessKey", { exact: true }).waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
-    await page.getByLabel("Mapping target node").selectOption("$.deliveries[].sequence");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.deliveries[].sequence");
     await page.getByLabel("Transform type").selectOption("DIRECT");
     await page.getByLabel("Mapping description").fill("Synthetic delivery stop sequence mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.deliveries[].sequence.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.deliveries[].sequence", { exact: true }).waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Mapping target node").selectOption("$.status");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.status");
     await page.getByLabel("Transform type").selectOption("CONSTANT");
     await page.getByLabel("Constant value").fill("ACCEPTED");
     await page.getByLabel("Mapping description").fill("Synthetic constant status mapping.");
@@ -289,8 +294,8 @@ async function run() {
     await page.getByText("Created mapping $.status.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.status", { exact: true }).waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/StartDt/PlannedTime");
-    await page.getByLabel("Mapping target node").selectOption("$.issuedAt");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/StartDt/PlannedTime");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.issuedAt");
     await page.getByLabel("Transform type").selectOption("DATE_FORMAT");
     await page.getByLabel("Date source format").fill("OTM_GLOGDATE");
     await page.getByLabel("Date target format").fill("ISO8601");
@@ -300,8 +305,8 @@ async function run() {
     await page.getByText("Created mapping $.issuedAt.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.issuedAt", { exact: true }).waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.header.filteredAccessKey");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.filteredAccessKey");
     await page.getByLabel("Transform type").selectOption("FILTER_BY_QUALIFIER");
     await page.getByLabel("Filter collection path").fill("/Transmission/Shipment/Release/ReleaseRefnum");
     await page.getByLabel("Filter qualifier path").fill("ReleaseRefnumQualifierGid/Gid/Xid");
@@ -312,8 +317,8 @@ async function run() {
     await page.getByText("Created mapping $.header.filteredAccessKey.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.header.filteredAccessKey", { exact: true }).waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseGid/Gid/Xid");
-    await page.getByLabel("Mapping target node").selectOption("$.header.releaseCount");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseGid/Gid/Xid");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.releaseCount");
     await page.getByLabel("Transform type").selectOption("COUNT_DISTINCT");
     await page.getByLabel("Count collection path").fill("/Transmission/Shipment/Release");
     await page.getByLabel("Count value path").fill("ReleaseGid/Gid/Xid");
@@ -353,6 +358,12 @@ async function run() {
     });
     await mappingForm.getByLabel("Target schema").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping target schema after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Mapping source node search").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping source search after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Mapping target node search").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping target search after reset: ${element.value}`);
     });
     await mappingForm.getByLabel("Source path").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping source path after reset: ${element.value}`);
@@ -564,8 +575,8 @@ async function run() {
     await page.getByText("Created join binding Negative stop to release binding.").waitFor();
 
     await page.getByLabel("Alias source context").selectOption("ship_unit_release");
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.accessKey");
     await page.getByLabel("Mapping description").fill("Invalid alias mapping intentionally outside release scope.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.header.accessKey.").waitFor();
@@ -584,8 +595,8 @@ async function run() {
     await page.getByRole("button", { name: "Remove mapping $.header.accessKey" }).click();
     await page.getByText("Removed mapping $.header.accessKey.").waitFor();
     await page.getByLabel("Alias source context").selectOption("ship_unit_release");
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.accessKey");
     await page.getByLabel("Mapping description").fill("Corrected alias mapping inside release scope.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.header.accessKey.").waitFor();
@@ -627,8 +638,8 @@ async function run() {
     await page.getByText(`Payload external_delivery_required_${suffix}.json and schema $ created.`).waitFor();
 
     await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Mapping target node").selectOption("$.NumeroViagem");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.NumeroViagem");
     await page.getByLabel("Mapping description").fill("Required scenario trip number mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.NumeroViagem.").waitFor();
@@ -652,20 +663,20 @@ async function run() {
     await page.getByRole("button", { name: "Create loop" }).click();
     await page.getByText("Created loop Required deliveries loop.").waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/StartDt/PlannedTime/GLogDate");
-    await page.getByLabel("Mapping target node").selectOption("$.DataEmissao");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/StartDt/PlannedTime/GLogDate");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.DataEmissao");
     await page.getByLabel("Mapping description").fill("Required scenario issue date mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.DataEmissao.").waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.Entregas[].NumeroDocumento");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.Entregas[].NumeroDocumento");
     await page.getByLabel("Mapping description").fill("Required scenario document number mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.Entregas[].NumeroDocumento.").waitFor();
 
-    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
-    await page.getByLabel("Mapping target node").selectOption("$.Entregas[].ChaveAcesso");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.Entregas[].ChaveAcesso");
     await page.getByLabel("Mapping description").fill("Required scenario access key mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.Entregas[].ChaveAcesso.").waitFor();

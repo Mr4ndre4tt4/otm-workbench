@@ -259,18 +259,24 @@ function IntegrationGroupedReview({ rows }: { rows: IntegrationReviewRow[] }) {
 function SchemaNodeSelect({
   label,
   nodes,
-  onSelect
+  onSelect,
+  search = ""
 }: {
   label: string;
   nodes: IntegrationSchemaNode[];
   onSelect: (path: string) => void;
+  search?: string;
 }) {
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleNodes = normalizedSearch
+    ? nodes.filter((node) => node.path.toLowerCase().includes(normalizedSearch) || node.name.toLowerCase().includes(normalizedSearch))
+    : nodes;
   return (
     <label>
       {label}
-      <select disabled={!nodes.length} onChange={(event) => onSelect(event.target.value)} value="">
+      <select aria-label={label} disabled={!nodes.length} onChange={(event) => onSelect(event.target.value)} value="">
         <option value="">Select schema node</option>
-        {nodes.map((node) => (
+        {visibleNodes.map((node) => (
           <option key={node.id} value={node.path}>
             {node.path}
           </option>
@@ -282,6 +288,32 @@ function SchemaNodeSelect({
 
 function collectionNodes(nodes: IntegrationSchemaNode[]) {
   return nodes.filter((node) => ["array", "object"].includes(node.node_type.toLowerCase()));
+}
+
+function semanticNodeKey(node: IntegrationSchemaNode) {
+  return node.name
+    .toLowerCase()
+    .replace(/gid$/, "id")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function mappingSuggestions(sourceNodes: IntegrationSchemaNode[], targetNodes: IntegrationSchemaNode[]) {
+  const sourceLeafNodes = sourceNodes.filter((node) => !["array", "object"].includes(node.node_type.toLowerCase()));
+  const targetLeafNodes = targetNodes.filter((node) => !["array", "object"].includes(node.node_type.toLowerCase()));
+  const suggestions = [];
+  for (const sourceNode of sourceLeafNodes) {
+    const sourceKey = semanticNodeKey(sourceNode);
+    const targetNode = targetLeafNodes.find((candidate) => semanticNodeKey(candidate) === sourceKey);
+    if (targetNode) {
+      suggestions.push({
+        id: `${sourceNode.id}-${targetNode.id}`,
+        source_path: sourceNode.path,
+        target_path: targetNode.path,
+        transform_type: "DIRECT"
+      });
+    }
+  }
+  return suggestions.slice(0, 5);
 }
 
 export function IntegrationMappingView({ token }: { token: string }) {
@@ -306,6 +338,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [targetFormat, setTargetFormat] = useState('JSON');
   const [sourceSchemaId, setSourceSchemaId] = useState('');
   const [targetSchemaId, setTargetSchemaId] = useState('');
+  const [mappingSourceNodeSearch, setMappingSourceNodeSearch] = useState('');
+  const [mappingTargetNodeSearch, setMappingTargetNodeSearch] = useState('');
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
@@ -415,6 +449,10 @@ export function IntegrationMappingView({ token }: { token: string }) {
     responseHandlers: responseHandlers.data?.items ?? [],
     validationResult
   });
+  const mappingSuggestionItems = mappingSuggestions(
+    sourceSchemaNodes.data?.items ?? [],
+    targetSchemaNodes.data?.items ?? []
+  );
 
   const refreshDefinitionData = async (definitionId = effectiveDefinitionId) => {
     await Promise.all([
@@ -442,6 +480,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const resetMappingRuleDrafts = () => {
     setSourceSchemaId('');
     setTargetSchemaId('');
+    setMappingSourceNodeSearch('');
+    setMappingTargetNodeSearch('');
     setSourcePath('');
     setTargetPath('');
     setTransformType('DIRECT');
@@ -1550,16 +1590,47 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 ))}
               </select>
             </label>
+            <label>
+              Mapping source node search
+              <input onChange={(event) => setMappingSourceNodeSearch(event.target.value)} value={mappingSourceNodeSearch} />
+            </label>
+            <label>
+              Mapping target node search
+              <input onChange={(event) => setMappingTargetNodeSearch(event.target.value)} value={mappingTargetNodeSearch} />
+            </label>
             <SchemaNodeSelect
               label="Mapping source node"
               nodes={sourceSchemaNodes.data?.items ?? []}
               onSelect={setSourcePath}
+              search={mappingSourceNodeSearch}
             />
             <SchemaNodeSelect
               label="Mapping target node"
               nodes={targetSchemaNodes.data?.items ?? []}
               onSelect={setTargetPath}
+              search={mappingTargetNodeSearch}
             />
+            <div className="integration-action-bar" aria-label="Mapping suggestions">
+              {mappingSuggestionItems.length ? (
+                mappingSuggestionItems.map((suggestion) => (
+                  <Button
+                    key={suggestion.id}
+                    onClick={() => {
+                      setSourcePath(suggestion.source_path);
+                      setTargetPath(suggestion.target_path);
+                      setTransformType(suggestion.transform_type);
+                      setMappingSourceNodeSearch('');
+                      setMappingTargetNodeSearch('');
+                    }}
+                    type="button"
+                  >
+                    {`Apply suggestion ${suggestion.source_path} to ${suggestion.target_path}`}
+                  </Button>
+                ))
+              ) : (
+                <span className="empty-text">No mapping suggestions for the selected schemas.</span>
+              )}
+            </div>
             <label>
               Source path
               <input onChange={(event) => setSourcePath(event.target.value)} value={sourcePath} />

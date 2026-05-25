@@ -339,7 +339,7 @@ module work should avoid adding frontend-owned module identity maps.
 Next implementation target after the current Integration Mapping hardening:
 
 ```text
-Integration Mapping mapping suggestions and module review cleanup
+Integration Mapping suggestion scoring and module review cleanup
 ```
 
 Reason:
@@ -351,8 +351,10 @@ Reason:
   systems, endpoints, definitions, payloads, schema trees, mappings, loops,
   joins, join bindings, lookups, validation, required target packs, preview,
   spec generation, artifacts, and browser QA.
-- The next value gap is mapping suggestions and schema search, because the
-  transform forms now cover the first backend-executable transform set.
+- The Rules stage now includes schema node search and deterministic first-pass
+  mapping suggestions. The next value gap is scoring/faceting those suggestions
+  for larger payloads and making suggested mapping sets reviewable before
+  creation.
 - Any next UI slice must keep the staged storytelling pattern and grouped review
   as the central workspace.
 ```

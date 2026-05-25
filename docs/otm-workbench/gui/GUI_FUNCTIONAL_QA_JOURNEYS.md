@@ -275,6 +275,8 @@ A module journey is ready when it records:
    preview artifact inspection, alias/path recovery, required target checklist,
    response handler authoring/review, and guided CONSTANT, DATE_FORMAT,
    FILTER_BY_QUALIFIER, and COUNT_DISTINCT transform_config authoring.
+   OTM-158 adds schema node search and mapping suggestion application to the
+   same journey.
 6. Load Plan/Cutover/CSVUTIL journey: OTM-92.
 7. Master Data, Assets, Evidence, and Order Release module journeys.
 ```
