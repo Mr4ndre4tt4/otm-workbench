@@ -225,6 +225,75 @@ def test_preview_integration_definition_materializes_otm_glogdate_as_iso8601(
     ]
 
 
+def test_preview_integration_definition_materializes_concat_transform_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<SourceLocation><Xid>ORIGIN</Xid></SourceLocation>"
+            "<DestinationLocation><Xid>DEST</Xid></DestinationLocation>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"lane":""}}',
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/SourceLocation/Xid",
+            "target_path": "$.header.lane",
+            "transform_type": "CONCAT",
+            "transform_config": {
+                "parts": [
+                    {"type": "source_path", "path": "/Transmission/Shipment/SourceLocation/Xid"},
+                    {"type": "literal", "value": " -> "},
+                    {"type": "source_path", "path": "/Transmission/Shipment/DestinationLocation/Xid"},
+                ]
+            },
+            "description": "Build synthetic lane label.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"lane": "ORIGIN -> DEST"}}
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "mapping_id": created.json()["id"],
+            "source_path": "/Transmission/Shipment/SourceLocation/Xid",
+            "target_path": "$.header.lane",
+            "transform_type": "CONCAT",
+            "value_policy": "concat_from_transform_config",
+        }
+    ]
+
+
 def test_preview_integration_definition_materializes_loop_json_array_with_provenance(
     client,
     admin_header,
