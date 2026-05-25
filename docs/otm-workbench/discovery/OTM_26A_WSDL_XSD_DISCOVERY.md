@@ -1,6 +1,6 @@
 # OTM 26A WSDL/XSD Discovery
 
-**Status:** phase 1 complete, phase 2 started  
+**Status:** phase 3 crosswalk in progress
 **Linear:** `OTM-162`  
 **Source folders:**
 
@@ -700,6 +700,98 @@ Potential improvement:
   catalog" with Evidence Hub outputs.
 ```
 
+## Phase 3.1 - Workbench Contract Crosswalk
+
+This crosswalk compares the OTM 26A WSDL/XSD discovery with the current backend
+contracts in `src/otm_workbench`. It is a technical/functional fit analysis,
+not yet a roadmap commitment.
+
+| Module | Current Workbench contract | 26A contract fit | Gap or opportunity |
+|---|---|---|---|
+| Catalog Core | `MACRO_OBJECT_SEED` already models `RATE_OFFERING`, `RATE_RECORD`, `ITEM`, `REGION`, and `LOCATION` with Data Dictionary tables and load order. | Strong fit. `Rate.xsd` exposes `RATE_OFFERING`, `RATE_GEO`, and `X_LANE`; `LocationContact.xsd` exposes `Location`; `Item.xsd` exposes `Item`. | Add optional links from macro objects to schema roots and service operations. Keep Data Dictionary as table/load-order truth. |
+| Integration Mapping Studio | Persisted schema documents and nodes are generated from uploaded XML/JSON payload samples. | Strong fit as a complement. `Transmission`, `PlannedShipment`, `Release`, `Location`, and JSON targets can share an official path catalog. | Add backend-owned schema packs and XSD-derived path browsing so users can start from official OTM roots even when samples are incomplete. |
+| Master Data Template Factory | Scenario packs already cover operational `LOCATION` and `ITEM` templates with user-friendly fields mapped to OTM tables. | Strong fit. `Location` confirms address, coordinates, refnums, activity/dock concepts; `Item` confirms item, classification, UOM, price, and recursive item complexity. | Add XSD path/documentation hints to template fields while keeping CSV output governed by Data Dictionary and OTM CSVUTIL rules. |
+| Order Release Generator | Curated synthetic template generates a `Transmission` XML wrapper with `Release` and `ReleaseLine` data. | Strong fit. `Order.xsd` exposes `Release`; `Transmission.xsd` confirms the envelope pattern. | Map template columns to official Release paths, add TransactionCode handling, and validate generated XML against schema-pack metadata. |
+| Rates Studio | Rates remain table-first and CSVUTIL-first, with catalog macro objects for offering/record/lane concepts. | Strong fit as a semantic companion. Rate XSD roots are row/table-shaped and mirror OTM table naming. | Use XSD metadata for labels, docs, and future XML validation, but keep table dependencies and CSV package order from Data Dictionary. |
+| Assets Library / Evidence Hub | Assets and evidence already govern generated files and QA outputs. | Strong fit. WSDL/XSD files can become governed assets and validation evidence sources. | Add schema packs as first-class assets; link XML validation jobs and evidence records to the schema pack version used. |
+| Jobs Processing | Jobs already run module workflows and validations. | Strong fit for long-running parsing and validation. | Add jobs for schema-pack ingestion, path catalog extraction, XML validation, and WSDL operation indexing. |
+
+### Existing Implementation Notes
+
+```text
+- Integration Mapping currently parses schema trees from sample XML/JSON only.
+- Order Release Generator currently emits Transmission/TransmissionBody/
+  GLogXMLElement/Release without schema-pack validation.
+- Master Data scenario packs already align with Location and Item functional
+  groupings, including location address/capacity/activity/dock/equipment
+  restriction and item/packaging/ship-unit concepts.
+- Catalog Core macro objects already map the most important discovered OTM
+  roots to Data Dictionary tables.
+```
+
+Technical interpretation:
+
+```text
+The schema-pack feature should be shared infrastructure. Building XSD parsing
+inside only Integration Mapping, Order Release, or Master Data would duplicate
+the same official OTM path/catalog logic across modules.
+```
+
+## Phase 3.2 - Proposed Intermediate Data Contracts
+
+These contracts are intentionally small and backend-owned. They would let future
+modules reuse the same OTM 26A knowledge without embedding XSD files directly in
+each workflow.
+
+| Contract | Purpose | Key fields |
+|---|---|---|
+| `SchemaPack` | Versioned governed bundle of XSD/WSDL files. | `code`, `otm_version`, `source_type`, `asset_id`, `source_path`, `namespace_count`, `status` |
+| `SchemaRoot` | Searchable official root element or service payload root. | `schema_pack_id`, `root_name`, `domain_area`, `xsd_file`, `root_type`, `envelope_role`, `recommended_modules` |
+| `SchemaPath` | Flattened path catalog with structure and docs. | `schema_root_id`, `path`, `node_name`, `data_type`, `min_occurs`, `max_occurs`, `is_required`, `is_repeatable`, `documentation`, `source_file` |
+| `ServiceOperation` | WSDL operation catalog. | `schema_pack_id`, `wsdl_file`, `service_name`, `operation_name`, `input_message`, `output_message`, `fault_message`, `related_roots` |
+| `MacroObjectSchemaLink` | Bridge between Catalog Core macro objects and official XML roots. | `macro_object_code`, `schema_root_id`, `relationship_role`, `confidence`, `notes` |
+
+Recommended sequencing:
+
+```text
+1. Store schema packs as Assets Library records.
+2. Parse XSD roots and paths through Jobs Processing.
+3. Expose roots/paths through Catalog Core APIs.
+4. Let Integration Mapping, Master Data, Rates, and Order Release consume the
+   same schema catalog.
+5. Emit validation results into Evidence Hub.
+```
+
+## Phase 3.3 - Decisions and Validation Needed
+
+Validated by local code cross-check:
+
+```text
+- Catalog Core already names the main rate, item, and location macro objects
+  that appear in the 26A XSD set.
+- Master Data Location and Item scenario packs are functionally aligned with
+  the 26A LocationContact and Item domains.
+- Integration Mapping needs an official schema path source because current path
+  trees depend on uploaded samples.
+- Order Release Generator already uses the correct broad envelope direction,
+  but needs schema-aware field/path validation before it can be considered
+  contract complete.
+```
+
+Still needs functional/technical validation before roadmap conversion:
+
+```text
+1. Confirm whether OTM 26A is the baseline version or one supported version
+   among many.
+2. Confirm whether schema packs are global assets, project assets, or both.
+3. Confirm the first Order Release output contract: Transmission-wrapped
+   Release versus narrower OrderRelease service action.
+4. Decide how far DBXML support should go in MVP0: wrapper validation only,
+   artifact generation, or CommandService import/export orchestration.
+5. Validate schema-pack path extraction against Oracle official docs for each
+   module before using it as user-facing guidance.
+```
+
 ## Validation Questions Before Roadmap
 
 ```text
@@ -726,4 +818,6 @@ Potential improvement:
 3. Compare XSD root/domain names against existing Catalog Core macro-object and
    Master Data template concepts.
 4. Produce a validated module-impact matrix before creating roadmap issues.
+5. Prototype a schema-pack ingestion contract and decide whether it belongs
+   first in Assets Library, Catalog Core, or Jobs Processing.
 ```
