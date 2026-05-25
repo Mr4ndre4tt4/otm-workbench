@@ -3,7 +3,7 @@ import re
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import OrderReleaseTemplate
+from otm_workbench.models import OrderReleaseTemplate, SchemaRoot
 
 
 SYNTHETIC_TL_TEMPLATE = {
@@ -41,6 +41,13 @@ SYNTHETIC_TL_TEMPLATE = {
 TEMPLATE_CODE_PATTERN = re.compile(r"^[A-Z0-9_]+$")
 
 
+class UnknownOrderReleaseSchemaRoot(ValueError):
+    def __init__(self, *, field: str, schema_root_id: str) -> None:
+        self.field = field
+        self.schema_root_id = schema_root_id
+        super().__init__(f"{field} references an unknown schema root.")
+
+
 def normalize_columns(columns: list[str]) -> list[str]:
     normalized: list[str] = []
     for column in columns:
@@ -58,6 +65,20 @@ def duplicate_values(values: list[str]) -> list[str]:
             duplicates.append(value)
         seen.add(value)
     return duplicates
+
+
+def normalize_schema_root_id(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def require_schema_root(db: Session, *, schema_root_id: str | None, field: str) -> None:
+    if schema_root_id is None:
+        return
+    if db.get(SchemaRoot, schema_root_id) is None:
+        raise UnknownOrderReleaseSchemaRoot(field=field, schema_root_id=schema_root_id)
 
 
 def validate_template_contract(
@@ -117,6 +138,8 @@ def create_order_release_template(
     optional_columns: list[str],
     defaults: dict[str, object],
     created_by: str,
+    transmission_schema_root_id: str | None = None,
+    release_schema_root_id: str | None = None,
 ) -> tuple[OrderReleaseTemplate | None, list[dict[str, object]]]:
     normalized_code = code.strip().upper()
     normalized_name = name.strip()
@@ -132,6 +155,14 @@ def create_order_release_template(
         issues.append({"code": "TEMPLATE_CODE_ALREADY_EXISTS", "field": "code", "severity": "ERROR"})
     if issues:
         return None, issues
+    normalized_transmission_schema_root_id = normalize_schema_root_id(transmission_schema_root_id)
+    normalized_release_schema_root_id = normalize_schema_root_id(release_schema_root_id)
+    require_schema_root(
+        db,
+        schema_root_id=normalized_transmission_schema_root_id,
+        field="transmission_schema_root_id",
+    )
+    require_schema_root(db, schema_root_id=normalized_release_schema_root_id, field="release_schema_root_id")
 
     template = OrderReleaseTemplate(
         code=normalized_code,
@@ -143,6 +174,8 @@ def create_order_release_template(
         required_columns_json=json.dumps(normalized_required, sort_keys=True),
         optional_columns_json=json.dumps(normalized_optional, sort_keys=True),
         defaults_json=json.dumps(defaults, sort_keys=True),
+        transmission_schema_root_id=normalized_transmission_schema_root_id,
+        release_schema_root_id=normalized_release_schema_root_id,
         created_by=created_by,
     )
     db.add(template)
@@ -161,6 +194,8 @@ def create_order_release_template_version(
     optional_columns: list[str],
     defaults: dict[str, object],
     created_by: str,
+    transmission_schema_root_id: str | None = None,
+    release_schema_root_id: str | None = None,
 ) -> tuple[OrderReleaseTemplate | None, list[dict[str, object]]]:
     normalized_name = name.strip()
     normalized_required = normalize_columns(required_columns)
@@ -173,6 +208,18 @@ def create_order_release_template_version(
     )
     if issues:
         return None, issues
+    normalized_transmission_schema_root_id = normalize_schema_root_id(
+        transmission_schema_root_id if transmission_schema_root_id is not None else source_template.transmission_schema_root_id
+    )
+    normalized_release_schema_root_id = normalize_schema_root_id(
+        release_schema_root_id if release_schema_root_id is not None else source_template.release_schema_root_id
+    )
+    require_schema_root(
+        db,
+        schema_root_id=normalized_transmission_schema_root_id,
+        field="transmission_schema_root_id",
+    )
+    require_schema_root(db, schema_root_id=normalized_release_schema_root_id, field="release_schema_root_id")
 
     latest_version = (
         db.query(OrderReleaseTemplate.version)
@@ -191,6 +238,8 @@ def create_order_release_template_version(
         required_columns_json=json.dumps(normalized_required, sort_keys=True),
         optional_columns_json=json.dumps(normalized_optional, sort_keys=True),
         defaults_json=json.dumps(defaults, sort_keys=True),
+        transmission_schema_root_id=normalized_transmission_schema_root_id,
+        release_schema_root_id=normalized_release_schema_root_id,
         created_by=created_by,
     )
     db.add(template)
@@ -229,6 +278,8 @@ def serialize_order_release_template(template: OrderReleaseTemplate) -> dict[str
         "required_columns": parse_json_list(template.required_columns_json),
         "optional_columns": parse_json_list(template.optional_columns_json),
         "defaults": parse_json_object(template.defaults_json),
+        "transmission_schema_root_id": template.transmission_schema_root_id,
+        "release_schema_root_id": template.release_schema_root_id,
         "created_by": template.created_by,
         "created_at": template.created_at.isoformat() if template.created_at else None,
         "updated_at": template.updated_at.isoformat() if template.updated_at else None,

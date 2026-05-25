@@ -883,9 +883,13 @@ Status da primeira fatia:
   referenciar `SchemaRoot` oficial de source/target, a API recusa root
   inexistente e a validacao aponta referencia quebrada se o banco for alterado
   por fora.
-- Ainda falta expandir o consumo para Order Release, Master Data e Rates, alem
-  de revisao funcional Oracle/Data Dictionary antes de expor paths como
-  guidance de usuario.
+- Segundo consumo por Order Release Generator entregue: templates podem
+  referenciar roots oficiais `Transmission` e `Release`, a API recusa root
+  inexistente e o preview XML retorna validacao client-safe do envelope quando
+  roots oficiais estao configurados.
+- Ainda falta expandir o consumo para Master Data e Rates, alem de revisao
+  funcional Oracle/Data Dictionary antes de expor paths como guidance de
+  usuario.
 ```
 
 ### Fora do primeiro recorte

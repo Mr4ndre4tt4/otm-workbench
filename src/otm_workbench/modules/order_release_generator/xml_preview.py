@@ -1,7 +1,9 @@
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-from otm_workbench.models import OrderReleaseBatch, OrderReleaseBatchRow
+from sqlalchemy.orm import Session
+
+from otm_workbench.models import OrderReleaseBatch, OrderReleaseBatchRow, OrderReleaseTemplate, SchemaRoot
 from otm_workbench.modules.order_release_generator.batches import parse_json_object
 
 
@@ -18,7 +20,52 @@ def add_gid(parent: ET.Element, tag_name: str, gid: str) -> None:
     xid.text = xid_from_gid(gid)
 
 
-def build_order_release_xml(batch: OrderReleaseBatch, rows: list[OrderReleaseBatchRow]) -> dict[str, object]:
+def validate_schema_roots(
+    db: Session,
+    *,
+    template: OrderReleaseTemplate,
+    root: ET.Element,
+) -> dict[str, object] | None:
+    if not template.transmission_schema_root_id and not template.release_schema_root_id:
+        return None
+
+    issues: list[dict[str, str]] = []
+    checked_roots: list[str] = []
+    transmission_root = (
+        db.get(SchemaRoot, template.transmission_schema_root_id)
+        if template.transmission_schema_root_id
+        else None
+    )
+    release_root = db.get(SchemaRoot, template.release_schema_root_id) if template.release_schema_root_id else None
+    if transmission_root is None and template.transmission_schema_root_id:
+        issues.append({"code": "SCHEMA_ROOT_MISSING", "field": "transmission_schema_root_id"})
+    elif transmission_root is not None:
+        checked_roots.append(transmission_root.root_name)
+        if root.tag != transmission_root.root_name:
+            issues.append({"code": "XML_ROOT_MISMATCH", "field": "transmission_schema_root_id"})
+    if release_root is None and template.release_schema_root_id:
+        issues.append({"code": "SCHEMA_ROOT_MISSING", "field": "release_schema_root_id"})
+    elif release_root is not None:
+        checked_roots.append(release_root.root_name)
+        if root.find(f".//{release_root.root_name}") is None:
+            issues.append({"code": "XML_BODY_ROOT_MISSING", "field": "release_schema_root_id"})
+
+    return {
+        "status": "PASSED" if not issues else "FAILED",
+        "transmission_schema_root_id": template.transmission_schema_root_id,
+        "release_schema_root_id": template.release_schema_root_id,
+        "checked_roots": checked_roots,
+        "issues": issues,
+    }
+
+
+def build_order_release_xml(
+    batch: OrderReleaseBatch,
+    rows: list[OrderReleaseBatchRow],
+    *,
+    db: Session | None = None,
+    template: OrderReleaseTemplate | None = None,
+) -> dict[str, object]:
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         values = {key: str(value) for key, value in parse_json_object(row.normalized_json).items()}
@@ -48,9 +95,14 @@ def build_order_release_xml(batch: OrderReleaseBatch, rows: list[OrderReleaseBat
             ET.SubElement(weight, "WeightValue").text = values["weight"]
             ET.SubElement(weight, "WeightUOMGid").text = values["weight_uom"]
 
-    return {
+    payload: dict[str, object] = {
         "batch_id": batch.id,
         "release_count": len(grouped),
         "line_count": line_count,
         "xml": ET.tostring(root, encoding="unicode"),
     }
+    if db is not None and template is not None:
+        schema_validation = validate_schema_roots(db, template=template, root=root)
+        if schema_validation is not None:
+            payload["schema_validation"] = schema_validation
+    return payload

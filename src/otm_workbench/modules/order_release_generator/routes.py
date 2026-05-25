@@ -16,6 +16,7 @@ from otm_workbench.modules.order_release_generator.batches import (
 )
 from otm_workbench.modules.order_release_generator.job_tracking import record_completed_order_release_job
 from otm_workbench.modules.order_release_generator.templates import (
+    UnknownOrderReleaseSchemaRoot,
     create_order_release_template,
     create_order_release_template_version,
     seed_order_release_templates,
@@ -93,6 +94,8 @@ class OrderReleaseTemplateCreateRequest(BaseModel):
     required_columns: list[str]
     optional_columns: list[str] = []
     defaults: dict[str, object] = {}
+    transmission_schema_root_id: str | None = None
+    release_schema_root_id: str | None = None
 
 
 class OrderReleaseTemplateVersionCreateRequest(BaseModel):
@@ -101,6 +104,8 @@ class OrderReleaseTemplateVersionCreateRequest(BaseModel):
     required_columns: list[str]
     optional_columns: list[str] = []
     defaults: dict[str, object] = {}
+    transmission_schema_root_id: str | None = None
+    release_schema_root_id: str | None = None
 
 
 @router.get("/health")
@@ -130,16 +135,25 @@ def create_template(
     user: User = Depends(require_user),
 ):
     seed_order_release_templates(db)
-    template, issues = create_order_release_template(
-        db,
-        code=payload.code,
-        name=payload.name,
-        description=payload.description,
-        required_columns=payload.required_columns,
-        optional_columns=payload.optional_columns,
-        defaults=payload.defaults,
-        created_by=user.email,
-    )
+    try:
+        template, issues = create_order_release_template(
+            db,
+            code=payload.code,
+            name=payload.name,
+            description=payload.description,
+            required_columns=payload.required_columns,
+            optional_columns=payload.optional_columns,
+            defaults=payload.defaults,
+            created_by=user.email,
+            transmission_schema_root_id=payload.transmission_schema_root_id,
+            release_schema_root_id=payload.release_schema_root_id,
+        )
+    except UnknownOrderReleaseSchemaRoot as exc:
+        raise api_error(
+            400,
+            "ORDER_RELEASE_SCHEMA_ROOT_NOT_FOUND",
+            f"{exc.field} does not reference an indexed Schema Pack root.",
+        ) from exc
     if template is None:
         raise api_error(
             422,
@@ -160,16 +174,25 @@ def create_template_version(
     source_template = db.get(OrderReleaseTemplate, template_id)
     if source_template is None:
         raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
-    template, issues = create_order_release_template_version(
-        db,
-        source_template=source_template,
-        name=payload.name,
-        description=payload.description,
-        required_columns=payload.required_columns,
-        optional_columns=payload.optional_columns,
-        defaults=payload.defaults,
-        created_by=user.email,
-    )
+    try:
+        template, issues = create_order_release_template_version(
+            db,
+            source_template=source_template,
+            name=payload.name,
+            description=payload.description,
+            required_columns=payload.required_columns,
+            optional_columns=payload.optional_columns,
+            defaults=payload.defaults,
+            created_by=user.email,
+            transmission_schema_root_id=payload.transmission_schema_root_id,
+            release_schema_root_id=payload.release_schema_root_id,
+        )
+    except UnknownOrderReleaseSchemaRoot as exc:
+        raise api_error(
+            400,
+            "ORDER_RELEASE_SCHEMA_ROOT_NOT_FOUND",
+            f"{exc.field} does not reference an indexed Schema Pack root.",
+        ) from exc
     if template is None:
         raise api_error(
             422,
@@ -255,7 +278,8 @@ def preview_batch_xml(
         .order_by(OrderReleaseBatchRow.row_number)
         .all()
     )
-    payload = build_order_release_xml(batch, rows)
+    template = db.get(OrderReleaseTemplate, batch.template_id)
+    payload = build_order_release_xml(batch, rows, db=db, template=template) if template else build_order_release_xml(batch, rows)
     job = record_completed_order_release_job(
         db,
         job_type="ORDER_RELEASE_XML_PREVIEW",

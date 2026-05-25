@@ -1,5 +1,46 @@
 from sqlalchemy import inspect
 
+from otm_workbench.models import SchemaFile, SchemaPack, SchemaRoot
+
+
+def create_order_release_schema_root(db_session, *, root_name: str):
+    schema_pack = SchemaPack(
+        code=f"OTM_26A_OR_{root_name.upper()}",
+        name=f"OTM 26A Order Release {root_name}",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/synthetic/otm/26A",
+        content_hash=f"hash-or-{root_name.lower()}",
+        status="INDEXED",
+    )
+    db_session.add(schema_pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=schema_pack.id,
+        file_name=f"{root_name}.xsd",
+        relative_path=f"{root_name}.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        import_count=0,
+        top_level_element_count=1,
+        complex_type_count=1,
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    schema_root = SchemaRoot(
+        schema_pack_id=schema_pack.id,
+        schema_file_id=schema_file.id,
+        root_name=root_name,
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        domain_area="ORDER_RELEASE",
+        root_type="MESSAGE",
+        envelope_role="TRANSMISSION" if root_name == "Transmission" else "BODY",
+    )
+    db_session.add(schema_root)
+    db_session.commit()
+    return schema_root
+
 
 def test_order_release_generator_health_requires_authentication(client):
     response = client.get("/api/v1/modules/order-release-generator/health")
@@ -158,6 +199,47 @@ def test_create_order_release_template_version_preserves_template_history(client
 
     assert batch_response.status_code == 200
     assert batch_response.json()["status"] == "VALID"
+
+
+def test_create_order_release_template_can_reference_schema_roots(client, admin_header, db_session):
+    transmission_root = create_order_release_schema_root(db_session, root_name="Transmission")
+    release_root = create_order_release_schema_root(db_session, root_name="Release")
+
+    response = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SCHEMA_ROOTS",
+            "name": "Schema-rooted TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+            "transmission_schema_root_id": transmission_root.id,
+            "release_schema_root_id": release_root.id,
+        },
+    )
+
+    assert response.status_code == 200
+    template = response.json()
+    assert template["transmission_schema_root_id"] == transmission_root.id
+    assert template["release_schema_root_id"] == release_root.id
+
+
+def test_create_order_release_template_rejects_unknown_schema_root(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_UNKNOWN_SCHEMA_ROOT",
+            "name": "Unknown schema rooted template",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "defaults": {"domain_name": "OTM1"},
+            "transmission_schema_root_id": "missing-schema-root",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ORDER_RELEASE_SCHEMA_ROOT_NOT_FOUND"
 
 
 def test_modules_endpoint_returns_order_release_generator_module(client, admin_header):

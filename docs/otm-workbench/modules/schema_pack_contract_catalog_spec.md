@@ -382,6 +382,10 @@ Status update:
   reference backend-owned `SchemaRoot` records for source/target contracts,
   unknown root IDs are rejected at creation, and validation reports stale
   schema-root references if the database is changed outside the API.
+- Order Release Generator second consumer delivered: templates can now
+  reference official `Transmission` and `Release` `SchemaRoot` records, unknown
+  root IDs are rejected at authoring time, and XML preview reports a
+  client-safe envelope validation summary when schema roots are configured.
 ```
 
 ## Local 26A Validation Snapshot

@@ -325,6 +325,16 @@ class OrderReleaseTemplate(Base, TimestampMixin):
     required_columns_json: Mapped[str] = mapped_column(Text, default="[]")
     optional_columns_json: Mapped[str] = mapped_column(Text, default="[]")
     defaults_json: Mapped[str] = mapped_column(Text, default="{}")
+    transmission_schema_root_id: Mapped[str | None] = mapped_column(
+        ForeignKey("schema_roots.id"),
+        nullable=True,
+        index=True,
+    )
+    release_schema_root_id: Mapped[str | None] = mapped_column(
+        ForeignKey("schema_roots.id"),
+        nullable=True,
+        index=True,
+    )
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
