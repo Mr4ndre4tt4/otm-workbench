@@ -372,7 +372,7 @@ Artifacts + Evidence
 13. Artifact/evidence client-safe. [INICIADO com Artifact do workbook de template e pacote CSV ZIP]
 14. Seed de Items & Packaging Standard. [ENTREGUE MVP0 inicial com ITEM, PACKAGED_ITEM e TI_HI validados no Data Dictionary]
 15. Seed de Locations Basic. [ENTREGUE MVP0 inicial com LOCATION e LOCATION_ADDRESS validados no Data Dictionary, preparando Coordinate Quality]
-16. Scenario packs funcionais Location Operational e Item Packaging. [INICIADO com QA backend, editor backend-owned, relacoes same-batch e handoff Location -> Load Plan/Cutover]
+16. Scenario packs funcionais Location Operational e Item Packaging. [INICIADO com QA backend, editor backend-owned, relacoes same-batch e handoff Location + Item Packaging -> Load Plan/Cutover]
 ```
 
 ---

@@ -325,6 +325,140 @@ def prepare_exported_operational_locations_batch(client, admin_header):
     return batch, export.json()
 
 
+def prepare_exported_item_packaging_batch(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "ITEM_PACKAGING_OPERATIONAL")
+    editor_payload = {
+        "file_name": "item_packaging_load_plan.xlsx",
+        "sheets": [
+            {
+                "sheet_code": "ITEMS",
+                "rows": [
+                    {
+                        "row_id": "ITEMS-1",
+                        "values": {
+                            "item_gid": "SYN.ITEM_WIDGET_001",
+                            "item_xid": "ITEM_WIDGET_001",
+                            "item_name": "Synthetic Widget",
+                            "item_type_gid": "SYN.ITEM_TYPE_GENERAL",
+                            "unit_of_measure": "EA",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "SHIP_UNIT_SPECS",
+                "rows": [
+                    {
+                        "row_id": "SHIP_UNIT_SPECS-1",
+                        "values": {
+                            "ship_unit_spec_gid": "SYN.SUS_CASE",
+                            "ship_unit_spec_xid": "SUS_CASE",
+                            "ship_unit_spec_name": "Synthetic Case",
+                            "unit_type": "P",
+                            "length": "12",
+                            "length_uom_code": "IN",
+                            "width": "10",
+                            "width_uom_code": "IN",
+                            "height": "8",
+                            "height_uom_code": "IN",
+                            "tare_weight": "1.5",
+                            "tare_weight_uom_code": "LB",
+                            "effective_volume": "0.55",
+                            "effective_volume_uom_code": "CUFT",
+                            "is_in_on_max": "I",
+                        },
+                    },
+                    {
+                        "row_id": "SHIP_UNIT_SPECS-2",
+                        "values": {
+                            "ship_unit_spec_gid": "SYN.SUS_PALLET",
+                            "ship_unit_spec_xid": "SUS_PALLET",
+                            "ship_unit_spec_name": "Synthetic Pallet",
+                            "unit_type": "T",
+                            "length": "48",
+                            "length_uom_code": "IN",
+                            "width": "40",
+                            "width_uom_code": "IN",
+                            "height": "60",
+                            "height_uom_code": "IN",
+                            "tare_weight": "45",
+                            "tare_weight_uom_code": "LB",
+                            "effective_volume": "66.67",
+                            "effective_volume_uom_code": "CUFT",
+                            "is_in_on_max": "O",
+                        },
+                    },
+                ],
+            },
+            {
+                "sheet_code": "PACKAGED_ITEMS",
+                "rows": [
+                    {
+                        "row_id": "PACKAGED_ITEMS-1",
+                        "values": {
+                            "packaged_item_gid": "SYN.PKG_WIDGET_CASE",
+                            "packaged_item_xid": "PKG_WIDGET_CASE",
+                            "package_item_gid": "SYN.ITEM_WIDGET_001",
+                            "packaging_unit_gid": "SYN.SUS_CASE",
+                            "package_ship_unit_weight": "24",
+                            "package_ship_unit_weight_uom": "LB",
+                            "package_su_volume": "0.55",
+                            "package_su_volume_uom_code": "CUFT",
+                            "package_su_length": "12",
+                            "package_su_length_uom_code": "IN",
+                            "package_su_width": "10",
+                            "package_su_width_uom_code": "IN",
+                            "package_su_height": "8",
+                            "package_su_height_uom_code": "IN",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "TI_HI",
+                "rows": [
+                    {
+                        "row_id": "TI_HI-1",
+                        "values": {
+                            "tihi_sequence_no": "10",
+                            "tihi_packaged_item_gid": "SYN.PKG_WIDGET_CASE",
+                            "tihi_packaging_unit_gid": "SYN.SUS_CASE",
+                            "transport_handling_unit_gid": "SYN.SUS_PALLET",
+                            "num_layers": "4",
+                            "quantity_per_layer": "6",
+                        },
+                    }
+                ],
+            },
+        ],
+    }
+    batch_response = client.post(
+        f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
+        json=editor_payload,
+        headers=admin_header,
+    )
+    assert batch_response.status_code == 200
+    batch = batch_response.json()
+    assert batch["status"] == "PARSED"
+    relationship = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/validate-relationships",
+        headers=admin_header,
+    )
+    assert relationship.status_code == 200
+    assert relationship.json()["status"] == "RELATIONSHIP_VALIDATED", relationship.json()
+    assert client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/map", headers=admin_header).status_code == 200
+    assert client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-output", headers=admin_header).status_code == 200
+    csv = client.post(f"/api/v1/modules/master-data/batches/{batch['batch_id']}/build-csv", headers=admin_header)
+    assert csv.status_code == 200
+    assert [item["table_name"] for item in csv.json()["files"]] == ["ITEM", "SHIP_UNIT_SPEC", "PACKAGED_ITEM", "TI_HI"]
+    export = client.post(
+        f"/api/v1/modules/master-data/batches/{batch['batch_id']}/export-csv-package",
+        headers=admin_header,
+    )
+    assert export.status_code == 200
+    return batch, export.json()
+
+
 def test_load_plan_packages_table_exists_after_metadata_reset():
     tables = set(inspect(engine).get_table_names())
 
@@ -712,6 +846,55 @@ def test_operational_master_data_package_reaches_zip_analysis_and_cutover_readin
     assert not any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
     assert "SYN.LOC_DC_001" not in json.dumps(zip_payload)
     assert "SYN.LOC_DC_001" not in json.dumps(readiness)
+
+
+def test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_readiness(
+    client,
+    admin_header,
+):
+    batch, export = prepare_exported_item_packaging_batch(client, admin_header)
+    package = client.post(
+        f"/api/v1/modules/load-plan/packages/from-master-data/{batch['batch_id']}",
+        headers=admin_header,
+    ).json()
+
+    assert package["artifact_id"] == export["artifact_id"]
+    assert package["summary"]["catalog_macro_object_code"] == "ITEM"
+    assert [item["table_name"] for item in package["load_sequence"]] == [
+        "ITEM",
+        "SHIP_UNIT_SPEC",
+        "PACKAGED_ITEM",
+        "TI_HI",
+    ]
+
+    zip_analysis = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+    assert zip_analysis.status_code == 200
+    zip_payload = zip_analysis.json()
+    assert zip_payload["summary"]["error_count"] == 0, zip_payload["findings"]
+    assert zip_payload["summary"]["csv_file_count"] == 4
+
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package['id']}",
+        headers=admin_header,
+    ).json()
+    readiness = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    ).json()
+
+    assert readiness["summary"]["latest_zip_analysis_id"] == zip_payload["id"]
+    master_data_family = next(
+        family for family in readiness["summary"]["package_families"] if family["family_code"] == "MASTER_DATA"
+    )
+    assert master_data_family["table_count"] == 4
+    assert readiness["status"] == "BLOCKED"
+    assert not any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
+    assert "SYN.ITEM_WIDGET_001" not in json.dumps(zip_payload)
+    assert "SYN.ITEM_WIDGET_001" not in json.dumps(readiness)
 
 
 def test_register_master_data_package_creates_client_safe_evidence_audit_and_event(
