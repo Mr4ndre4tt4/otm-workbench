@@ -1196,6 +1196,7 @@ def list_schema_roots(
     root_name: str | None = None,
     domain_area: str | None = None,
     recommended_module: str | None = None,
+    schema_guidance_role: str | None = None,
 ) -> list[SchemaRoot]:
     query = db.query(SchemaRoot)
     if schema_pack_id:
@@ -1208,6 +1209,9 @@ def list_schema_roots(
     if recommended_module:
         module = recommended_module.lower()
         roots = [root for root in roots if module in [item.lower() for item in _json_list(root.recommended_modules_json)]]
+    if schema_guidance_role:
+        role = schema_guidance_role.upper()
+        roots = [root for root in roots if _schema_guidance_role(root) == role]
     return roots
 
 

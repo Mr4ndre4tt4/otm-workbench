@@ -106,6 +106,8 @@ Backend status:
 - `Transmission` is explicitly serialized as `ENVELOPE_ONLY`, not as a macro
   object, so it can support XML envelope browsing without implying table load
   guidance.
+- `GET /api/v1/catalog/schema-roots` supports `schema_guidance_role` filtering
+  so the UI can stage envelopes separately from macro-object roots.
 ```
 
 ## Next Hardening Slices

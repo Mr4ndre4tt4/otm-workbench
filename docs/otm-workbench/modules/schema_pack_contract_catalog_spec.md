@@ -301,7 +301,7 @@ API rules:
 ```text
 - Creation/indexing requires admin/developer capability.
 - Read endpoints should support filters by otm_version, root_name,
-  domain_area, recommended_module, file_type, and status.
+  domain_area, recommended_module, schema_guidance_role, file_type, and status.
 - Path search should support prefix and text query.
 - Responses must not include raw file content.
 ```

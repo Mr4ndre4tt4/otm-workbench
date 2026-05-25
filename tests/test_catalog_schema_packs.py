@@ -822,6 +822,65 @@ def test_catalog_schema_roots_are_queryable_by_backend_owned_alias(client, admin
     assert payload["items"][0]["data_dictionary_family"] == "RATE_GEO"
 
 
+def test_catalog_schema_roots_filter_by_schema_guidance_role(client, admin_header, db_session):
+    pack = SchemaPack(
+        code="OTM_26A_CORE",
+        name="OTM 26A core contracts",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/otm/contracts/26A",
+        content_hash="hash-26a",
+        status="READY",
+    )
+    db_session.add(pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name="Transmission.xsd",
+        relative_path="Transmission.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    db_session.add_all(
+        [
+            SchemaRoot(
+                schema_pack_id=pack.id,
+                schema_file_id=schema_file.id,
+                root_name="Transmission",
+                namespace="http://xmlns.oracle.com/apps/otm",
+                domain_area="TRANSMISSION",
+                root_type="ENVELOPE",
+                envelope_role="TRANSMISSION",
+                recommended_modules_json='["integration_mapping"]',
+            ),
+            SchemaRoot(
+                schema_pack_id=pack.id,
+                schema_file_id=schema_file.id,
+                root_name="PlannedShipment",
+                namespace="http://xmlns.oracle.com/apps/otm",
+                domain_area="SHIPMENT",
+                root_type="DOMAIN_ROOT",
+                envelope_role="NONE",
+                recommended_modules_json='["integration_mapping"]',
+            ),
+        ]
+    )
+    db_session.commit()
+
+    envelopes = client.get("/api/v1/catalog/schema-roots?schema_guidance_role=ENVELOPE_ONLY", headers=admin_header)
+    macro_objects = client.get("/api/v1/catalog/schema-roots?schema_guidance_role=MACRO_OBJECT", headers=admin_header)
+
+    assert envelopes.status_code == 200
+    assert macro_objects.status_code == 200
+    assert [item["root_name"] for item in envelopes.json()["items"]] == ["Transmission"]
+    assert envelopes.json()["items"][0]["schema_guidance_role"] == "ENVELOPE_ONLY"
+    assert [item["root_name"] for item in macro_objects.json()["items"]] == ["PlannedShipment"]
+    assert macro_objects.json()["items"][0]["schema_guidance_role"] == "MACRO_OBJECT"
+
+
 def test_catalog_macro_object_schema_links_return_official_roots(client, admin_header, db_session):
     pack = SchemaPack(
         code="OTM_26A_CORE",

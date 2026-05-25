@@ -312,6 +312,7 @@ def list_catalog_schema_roots(
     root_name: str | None = None,
     domain_area: str | None = None,
     recommended_module: str | None = None,
+    schema_guidance_role: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -321,6 +322,7 @@ def list_catalog_schema_roots(
         root_name=root_name,
         domain_area=domain_area,
         recommended_module=recommended_module,
+        schema_guidance_role=schema_guidance_role,
     )
     items = [serialize_schema_root(root) for root in roots]
     return PageResponse(items=items, total=len(items), page_size=len(items))
