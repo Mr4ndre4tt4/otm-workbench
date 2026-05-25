@@ -2,7 +2,12 @@ import json
 from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
-from tests.test_integration_mapping_mappings import create_source_and_target_documents
+from tests.test_integration_mapping_loops import loop_payload
+from tests.test_integration_mapping_mappings import (
+    create_definition,
+    create_schema_document,
+    create_source_and_target_documents,
+)
 from tests.test_integration_mapping_validation import create_full_valid_definition
 
 
@@ -90,6 +95,92 @@ def test_preview_integration_definition_materializes_direct_json_with_provenance
     artifact_payload = json.loads(Path(artifact.file_path).read_text(encoding="utf-8"))
     assert artifact_payload["preview"]["target_json"] == {"header": {"shipmentId": "OTM1.SYNTHETIC"}}
     assert artifact_payload["preview"]["field_provenance"][0]["mapping_id"] == created.json()["id"]
+
+
+def test_preview_integration_definition_materializes_loop_json_array_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentStop><StopSequence>1</StopSequence><StopType>D</StopType></ShipmentStop>"
+            "<ShipmentStop><StopSequence>2</StopSequence><StopType>D</StopType></ShipmentStop>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"deliveries":[{"sequence":"","type":""}]}',
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json=loop_payload(source, target),
+        headers=admin_header,
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "transform_type": "DIRECT",
+            "description": "Loop-scoped stop sequence mapping.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert loop.status_code == 200
+    assert mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {
+        "deliveries": [
+            {"sequence": "1"},
+            {"sequence": "2"},
+        ]
+    }
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "loop_id": loop.json()["id"],
+            "mapping_id": mapping.json()["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "source_item_path": "/Transmission/Shipment/ShipmentStop[1]/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "target_item_path": "$.deliveries[0].sequence",
+            "transform_type": "DIRECT",
+            "value_policy": "copied_from_synthetic_loop_item",
+        },
+        {
+            "loop_id": loop.json()["id"],
+            "mapping_id": mapping.json()["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "source_item_path": "/Transmission/Shipment/ShipmentStop[2]/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "target_item_path": "$.deliveries[1].sequence",
+            "transform_type": "DIRECT",
+            "value_policy": "copied_from_synthetic_loop_item",
+        },
+    ]
 
 
 def test_preview_integration_definition_rejects_invalid_metadata(client, admin_header, db_session):

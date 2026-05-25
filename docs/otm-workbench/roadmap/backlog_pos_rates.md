@@ -702,10 +702,10 @@ Backlog gerado pela rodada:
 20. Review table agrupada por Header, Entregas, Lookups, Joins, Aggregations e Response Handling. [BACKLOG pos-MVP0]
 21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [ENTREGUE primeira fatia backend OTM-130: contrato persistido `transform_config`, validacao controlada e spec markdown em 2026-05-25; UI authoring segue backlog]
 22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [BACKLOG pos-MVP0]
-23. Mapping escopado por loop para campos de colecao como Entregas[]. [BACKLOG pos-MVP0]
+23. Mapping escopado por loop para campos de colecao como Entregas[]. [ENTREGUE primeira fatia backend OTM-132: single XML loop -> JSON array com proveniencia em 2026-05-25; loops aninhados e multi-hop seguem backlog]
 24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [BACKLOG pos-MVP0]
 25. Validacao semantica para join com mesmo path, target duplicado, target obrigatorio ausente, output lookup fora do escopo, config de transform ausente e readiness separado para spec vs preview. [ENTREGUE primeira fatia: join mesmo path, target duplicado, required targets NDD-like, lookup output scope, transform config missing e readiness spec/preview em 2026-05-25]
-26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE primeira fatia backend OTM-131: direct scalar XML -> JSON com field_provenance em 2026-05-25; loops/joins/lookups seguem metadata-only/backlog]
+26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE fatias backend OTM-131/OTM-132: direct scalar XML -> JSON e single loop XML -> JSON array com field_provenance em 2026-05-25; joins/lookups seguem metadata-only/backlog]
 27. Browser QA completo para o cenario NDD-like sintetico, incluindo caminho errado, reset, troca de definition e revisao de artifact. [BACKLOG pos-MVP0]
 ```
 

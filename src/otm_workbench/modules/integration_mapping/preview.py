@@ -84,6 +84,36 @@ def source_value_from_xml_path(content: str, path: str) -> object:
     return (element.text or "").strip()
 
 
+def xml_elements_from_collection_path(content: str, collection_path: str) -> list[ET.Element]:
+    root = ET.fromstring(content)
+    parts = [part for part in collection_path.strip("/").split("/") if part]
+    if not parts or parts[0] != root.tag:
+        return []
+    parents = [root]
+    for part in parts[1:-1]:
+        next_parents: list[ET.Element] = []
+        for parent in parents:
+            next_parents.extend(parent.findall(part))
+        parents = next_parents
+    if len(parts) == 1:
+        return [root]
+    collection_name = parts[-1]
+    elements: list[ET.Element] = []
+    for parent in parents:
+        elements.extend(parent.findall(collection_name))
+    return elements
+
+
+def xml_child_value(element: ET.Element, relative_path: str) -> object:
+    parts = [part for part in relative_path.strip("/").split("/") if part]
+    current = element
+    for part in parts:
+        current = current.find(part)
+        if current is None:
+            return None
+    return (current.text or "").strip()
+
+
 def set_json_path_value(target: dict[str, object], path: str, value: object) -> None:
     parts = [part for part in path.removeprefix("$.").split(".") if part]
     if not parts:
@@ -96,6 +126,20 @@ def set_json_path_value(target: dict[str, object], path: str, value: object) -> 
             current[part] = existing
         current = existing
     current[parts[-1]] = value
+
+
+def set_loop_item_value(target: dict[str, object], collection_path: str, index: int, item_field: str, value: object) -> None:
+    collection_name = collection_path.removeprefix("$.").removesuffix("[]")
+    if not collection_name or "." in collection_name:
+        return
+    rows = target.setdefault(collection_name, [])
+    if not isinstance(rows, list):
+        return
+    while len(rows) <= index:
+        rows.append({})
+    row = rows[index]
+    if isinstance(row, dict):
+        row[item_field] = value
 
 
 def document_payload_content(db: Session, document_id: str) -> tuple[str, str] | None:
@@ -115,14 +159,19 @@ def document_payload_content(db: Session, document_id: str) -> tuple[str, str] |
 
 
 def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
-    has_complex_rules = (
-        db.query(IntegrationLoopDefinition).filter(IntegrationLoopDefinition.definition_id == definition.id).count()
-        or db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
-        or db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).count()
+    joins_count = db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
+    lookups_count = (
+        db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).count()
     )
-    if has_complex_rules:
+    if joins_count or lookups_count:
         return None
 
+    loops = (
+        db.query(IntegrationLoopDefinition)
+        .filter(IntegrationLoopDefinition.definition_id == definition.id)
+        .order_by(IntegrationLoopDefinition.sequence_index, IntegrationLoopDefinition.created_at)
+        .all()
+    )
     mappings = (
         db.query(IntegrationMapping)
         .filter(IntegrationMapping.definition_id == definition.id)
@@ -131,6 +180,8 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     )
     if not mappings:
         return None
+    if loops:
+        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings)
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
@@ -159,6 +210,71 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
             }
         )
 
+    return {
+        "mode": "synthetic_executable_json",
+        "target_json": target_json,
+        "field_provenance": field_provenance,
+    }
+
+
+def build_loop_executable_json_preview(
+    db: Session,
+    *,
+    loops: list[IntegrationLoopDefinition],
+    mappings: list[IntegrationMapping],
+) -> dict[str, object] | None:
+    if len(loops) != 1:
+        return None
+    loop = loops[0]
+    source_payload = document_payload_content(db, loop.source_schema_document_id)
+    target_payload = document_payload_content(db, loop.target_schema_document_id)
+    if source_payload is None or target_payload is None:
+        return None
+    source_format, source_content = source_payload
+    target_format, _target_content = target_payload
+    if source_format != "XML" or target_format != "JSON":
+        return None
+
+    loop_items = xml_elements_from_collection_path(source_content, loop.source_collection_path)
+    if not loop_items:
+        return None
+
+    target_json: dict[str, object] = {}
+    field_provenance: list[dict[str, object]] = []
+    for mapping in mappings:
+        if mapping.transform_type != "DIRECT":
+            return None
+        if not mapping.source_path.startswith(f"{loop.source_collection_path}/"):
+            return None
+        if not mapping.target_path.startswith(f"{loop.target_collection_path}."):
+            return None
+        relative_source_path = mapping.source_path.removeprefix(f"{loop.source_collection_path}/")
+        target_field = mapping.target_path.removeprefix(f"{loop.target_collection_path}.")
+        if not target_field or "." in target_field or "[]" in target_field:
+            return None
+        for index, item in enumerate(loop_items):
+            value = xml_child_value(item, relative_source_path)
+            if value in (None, ""):
+                continue
+            set_loop_item_value(target_json, loop.target_collection_path, index, target_field, value)
+            field_provenance.append(
+                {
+                    "loop_id": loop.id,
+                    "mapping_id": mapping.id,
+                    "source_path": mapping.source_path,
+                    "source_item_path": (
+                        f"{loop.source_collection_path}[{index + 1}]/{relative_source_path}"
+                    ),
+                    "target_path": mapping.target_path,
+                    "target_item_path": loop.target_collection_path.replace("[]", f"[{index}]")
+                    + f".{target_field}",
+                    "transform_type": mapping.transform_type,
+                    "value_policy": "copied_from_synthetic_loop_item",
+                }
+            )
+
+    if not field_provenance:
+        return None
     return {
         "mode": "synthetic_executable_json",
         "target_json": target_json,
