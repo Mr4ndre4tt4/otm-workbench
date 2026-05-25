@@ -97,6 +97,66 @@ def test_preview_integration_definition_materializes_direct_json_with_provenance
     assert artifact_payload["preview"]["field_provenance"][0]["mapping_id"] == created.json()["id"]
 
 
+def test_preview_integration_definition_materializes_constant_transform_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment><ShipmentGid>OTM1.SYNTHETIC</ShipmentGid></Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"sourceSystem":""}}',
+    )
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.sourceSystem",
+            "transform_type": "CONSTANT",
+            "transform_config": {"value": "OTM"},
+            "description": "Fixed source system mapping.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"sourceSystem": "OTM"}}
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "mapping_id": created.json()["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.sourceSystem",
+            "transform_type": "CONSTANT",
+            "value_policy": "constant_from_transform_config",
+        }
+    ]
+
+
 def test_preview_integration_definition_materializes_loop_json_array_with_provenance(
     client,
     admin_header,

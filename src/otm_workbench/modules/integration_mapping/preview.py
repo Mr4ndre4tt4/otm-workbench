@@ -16,6 +16,7 @@ from otm_workbench.models import (
     Job,
     utcnow,
 )
+from otm_workbench.modules.integration_mapping.mappings import parse_transform_config
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 from otm_workbench.platform.jobs import audit_job, dumps_limited_json_object, emit_job_event
 
@@ -158,6 +159,16 @@ def document_payload_content(db: Session, document_id: str) -> tuple[str, str] |
     return document.payload_format, path.read_text(encoding="utf-8")
 
 
+def mapping_value_from_source(mapping: IntegrationMapping, source_content: str) -> tuple[object | None, str | None]:
+    if mapping.transform_type == "DIRECT":
+        value = source_value_from_xml_path(source_content, mapping.source_path)
+        return value, "copied_from_synthetic_source"
+    if mapping.transform_type == "CONSTANT":
+        config = parse_transform_config(mapping.transform_config_json)
+        return config.get("value"), "constant_from_transform_config"
+    return None, None
+
+
 def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
     joins_count = db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
     lookups_count = (
@@ -186,7 +197,7 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
     for mapping in mappings:
-        if mapping.transform_type != "DIRECT" or "[]" in mapping.target_path:
+        if mapping.transform_type not in {"DIRECT", "CONSTANT"} or "[]" in mapping.target_path:
             return None
         source_payload = document_payload_content(db, mapping.source_schema_document_id)
         target_payload = document_payload_content(db, mapping.target_schema_document_id)
@@ -196,7 +207,7 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         target_format, _target_content = target_payload
         if source_format != "XML" or target_format != "JSON":
             return None
-        value = source_value_from_xml_path(source_content, mapping.source_path)
+        value, value_policy = mapping_value_from_source(mapping, source_content)
         if value in (None, ""):
             return None
         set_json_path_value(target_json, mapping.target_path, value)
@@ -206,7 +217,7 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
                 "source_path": mapping.source_path,
                 "target_path": mapping.target_path,
                 "transform_type": mapping.transform_type,
-                "value_policy": "copied_from_synthetic_source",
+                "value_policy": value_policy,
             }
         )
 
@@ -242,7 +253,7 @@ def build_loop_executable_json_preview(
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
     for mapping in mappings:
-        if mapping.transform_type != "DIRECT":
+        if mapping.transform_type not in {"DIRECT", "CONSTANT"}:
             return None
         if not mapping.source_path.startswith(f"{loop.source_collection_path}/"):
             return None
@@ -253,7 +264,13 @@ def build_loop_executable_json_preview(
         if not target_field or "." in target_field or "[]" in target_field:
             return None
         for index, item in enumerate(loop_items):
-            value = xml_child_value(item, relative_source_path)
+            if mapping.transform_type == "CONSTANT":
+                config = parse_transform_config(mapping.transform_config_json)
+                value = config.get("value")
+                value_policy = "constant_from_transform_config"
+            else:
+                value = xml_child_value(item, relative_source_path)
+                value_policy = "copied_from_synthetic_loop_item"
             if value in (None, ""):
                 continue
             set_loop_item_value(target_json, loop.target_collection_path, index, target_field, value)
@@ -269,7 +286,7 @@ def build_loop_executable_json_preview(
                     "target_item_path": loop.target_collection_path.replace("[]", f"[{index}]")
                     + f".{target_field}",
                     "transform_type": mapping.transform_type,
-                    "value_policy": "copied_from_synthetic_loop_item",
+                    "value_policy": value_policy,
                 }
             )
 
