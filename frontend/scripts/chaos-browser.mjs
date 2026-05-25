@@ -221,6 +221,15 @@ async function seedLoadPlanChaosData(token) {
   return { alternate, primary, suffix };
 }
 
+async function seedMasterDataChaosData(token) {
+  const templates = await apiRequest("/api/v1/modules/master-data/templates", { token });
+  const alternate = templates.items?.find((template) => template.code !== "REGIONS_BASIC");
+  if (!alternate) {
+    throw new Error("Master Data chaos QA requires at least two backend-owned templates.");
+  }
+  return { alternate, primary: { code: "REGIONS_BASIC" } };
+}
+
 async function seedAssetsChaosData(token) {
   const suffix = Date.now().toString(36).toUpperCase();
   const primary = await apiRequest("/api/v1/modules/assets/assets", {
@@ -341,6 +350,12 @@ async function selectOrderReleaseTemplate(page, code) {
   await page.getByRole("button", { name: /1Templates/ }).click();
   await page.getByLabel("Order Release templates").getByRole("button").filter({ hasText: code }).click();
   await page.getByLabel("Selected Order Release template").getByText(code).waitFor();
+}
+
+async function selectMasterDataTemplate(page, code) {
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
+  await page.getByLabel("Master Data templates").locator(".module-row").filter({ hasText: code }).click();
+  await page.getByLabel("Selected Master Data template").getByText(code, { exact: true }).waitFor();
 }
 
 async function assertControlValue(locator, expected, description) {
@@ -554,6 +569,97 @@ async function runLoadPlanChaosJourney(page, seeded) {
   await page.getByLabel("Load plan packages").getByText("rates_csv_zip").first().waitFor();
 }
 
+async function runMasterDataChaosJourney(page, seeded) {
+  await page.locator('a[href="/master-data"]').click();
+  await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
+  await page.getByLabel("Data Factory workflow").waitFor();
+
+  await selectMasterDataTemplate(page, seeded.primary.code);
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
+  await page.getByRole("button", { name: "Validate template" }).click();
+  await page.getByText("Template validation is VALID.").waitFor();
+  await page.getByRole("button", { name: "Build workbook" }).click();
+  await page.getByText("Workbook regions_basic_v1.xlsx generated.").waitFor();
+  await page.getByLabel("Workbook artifact").getByText("regions_basic_v1.xlsx").waitFor();
+  await page.getByLabel("REGIONS row 1 Region GID").fill("SYN.REGION_CHAOS");
+  await page.getByLabel("REGIONS row 1 Region XID").fill("REGION_CHAOS");
+  await page.getByLabel("REGIONS row 1 Region Name").fill("Synthetic Chaos Region");
+  await page.getByLabel("REGION_DETAILS row 1 Region GID").fill("SYN.REGION_CHAOS");
+  await page.getByLabel("REGION_DETAILS row 1 Location GID").fill("SYN.LOCATION_CHAOS");
+  await page.getByRole("button", { name: "Create batch from edited rows" }).click();
+  await page.getByText(/^Workbook editor batch .+ created\.$/).waitFor();
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Upload" }).click();
+  await page.getByLabel("Active batch summary").waitFor();
+
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Validate" }).click();
+  await page.getByRole("button", { name: "Validate relationships" }).click();
+  await page.getByText(/^Relationship validation is (VALID|RELATIONSHIP_VALIDATED)\.$/).waitFor();
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Map" }).click();
+  await page.getByRole("button", { name: "Map records" }).click();
+  await page.getByText("Batch mapping is MAPPED.").waitFor();
+
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
+  await page.getByRole("button", { name: "Build output" }).click();
+  await page.getByText("Output build is OUTPUT_BUILT.").waitFor();
+  await page.getByLabel("Output build summary").getByText("OUTPUT_BUILT").waitFor();
+  await page.getByRole("button", { name: "Build CSV" }).click();
+  await page.getByText("CSV build is CSV_BUILT.").waitFor();
+  await page.getByLabel("Master Data CSV file preview").getByText(/\.csv/).first().waitFor();
+  await page.getByRole("button", { name: "Export package" }).click();
+  await page.getByText("CSV package export is EXPORTED.").waitFor();
+  await page.getByLabel("Export package summary").waitFor();
+  await page.getByRole("button", { name: "Verify OTM import guard" }).click();
+  await page.getByText(/^OTM import readiness is .+\.$/).waitFor();
+  await page.getByLabel("Master Data OTM import guard").waitFor();
+  await page.getByRole("button", { name: "Register for Load Plan" }).click();
+  await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
+  await page.getByLabel("Load Plan package registration").waitFor();
+  await page.getByRole("button", { name: "Create cutover checklist" }).click();
+  await page.getByText(/^Cutover checklist .+ created\.$/).waitFor();
+  await page.getByLabel("Cutover checklist handoff").waitFor();
+
+  await selectMasterDataTemplate(page, seeded.alternate.code);
+  if (await page.getByText("CSV package export is EXPORTED.").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale export success feedback after switching templates.");
+  }
+
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
+  if (await page.getByLabel("Workbook artifact").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale workbook artifact after switching templates.");
+  }
+  if (await page.getByLabel("Active batch summary").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale active batch after switching templates.");
+  }
+
+  await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
+  if (await page.getByLabel("Export package summary").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale export package summary after switching templates.");
+  }
+  if (await page.getByLabel("Master Data OTM import guard").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale direct OTM import guard after switching templates.");
+  }
+  if (await page.getByLabel("Load Plan package registration").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale Load Plan package registration after switching templates.");
+  }
+  if (await page.getByLabel("Cutover checklist handoff").isVisible().catch(() => false)) {
+    throw new Error("Master Data kept stale cutover checklist handoff after switching templates.");
+  }
+  const buildOutputButton = page.getByRole("button", { name: "Build output" });
+  if ((await buildOutputButton.count()) > 0 && await buildOutputButton.isEnabled()) {
+    throw new Error("Master Data output build stayed enabled without an active batch after switching templates.");
+  }
+  const registerLoadPlanButton = page.getByRole("button", { name: "Register for Load Plan" });
+  if ((await registerLoadPlanButton.count()) > 0 && await registerLoadPlanButton.isEnabled()) {
+    throw new Error("Master Data Load Plan registration stayed enabled without an exported batch after switching templates.");
+  }
+
+  await page.locator('a[href="/home"]').click();
+  await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
+  await page.locator('a[href="/master-data"]').click();
+  await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
+  await page.getByLabel("Master Data templates").getByText(seeded.alternate.code).waitFor();
+}
+
 async function runOrderReleaseChaosJourney(page, seeded) {
   await page.locator('a[href="/order-release-generator"]').click();
   await page.getByRole("heading", { name: "Order Release Generator" }).waitFor();
@@ -665,6 +771,7 @@ async function run() {
   await seedSyntheticContext(token);
   const integrationMappingSeed = await seedIntegrationMappingChaosData(token);
   const loadPlanSeed = await seedLoadPlanChaosData(token);
+  const masterDataSeed = await seedMasterDataChaosData(token);
   const assetsSeed = await seedAssetsChaosData(token);
   const orderReleaseSeed = await seedOrderReleaseChaosData(token);
 
@@ -687,6 +794,7 @@ async function run() {
     await signIn(page);
     await runIntegrationMappingChaosJourney(page, integrationMappingSeed);
     await runLoadPlanChaosJourney(page, loadPlanSeed);
+    await runMasterDataChaosJourney(page, masterDataSeed);
     await runAssetsChaosJourney(page, assetsSeed);
     await runOrderReleaseChaosJourney(page, orderReleaseSeed);
 
@@ -709,6 +817,7 @@ async function run() {
           journeys: [
             "integration-mapping-out-of-order-definition-switch",
             "load-plan-package-switch-checklist-readiness-csvutil",
+            "master-data-template-switch-workbook-output-export-handoff",
             "assets-dirty-draft-file-link-selection-switch",
             "order-release-template-switch-dirty-row-preview-submit-guard"
           ],
@@ -718,6 +827,8 @@ async function run() {
           alternate_definition_code: integrationMappingSeed.alternate.code,
           primary_load_plan_package_id: loadPlanSeed.primary.package.id,
           alternate_load_plan_package_id: loadPlanSeed.alternate.package.id,
+          primary_master_data_template_code: masterDataSeed.primary.code,
+          alternate_master_data_template_code: masterDataSeed.alternate.code,
           primary_asset_name: assetsSeed.primary.name,
           alternate_asset_name: assetsSeed.alternate.name,
           primary_order_release_template_code: orderReleaseSeed.primary.code,

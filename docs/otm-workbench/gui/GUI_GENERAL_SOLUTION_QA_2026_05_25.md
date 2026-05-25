@@ -106,7 +106,7 @@ artifacts, not product source.
 | Shell / Project Cockpit | Browser QA passed | Solid shell, preferences, context panel, navigation and empty state. | Needs reproducible demo seed for local QA; context onboarding should be more explicit for a clean DB. |
 | Rates Studio | Browser QA passed | Strong object list/detail workflow and a good reference implementation. | List density can degrade after many QA-generated batches. |
 | OTM Catalog Core | Browser QA passed | Clear validation-oriented utility with backend-owned table/column/reference checks. | Good MVP0 slice; future value depends on deeper guided reference browsing only if needed. |
-| Master Data / Data Factory | Browser QA passed | Broadest workflow and meets current acceptance scope, including templates, workbook, upload, output, export, direct import guard, Load Plan handoff, and backend-owned next-action guidance from template/batch actions. | Advanced spreadsheet audit remains future. |
+| Master Data / Data Factory | Browser QA passed | Broadest workflow and meets current acceptance scope, including templates, workbook, upload, output, export, direct import guard, Load Plan handoff, and backend-owned next-action guidance from template/batch actions. Out-of-order chaos QA now confirms template switching clears workbook artifact, active batch, export summary, guarded import, Load Plan package registration, cutover checklist handoff, stale feedback, and scopes active-batch fallback to the selected template. | Advanced spreadsheet audit remains future. |
 | Coordinate Quality | Browser QA passed | Correctly embedded in Data Factory as a quality stage rather than a detached module. | External provider governance and map diagnostics remain future. |
 | Load Plan / Cutover | Browser QA passed | Functional and valuable end-to-end; CSVUTIL, readiness, review, exports, Go/No-Go, handoff, and next-action guidance are connected. Out-of-order chaos QA now confirms package switching clears checklist items, readiness counts, CSVUTIL artifact ids/rows, dirty evidence draft, and stale success feedback. | Dedicated backend `available_actions` for cutover packages should replace the temporary UI-derived next-action sequence later. |
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. Out-of-order chaos QA now confirms dirty metadata drafts, selected upload files, and link target drafts do not leak when the selected asset changes. | High-volume target/evidence lists need density and filtering hardening later. |
@@ -138,14 +138,14 @@ artifacts, not product source.
 | `OTM-158` | Medium | Schema node search and deterministic mapping suggestions delivered for Integration Mapping Rules stage, with React/browser QA. |
 | `OTM-159` | Medium | Integration Mapping suggestions moved to a backend-owned contract with schema ownership validation, explicit Rules-stage load/apply UI, React QA, and browser QA. |
 | `OTM-160` | Medium | Integration Mapping backend suggestion scoring now covers exact matches, ambiguous exact matches, and first OTM-context suggestions for stop sequence and refnum access key scenarios. |
-| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. Integration Mapping, Load Plan, Assets Library, and Order Release Generator chaos slices delivered through `npm run qa:chaos:browser`. |
+| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. Integration Mapping, Load Plan, Master Data/Data Factory, Assets Library, and Order Release Generator chaos slices delivered through `npm run qa:chaos:browser`. |
 
 ## 5. Recommended Next Queue
 
 1. Fix QA/dev reproducibility first: `OTM-141`.
 2. Browser-QA the `NextActionPanel` first slice and then roll it out to the next staged modules: `OTM-142`.
 3. Continue Integration Mapping accelerator hardening: broader Catalog/Data Dictionary synonym coverage, schema path facets, and complex expression usability.
-4. Continue chaos/out-of-order browser QA for Data Factory: `OTM-146`.
+4. Close the current `OTM-146` chaos QA round and open narrower hardening issues only when a module-specific new risk is found.
 5. Harden list density and high-volume states: `OTM-143`.
 
 ## 6. Acceptance Bar Going Forward

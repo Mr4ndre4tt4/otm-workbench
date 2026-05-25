@@ -555,13 +555,14 @@ export function MasterDataView({ token }: { token: string }) {
     templateItems.reduce((total, item) => total + item.sheets.reduce((sheetTotal, sheet) => sheetTotal + sheet.fields.length, 0), 0);
   const authorSelectedColumns = selectedAuthorColumns(authorTables, authorColumnsByTable);
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorScenarioDraftPayload ? [] : authorTables);
-  const latestMatchingBatch = batches.data?.items[0] ?? null;
-  const activeBatch = uploadedBatch ?? latestMatchingBatch;
+  const latestSelectedTemplateBatch =
+    batches.data?.items.find((batch) => !effectiveTemplateCode || batch.template_code === effectiveTemplateCode) ?? null;
+  const activeBatch = uploadedBatch ?? latestSelectedTemplateBatch;
   const selectedMasterDataNextAction = pickMasterDataNextAction(selectedTemplate, activeBatch);
   const activeMasterDataStageTitle =
     masterDataWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
   const isInspectingHistoricalBatch = Boolean(
-    uploadedBatch && latestMatchingBatch && uploadedBatch.batch_id !== latestMatchingBatch.batch_id
+    uploadedBatch && latestSelectedTemplateBatch && uploadedBatch.batch_id !== latestSelectedTemplateBatch.batch_id
   );
   const batchArtifacts = useMasterDataBatchArtifacts(token, activeBatch?.batch_id ?? null);
   const outputRecords = useMasterDataOutputRecords(token, activeBatch?.batch_id ?? null);
