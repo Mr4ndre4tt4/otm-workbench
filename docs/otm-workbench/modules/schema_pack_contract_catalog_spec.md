@@ -218,6 +218,12 @@ Required fields:
 - schema_root_id
 - relationship_role: SEMANTIC_ROOT | CSV_COMPANION | IMPORT_WRAPPER | SERVICE_ACTION
 - confidence: HIGH | MEDIUM | LOW
+- functional_confidence:
+  TECHNICAL_ONLY | ORACLE_OFFICIAL_PINNED | DATA_DICTIONARY_CROSSED |
+  USER_CONFIRMED | BLOCKED
+- source_reference_status: UNPINNED | PINNED | USER_CONFIRMED | NOT_APPLICABLE
+- source_reference_label
+- source_reference_url
 - notes
 ```
 

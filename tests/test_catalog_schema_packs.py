@@ -700,6 +700,10 @@ def test_catalog_macro_object_schema_links_return_official_roots(client, admin_h
             schema_root_id=root.id,
             relationship_role="SEMANTIC_ROOT",
             confidence="HIGH",
+            functional_confidence="ORACLE_OFFICIAL_PINNED",
+            source_reference_status="PINNED",
+            source_reference_label="Oracle Rate Offering",
+            source_reference_url="https://docs.oracle.com/en/cloud/saas/transportation/26a/otmol/planning/rate_manager/create_rate_offering.htm?agt=index",
             notes="Rate.xsd top-level RATE_OFFERING root.",
         )
     )
@@ -714,3 +718,7 @@ def test_catalog_macro_object_schema_links_return_official_roots(client, admin_h
     assert payload["items"][0]["root_name"] == "RATE_OFFERING"
     assert payload["items"][0]["relationship_role"] == "SEMANTIC_ROOT"
     assert payload["items"][0]["confidence"] == "HIGH"
+    assert payload["items"][0]["functional_confidence"] == "ORACLE_OFFICIAL_PINNED"
+    assert payload["items"][0]["source_reference_status"] == "PINNED"
+    assert payload["items"][0]["source_reference_label"] == "Oracle Rate Offering"
+    assert payload["items"][0]["source_reference_url"].startswith("https://docs.oracle.com/")

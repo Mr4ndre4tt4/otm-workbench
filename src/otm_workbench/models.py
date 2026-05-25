@@ -905,6 +905,10 @@ class MacroObjectSchemaLink(Base, TimestampMixin):
     schema_root_id: Mapped[str] = mapped_column(ForeignKey("schema_roots.id"), index=True)
     relationship_role: Mapped[str] = mapped_column(String, default="SEMANTIC_ROOT", index=True)
     confidence: Mapped[str] = mapped_column(String, default="MEDIUM", index=True)
+    functional_confidence: Mapped[str] = mapped_column(String, default="TECHNICAL_ONLY", index=True)
+    source_reference_status: Mapped[str] = mapped_column(String, default="UNPINNED", index=True)
+    source_reference_label: Mapped[str] = mapped_column(String, default="")
+    source_reference_url: Mapped[str] = mapped_column(String, default="")
     notes: Mapped[str] = mapped_column(Text, default="")
 
 

@@ -88,6 +88,7 @@ automation jobs consume the same vocabulary.
 1. Add a functional-confidence field to schema-root/module links:
    TECHNICAL_ONLY, ORACLE_OFFICIAL_PINNED, DATA_DICTIONARY_CROSSED,
    USER_CONFIRMED, BLOCKED.
+   Status: backend field/API slice started in OTM-164.
 2. Add source references to evidence records using safe URLs and document
    labels, not copied Oracle content or raw local files.
 3. Build a Data Dictionary cross-check report for Location, Item, Rate Offering,

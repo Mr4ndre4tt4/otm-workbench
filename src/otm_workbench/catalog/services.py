@@ -967,7 +967,7 @@ def list_macro_object_schema_links(db: Session, macro_object_code: str) -> list[
         .join(SchemaPack, SchemaRoot.schema_pack_id == SchemaPack.id)
         .join(SchemaFile, SchemaRoot.schema_file_id == SchemaFile.id)
         .filter(MacroObjectSchemaLink.macro_object_code == macro_object_code.upper())
-        .order_by(MacroObjectSchemaLink.confidence, SchemaRoot.root_name)
+        .order_by(MacroObjectSchemaLink.functional_confidence, MacroObjectSchemaLink.confidence, SchemaRoot.root_name)
         .all()
     )
 
@@ -991,6 +991,10 @@ def serialize_macro_object_schema_link(
         "root_type": root.root_type,
         "relationship_role": row.relationship_role,
         "confidence": row.confidence,
+        "functional_confidence": row.functional_confidence,
+        "source_reference_status": row.source_reference_status,
+        "source_reference_label": row.source_reference_label,
+        "source_reference_url": row.source_reference_url,
         "notes": row.notes,
     }
 
