@@ -342,12 +342,13 @@ Load Plan handoff, checklist readiness, and stale feedback before loading the
 new backend template. Durable batch history remains backend-owned and can still
 be reselected from the Output stage.
 
-OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
-now has its first GUI workflow slice. The module is not marked `Module
-complete` because direct OTM import, richer workbook/spreadsheet editing,
-advanced Coordinate Quality map diagnostics, deeper Load Plan export/handoff
-flows, deeper batch-history analytics beyond current-filter metrics, and
-broader negative/out-of-order QA are tracked as follow-up scope.
+OTM-119 closes the current Master Data MVP workflow hardening pass, OTM-91 now
+has its first GUI workflow slice, and OTM-127 adds the first backend-owned
+workbook editor path before upload. The module is not marked `Module complete`
+because direct OTM import, richer audited workbook/spreadsheet editing, advanced
+Coordinate Quality map diagnostics, deeper Load Plan export/handoff flows,
+deeper batch-history analytics beyond current-filter metrics, and broader
+negative/out-of-order QA are tracked as follow-up scope.
 
 ## Validation
 
@@ -374,6 +375,15 @@ Focused OTM-115 backend QA:
 
 ```text
 python -m pytest tests/test_master_data_templates.py::test_master_data_dynamic_template_date_column_csv_includes_alter_session -q
+```
+
+Focused OTM-127 workbook editor QA:
+
+```text
+python -m pytest tests/test_master_data_templates.py -q
+cd frontend
+npm run test -- AppFunctionalMasterData.test.tsx
+npm run qa:functional:master-data:browser
 ```
 
 For isolated local QA against a non-default backend port, the Vite development

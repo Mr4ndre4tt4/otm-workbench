@@ -47,7 +47,7 @@ For each module:
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later; selected-job feedback recovery is delivered. |
 | Integration Mapping Studio | Functional journey done | Authoring, validation, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, Evidence Hub archive convenience, Go/No-Go, and guarded handoff commit UI done | Backend flows mostly ready | Review queue + staged workflow | Current GUI journey is accepted; keep future work to hardening or explicit new scope. |
-| Master Data / Data Factory | MVP workflow done plus preview, richer batch-history, Coordinate Quality, Load Plan handoff, date-column CSV parity, and scenario-pack slices | Backend flows ready for template authoring, backend-owned scenario packs, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail | Current workflow and scenario packs are MVP accepted. `OTM-127` is the next active Master Data slice for backend-owned workbook editing/preview before upload. Direct OTM import (`OTM-128`), deeper Load Plan handoff/analytics (`OTM-129`), and advanced Coordinate Quality diagnostics remain follow-ups. |
+| Master Data / Data Factory | MVP workflow done plus preview, richer batch-history, Coordinate Quality, Load Plan handoff, date-column CSV parity, scenario-pack slices, and backend-owned workbook editor | Backend flows ready for template authoring, backend-owned scenario packs, workbook editor contract/validation/batch creation, filtered/paginated batches, output/CSV preview, CSV/ZIP export, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail | Current workflow, scenario packs, and `OTM-127` workbook editor are MVP accepted. Direct OTM import (`OTM-128`), deeper Load Plan handoff/analytics (`OTM-129`), advanced Coordinate Quality diagnostics, and richer audited spreadsheet editing remain follow-ups. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow | Create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, selected-asset switch recovery, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery, and advanced filters are delivered; target pagination remains future scale follow-up only if needed. |
 | Evidence Hub | Functional slice plus archive history done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. |
@@ -91,12 +91,12 @@ template/batch workflow pattern.
 ```text
 Primary object: master data batch
 Primary pattern: staged workflow + object detail
-Delivered story: select template -> validate template -> build workbook ->
-upload synthetic workbook -> validate relationships -> map -> build output ->
-build CSV/export package.
+Delivered story: select template -> validate template -> build workbook or edit
+backend-owned starter rows -> create/upload batch -> validate relationships ->
+map -> build output -> build CSV/export package.
 ```
 
-Delivered after OTM-119:
+Delivered after OTM-119 and OTM-127:
 
 ```text
 - UI-driven template authoring from Catalog/Data Dictionary-backed tables.
@@ -115,6 +115,8 @@ Delivered after OTM-119:
 - Read-only backend-returned readiness blocker display after checklist readiness.
 - Negative/out-of-order QA for missing artifacts, repeated CSV/export clicks,
   invalid upload recovery, and route leave/return recovery.
+- Backend-owned workbook editor contract, row validation, required-field
+  recovery, and batch creation before upload.
 - Keep OTM table/dependency validation backend-owned through Catalog Core.
 ```
 
@@ -124,8 +126,8 @@ Remaining GUI work before `Module complete`:
 - Add deeper Load Plan export/handoff actions after checklist readiness only when
   they preserve the staged workflow.
 - Add direct OTM import only after submit/credential guardrails are designed.
-- Add spreadsheet editing only if it has a backend-owned mutation and audit use
-  case.
+- Add richer spreadsheet editing only if it extends the current backend-owned
+  workbook editor with durable mutation/audit state.
 - Add advanced Coordinate Quality map diagnostics and external provider setup
   only after backend provider governance is designed.
 - Add deeper batch-history analytics beyond current-filter metrics only if
