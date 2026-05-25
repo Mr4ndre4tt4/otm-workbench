@@ -920,6 +920,30 @@ Proximo trabalho recomendado:
    da UI, evidencias e commits.
 ```
 
+### Hardening funcional iniciado
+
+```text
+Data: 2026-05-25
+Documento: docs/otm-workbench/modules/schema_pack_functional_validation_matrix.md
+
+Objetivo:
+- separar validacao tecnica XSD/WSDL de guidance funcional OTM;
+- registrar fontes oficiais Oracle por area;
+- cruzar roots de maior valor com Data Dictionary antes de expor recomendacoes
+  na UI;
+- manter CSVUtil/table sequencing governado pelo Data Dictionary.
+
+Status:
+- referencias Oracle oficiais pinadas para Integration/Transmission,
+  CSV/Data Management, Rate Offering/Rate Record, Item/Packaged Item,
+  Location THU Capacity e Order Release;
+- matriz inicial criada para Integration Mapping, Order Release Generator,
+  Master Data Template Factory, Rates Studio, Catalog Core, Assets/Evidence e
+  Jobs;
+- proximas fatias: functional confidence por link, referencias de fonte em
+  evidencia, normalizacao de aliases de roots e relatorio Data Dictionary.
+```
+
 ### Fora do primeiro recorte
 
 ```text

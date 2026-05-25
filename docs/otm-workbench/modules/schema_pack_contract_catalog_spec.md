@@ -554,3 +554,13 @@ Remaining hardening before user-facing path guidance:
 5. Keep direct OTM execution out of scope until governed connection,
    credential, environment, and capability controls exist.
 ```
+
+Functional validation tracking:
+
+```text
+- Matrix: docs/otm-workbench/modules/schema_pack_functional_validation_matrix.md
+- Current status: official Oracle references pinned for Integration,
+  CSV/Data Management, Rates, Master Data Item/Location, and Order Release.
+- Next step: cross-check high-value roots against Data Dictionary dependencies
+  before exposing path recommendations in the UI.
+```
