@@ -200,7 +200,7 @@ async function run() {
     await payloadForm.getByLabel("Payload description").fill("Synthetic browser target payload.");
     await payloadForm
       .getByLabel("Payload content")
-      .fill('{"status":"","issuedAt":"","header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
+      .fill('{"status":"","issuedAt":"","header":{"shipmentId":"DEMO","accessKey":"","filteredAccessKey":"","releaseCount":0},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload external_delivery_manual_${suffix}.json and schema $ created.`).waitFor();
 
@@ -300,6 +300,28 @@ async function run() {
     await page.getByText("Created mapping $.issuedAt.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.issuedAt", { exact: true }).waitFor();
 
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node").selectOption("$.header.filteredAccessKey");
+    await page.getByLabel("Transform type").selectOption("FILTER_BY_QUALIFIER");
+    await page.getByLabel("Filter collection path").fill("/Transmission/Shipment/Release/ReleaseRefnum");
+    await page.getByLabel("Filter qualifier path").fill("ReleaseRefnumQualifierGid/Gid/Xid");
+    await page.getByLabel("Filter qualifier value").fill("RFN_CHAVE_ACESSO");
+    await page.getByLabel("Filter value path").fill("ReleaseRefnumValue");
+    await page.getByLabel("Mapping description").fill("Synthetic filtered access key mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.header.filteredAccessKey.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.header.filteredAccessKey", { exact: true }).waitFor();
+
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseGid/Gid/Xid");
+    await page.getByLabel("Mapping target node").selectOption("$.header.releaseCount");
+    await page.getByLabel("Transform type").selectOption("COUNT_DISTINCT");
+    await page.getByLabel("Count collection path").fill("/Transmission/Shipment/Release");
+    await page.getByLabel("Count value path").fill("ReleaseGid/Gid/Xid");
+    await page.getByLabel("Mapping description").fill("Synthetic release count mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.header.releaseCount.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.header.releaseCount", { exact: true }).waitFor();
+
     await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
     await page.getByLabel("Lookup name").fill("Synthetic carrier lookup");
@@ -349,6 +371,24 @@ async function run() {
     });
     await mappingForm.getByLabel("Date timezone offset").evaluate((element) => {
       if (element.value !== "-03:00") throw new Error(`Unexpected date timezone offset after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Filter collection path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected filter collection path after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Filter qualifier path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected filter qualifier path after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Filter qualifier value").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected filter qualifier value after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Filter value path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected filter value path after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Count collection path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected count collection path after reset: ${element.value}`);
+    });
+    await mappingForm.getByLabel("Count value path").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected count value path after reset: ${element.value}`);
     });
     await page.locator(".integration-loop-form").getByLabel("Loop source schema").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected loop source schema after reset: ${element.value}`);
@@ -423,6 +463,12 @@ async function run() {
     }
     if (preview.target_json?.issuedAt !== "2026-05-25T10:30:00-03:00") {
       throw new Error(`Unexpected preview issuedAt: ${preview.target_json?.issuedAt}`);
+    }
+    if (preview.target_json?.header?.filteredAccessKey !== "KEY-001") {
+      throw new Error(`Unexpected preview filtered access key: ${preview.target_json?.header?.filteredAccessKey}`);
+    }
+    if (preview.target_json?.header?.releaseCount !== 1) {
+      throw new Error(`Unexpected preview release count: ${preview.target_json?.header?.releaseCount}`);
     }
     const firstDelivery = preview.target_json?.deliveries?.[0];
     if (firstDelivery?.sequence !== "1" || firstDelivery?.accessKey !== "KEY-001") {

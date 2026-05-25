@@ -262,6 +262,24 @@ describe("Functional Integration Mapping Studio journey", () => {
         name: "accessKey",
         node_type: "string",
         sequence_index: 5
+      },
+      {
+        id: "node_target_filtered_access_key",
+        schema_document_id: "schema_target",
+        parent_path: "$.header",
+        path: "$.header.filteredAccessKey",
+        name: "filteredAccessKey",
+        node_type: "string",
+        sequence_index: 6
+      },
+      {
+        id: "node_target_release_count",
+        schema_document_id: "schema_target",
+        parent_path: "$.header",
+        path: "$.header.releaseCount",
+        name: "releaseCount",
+        node_type: "number",
+        sequence_index: 7
       }
     ];
 
@@ -328,9 +346,33 @@ describe("Functional Integration Mapping Studio journey", () => {
                 system_seeded: true,
                 created_at: "2026-05-21T10:00:00",
                 updated_at: "2026-05-21T10:00:00"
+              },
+              {
+                id: "transform_filter_by_qualifier",
+                code: "FILTER_BY_QUALIFIER",
+                name: "Filter by qualifier",
+                description: "Select a source value from a repeated collection.",
+                requires_expression: true,
+                status: "ACTIVE",
+                sequence_index: 4,
+                system_seeded: true,
+                created_at: "2026-05-21T10:00:00",
+                updated_at: "2026-05-21T10:00:00"
+              },
+              {
+                id: "transform_count_distinct",
+                code: "COUNT_DISTINCT",
+                name: "Count distinct",
+                description: "Count distinct source values from a collection.",
+                requires_expression: true,
+                status: "ACTIVE",
+                sequence_index: 5,
+                system_seeded: true,
+                created_at: "2026-05-21T10:00:00",
+                updated_at: "2026-05-21T10:00:00"
               }
             ],
-            total: 3,
+            total: 5,
             page: 1,
             page_size: 50
           })
@@ -534,7 +576,7 @@ describe("Functional Integration Mapping Studio journey", () => {
               description: "Synthetic constant status mapping.",
               sequence_index: 10
             });
-          } else {
+          } else if (body.target_path === "$.issuedAt") {
             expect(body).toEqual({
               source_schema_document_id: "schema_source",
               target_schema_document_id: "schema_target",
@@ -547,6 +589,36 @@ describe("Functional Integration Mapping Studio journey", () => {
                 timezone_offset: "-03:00"
               },
               description: "Synthetic planned time ISO mapping.",
+              sequence_index: 10
+            });
+          } else if (body.target_path === "$.header.filteredAccessKey") {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+              target_path: "$.header.filteredAccessKey",
+              transform_type: "FILTER_BY_QUALIFIER",
+              transform_config: {
+                collection_path: "/Transmission/Shipment/Release/ReleaseRefnum",
+                qualifier_path: "ReleaseRefnumQualifierGid/Gid/Xid",
+                qualifier_value: "RFN_CHAVE_ACESSO",
+                value_path: "ReleaseRefnumValue"
+              },
+              description: "Synthetic filtered access key mapping.",
+              sequence_index: 10
+            });
+          } else {
+            expect(body).toEqual({
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/Release/ReleaseGid/Gid/Xid",
+              target_path: "$.header.releaseCount",
+              transform_type: "COUNT_DISTINCT",
+              transform_config: {
+                collection_path: "/Transmission/Shipment/Release",
+                value_path: "ReleaseGid/Gid/Xid"
+              },
+              description: "Synthetic release count mapping.",
               sequence_index: 10
             });
           }
@@ -1046,6 +1118,28 @@ describe("Functional Integration Mapping Studio journey", () => {
     await waitFor(() => expect(mappingRequests).toHaveLength(5));
     expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.issuedAt")).toBeInTheDocument();
 
+    await userEvent.selectOptions(screen.getByLabelText("Mapping source node"), "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await userEvent.selectOptions(screen.getByLabelText("Mapping target node"), "$.header.filteredAccessKey");
+    await userEvent.selectOptions(screen.getByLabelText("Transform type"), "FILTER_BY_QUALIFIER");
+    await userEvent.type(await screen.findByLabelText("Filter collection path"), "/Transmission/Shipment/Release/ReleaseRefnum");
+    await userEvent.type(screen.getByLabelText("Filter qualifier path"), "ReleaseRefnumQualifierGid/Gid/Xid");
+    await userEvent.type(screen.getByLabelText("Filter qualifier value"), "RFN_CHAVE_ACESSO");
+    await userEvent.type(screen.getByLabelText("Filter value path"), "ReleaseRefnumValue");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic filtered access key mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(6));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.filteredAccessKey")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Mapping source node"), "/Transmission/Shipment/Release/ReleaseGid/Gid/Xid");
+    await userEvent.selectOptions(screen.getByLabelText("Mapping target node"), "$.header.releaseCount");
+    await userEvent.selectOptions(screen.getByLabelText("Transform type"), "COUNT_DISTINCT");
+    await userEvent.type(screen.getByLabelText("Count collection path"), "/Transmission/Shipment/Release");
+    await userEvent.type(screen.getByLabelText("Count value path"), "ReleaseGid/Gid/Xid");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic release count mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(7));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.releaseCount")).toBeInTheDocument();
+
     await userEvent.selectOptions(screen.getByLabelText("Lookup source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Lookup target schema"), "schema_target");
     await userEvent.type(screen.getByLabelText("Lookup name"), "Synthetic carrier lookup");
@@ -1099,6 +1193,12 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Date source format")).toHaveValue("OTM_GLOGDATE");
     expect(screen.getByLabelText("Date target format")).toHaveValue("ISO8601");
     expect(screen.getByLabelText("Date timezone offset")).toHaveValue("-03:00");
+    expect(screen.getByLabelText("Filter collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Filter qualifier path")).toHaveValue("");
+    expect(screen.getByLabelText("Filter qualifier value")).toHaveValue("");
+    expect(screen.getByLabelText("Filter value path")).toHaveValue("");
+    expect(screen.getByLabelText("Count collection path")).toHaveValue("");
+    expect(screen.getByLabelText("Count value path")).toHaveValue("");
     expect(screen.getByLabelText("Mapping description")).toHaveValue("");
     expect(screen.getByLabelText("Loop source schema")).toHaveValue("");
     expect(screen.getByLabelText("Loop target schema")).toHaveValue("");
@@ -1175,5 +1275,5 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(screen.getByRole("link", { name: /Integration Mapping Studio/ }));
     await screen.findByRole("heading", { name: "Integration Mapping Studio" });
     expect((await screen.findAllByText("PS_TO_EXTERNAL_DELIVERY_UI")).length).toBeGreaterThan(0);
-  }, 60000);
+  }, 120000);
 });

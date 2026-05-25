@@ -178,14 +178,14 @@ function buildIntegrationReviewRows({
       transform: mapping.transform_type
     })),
     {
-      blocker: "COUNT_DISTINCT_AND_FILTERED_AGGREGATIONS_PENDING_OTM_145",
+      blocker: "DEDICATED_AGGREGATION_OBJECTS_FUTURE_SCOPE",
       group: "Aggregations",
       id: "aggregation-future-scope",
       policy: "Future scope",
-      source: "No aggregation rules defined.",
+      source: "Aggregation transforms are authored as mappings.",
       status: "FUTURE_SCOPE",
-      target: "QtdNFe / QtdCTe style fields",
-      transform: "COUNT_DISTINCT"
+      target: "Dedicated aggregation rule objects",
+      transform: "AGGREGATION_RULES"
     },
     ...(responseHandlers.length
       ? responseHandlers.map((handler) => ({
@@ -314,6 +314,12 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [dateSourceFormat, setDateSourceFormat] = useState('OTM_GLOGDATE');
   const [dateTargetFormat, setDateTargetFormat] = useState('ISO8601');
   const [dateTimezoneOffset, setDateTimezoneOffset] = useState('-03:00');
+  const [filterCollectionPath, setFilterCollectionPath] = useState('');
+  const [filterQualifierPath, setFilterQualifierPath] = useState('');
+  const [filterQualifierValue, setFilterQualifierValue] = useState('');
+  const [filterValuePath, setFilterValuePath] = useState('');
+  const [countCollectionPath, setCountCollectionPath] = useState('');
+  const [countValuePath, setCountValuePath] = useState('');
   const [mappingDescription, setMappingDescription] = useState('');
   const [systemCode, setSystemCode] = useState('');
   const [systemName, setSystemName] = useState('');
@@ -444,6 +450,12 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setDateSourceFormat('OTM_GLOGDATE');
     setDateTargetFormat('ISO8601');
     setDateTimezoneOffset('-03:00');
+    setFilterCollectionPath('');
+    setFilterQualifierPath('');
+    setFilterQualifierValue('');
+    setFilterValuePath('');
+    setCountCollectionPath('');
+    setCountValuePath('');
     setMappingDescription('');
     setLoopSourceSchemaId('');
     setLoopTargetSchemaId('');
@@ -687,6 +699,16 @@ export function IntegrationMappingView({ token }: { token: string }) {
         if (dateTimezoneOffset.trim()) {
           transformConfig.timezone_offset = dateTimezoneOffset.trim();
         }
+      }
+      if (transformType === "FILTER_BY_QUALIFIER") {
+        transformConfig.collection_path = filterCollectionPath.trim();
+        transformConfig.qualifier_path = filterQualifierPath.trim();
+        transformConfig.qualifier_value = filterQualifierValue.trim();
+        transformConfig.value_path = filterValuePath.trim();
+      }
+      if (transformType === "COUNT_DISTINCT") {
+        transformConfig.collection_path = countCollectionPath.trim();
+        transformConfig.value_path = countValuePath.trim();
       }
       const mapping = await createIntegrationMapping(token, effectiveDefinitionId, {
         description: mappingDescription.trim(),
@@ -1586,6 +1608,54 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 disabled={transformType !== "DATE_FORMAT"}
                 onChange={(event) => setDateTimezoneOffset(event.target.value)}
                 value={dateTimezoneOffset}
+              />
+            </label>
+            <label>
+              Filter collection path
+              <input
+                disabled={transformType !== "FILTER_BY_QUALIFIER"}
+                onChange={(event) => setFilterCollectionPath(event.target.value)}
+                value={filterCollectionPath}
+              />
+            </label>
+            <label>
+              Filter qualifier path
+              <input
+                disabled={transformType !== "FILTER_BY_QUALIFIER"}
+                onChange={(event) => setFilterQualifierPath(event.target.value)}
+                value={filterQualifierPath}
+              />
+            </label>
+            <label>
+              Filter qualifier value
+              <input
+                disabled={transformType !== "FILTER_BY_QUALIFIER"}
+                onChange={(event) => setFilterQualifierValue(event.target.value)}
+                value={filterQualifierValue}
+              />
+            </label>
+            <label>
+              Filter value path
+              <input
+                disabled={transformType !== "FILTER_BY_QUALIFIER"}
+                onChange={(event) => setFilterValuePath(event.target.value)}
+                value={filterValuePath}
+              />
+            </label>
+            <label>
+              Count collection path
+              <input
+                disabled={transformType !== "COUNT_DISTINCT"}
+                onChange={(event) => setCountCollectionPath(event.target.value)}
+                value={countCollectionPath}
+              />
+            </label>
+            <label>
+              Count value path
+              <input
+                disabled={transformType !== "COUNT_DISTINCT"}
+                onChange={(event) => setCountValuePath(event.target.value)}
+                value={countValuePath}
               />
             </label>
             <label>

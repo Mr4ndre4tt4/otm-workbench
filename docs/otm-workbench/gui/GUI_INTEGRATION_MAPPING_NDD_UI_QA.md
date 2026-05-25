@@ -190,6 +190,9 @@ Recommended next backlog sequence:
 13. Add guided transform config authoring. `OTM-156` delivered Rules-stage
     inputs for `CONSTANT` and `DATE_FORMAT`, while keeping backend validation and
     preview execution as source of truth.
+14. Add guided complex transform authoring. `OTM-157` delivered Rules-stage
+    inputs for `FILTER_BY_QUALIFIER` and `COUNT_DISTINCT`, with executable
+    preview assertions for filtered access key and release count.
 ```
 
 ## OTM-152 Evidence
@@ -289,4 +292,25 @@ payload JSON:
   - status = ACCEPTED
   - issuedAt = 2026-05-25T10:30:00-03:00
 - Reset mapping drafts clears constant/date inputs back to backend-safe defaults.
+```
+
+## OTM-157 Evidence
+
+`OTM-157` extended guided transform config authoring to the first complex
+mapping cases:
+
+```text
+- FILTER_BY_QUALIFIER now has explicit Rules-stage fields for collection path,
+  qualifier path, qualifier value, and value path.
+- COUNT_DISTINCT now has explicit Rules-stage fields for collection path and
+  value path.
+- React functional QA asserts the exact backend payloads sent for both
+  transform_config shapes.
+- Browser QA creates both mappings against the real backend and validates the
+  generated preview artifact:
+  - header.filteredAccessKey = KEY-001
+  - header.releaseCount = 1
+- Reset mapping drafts clears the complex transform fields back to empty values.
+- The grouped review no longer implies COUNT_DISTINCT itself is pending; only a
+  future dedicated aggregation-rule object remains out of scope.
 ```
