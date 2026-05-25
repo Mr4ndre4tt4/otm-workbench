@@ -194,6 +194,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [fileName, setFileName] = useState("synthetic_order_release_rows.json");
   const [draftRows, setDraftRows] = useState<DraftOrderReleaseRow[]>(normalizeDraftRows(syntheticOrderReleaseRows));
   const [createdBatch, setCreatedBatch] = useState<OrderReleaseBatch | null>(null);
+  const [suppressBatchFallback, setSuppressBatchFallback] = useState(false);
   const [xmlPreview, setXmlPreview] = useState<OrderReleaseXmlPreview | null>(null);
   const [xmlArtifact, setXmlArtifact] = useState<OrderReleaseXmlArtifact | null>(null);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
@@ -204,7 +205,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const templateItems = templates.data?.items ?? [];
   const batchItems = batches.data?.items ?? [];
   const effectiveTemplateId = selectedTemplateId ?? templateItems[0]?.id ?? null;
-  const effectiveBatchId = selectedBatchId ?? createdBatch?.id ?? batchItems[0]?.id ?? null;
+  const effectiveBatchId = selectedBatchId ?? createdBatch?.id ?? (suppressBatchFallback ? null : batchItems[0]?.id) ?? null;
   const selectedTemplate = templateItems.find((item) => item.id === effectiveTemplateId) ?? null;
   const selectedBatch = createdBatch?.id === effectiveBatchId
     ? createdBatch
@@ -256,6 +257,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         });
         setCreatedBatch(result);
         setSelectedBatchId(result.id);
+        setSuppressBatchFallback(false);
         setXmlPreview(null);
         setXmlArtifact(null);
         setSubmitGuard(null);
@@ -313,6 +315,14 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
     const nextTemplate = templateItems.find((item) => item.id === templateId) ?? null;
     setSelectedTemplateId(templateId);
     setDraftRows((currentRows) => draftRowsForTemplate(nextTemplate, currentRows));
+    setCreatedBatch(null);
+    setSelectedBatchId(null);
+    setSuppressBatchFallback(true);
+    setXmlPreview(null);
+    setXmlArtifact(null);
+    setSubmitGuard(null);
+    setOperationMessage(null);
+    setOperationError(null);
   };
 
   const handleDraftRowChange = (rowIndex: number, column: string, value: string) => {
@@ -329,6 +339,7 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
     setDraftRows([emptyDraftRow(selectedTemplate)]);
     setCreatedBatch(null);
     setSelectedBatchId(null);
+    setSuppressBatchFallback(true);
     setXmlPreview(null);
     setXmlArtifact(null);
     setSubmitGuard(null);

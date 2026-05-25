@@ -97,6 +97,19 @@ function orderReleaseTemplate() {
   };
 }
 
+function alternateOrderReleaseTemplate() {
+  return {
+    ...orderReleaseTemplate(),
+    code: "SYN_LTL_ORDER_RELEASE",
+    defaults: { transport_mode: "LTL", weight_uom: "LB" },
+    id: "template_or_ltl",
+    name: "Synthetic LTL Order Release",
+    optional_columns: ["transport_mode", "weight_uom"],
+    required_columns: ["release_gid", "source_location_gid", "destination_location_gid", "item_gid"],
+    version: 1
+  };
+}
+
 function validBatch() {
   return {
     created_at: "2026-05-22T00:00:00",
@@ -224,7 +237,7 @@ describe("Functional Order Release Generator journey", () => {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/order-release-generator/templates")) {
-        return Promise.resolve(jsonResponse({ items: [orderReleaseTemplate()], total: 1 }));
+        return Promise.resolve(jsonResponse({ items: [orderReleaseTemplate(), alternateOrderReleaseTemplate()], total: 2 }));
       }
       if (url.endsWith("/api/v1/modules/order-release-generator/batches")) {
         if (init?.method === "POST") {
@@ -381,6 +394,19 @@ describe("Functional Order Release Generator journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Verify OTM submit guard" }));
     await screen.findByText("Direct OTM submission is disabled in MVP0.");
     expect(screen.getByLabelText("OTM submit guard")).toHaveTextContent("order_release_generator.submit_otm");
+
+    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
+    await userEvent.click(screen.getByText("SYN_LTL_ORDER_RELEASE"));
+    await userEvent.click(screen.getByRole("button", { name: /2Batch/ }));
+    expect(screen.getByLabelText("Order Release row editor")).toHaveTextContent("transport_mode");
+    expect(screen.queryByLabelText("Active Order Release batch")).not.toBeInTheDocument();
+    expect(screen.queryByText("Direct OTM submission is disabled in MVP0.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /3Preview/ }));
+    expect(screen.queryByLabelText("Order Release XML preview")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /4Artifact/ }));
+    expect(screen.queryByLabelText("Order Release XML artifact")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /5Submit/ }));
+    expect(screen.queryByLabelText("OTM submit guard")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Order Release Generator/ }));

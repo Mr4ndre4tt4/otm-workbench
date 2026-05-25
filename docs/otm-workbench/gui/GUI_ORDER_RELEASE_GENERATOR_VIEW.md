@@ -1,6 +1,6 @@
 # GUI Order Release Generator View
 
-**Status:** first functional slice implemented; row, template authoring, template versioning, and row reset recovery hardening delivered
+**Status:** first functional slice implemented; row, template authoring, template versioning, row reset recovery, and template-switch recovery hardening delivered
 **Branch:** `codex/master-data-hardening-next`
 
 ## Objective
@@ -91,6 +91,9 @@ Delivered hardening:
 - add/remove row controls keep batch input in backend contract shape;
 - reset row recovery rebuilds a single draft row from the selected backend
   template defaults and clears route-session preview/artifact/submit state;
+- template-switch recovery clears the active batch, XML preview, generated
+  artifact surface, submit guard, and stale feedback so a batch from one
+  backend template cannot remain active after selecting another template;
 - frontend functional QA verifies edited field payloads before batch creation.
 - invalid backend batch rows now surface row-level issue code, column, severity,
   and row number inside the Batch stage;

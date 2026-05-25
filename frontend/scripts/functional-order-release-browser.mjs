@@ -77,6 +77,8 @@ async function seedSyntheticContext(token) {
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
+  const runId = Date.now().toString(36).toUpperCase();
+  const alternateTemplateCode = `TL_OR_BROWSER_ALT_${runId}`;
 
   const login = await apiRequest("/api/v1/platform/session/login", {
     method: "POST",
@@ -129,6 +131,14 @@ async function run() {
     await page.locator('a[href="/order-release-generator"]').click();
     await page.getByRole("heading", { name: "Order Release Generator" }).waitFor();
     await page.getByLabel("Order Release templates").getByText("TL_ORDER_RELEASE_MVP0").waitFor();
+    await page.getByLabel("Template code", { exact: true }).fill(alternateTemplateCode);
+    await page.getByLabel("Template name", { exact: true }).fill(`Browser alternate OR ${runId}`);
+    await page.getByLabel("Required columns", { exact: true }).fill("release_gid, source_location_gid, destination_location_gid, item_gid");
+    await page.getByLabel("Optional columns", { exact: true }).fill("transport_mode, weight_uom");
+    await page.getByLabel("Default values", { exact: true }).fill("transport_mode=LTL\nweight_uom=LB");
+    await page.getByRole("button", { name: "Create template" }).click();
+    await page.getByText(`Order Release template ${alternateTemplateCode} created.`).waitFor();
+    await page.getByLabel("Order Release templates").getByText("TL_ORDER_RELEASE_MVP0").click();
 
     await page.getByRole("button", { name: /2Batch/ }).click();
     await page.getByRole("button", { name: "Reset rows" }).click();
@@ -177,6 +187,28 @@ async function run() {
     await page.getByRole("button", { name: "Verify OTM submit guard" }).click();
     await page.getByText("Direct OTM submission is disabled in MVP0.").waitFor();
     await page.getByLabel("OTM submit guard").getByText("order_release_generator.submit_otm").waitFor();
+    await page.getByRole("button", { name: /1Templates/ }).click();
+    await page.getByLabel("Order Release templates").getByText(alternateTemplateCode).click();
+    await page.getByRole("button", { name: /2Batch/ }).click();
+    if (await page.getByLabel("Active Order Release batch", { exact: true }).isVisible().catch(() => false)) {
+      throw new Error("Switching Order Release templates left the previous batch active.");
+    }
+    await page.getByLabel("Order Release row editor").getByText("transport_mode").waitFor();
+    if (await page.getByText("Direct OTM submission is disabled in MVP0.").isVisible().catch(() => false)) {
+      throw new Error("Switching Order Release templates left stale submit guard feedback visible.");
+    }
+    await page.getByRole("button", { name: /3Preview/ }).click();
+    if (await page.getByLabel("Order Release XML preview", { exact: true }).isVisible().catch(() => false)) {
+      throw new Error("Switching Order Release templates left stale XML preview visible.");
+    }
+    await page.getByRole("button", { name: /4Artifact/ }).click();
+    if (await page.getByLabel("Order Release XML artifact", { exact: true }).isVisible().catch(() => false)) {
+      throw new Error("Switching Order Release templates left stale XML artifacts visible.");
+    }
+    await page.getByRole("button", { name: /5Submit/ }).click();
+    if (await page.getByLabel("OTM submit guard", { exact: true }).isVisible().catch(() => false)) {
+      throw new Error("Switching Order Release templates left stale submit guard details visible.");
+    }
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -201,6 +233,7 @@ async function run() {
         {
           status: "passed",
           journey: "order-release-template-batch-preview-artifact-submit-guard-return",
+          alternate_template_code: alternateTemplateCode,
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
