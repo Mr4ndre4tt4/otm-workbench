@@ -12,6 +12,7 @@ import {
   createIntegrationPayloadArtifact,
   createIntegrationSchemaDocument,
   createIntegrationSystem,
+  deleteIntegrationMapping,
   downloadBackendArtifact,
   generateIntegrationSpec,
   previewIntegrationDefinition,
@@ -281,6 +282,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [validationResult, setValidationResult] = useState<IntegrationValidationResult | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
+  const [deletingMappingId, setDeletingMappingId] = useState<string | null>(null);
   const [definitionCode, setDefinitionCode] = useState('');
   const [definitionName, setDefinitionName] = useState('');
   const [definitionDescription, setDefinitionDescription] = useState('');
@@ -655,6 +657,26 @@ export function IntegrationMappingView({ token }: { token: string }) {
     }
   };
 
+  const handleDeleteMapping = async (mappingId: string, targetPath: string) => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before removing a mapping.");
+      return;
+    }
+    setDeletingMappingId(mappingId);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      await deleteIntegrationMapping(token, mappingId);
+      setValidationResult(null);
+      setOperationMessage(`Removed mapping ${targetPath}.`);
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not remove mapping.");
+    } finally {
+      setDeletingMappingId(null);
+    }
+  };
+
   const handleCreateLoop = async () => {
     if (!effectiveDefinitionId) {
       setOperationError("Select a definition before creating a loop.");
@@ -1026,6 +1048,19 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 title: mapping.target_path
               }))}
             />
+            {mappings.data?.items.length ? (
+              <div className="integration-action-bar" aria-label="Selected definition mapping actions">
+                {mappings.data.items.map((mapping) => (
+                  <Button
+                    disabled={deletingMappingId === mapping.id}
+                    key={mapping.id}
+                    onClick={() => void handleDeleteMapping(mapping.id, mapping.target_path)}
+                  >
+                    {deletingMappingId === mapping.id ? "Removing..." : `Remove mapping ${mapping.target_path}`}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
             <DetailList
               ariaLabel="Selected definition loops"
               emptyText="No loops defined for this definition."

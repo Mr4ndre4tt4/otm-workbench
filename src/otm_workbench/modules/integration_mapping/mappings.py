@@ -77,6 +77,11 @@ def create_integration_mapping(
     return mapping
 
 
+def delete_integration_mapping(db: Session, *, mapping: IntegrationMapping) -> None:
+    db.delete(mapping)
+    db.commit()
+
+
 def normalize_transform_config(value: object) -> dict[str, object]:
     if value is None:
         return {}

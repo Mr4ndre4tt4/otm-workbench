@@ -92,8 +92,8 @@ Current limits:
 - Not yet enough to cover all complex transformations from the reference
   mapping: filtered refnums, date formatting, aggregations, response handling,
   and all required target semantics.
-- Negative browser recovery for invalid alias/path authoring remains a follow-up
-  issue: `OTM-153`.
+- Negative browser recovery for invalid alias/path authoring is covered by
+  `OTM-153`.
 ```
 
 ## UI/UX Findings
@@ -180,7 +180,7 @@ Recommended next backlog sequence:
 10. Add browser QA for the full NDD-like synthetic scenario, including wrong
     path selection, reset/recovery, definition switching, and generated
     artifact review. `OTM-152` delivered the positive executable artifact
-    review; `OTM-153` tracks negative alias/path browser recovery.
+    review; `OTM-153` delivered negative alias/path browser recovery.
 ```
 
 ## OTM-152 Evidence
@@ -203,4 +203,22 @@ creation. The script now:
   - deliveries[0].carrierName = Synthetic Carrier
 - Asserts field provenance includes source alias `ship_unit_release` for
   `$.deliveries[0].accessKey`.
+```
+
+## OTM-153 Evidence
+
+`OTM-153` added the negative recovery path to the same browser journey:
+
+```text
+- Creates an isolated alternate synthetic definition.
+- Authors a valid multi-hop join binding.
+- Intentionally creates an alias-backed mapping where `source_alias` is valid
+  but `source_path` is outside the alias collection scope.
+- Validates backend blocker:
+  `INTEGRATION_VALIDATION_MAPPING_ALIAS_SCOPE_INVALID`.
+- Attempts preview and confirms backend blocks it instead of producing stale
+  success evidence.
+- Removes the invalid mapping through a backend-owned delete action.
+- Recreates the mapping with a release-scoped source path.
+- Validates and previews again without route reload.
 ```

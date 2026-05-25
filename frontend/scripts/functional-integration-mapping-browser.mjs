@@ -99,7 +99,9 @@ async function run() {
     }
   });
   page.on("response", (response) => {
-    if (response.status() >= 400) {
+    const isExpectedBlockedPreview =
+      response.status() === 409 && response.url().includes("/api/v1/modules/integration-mapping/definitions/") && response.url().endsWith("/preview");
+    if (response.status() >= 400 && !isExpectedBlockedPreview) {
       failedResponses.push(`${response.status()} ${response.url()}`);
     }
   });
@@ -392,17 +394,97 @@ async function run() {
       if (element.value !== "") throw new Error(`Unexpected mapping target schema after definition switch: ${element.value}`);
     });
 
+    await page.locator(".integration-workflow-step").filter({ hasText: "Payloads & schemas" }).click();
+    await payloadForm.getByLabel("Payload role").selectOption("SOURCE_SAMPLE");
+    await payloadForm.getByLabel("Payload format").selectOption("XML");
+    await payloadForm.getByLabel("Payload file name").fill(`planned_shipment_negative_${suffix}.xml`);
+    await payloadForm.getByLabel("Payload description").fill("Synthetic negative browser source payload.");
+    await payloadForm
+      .getByLabel("Payload content")
+      .fill(
+        [
+          "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_NEGATIVE</ShipmentGid>",
+          "<ShipmentStop><StopSequence>1</StopSequence><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-NEG</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
+          "<ShipUnit><ShipUnitGid><Gid><Xid>SU-NEG</Xid></Gid></ShipUnitGid><ShipUnitContent><ReleaseGid><Gid><Xid>REL-NEG</Xid></Gid></ReleaseGid></ShipUnitContent></ShipUnit>",
+          "<Release><ReleaseGid><Gid><Xid>REL-NEG</Xid></Gid></ReleaseGid><ReleaseRefnum><ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid><ReleaseRefnumValue>KEY-NEG</ReleaseRefnumValue></ReleaseRefnum></Release>",
+          "</Shipment></Transmission>"
+        ].join("")
+      );
+    await page.getByRole("button", { name: "Create payload and schema" }).click();
+    await page.getByText(`Payload planned_shipment_negative_${suffix}.xml and schema Transmission created.`).waitFor();
+
+    await payloadForm.getByLabel("Payload role").selectOption("TARGET_SAMPLE");
+    await payloadForm.getByLabel("Payload format").selectOption("JSON");
+    await payloadForm.getByLabel("Payload file name").fill(`external_delivery_negative_${suffix}.json`);
+    await payloadForm.getByLabel("Payload description").fill("Synthetic negative browser target payload.");
+    await payloadForm.getByLabel("Payload content").fill('{"header":{"shipmentId":"","accessKey":""}}');
+    await page.getByRole("button", { name: "Create payload and schema" }).click();
+    await page.getByText(`Payload external_delivery_negative_${suffix}.json and schema $ created.`).waitFor();
+
+    await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
+    await page.getByLabel("Join binding source schema").selectOption({ label: "Transmission" });
+    await page.getByLabel("Join binding name").fill("Negative stop to release binding");
+    await joinBindingSelects.nth(1).selectOption("/Transmission/Shipment/ShipmentStop");
+    await joinBindingSelects.nth(2).selectOption("/Transmission/Shipment/Release");
+    await joinBindingSelects.nth(3).selectOption("/Transmission/Shipment/ShipmentStop");
+    await page.getByLabel("Hop 1 left value path").fill("ShipmentStopDetail/ShipUnitGid/Gid/Xid");
+    await joinBindingSelects.nth(4).selectOption("/Transmission/Shipment/ShipUnit");
+    await page.getByLabel("Hop 1 right value path").fill("ShipUnitGid/Gid/Xid");
+    await page.getByLabel("Hop 1 result alias").fill("stop_ship_unit");
+    await joinBindingSelects.nth(5).selectOption("/Transmission/Shipment/ShipUnit");
+    await page.getByLabel("Hop 2 left value path").fill("ShipUnitContent/ReleaseGid/Gid/Xid");
+    await joinBindingSelects.nth(6).selectOption("/Transmission/Shipment/Release");
+    await page.getByLabel("Hop 2 right value path").fill("ReleaseGid/Gid/Xid");
+    await page.getByLabel("Hop 2 result alias").fill("ship_unit_release");
+    await page.getByLabel("Join binding description").fill("Synthetic negative two-hop binding metadata.");
+    await page.getByRole("button", { name: "Create join binding" }).click();
+    await page.getByText("Created join binding Negative stop to release binding.").waitFor();
+
+    await page.getByLabel("Alias source context").selectOption("ship_unit_release");
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping description").fill("Invalid alias mapping intentionally outside release scope.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.header.accessKey.").waitFor();
+    await page.getByRole("button", { name: "Validate definition" }).click();
+    await page.getByText("Validation failed with 1 issue(s).").waitFor();
+    await page
+      .getByLabel("Integration mapping readiness")
+      .getByText("INTEGRATION_VALIDATION_MAPPING_ALIAS_SCOPE_INVALID", { exact: true })
+      .waitFor();
+    await page.getByRole("button", { name: "Preview definition" }).click();
+    await page.getByText("Integration Mapping definition must pass validation before preview.").waitFor();
+    if (await page.getByText(/^Preview artifact .+ generated by job .+\.$/).isVisible().catch(() => false)) {
+      throw new Error("Blocked negative Integration Mapping preview displayed a stale success message.");
+    }
+
+    await page.getByRole("button", { name: "Remove mapping $.header.accessKey" }).click();
+    await page.getByText("Removed mapping $.header.accessKey.").waitFor();
+    await page.getByLabel("Alias source context").selectOption("ship_unit_release");
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node").selectOption("$.header.accessKey");
+    await page.getByLabel("Mapping description").fill("Corrected alias mapping inside release scope.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.header.accessKey.").waitFor();
+    await page.getByRole("button", { name: "Validate definition" }).click();
+    await page.getByText("Validation passed with 0 issue(s).").waitFor();
+    await page.getByRole("button", { name: "Preview definition" }).click();
+    await page.getByText(/^Preview artifact .+ generated by job .+\.$/).waitFor();
+
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/integration-mapping"]').click();
     await page.getByRole("heading", { name: "Integration Mapping Studio" }).waitFor();
     await page.getByText(alternateDefinitionCode, { exact: true }).first().waitFor();
 
-    if (consoleErrors.length || failedResponses.length) {
+    const unexpectedConsoleErrors = consoleErrors.filter(
+      (message) => !message.includes("Failed to load resource: the server responded with a status of 409")
+    );
+    if (unexpectedConsoleErrors.length || failedResponses.length) {
       throw new Error(
         [
           "Integration Mapping browser functional QA detected runtime failures.",
-          consoleErrors.length ? `Console errors:\n${consoleErrors.join("\n")}` : "",
+          unexpectedConsoleErrors.length ? `Console errors:\n${unexpectedConsoleErrors.join("\n")}` : "",
           failedResponses.length ? `HTTP failures:\n${failedResponses.join("\n")}` : ""
         ]
           .filter(Boolean)

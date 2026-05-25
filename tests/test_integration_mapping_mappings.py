@@ -169,6 +169,37 @@ def test_list_and_get_integration_mappings(client, admin_header):
     assert detail.json()["id"] == created.json()["id"]
 
 
+def test_delete_integration_mapping_removes_rule_from_definition(client, admin_header):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(source, target),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    deleted = client.delete(
+        f"/api/v1/modules/integration-mapping/mappings/{created.json()['id']}",
+        headers=admin_header,
+    )
+    listing = client.get(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        headers=admin_header,
+    )
+    detail = client.get(
+        f"/api/v1/modules/integration-mapping/mappings/{created.json()['id']}",
+        headers=admin_header,
+    )
+
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    assert deleted.json()["id"] == created.json()["id"]
+    assert listing.status_code == 200
+    assert listing.json()["total"] == 0
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "INTEGRATION_MAPPING_NOT_FOUND"
+
+
 def test_create_integration_mapping_rejects_unknown_source_path(client, admin_header):
     definition, source, target = create_source_and_target_documents(client, admin_header)
 

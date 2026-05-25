@@ -44,6 +44,7 @@ from otm_workbench.modules.integration_mapping.preview import build_integration_
 from otm_workbench.modules.integration_mapping.spec_generator import generate_integration_markdown_spec
 from otm_workbench.modules.integration_mapping.mappings import (
     create_integration_mapping,
+    delete_integration_mapping,
     serialize_integration_mapping,
 )
 from otm_workbench.modules.integration_mapping.loops import (
@@ -760,6 +761,39 @@ def get_mapping(
     if mapping is None:
         raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
     return serialize_integration_mapping(mapping)
+
+
+@router.delete("/mappings/{mapping_id}")
+def delete_mapping(
+    mapping_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    mapping = db.get(IntegrationMapping, mapping_id)
+    if mapping is None:
+        raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
+    definition = db.get(IntegrationDefinition, mapping.definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    deleted_payload = serialize_integration_mapping(mapping)
+    record_definition_audit_event(
+        db,
+        definition=definition,
+        user=user,
+        action="integration_mapping.mapping.delete",
+        event_type="integration_mapping.mapping.deleted",
+        metadata=definition_metadata(
+            definition,
+            {
+                "mapping_id": mapping.id,
+                "source_path": mapping.source_path,
+                "target_path": mapping.target_path,
+                "transform_type": mapping.transform_type,
+            },
+        ),
+    )
+    delete_integration_mapping(db, mapping=mapping)
+    return {"deleted": True, "id": deleted_payload["id"], "definition_id": deleted_payload["definition_id"]}
 
 
 @router.post("/definitions/{definition_id}/loops")

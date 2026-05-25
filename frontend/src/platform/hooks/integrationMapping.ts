@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiGet, apiPost } from "../api";
+import { apiDelete, apiGet, apiPost } from "../api";
 import type {
   IntegrationDefinition,
   IntegrationDefinitionCreatePayload,
@@ -216,6 +216,13 @@ export function createIntegrationMapping(token: string, definitionId: string, pa
   return apiPost<IntegrationMapping>(`/api/v1/modules/integration-mapping/definitions/${definitionId}/mappings`, payload, {
     token
   });
+}
+
+export function deleteIntegrationMapping(token: string, mappingId: string) {
+  return apiDelete<{ deleted: boolean; definition_id: string; id: string }>(
+    `/api/v1/modules/integration-mapping/mappings/${mappingId}`,
+    { token }
+  );
 }
 
 export function createIntegrationLoop(token: string, definitionId: string, payload: IntegrationLoopCreatePayload) {

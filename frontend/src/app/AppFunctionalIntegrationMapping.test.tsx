@@ -61,6 +61,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     const payloadRequests: unknown[] = [];
     const schemaRequests: string[] = [];
     const mappingRequests: unknown[] = [];
+    const deletedMappingRequests: string[] = [];
     const loopRequests: unknown[] = [];
     const joinRequests: unknown[] = [];
     const joinBindingRequests: unknown[] = [];
@@ -468,6 +469,12 @@ describe("Functional Integration Mapping Studio journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: mappings, total: mappings.length, page: 1, page_size: 50 }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/mappings/mapping_2") && init?.method === "DELETE") {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        deletedMappingRequests.push(url);
+        mappings = mappings.filter((mapping) => mapping.id !== "mapping_2");
+        return Promise.resolve(jsonResponse({ deleted: true, id: "mapping_2", definition_id: "definition_1" }));
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/loops")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         if (init?.method === "POST") {
@@ -860,6 +867,20 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic alias-backed access key mapping.");
     await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
     await waitFor(() => expect(mappingRequests).toHaveLength(2));
+    expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.accessKey")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove mapping $.header.accessKey" }));
+    await waitFor(() => expect(deletedMappingRequests).toHaveLength(1));
+    expect(await screen.findByText("Removed mapping $.header.accessKey.")).toBeInTheDocument();
+    expect(within(await screen.findByLabelText("Selected definition mappings")).queryByText("$.header.accessKey")).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Alias source context"), "ship_unit_release");
+    await userEvent.selectOptions(
+      await screen.findByLabelText("Mapping source node"),
+      "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue"
+    );
+    await userEvent.selectOptions(await screen.findByLabelText("Mapping target node"), "$.header.accessKey");
+    await userEvent.type(screen.getByLabelText("Mapping description"), "Synthetic alias-backed access key mapping.");
+    await userEvent.click(screen.getByRole("button", { name: "Create mapping" }));
+    await waitFor(() => expect(mappingRequests).toHaveLength(3));
     expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.accessKey")).toBeInTheDocument();
 
     await userEvent.selectOptions(screen.getByLabelText("Lookup source schema"), "schema_source");

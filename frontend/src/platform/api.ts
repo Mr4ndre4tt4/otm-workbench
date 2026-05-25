@@ -90,6 +90,14 @@ export async function apiPatch<T>(
   return parseResponse<T>(response);
 }
 
+export async function apiDelete<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: headersFor(options)
+  });
+  return parseResponse<T>(response);
+}
+
 export async function apiUpload<T>(
   path: string,
   formData: FormData,
