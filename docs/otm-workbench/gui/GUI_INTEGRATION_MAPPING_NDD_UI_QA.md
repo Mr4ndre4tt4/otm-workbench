@@ -24,12 +24,13 @@ The browser journey covered:
 3. Paste a synthetic PlannedShipment-like XML payload.
 4. Paste a synthetic external delivery JSON target payload.
 5. Parse both payloads into schema documents and schema nodes.
-6. Create direct/date mappings for selected header fields.
+6. Create direct mappings for selected header fields.
 7. Create a loop from ShipmentStop to Entregas[].
 8. Create a join for stop/ship-unit style relationship metadata.
 9. Create a mock lookup for destination document metadata.
 10. Validate the definition.
 11. Generate preview/spec artifacts.
+12. Download and inspect the generated preview artifact payload.
 ```
 
 Evidence screenshot:
@@ -43,7 +44,8 @@ data.
 
 ## Result
 
-The scenario is possible only as a metadata/specification exercise today.
+The scenario is now possible as an executable positive slice, not only as
+metadata/specification.
 
 Delivered behavior observed through the UI:
 
@@ -52,16 +54,22 @@ Delivered behavior observed through the UI:
 - Source and target payload artifact creation works.
 - XML/JSON schema parsing works for the simplified synthetic payload.
 - Mapping rows can be created from schema node selectors.
-- Loop, join, and lookup metadata can be created.
+- Loop, semantic loop join, multi-hop join binding, alias-backed mappings, and
+  loop-scoped lookup metadata can be created.
 - Validation passes when referenced paths exist.
+- Preview materializes executable synthetic JSON for header fields and
+  Entregas[] rows.
+- Generated preview artifact can be downloaded and inspected.
 - Spec generation succeeds.
 - Existing browser functional QA passes against local FastAPI + Vite.
 ```
 
-The module is not yet able to recreate the full NDD-style integration as a
-complete accelerator because preview output remains metadata-only and the
-authoring model lacks several first-class transformation concepts from the real
-functional pattern.
+The module is now a credible first accelerator for this synthetic NDD-like
+slice: it can capture the integration definition, parse samples, author
+multi-hop relationship rules, generate executable preview JSON, and explain
+field-level provenance. It is not yet complete for the full real-world pattern
+because richer transforms, required-field packs, response handling, and negative
+browser recovery still need hardening.
 
 ## Accelerator Assessment
 
@@ -72,6 +80,8 @@ Current accelerator value:
   samples, parsed schema trees, mapping inventory, and generated specs.
 - Useful as a governance/specification cockpit.
 - Useful to prevent raw payload/spec material from living only in documents.
+- Useful as a first executable test harness for header + Entregas[] mappings
+  when the scenario fits the supported transforms and alias model.
 ```
 
 Current limits:
@@ -79,9 +89,11 @@ Current limits:
 ```text
 - Not yet enough to author a complete OTM PlannedShipment -> delivery JSON
   transformation without external interpretation.
-- Not yet enough to prove generated target payload correctness.
-- Not yet enough to reduce complex mapping effort materially for loops, joins,
-  filtered refnums, aggregations, and lookups.
+- Not yet enough to cover all complex transformations from the reference
+  mapping: filtered refnums, date formatting, aggregations, response handling,
+  and all required target semantics.
+- Negative browser recovery for invalid alias/path authoring remains a follow-up
+  issue: `OTM-153`.
 ```
 
 ## UI/UX Findings
@@ -90,8 +102,10 @@ Current limits:
    still too dense for complex integrations.
 2. Source/target schema node selectors show long paths in plain selects. For
    OTM XML paths with repeated `Gid/Xid` structures, this is easy to misread.
-3. During the QA run, a join could be created with the same left and right path
-   because the UI made similar node options hard to distinguish.
+3. Earlier QA found that a meaningless join was easy to author because similar
+   OTM node paths are hard to distinguish in plain selects. The current browser
+   journey uses a semantically valid synthetic loop join, but the selector UX
+   still needs a searchable tree/path reviewer for real payloads.
 4. Validation only verifies that paths exist and catalogs are active. It does
    not validate semantic usefulness, for example whether a join relates two
    different structures or whether a lookup output belongs inside the right
@@ -128,7 +142,8 @@ called complete for this class of integration:
   missing/out-of-scope alias blockers; fuller scenario required-field semantics
   remain open.
 - Executable local preview that materializes synthetic target JSON from
-  mappings, loops, joins, lookups, and transforms.
+  mappings, loops, joins, lookups, and transforms. First mixed
+  header/Entregas[] alias-backed slice delivered by `OTM-152`.
 - Response handling model for success/error paths.
 ```
 
@@ -164,5 +179,28 @@ Recommended next backlog sequence:
    field-level provenance.
 10. Add browser QA for the full NDD-like synthetic scenario, including wrong
     path selection, reset/recovery, definition switching, and generated
-    artifact review.
+    artifact review. `OTM-152` delivered the positive executable artifact
+    review; `OTM-153` tracks negative alias/path browser recovery.
+```
+
+## OTM-152 Evidence
+
+`OTM-152` extended the browser functional script to prove more than artifact
+creation. The script now:
+
+```text
+- Authors a synthetic PlannedShipment-like XML and external delivery JSON.
+- Creates header mapping, Entregas[] loop mapping, multi-hop stop -> ship unit
+  -> release join binding, and alias-backed header/Entregas access-key mappings.
+- Creates a loop-scoped mock lookup into Entregas[].carrierName.
+- Validates and previews the definition.
+- Downloads `integration_preview.json`.
+- Asserts executable JSON:
+  - header.shipmentId = DEMO.SHIPMENT_001
+  - header.accessKey = KEY-001
+  - deliveries[0].sequence = 1
+  - deliveries[0].accessKey = KEY-001
+  - deliveries[0].carrierName = Synthetic Carrier
+- Asserts field provenance includes source alias `ship_unit_release` for
+  `$.deliveries[0].accessKey`.
 ```

@@ -427,6 +427,139 @@ def test_preview_integration_definition_uses_join_binding_alias_inside_loop(clie
     ]
 
 
+def test_preview_integration_definition_materializes_header_and_loop_alias_mappings(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_header_loop_alias.json",
+        content='{"header":{"shipmentId":"","accessKey":""},"deliveries":[{"sequence":"","accessKey":""}]}',
+    )
+    binding = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/join-bindings",
+        json=join_binding_payload(source),
+        headers=admin_header,
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_collection_path": "/Transmission/Shipment/ShipmentStop",
+            "target_collection_path": "$.deliveries[]",
+            "name": "Delivery stops",
+            "description": "Loop over synthetic delivery stops.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    header_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.shipmentId",
+            "transform_type": "DIRECT",
+            "description": "Header shipment id.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    header_alias_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.header.accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {"source_alias": "ship_unit_release"},
+            "description": "Header access key from release alias.",
+            "sequence_index": 2,
+        },
+        headers=admin_header,
+    )
+    stop_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "transform_type": "DIRECT",
+            "description": "Stop sequence from loop item.",
+            "sequence_index": 3,
+        },
+        headers=admin_header,
+    )
+    loop_alias_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.deliveries[].accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {"source_alias": "ship_unit_release"},
+            "description": "Delivery access key from release alias.",
+            "sequence_index": 4,
+        },
+        headers=admin_header,
+    )
+    assert binding.status_code == 200
+    assert loop.status_code == 200
+    assert header_mapping.status_code == 200
+    assert header_alias_mapping.status_code == 200
+    assert stop_mapping.status_code == 200
+    assert loop_alias_mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    preview = response.json()["preview"]
+    assert preview["mode"] == "synthetic_executable_json"
+    assert preview["target_json"] == {
+        "header": {
+            "shipmentId": "OTM1.SHIPMENT_001",
+            "accessKey": "KEY-001",
+        },
+        "deliveries": [
+            {
+                "sequence": "1",
+                "accessKey": "KEY-001",
+            }
+        ],
+    }
+    assert {
+        "mapping_id": header_alias_mapping.json()["id"],
+        "source_alias": "ship_unit_release",
+        "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+        "source_item_path": "/Transmission/Shipment/Release[1]/ReleaseRefnum/ReleaseRefnumValue",
+        "target_path": "$.header.accessKey",
+        "transform_type": "DIRECT",
+        "value_policy": "copied_from_join_binding_alias",
+    } in preview["field_provenance"]
+    assert {
+        "loop_id": loop.json()["id"],
+        "mapping_id": loop_alias_mapping.json()["id"],
+        "source_alias": "ship_unit_release",
+        "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+        "source_item_path": "/Transmission/Shipment/Release[1]/ReleaseRefnum/ReleaseRefnumValue",
+        "target_path": "$.deliveries[].accessKey",
+        "target_item_path": "$.deliveries[0].accessKey",
+        "transform_type": "DIRECT",
+        "value_policy": "copied_from_join_binding_alias",
+    } in preview["field_provenance"]
+
+
 def test_preview_integration_definition_rejects_missing_join_binding_alias_inside_loop(client, admin_header):
     definition = create_definition(client, admin_header)
     source = planned_shipment_source_document(client, admin_header, definition["id"])

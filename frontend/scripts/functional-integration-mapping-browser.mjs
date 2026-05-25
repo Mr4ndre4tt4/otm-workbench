@@ -49,6 +49,19 @@ async function apiRequest(path, { method = "GET", token, body } = {}) {
   return response.json();
 }
 
+async function apiDownloadText(path, { token } = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(`GET ${path} failed with HTTP ${response.status}: ${responseText}`);
+  }
+  return response.text();
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -158,7 +171,7 @@ async function run() {
       .fill(
         [
           "<Transmission><Shipment><ShipmentGid>DEMO.SHIPMENT_001</ShipmentGid>",
-          "<ShipmentStop><StopSequence>1</StopSequence><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
+          "<ShipmentStop><StopSequence>1</StopSequence><StopSequenceCopy>1</StopSequenceCopy><ShipmentStopDetail><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid></ShipmentStopDetail></ShipmentStop>",
           "<ShipUnit><ShipUnitGid><Gid><Xid>SU-001</Xid></Gid></ShipUnitGid><ShipUnitContent><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid></ShipUnitContent></ShipUnit>",
           "<Release><ReleaseGid><Gid><Xid>REL-001</Xid></Gid></ReleaseGid><ReleaseRefnum><ReleaseRefnumQualifierGid><Gid><Xid>RFN_CHAVE_ACESSO</Xid></Gid></ReleaseRefnumQualifierGid><ReleaseRefnumValue>KEY-001</ReleaseRefnumValue></ReleaseRefnum></Release>",
           "</Shipment></Transmission>"
@@ -171,7 +184,9 @@ async function run() {
     await payloadForm.getByLabel("Payload format").selectOption("JSON");
     await payloadForm.getByLabel("Payload file name").fill(`external_delivery_manual_${suffix}.json`);
     await payloadForm.getByLabel("Payload description").fill("Synthetic browser target payload.");
-    await payloadForm.getByLabel("Payload content").fill('{"header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1}]}');
+    await payloadForm
+      .getByLabel("Payload content")
+      .fill('{"header":{"shipmentId":"DEMO","accessKey":""},"deliveries":[{"sequence":1,"accessKey":"","carrierName":""}]}');
     await page.getByRole("button", { name: "Create payload and schema" }).click();
     await page.getByText(`Payload external_delivery_manual_${suffix}.json and schema $ created.`).waitFor();
 
@@ -199,8 +214,8 @@ async function run() {
 
     await page.getByLabel("Join source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Join name").fill("Synthetic shipment stop join");
-    await page.getByLabel("Join left node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Join right node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
+    await page.getByLabel("Join left node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
+    await page.getByLabel("Join right node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequenceCopy");
     await page.getByLabel("Join operator").selectOption("EQ");
     await page.getByLabel("Join description").fill("Synthetic join metadata.");
     await page.locator(".integration-join-form").getByRole("button", { name: "Create join", exact: true }).click();
@@ -235,14 +250,30 @@ async function run() {
     await page.getByText("Created mapping $.header.accessKey.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.header.accessKey", { exact: true }).waitFor();
 
+    await page.getByLabel("Alias source context").selectOption("ship_unit_release");
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
+    await page.getByLabel("Mapping target node").selectOption("$.deliveries[].accessKey");
+    await page.getByLabel("Mapping description").fill("Synthetic delivery alias-backed access key mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.deliveries[].accessKey.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.deliveries[].accessKey", { exact: true }).waitFor();
+
+    await page.getByLabel("Mapping source node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
+    await page.getByLabel("Mapping target node").selectOption("$.deliveries[].sequence");
+    await page.getByLabel("Transform type").selectOption("DIRECT");
+    await page.getByLabel("Mapping description").fill("Synthetic delivery stop sequence mapping.");
+    await page.getByRole("button", { name: "Create mapping" }).click();
+    await page.getByText("Created mapping $.deliveries[].sequence.").waitFor();
+    await page.getByLabel("Selected definition mappings").getByText("$.deliveries[].sequence", { exact: true }).waitFor();
+
     await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
     await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
     await page.getByLabel("Lookup name").fill("Synthetic carrier lookup");
-    await page.getByLabel("Lookup input node").selectOption("/Transmission/Shipment/ShipmentGid");
-    await page.getByLabel("Lookup output node").selectOption("$.header.shipmentId");
+    await page.getByLabel("Lookup input node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
+    await page.getByLabel("Lookup output node").selectOption("$.deliveries[].carrierName");
     await page.getByLabel("Lookup type").selectOption("MOCK");
     await page.getByLabel("Lookup description").fill("Synthetic lookup metadata.");
-    await page.getByLabel("Lookup mock response JSON").fill('{"shipmentId":"DEMO-SHIPMENT"}');
+    await page.getByLabel("Lookup mock response JSON").fill('{"carrierName":"Synthetic Carrier"}');
     await page.getByRole("button", { name: "Create lookup" }).click();
     await page.getByText("Created lookup Synthetic carrier lookup.").waitFor();
     await page.getByLabel("Selected definition lookups").getByText("Synthetic carrier lookup", { exact: true }).waitFor();
@@ -290,6 +321,43 @@ async function run() {
     await page.getByLabel("Integration mapping readiness").getByText("No specification blockers reported", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Preview definition" }).click();
     await page.getByText(/^Preview artifact .+ generated by job .+\.$/).waitFor();
+    const definitions = await apiRequest("/api/v1/modules/integration-mapping/definitions", { token });
+    const createdDefinition = definitions.items.find((item) => item.code === definitionCode);
+    if (!createdDefinition) {
+      throw new Error(`Could not find created Integration Mapping definition ${definitionCode}.`);
+    }
+    const previewArtifacts = await apiRequest(
+      `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/artifacts`,
+      { token }
+    );
+    const previewArtifact = previewArtifacts.items.find((item) => item.artifact_type === "integration_preview");
+    if (!previewArtifact?.download_url) {
+      throw new Error("Integration Mapping preview artifact was not available for download.");
+    }
+    const previewPayload = JSON.parse(await apiDownloadText(previewArtifact.download_url, { token }));
+    const preview = previewPayload.preview;
+    if (preview.mode !== "synthetic_executable_json") {
+      throw new Error(`Expected executable Integration Mapping preview, received ${preview.mode}.`);
+    }
+    if (preview.target_json?.header?.shipmentId !== "DEMO.SHIPMENT_001") {
+      throw new Error(`Unexpected preview header shipment id: ${preview.target_json?.header?.shipmentId}`);
+    }
+    if (preview.target_json?.header?.accessKey !== "KEY-001") {
+      throw new Error(`Unexpected preview header access key: ${preview.target_json?.header?.accessKey}`);
+    }
+    const firstDelivery = preview.target_json?.deliveries?.[0];
+    if (firstDelivery?.sequence !== "1" || firstDelivery?.accessKey !== "KEY-001") {
+      throw new Error(`Unexpected preview delivery payload: ${JSON.stringify(firstDelivery)}`);
+    }
+    if (firstDelivery?.carrierName !== "Synthetic Carrier") {
+      throw new Error(`Unexpected preview delivery lookup value: ${JSON.stringify(firstDelivery)}`);
+    }
+    const hasLoopAliasProvenance = preview.field_provenance?.some(
+      (item) => item.source_alias === "ship_unit_release" && item.target_item_path === "$.deliveries[0].accessKey"
+    );
+    if (!hasLoopAliasProvenance) {
+      throw new Error("Preview artifact did not include delivery alias field provenance.");
+    }
     await page.getByRole("button", { name: "Generate spec" }).click();
     await page.getByText(/^Spec artifact .+ generated by job .+\.$/).waitFor();
     const generatedArtifactsPanel = page.getByLabel("Integration mapping generated artifacts");

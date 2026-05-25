@@ -645,7 +645,26 @@ def build_loop_executable_json_preview(
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
+    loop_mappings: list[IntegrationMapping] = []
+    scalar_mappings: list[IntegrationMapping] = []
     for mapping in mappings:
+        if mapping.target_path.startswith(f"{loop.target_collection_path}."):
+            loop_mappings.append(mapping)
+        elif "[]" in mapping.target_path:
+            return None
+        else:
+            scalar_mappings.append(mapping)
+
+    if scalar_mappings and not materialize_scalar_mappings(
+        db,
+        mappings=scalar_mappings,
+        target_json=target_json,
+        field_provenance=field_provenance,
+        join_alias_contexts=join_alias_contexts,
+    ):
+        return None
+
+    for mapping in loop_mappings:
         if mapping.transform_type not in {"DIRECT", "CONSTANT"}:
             return None
         config = parse_transform_config(mapping.transform_config_json)

@@ -45,7 +45,7 @@ For each module:
 | Rates Studio | Functional journey done | Batch, validation, artifacts, approval ready | Object list/detail + operational surfaces | Treat as reference implementation. |
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice; macro-object validation-result switch recovery is delivered. |
 | Admin Console | Functional journey done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later; selected-job feedback recovery is delivered. |
-| Integration Mapping Studio | Functional journey done | Authoring, validation, spec/preview readiness, preview/spec artifacts ready | Staged workflow | Closed for MVP0; harden later. |
+| Integration Mapping Studio | Functional journey done; NDD-like executable positive browser slice done | Authoring, validation, spec/preview readiness, executable preview/spec artifacts ready | Staged workflow | `OTM-152` proves mixed header + `Entregas[]` alias mappings and loop-scoped lookup through downloaded preview artifact content. `OTM-153` tracks negative alias/path browser recovery. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, Evidence Hub archive convenience, Go/No-Go, guarded handoff commit UI, and next-action panel done | Backend flows mostly ready | Review queue + staged workflow + next action | Current GUI journey is accepted; keep future work to hardening or explicit new scope. |
 | Master Data / Data Factory | OTM-115 completion acceptance met for MVP0; next-action panel first slice delivered | Backend flows ready for template authoring, backend-owned scenario packs, workbook editor contract/validation/batch creation, filtered/paginated batches, output/CSV preview, CSV/ZIP export, guarded direct OTM import readiness/submit refusal, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail + next action | Completion review captured in `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`. Real governed direct OTM submission, deeper Load Plan analytics, advanced Coordinate Quality diagnostics, larger scenario library, and richer audited spreadsheet editing remain future scope. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
@@ -91,8 +91,13 @@ test pass/fail:
 9. OTM-151: add semantic validation and UI assist for Integration alias
    mappings. Delivered missing/out-of-scope alias blockers plus an Alias source
    context selector in the mapping authoring form.
-5. OTM-146: add destructive/out-of-order browser journeys by module.
-6. OTM-143: harden high-volume list density and signal quality.
+10. OTM-152: run the synthetic NDD-like browser scenario against executable
+    preview artifacts. Delivered for mixed header + `Entregas[]` alias mappings
+    and loop-scoped lookup output.
+11. OTM-153: add negative browser QA for invalid alias/path recovery and
+    blocked preview correction.
+12. OTM-146: add destructive/out-of-order browser journeys by module.
+13. OTM-143: harden high-volume list density and signal quality.
 ```
 
 ### 4.1 Load Plan / Cutover
