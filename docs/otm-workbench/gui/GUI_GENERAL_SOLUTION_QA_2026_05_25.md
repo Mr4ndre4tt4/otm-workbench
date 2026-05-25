@@ -123,7 +123,7 @@ artifacts, not product source.
 | `OTM-142` | High | Staged modules need a backend-owned next-action panel so users do not infer the workflow from steps alone. First slice delivered for Data Factory and Load Plan. |
 | `OTM-143` | Medium | Operational lists become noisy after seeded QA volume; need stronger filters, density and truncation. |
 | `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. First slice delivered in the Rules stage. |
-| `OTM-145` | High | Integration Mapping backend still needs cross-collection multi-hop joins, qualifier filters and aggregations. First slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop joins remain open follow-up. |
+| `OTM-145` | High | Integration Mapping backend still needs cross-collection multi-hop joins, qualifier filters and aggregations. First slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop joins moved to explicit binding follow-up `OTM-147`. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 
 ## 5. Recommended Next Queue
