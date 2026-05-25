@@ -318,11 +318,29 @@ export function AssetsLibraryView({ token }: { token: string }) {
     setLinkTargetLabel("");
   };
 
+  const clearAssetWorkspaceState = () => {
+    setOperationAsset(null);
+    setSelectedVersionFile(null);
+    setOperationMessage(null);
+    setOperationError(null);
+    setDraftEvidenceTargetFilters(emptyEvidenceTargetFilters);
+    setEvidenceTargetFilters(emptyEvidenceTargetFilters);
+    setLinkType("MODULE");
+    setLinkTargetId("integration_mapping");
+    setLinkTargetLabel("Integration Mapping Studio");
+  };
+
+  const handleSelectAsset = (assetId: string) => {
+    if (assetId === effectiveAssetId) return;
+    clearAssetWorkspaceState();
+    setSelectedAssetId(assetId);
+  };
+
   const resetAssetFilters = () => {
     setDraftAssetFilters(emptyAssetFilters);
     setAssetFilters(emptyAssetFilters);
     setSelectedAssetId(null);
-    setOperationAsset(null);
+    clearAssetWorkspaceState();
   };
 
   useEffect(() => {
@@ -671,7 +689,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 onClick={() => {
                   setAssetFilters(draftAssetFilters);
                   setSelectedAssetId(null);
-                  setOperationAsset(null);
+                  clearAssetWorkspaceState();
                 }}
                 variant="secondary"
               >
@@ -691,10 +709,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
                 title: asset.name
               }))}
-              onSelect={(assetId) => {
-                setSelectedAssetId(assetId);
-                setOperationAsset(null);
-              }}
+              onSelect={handleSelectAsset}
               selectedId={effectiveAssetId}
             />
           </OperationalPanel>

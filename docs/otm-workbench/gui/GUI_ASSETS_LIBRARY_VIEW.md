@@ -51,6 +51,9 @@ The screen uses shared components:
   payload and `PATCH` contract;
 - Selected-asset synchronization so the metadata form reflects the backend
   record selected in the Library before an update is submitted;
+- Selected-asset switch recovery, clearing object-scoped success/error
+  feedback, pending upload file state, Evidence Hub target filters, and link
+  target drafts before loading the newly selected backend asset;
 - Backend error code preservation in action feedback, including Data
   Dictionary validation failures for `OTM_TABLE` asset links and Catalog Core
   validation failures for `MACRO_OBJECT` asset links;
@@ -101,6 +104,11 @@ options where a classification group is not returned yet. Selecting another
 asset in the Library refreshes the authoring form from that selected backend
 record before any update action can be submitted.
 
+Selecting another asset after lifecycle actions now resets the route-session
+workspace for that object. This prevents archived/download/link feedback and
+disabled object state from leaking into the next asset, while still preserving
+the selected asset through backend list/detail/version/link endpoints.
+
 The Library stage now exposes `Reset asset filters` alongside `Apply asset
 filters`, so a user can recover from over-narrow filter combinations without
 leaving the module. The reset is covered in both React functional QA and browser
@@ -146,7 +154,8 @@ Commands executed:
 cd frontend
 npm run qa:functional:assets
 npm run qa:functional:assets:browser
-npm run test -- src/app/AppFunctionalAssets.test.tsx
+npm run test -- AppFunctionalAssets.test.tsx
+node --check frontend/scripts/functional-assets-browser.mjs
 npm run lint
 npm run build
 python -m pytest tests/test_assets_library_foundation.py tests/test_assets_library_assets.py tests/test_assets_library_versions.py tests/test_assets_library_links.py tests/test_assets_library_permissions.py

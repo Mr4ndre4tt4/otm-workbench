@@ -757,6 +757,15 @@ describe("Functional Assets Library journey", () => {
     await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
     expect(screen.getByRole("button", { name: "Create link" })).toBeDisabled();
 
+    await userEvent.click(screen.getByRole("button", { name: /1Library/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Synthetic Reference Template/ }));
+    expect(screen.queryByText("Asset Synthetic Rate Table Notes Updated archived.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Selected asset", { exact: true })).toHaveTextContent("Synthetic Reference Template");
+    await userEvent.click(screen.getByRole("button", { name: /3Version/ }));
+    expect(screen.getByLabelText("Asset version file")).not.toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /4Link/ }));
+    expect(screen.getByRole("button", { name: "Create link" })).toBeEnabled();
+
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));
     await screen.findByRole("heading", { name: "Assets Library" });

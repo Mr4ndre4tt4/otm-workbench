@@ -101,6 +101,23 @@ async function run() {
     }
   });
   const context = await seedSyntheticContext(token);
+  const referenceAsset = await apiRequest("/api/v1/modules/assets/assets", {
+    method: "POST",
+    token,
+    body: {
+      name: `Synthetic Reference Template ${Date.now()}`,
+      description: "Client-safe selected reference asset.",
+      asset_type: "SPEC",
+      category: "INTEGRATION",
+      visibility: "PROJECT",
+      scope_type: "MODULE",
+      sensitivity: "INTERNAL",
+      module_id: "master_data",
+      macro_object_code: "LOCATION",
+      otm_table_name: "LOCATION",
+      tags: ["REFERENCE", "SYNTHETIC"]
+    }
+  });
   const evidenceIndex = await apiRequest("/api/v1/evidence-hub/evidence", { token });
   const evidenceTarget = evidenceIndex.items?.find((item) => item.artifact);
   if (!evidenceTarget?.artifact) {
@@ -272,6 +289,20 @@ async function run() {
     if (await page.getByRole("button", { name: "Create link" }).isEnabled()) {
       throw new Error("Create link remains enabled after asset archive.");
     }
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
+    await page.getByRole("button", { name: new RegExp(referenceAsset.name) }).click();
+    await page.getByLabel("Selected asset", { exact: true }).getByText(referenceAsset.name).waitFor();
+    if ((await page.getByText("Asset Synthetic Rate Table Notes Updated archived.").count()) > 0) {
+      throw new Error("Archived asset feedback remains visible after selecting another asset.");
+    }
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
+    if (await page.getByLabel("Asset version file").isDisabled()) {
+      throw new Error("Asset version file remains disabled after selecting a non-archived asset.");
+    }
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Link" }).click();
+    if (await page.getByRole("button", { name: "Create link" }).isDisabled()) {
+      throw new Error("Create link remains disabled after selecting a non-archived asset.");
+    }
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -302,12 +333,13 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-edit-upload-otm-table-link-download-archive-guards-return",
+          journey: "assets-filtered-metadata-create-edit-upload-link-download-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id,
+          reference_asset_id: referenceAsset.id,
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id
