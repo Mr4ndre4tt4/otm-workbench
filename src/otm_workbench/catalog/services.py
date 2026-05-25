@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 import xml.etree.ElementTree as ET
 
 from sqlalchemy.orm import Session
@@ -21,6 +22,13 @@ from otm_workbench.models import (
 )
 from otm_workbench.modules.rates.dictionary import TableDefinition, load_table_definition
 from otm_workbench.reference.services import ReferenceContext, allowed_domains, list_reference_options
+
+
+SENSITIVE_SCHEMA_PATTERNS = (
+    re.compile(r"<\s*soap:address\b[^>]*\blocation\s*=", re.IGNORECASE),
+    re.compile(r"\b(password|passwd|secret|credential|api[_-]?key|token)\b\s*=", re.IGNORECASE),
+    re.compile(r"\b(real[-_ ]?client|cliente[-_ ]?real)\b", re.IGNORECASE),
+)
 
 
 TRANSACTIONAL_TABLE_PREFIXES = (
@@ -45,6 +53,10 @@ class TableClassification:
     is_transactional: bool
     allow_cutover: bool
     allow_csvutil: bool
+
+
+class SensitiveSchemaContentError(ValueError):
+    pass
 
 
 def classify_table(table_name: str) -> TableClassification:
@@ -643,6 +655,12 @@ def _recommended_modules(root_name: str, file_name: str) -> list[str]:
     return []
 
 
+def _assert_client_safe_schema_content(file_path: Path) -> None:
+    content = file_path.read_text(encoding="utf-8", errors="ignore")
+    if any(pattern.search(content) for pattern in SENSITIVE_SCHEMA_PATTERNS):
+        raise SensitiveSchemaContentError("Schema pack file contains blocked sensitive content.")
+
+
 def _iter_xsd_nested_elements(element: ET.Element) -> list[ET.Element]:
     nested: list[ET.Element] = []
     for child in list(element):
@@ -1051,6 +1069,7 @@ def index_schema_pack(db: Session, pack: SchemaPack, *, created_by: str | None =
     hasher = sha256()
     for file_path in sorted([*source_root.rglob("*.xsd"), *source_root.rglob("*.wsdl")]):
         totals["files_seen"] += 1
+        _assert_client_safe_schema_content(file_path)
         hasher.update(file_path.name.encode("utf-8"))
         hasher.update(file_path.read_bytes())
         try:

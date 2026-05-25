@@ -64,6 +64,24 @@ def write_synthetic_schema_pack(folder):
     )
 
 
+def write_sensitive_schema_pack(folder):
+    folder.mkdir()
+    (folder / "ExternalService.wsdl").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/ExternalService">
+  <wsdl:service name="ExternalService">
+    <wsdl:port name="ExternalPort" binding="tns:ExternalBinding">
+      <soap:address location="https://real-client.example.com/otm/service"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
+""",
+        encoding="utf-8",
+    )
+
+
 def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header):
     created = client.post(
         "/api/v1/catalog/schema-packs",
@@ -175,6 +193,29 @@ def test_catalog_schema_pack_index_rejects_missing_local_folder(client, admin_he
     assert str(missing_folder) not in str(indexed.json())
 
 
+def test_catalog_schema_pack_index_rejects_sensitive_wsdl_content(client, admin_header):
+    schema_folder = workspace_test_folder("sensitive_26a")
+    write_sensitive_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_SENSITIVE",
+            "name": "Sensitive synthetic pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+
+    assert indexed.status_code == 400
+    assert indexed.json()["code"] == "SCHEMA_PACK_SENSITIVE_CONTENT"
+    assert "real-client" not in str(indexed.json()).lower()
+    assert str(schema_folder) not in str(indexed.json())
+
+
 def test_schema_pack_index_job_runs_through_jobs_processing(client, admin_header, db_session):
     schema_folder = workspace_test_folder("job_synthetic_26a")
     write_synthetic_schema_pack(schema_folder)
@@ -232,6 +273,41 @@ def test_schema_pack_index_job_fails_safely_for_missing_pack(client, admin_heade
     assert payload["status"] == "FAILED"
     assert payload["error"]["code"] == "SCHEMA_PACK_JOB_FAILED"
     assert "missing-pack" not in payload["error"]["message"]
+    assert payload["result"] == {}
+
+
+def test_schema_pack_index_job_fails_safely_for_sensitive_content(client, admin_header):
+    schema_folder = workspace_test_folder("job_sensitive_26a")
+    write_sensitive_schema_pack(schema_folder)
+    pack = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_JOB_SENSITIVE",
+            "name": "Sensitive job pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    ).json()
+
+    job = client.post(
+        "/api/v1/platform/jobs",
+        json={
+            "job_type": "SCHEMA_PACK_INDEX",
+            "source_module": "catalog",
+            "input": {"schema_pack_id": pack["id"]},
+            "execute_now": True,
+        },
+        headers=admin_header,
+    )
+
+    assert job.status_code == 200
+    payload = job.json()
+    assert payload["status"] == "FAILED"
+    assert payload["error"]["code"] == "SCHEMA_PACK_JOB_FAILED"
+    assert "real-client" not in str(payload).lower()
+    assert str(schema_folder) not in str(payload)
     assert payload["result"] == {}
 
 

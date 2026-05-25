@@ -871,6 +871,8 @@ Status da primeira fatia:
 - Job Processing integrado via handler `SCHEMA_PACK_INDEX` com input
   `schema_pack_id`, lifecycle/eventos/audit do motor existente e falha
   client-safe.
+- Sensitive-content detection entregue para bloquear WSDL/XSD com `soap:address
+  location`, credenciais obvias ou marcadores explicitos de cliente real.
 - Ainda falta validacao contra fixtures 26A completas, resolucao cross-file e
   QA negativo de parse mais amplo.
 ```

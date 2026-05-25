@@ -363,6 +363,18 @@ generated artifact.
 7. Documentation states that Data Dictionary remains the CSV truth.
 ```
 
+Status update:
+
+```text
+- Sensitive-content detection delivered for obvious blocked patterns such as
+  `soap:address location`, credential-like assignments, and explicit real-client
+  markers.
+- Sync API and `SCHEMA_PACK_INDEX` job both fail client-safe when blocked
+  content is detected.
+- Broader negative QA is still open for invalid XSD, missing import, unknown
+  root, duplicate root, and deeper cross-file resolution.
+```
+
 ## UI Acceptance Criteria Later
 
 The first UI should be operational and staged:

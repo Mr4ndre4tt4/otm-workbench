@@ -33,6 +33,7 @@ from otm_workbench.catalog.services import (
     serialize_schema_path,
     serialize_schema_root,
     serialize_service_operation,
+    SensitiveSchemaContentError,
     serialize_table_definition,
     validate_column,
     validate_table,
@@ -279,6 +280,8 @@ def index_catalog_schema_pack(
         return index_schema_pack(db, pack, created_by=user.email)
     except FileNotFoundError:
         raise api_error(400, "SCHEMA_PACK_SOURCE_NOT_FOUND", "Schema pack source folder was not found.")
+    except SensitiveSchemaContentError:
+        raise api_error(400, "SCHEMA_PACK_SENSITIVE_CONTENT", "Schema pack contains blocked sensitive content.")
 
 
 @router.get("/schema-roots")

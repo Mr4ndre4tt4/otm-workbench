@@ -33,7 +33,7 @@ def demo_echo_handler(db: Session, input_payload: dict[str, object]) -> JobRunRe
 
 
 def schema_pack_index_handler(db: Session, input_payload: dict[str, object]) -> JobRunResult:
-    from otm_workbench.catalog.services import index_schema_pack
+    from otm_workbench.catalog.services import SensitiveSchemaContentError, index_schema_pack
 
     schema_pack_id = str(input_payload.get("schema_pack_id") or "")
     pack = db.get(SchemaPack, schema_pack_id)
@@ -41,7 +41,7 @@ def schema_pack_index_handler(db: Session, input_payload: dict[str, object]) -> 
         raise JobHandlerError("SCHEMA_PACK_JOB_FAILED", "Schema pack index job failed.")
     try:
         result = index_schema_pack(db, pack)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, SensitiveSchemaContentError) as exc:
         raise JobHandlerError("SCHEMA_PACK_JOB_FAILED", "Schema pack index job failed.") from exc
     return JobRunResult(result=result, message="Schema pack indexed.")
 
