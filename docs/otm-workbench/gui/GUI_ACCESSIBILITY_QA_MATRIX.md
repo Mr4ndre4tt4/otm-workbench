@@ -93,6 +93,8 @@ Every touched slice must confirm:
 - lists, forms, panels, and workspaces have useful aria labels
 - disabled actions expose backend-owned disabled reasons when available
 - loading, empty, error, blocked, read-only, and success states are reachable
+- short success feedback uses polite status announcements and short error
+  feedback uses alert announcements through the shared `FeedbackMessage`
 - status chips do not communicate meaning by color alone
 - text remains readable in light and dark modes
 ```

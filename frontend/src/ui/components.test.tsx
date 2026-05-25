@@ -63,11 +63,14 @@ describe("FeedbackMessage", () => {
   it("renders shared success and error feedback styles", () => {
     const { rerender } = render(<FeedbackMessage tone="success">Context updated.</FeedbackMessage>);
 
-    expect(screen.getByText("Context updated.")).toHaveClass("form-success");
+    expect(screen.getByRole("status")).toHaveClass("form-success");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
+    expect(screen.getByText("Context updated.")).toBeInTheDocument();
 
     rerender(<FeedbackMessage tone="error">Unable to sign in.</FeedbackMessage>);
 
-    expect(screen.getByText("Unable to sign in.")).toHaveClass("form-error");
+    expect(screen.getByRole("alert")).toHaveClass("form-error");
+    expect(screen.getByText("Unable to sign in.")).toBeInTheDocument();
   });
 });
 

@@ -20,6 +20,7 @@ invent one-off paragraph classes for backend action results.
 - success feedback class mapping
 - error feedback class mapping
 - inline message element shape
+- live-region semantics for short action feedback
 ```
 
 Callers own:
@@ -42,7 +43,9 @@ contracts or platform hooks return a result.
 1. Use FeedbackMessage for inline success or error text in app and module code.
 2. Keep raw form-success and form-error classes inside
    `ui/components/states.tsx`.
-3. Do not use FeedbackMessage for persistent lifecycle/readiness state; use
+3. Render success feedback with `role=status` and `aria-live=polite`.
+4. Render error feedback with `role=alert`.
+5. Do not use FeedbackMessage for persistent lifecycle/readiness state; use
    StatePanel, StatusChip, ReadinessPanel, or module contracts instead.
 ```
 
@@ -53,5 +56,5 @@ frontend/src/ui/components.test.tsx
 frontend/tests/feedbackMessagePatternContract.test.ts
 ```
 
-The tests verify the rendered classes and prevent raw feedback classes from
-drifting into shell or module views.
+The tests verify rendered classes, live-region roles, and prevent raw feedback
+classes from drifting into shell or module views.

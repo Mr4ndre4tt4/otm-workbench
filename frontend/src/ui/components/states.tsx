@@ -21,5 +21,17 @@ type FeedbackMessageProps = {
 };
 
 export function FeedbackMessage({ children, tone }: FeedbackMessageProps) {
-  return <p className={tone === "success" ? "form-success" : "form-error"}>{children}</p>;
+  if (tone === "success") {
+    return (
+      <p aria-live="polite" className="form-success" role="status">
+        {children}
+      </p>
+    );
+  }
+
+  return (
+    <p className="form-error" role="alert">
+      {children}
+    </p>
+  );
 }
