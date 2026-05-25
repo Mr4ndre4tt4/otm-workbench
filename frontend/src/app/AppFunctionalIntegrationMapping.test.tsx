@@ -1271,6 +1271,11 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(screen.getByLabelText("Outcome")).toHaveValue("SUCCESS");
     expect(screen.getByLabelText("Response handler description")).toHaveValue("");
     expect(screen.queryByText("Created lookup Synthetic carrier lookup.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
+      })
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Validate definition" }));
     await screen.findByText("Validation passed with 0 issue(s).");
@@ -1305,6 +1310,11 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(screen.getByRole("button", { name: /4Mapping rules/ }));
     expect(screen.getByLabelText("Source schema")).toHaveValue("");
     expect(screen.getByLabelText("Target schema")).toHaveValue("");
+    expect(
+      screen.queryByRole("button", {
+        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
+      })
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Integration Mapping Studio/ }));

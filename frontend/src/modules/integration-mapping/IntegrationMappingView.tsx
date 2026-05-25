@@ -472,9 +472,12 @@ export function IntegrationMappingView({ token }: { token: string }) {
 
   const resetMappingRuleDrafts = () => {
     setSourceSchemaId('');
+    sourceSchemaIdRef.current = '';
     setTargetSchemaId('');
+    targetSchemaIdRef.current = '';
     setMappingSourceNodeSearch('');
     setMappingTargetNodeSearch('');
+    setMappingSuggestionItems([]);
     setSourcePath('');
     setTargetPath('');
     setTransformType('DIRECT');

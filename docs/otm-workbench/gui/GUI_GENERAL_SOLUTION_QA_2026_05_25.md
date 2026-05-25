@@ -138,14 +138,14 @@ artifacts, not product source.
 | `OTM-158` | Medium | Schema node search and deterministic mapping suggestions delivered for Integration Mapping Rules stage, with React/browser QA. |
 | `OTM-159` | Medium | Integration Mapping suggestions moved to a backend-owned contract with schema ownership validation, explicit Rules-stage load/apply UI, React QA, and browser QA. |
 | `OTM-160` | Medium | Integration Mapping backend suggestion scoring now covers exact matches, ambiguous exact matches, and first OTM-context suggestions for stop sequence and refnum access key scenarios. |
-| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
+| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. First Integration Mapping chaos slice delivered with dirty draft/stale suggestion definition-switch recovery. |
 
 ## 5. Recommended Next Queue
 
 1. Fix QA/dev reproducibility first: `OTM-141`.
 2. Browser-QA the `NextActionPanel` first slice and then roll it out to the next staged modules: `OTM-142`.
 3. Continue Integration Mapping accelerator hardening: broader Catalog/Data Dictionary synonym coverage, schema path facets, and complex expression usability.
-4. Add chaos/out-of-order browser QA once the next-action pattern exists: `OTM-146`.
+4. Continue chaos/out-of-order browser QA for Data Factory, Load Plan, Assets and Order Release: `OTM-146`.
 5. Harden list density and high-volume states: `OTM-143`.
 
 ## 6. Acceptance Bar Going Forward

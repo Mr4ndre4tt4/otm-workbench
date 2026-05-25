@@ -31,6 +31,7 @@
     "qa:functional:order-release:browser": "node scripts/functional-order-release-browser.mjs",
     "qa:functional:rates:browser": "node scripts/functional-rates-browser.mjs",
     "qa:functional:shell:browser": "node scripts/functional-shell-browser.mjs",
+    "qa:chaos:browser": "node scripts/chaos-browser.mjs",
     "lint": "eslint ."
   },
   "dependencies": {

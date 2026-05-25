@@ -106,7 +106,10 @@ test pass/fail:
     Catalog/Data Dictionary-inspired semantics. Delivered exact match reasons,
     ambiguous exact-match downgrade, `StopSequence -> deliveries[].sequence`,
     and `ReleaseRefnumValue -> accessKey`.
-15. OTM-146: add destructive/out-of-order browser journeys by module.
+15. OTM-146: add destructive/out-of-order browser journeys by module. First
+    slice delivered with `npm run qa:chaos:browser` for Integration Mapping
+    definition switching: dirty mapping drafts and stale backend-owned
+    suggestions are cleared when the selected definition changes.
 16. OTM-143: harden high-volume list density and signal quality.
 ```
 
