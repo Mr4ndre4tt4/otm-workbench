@@ -270,15 +270,24 @@ them into synthetic rules:
 Add or extend analyzer tests to verify:
 
 ```text
-- ignores macOS metadata files
+- ignores macOS metadata files [DONE first slice]
 - identifies package groups
-- reads CTL command mode (`xcsv`, `ii`)
+- reads CTL command mode (`xcsv`, `ii`) [DONE first slice]
 - maps CTL file names to CSV files
-- reads table line and header line without exposing data rows
+- reads table line and header line without exposing data rows [DONE first slice]
 - flags missing CSV files referenced by CTL
 - flags CSV table-line mismatch with CTL table name when tableName is present
-- detects nested result ZIP artifacts
+- detects nested result ZIP artifacts [DONE first slice]
 - sanitizes mail notification settings
+```
+
+Implementation note, 2026-05-25:
+
+```text
+The Load Plan ZIP analyzer now accepts synthetic CSVUTIL package shapes where
+CSV files live outside `csv/`, including `export/<NNN_TABLE>.csv`. It records
+CTL file count, CTL command modes, ignored metadata files, and nested
+`*.result.zip` artifacts in the manifest/summary without copying row values.
 ```
 
 ### Cutover Checklist
@@ -321,6 +330,8 @@ Recommended Linear/backlog follow-ups:
 
 ```text
 1. CSVUTIL analyzer: parse CTL/CSV package structure with synthetic fixtures.
+   [FIRST SLICE DELIVERED: generic CSV discovery, CTL mode scan, ignored
+   metadata, nested result ZIP detection]
 2. Cutover checklist: package-family readiness from CTL/CSV analyzer output.
 3. Rates QA: synthetic LTL/TL rate stack based on the observed table sequence.
 4. Master Data QA: synthetic location/equipment/geography package family.

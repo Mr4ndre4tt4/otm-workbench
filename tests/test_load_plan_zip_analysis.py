@@ -142,6 +142,58 @@ def test_zip_analysis_creates_manifest_evidence_audit_and_event(client, admin_he
     assert event.status == "PENDING"
 
 
+def test_zip_analysis_accepts_csvutil_reference_package_shape(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    artifact = db_session.query(Artifact).filter(Artifact.id == export["artifact_id"]).one()
+    artifact_path = Path(artifact.file_path)
+    rewritten_path = artifact_path.with_suffix(".csvutil_reference_shape.zip")
+    csv_payload = (
+        "ACCESSORIAL_COST\n"
+        "ACCESSORIAL_COST_GID,ACCESSORIAL_COST_XID\n"
+        "OTM1.SYNTH_ACC_COST_001,SYNTH_ACC_COST_001\n"
+    ).encode("utf-8")
+    with zipfile.ZipFile(rewritten_path, "w", compression=zipfile.ZIP_DEFLATED) as rewritten:
+        rewritten.writestr(
+            "csvutil.ctl",
+            "-dataFileName 001_ACCESSORIAL_COST.csv -command xcsv -tableName ACCESSORIAL_COST\n",
+        )
+        rewritten.writestr(
+            "export/csvutil.ctl",
+            "-dataFileName 001_ACCESSORIAL_COST.csv -command ii\n",
+        )
+        rewritten.writestr("export/001_ACCESSORIAL_COST.csv", csv_payload)
+        rewritten.writestr("__MACOSX/._001_ACCESSORIAL_COST.csv", b"apple metadata")
+        rewritten.writestr("export/.DS_Store", b"apple metadata")
+        rewritten.writestr("export/export.zip.result.zip", b"synthetic nested result")
+    artifact.file_path = str(rewritten_path)
+    artifact.file_name = rewritten_path.name
+    artifact.size_bytes = rewritten_path.stat().st_size
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["csv_file_count"] == 1
+    assert payload["summary"]["ctl_file_count"] == 2
+    assert payload["summary"]["ignored_file_count"] == 2
+    assert payload["summary"]["nested_result_zip_count"] == 1
+    assert payload["summary"]["ctl_command_modes"] == ["ii", "xcsv"]
+    assert payload["summary"]["error_count"] == 0
+    assert payload["summary"]["warning_count"] == 0
+    assert payload["findings"] == []
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    manifest_json = json.loads(manifest.manifest_json)
+    assert manifest_json["files"][0]["file_name"] == "export/001_ACCESSORIAL_COST.csv"
+    assert manifest_json["ignored_files"] == ["__MACOSX/._001_ACCESSORIAL_COST.csv", "export/.DS_Store"]
+    assert "SYNTH_ACC_COST_001" not in json.dumps(payload)
+    assert "SYNTH_ACC_COST_001" not in manifest.manifest_json
+
+
 def test_zip_analysis_list_and_detail(client, admin_header):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
     created = client.post(

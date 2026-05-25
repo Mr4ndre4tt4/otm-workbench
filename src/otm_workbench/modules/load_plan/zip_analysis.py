@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import re
 import zipfile
 
 from sqlalchemy.orm import Session
@@ -22,6 +23,7 @@ from otm_workbench.modules.rates.exports import iso_now
 
 
 ALTER_SESSION_LINE = "exec alter session set nls_date_format = 'YYYY-MM-DD HH24:MI:SS'"
+CSVUTIL_COMMAND_RE = re.compile(r"(?:^|\s)-command\s+([A-Za-z0-9_]+)(?:\s|$)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -110,6 +112,38 @@ def read_csv_header(lines: list[str]) -> list[str]:
     if len(lines) < 2:
         return []
     return [column.strip().upper() for column in next(csv.reader([lines[1]]))]
+
+
+def is_ignored_archive_member(member_name: str) -> bool:
+    parts = [part for part in member_name.split("/") if part]
+    if not parts:
+        return True
+    return (
+        parts[0] == "__MACOSX"
+        or any(part == ".DS_Store" for part in parts)
+        or any(part.startswith("._") for part in parts)
+    )
+
+
+def is_csv_member(member_name: str) -> bool:
+    return member_name.lower().endswith(".csv") and not is_ignored_archive_member(member_name)
+
+
+def is_ctl_member(member_name: str) -> bool:
+    return member_name.lower().endswith(".ctl") and not is_ignored_archive_member(member_name)
+
+
+def is_nested_result_zip(member_name: str) -> bool:
+    return member_name.lower().endswith(".result.zip") and not is_ignored_archive_member(member_name)
+
+
+def extract_ctl_command_modes(archive: zipfile.ZipFile, ctl_names: list[str]) -> list[str]:
+    modes: set[str] = set()
+    for ctl_name in ctl_names:
+        text = archive.read(ctl_name).decode("utf-8-sig", errors="replace")
+        for match in CSVUTIL_COMMAND_RE.finditer(text):
+            modes.add(match.group(1).lower())
+    return sorted(modes)
 
 
 def analyze_csv_member(
@@ -230,9 +264,13 @@ def generate_zip_analysis(
     with zipfile.ZipFile(artifact.file_path) as archive:
         names = archive.namelist()
         zip_file_count = len(names)
-        if "manifest.json" not in names:
+        ignored_names = sorted(name for name in names if is_ignored_archive_member(name))
+        ctl_names = sorted(name for name in names if is_ctl_member(name))
+        nested_result_zip_names = sorted(name for name in names if is_nested_result_zip(name))
+        ctl_command_modes = extract_ctl_command_modes(archive, ctl_names)
+        if "manifest.json" not in names and not ctl_names:
             findings.append(finding("WARNING", "ZIP_MANIFEST_MISSING", "ZIP does not include manifest.json."))
-        csv_names = sorted(name for name in names if name.startswith("csv/") and name.lower().endswith(".csv"))
+        csv_names = sorted(name for name in names if is_csv_member(name))
         if not csv_names:
             findings.append(finding("ERROR", "ZIP_CSV_MISSING", "ZIP does not include CSV files under csv/."))
         for csv_name in csv_names:
@@ -261,6 +299,10 @@ def generate_zip_analysis(
         "finding_count": len(findings),
         "error_count": error_count,
         "warning_count": warning_count,
+        "ctl_file_count": len(ctl_names),
+        "ignored_file_count": len(ignored_names),
+        "nested_result_zip_count": len(nested_result_zip_names),
+        "ctl_command_modes": ctl_command_modes,
         **catalog_context,
     }
     manifest_payload = {
@@ -283,6 +325,9 @@ def generate_zip_analysis(
             "size_bytes": artifact.size_bytes,
         },
         "files": files,
+        "ctl_files": ctl_names,
+        "ignored_files": ignored_names,
+        "nested_result_zips": nested_result_zip_names,
         "summary": summary,
         "findings": findings,
         "analyzed_at": analyzed_at,
