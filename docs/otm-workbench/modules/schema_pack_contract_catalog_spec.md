@@ -496,6 +496,17 @@ Interpretation:
 
 ## UI Acceptance Criteria Later
 
+Current Catalog Core GUI slice delivered:
+
+```text
+- staged Schema guidance workspace in Catalog Core;
+- backend-owned readiness metrics from /catalog/schema-guidance/readiness;
+- role-separated root lists for ENVELOPE_ONLY and MACRO_OBJECT roots;
+- selected macro-object schema links from Data Dictionary cross-check;
+- no frontend inference of root aliases, readiness, confidence, or reference
+  status.
+```
+
 The first UI should be operational and staged:
 
 ```text

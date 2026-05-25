@@ -2,10 +2,13 @@ import { useState, type FormEvent } from 'react';
 
 import { ApiError } from '../../platform/api';
 import {
+  useCatalogMacroObjectDataDictionaryCheck,
   useCatalogMacroObjectDetail,
   useCatalogMacroObjectLoadPlan,
   useCatalogMacroObjects,
   useCatalogMacroObjectTables,
+  useCatalogSchemaGuidanceReadiness,
+  useCatalogSchemaRootsByRole,
   validateCatalogColumn,
   validateCatalogReference,
   validateCatalogTable
@@ -67,9 +70,17 @@ export function CatalogCoreView({ token }: { token: string }) {
   const macroDetail = useCatalogMacroObjectDetail(token, effectiveMacroCode);
   const macroTables = useCatalogMacroObjectTables(token, effectiveMacroCode);
   const macroLoadPlan = useCatalogMacroObjectLoadPlan(token, effectiveMacroCode);
+  const macroCrossCheck = useCatalogMacroObjectDataDictionaryCheck(token, effectiveMacroCode);
+  const schemaReadiness = useCatalogSchemaGuidanceReadiness(token);
+  const envelopeRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
+  const macroRoots = useCatalogSchemaRootsByRole(token, "MACRO_OBJECT");
   const selectedMacro = macroDetail.data;
   const tableItems = macroTables.data?.items ?? [];
   const loadPlanItems = macroLoadPlan.data?.items ?? [];
+  const readinessItems = schemaReadiness.data?.items ?? [];
+  const envelopeRootItems = envelopeRoots.data?.items ?? [];
+  const macroRootItems = macroRoots.data?.items ?? [];
+  const schemaLinkItems = macroCrossCheck.data?.schema_links ?? [];
   const csvutilMacroCount = macroItems.filter((item) => item.allow_csvutil).length;
   const cutoverMacroCount = macroItems.filter((item) => item.allow_cutover).length;
   const validatedTableCount = tableItems.filter((item) => item.validated_by_datadict).length;
@@ -178,6 +189,83 @@ export function CatalogCoreView({ token }: { token: string }) {
           { key: "validated", label: "Validated tables", status: booleanStatus(validatedTableCount), value: validatedTableCount }
         ]}
       />
+
+      <section className="panel catalog-validation-panel" aria-label="Schema guidance workspace">
+        <div className="panel-header">
+          <div>
+            <h2>Schema guidance</h2>
+            <p className="empty-text">Backend-owned XML contract readiness separated by role.</p>
+          </div>
+        </div>
+        <MetricGrid
+          ariaLabel="Schema guidance metrics"
+          items={[
+            {
+              key: "schema_ready",
+              label: "Ready guidance",
+              status: booleanStatus(schemaReadiness.data?.summary.ready_count ?? 0),
+              value: schemaReadiness.data?.summary.ready_count ?? 0
+            },
+            {
+              key: "schema_blocked",
+              label: "Blocked guidance",
+              status: booleanStatus(schemaReadiness.data?.summary.blocked_count ?? 0),
+              value: schemaReadiness.data?.summary.blocked_count ?? 0
+            },
+            {
+              key: "envelopes",
+              label: "Envelope roots",
+              status: booleanStatus(envelopeRootItems.length),
+              value: envelopeRootItems.length
+            },
+            {
+              key: "macro_roots",
+              label: "Macro roots",
+              status: booleanStatus(macroRootItems.length),
+              value: macroRootItems.length
+            }
+          ]}
+        />
+        <div className="catalog-validation-grid">
+          <DetailList
+            ariaLabel="Integration envelope roots"
+            emptyText={envelopeRoots.isLoading ? "Loading envelope roots..." : "No envelope roots indexed."}
+            items={envelopeRootItems.map((item) => ({
+              id: item.id,
+              meta: [item.domain_area, item.envelope_role, item.root_type],
+              status: item.schema_guidance_role,
+              subtitle: item.canonical_root_name,
+              title: item.root_display_label
+            }))}
+          />
+          <DetailList
+            ariaLabel="Macro schema roots"
+            emptyText={macroRoots.isLoading ? "Loading macro roots..." : "No macro roots indexed."}
+            items={macroRootItems.map((item) => ({
+              id: item.id,
+              meta: [item.domain_area, item.data_dictionary_family || "No table family", item.root_type],
+              status: item.schema_guidance_role,
+              subtitle: item.canonical_root_name,
+              title: item.root_display_label
+            }))}
+          />
+        </div>
+        <DetailList
+          ariaLabel="Schema guidance readiness"
+          emptyText={schemaReadiness.isLoading ? "Loading schema guidance readiness..." : "No schema readiness data available."}
+          items={readinessItems.map((item) => ({
+            id: item.macro_object_code,
+            meta: [
+              item.category,
+              `${item.validated_table_count}/${item.target_table_count} table(s)`,
+              `${item.schema_link_count} schema link(s)`
+            ],
+            status: item.readiness_status,
+            subtitle: item.macro_object_name,
+            title: item.macro_object_code
+          }))}
+        />
+      </section>
 
       <section className="panel catalog-validation-panel" aria-label="Catalog validation">
         <div className="panel-header">
@@ -303,6 +391,17 @@ export function CatalogCoreView({ token }: { token: string }) {
             title={selectedMacro?.code}
           >
             {selectedMacro?.description ? <p className="empty-text">{selectedMacro.description}</p> : null}
+            <DetailList
+              ariaLabel="Selected macro object schema links"
+              emptyText={macroCrossCheck.isLoading ? "Loading schema links..." : "No schema links ready for this macro object."}
+              items={schemaLinkItems.map((item) => ({
+                id: item.id,
+                meta: [item.schema_guidance_role, item.data_dictionary_family || "No table family", item.functional_confidence],
+                status: item.source_reference_status,
+                subtitle: item.root_name,
+                title: item.root_display_label
+              }))}
+            />
             <DetailList
               ariaLabel="Selected macro object tables"
               emptyText="No tables linked to this macro object."

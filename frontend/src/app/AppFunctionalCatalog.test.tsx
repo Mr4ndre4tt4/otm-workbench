@@ -189,6 +189,50 @@ function rateRecordLoadPlan() {
   };
 }
 
+function rateRecordCrossCheck() {
+  return {
+    macro_object_code: "RATE_RECORD",
+    macro_object_name: "Rate record",
+    table_checks: [],
+    schema_links: [
+      {
+        id: "link_rate_geo",
+        macro_object_code: "RATE_RECORD",
+        schema_root_id: "root_rate_geo",
+        schema_pack_id: "pack_26a",
+        schema_pack_code: "OTM_26A_CORE",
+        otm_version: "26A",
+        schema_file: "Rate.xsd",
+        root_name: "RATE_GEO",
+        root_display_label: "Rate Record / Rate Geo",
+        canonical_root_name: "RATE_GEO",
+        schema_root_aliases: ["RateGeo", "Rate Record", "RATE_GEO"],
+        data_dictionary_family: "RATE_GEO",
+        schema_guidance_role: "MACRO_OBJECT",
+        domain_area: "RATE",
+        root_type: "ROWSET",
+        relationship_role: "SEMANTIC_ROOT",
+        confidence: "HIGH",
+        functional_confidence: "DATA_DICTIONARY_CROSSED",
+        source_reference_status: "PINNED",
+        source_reference_label: "Oracle Rate Record",
+        source_reference_url: "https://docs.oracle.com/example",
+        notes: "Synthetic link."
+      }
+    ],
+    summary: {
+      target_table_count: 2,
+      validated_table_count: 2,
+      missing_table_count: 0,
+      schema_link_count: 1,
+      all_target_tables_validated: true,
+      all_schema_links_have_source_reference: true,
+      guidance_ready: true,
+      readiness_status: "READY"
+    }
+  };
+}
+
 function regionDetail() {
   return {
     ...macroObjectSummary().items[1],
@@ -239,6 +283,112 @@ function regionLoadPlan() {
       target_table_count: 1,
       all_target_tables_validated: true
     }
+  };
+}
+
+function regionCrossCheck() {
+  return {
+    macro_object_code: "REGION",
+    macro_object_name: "Region",
+    table_checks: [],
+    schema_links: [],
+    summary: {
+      target_table_count: 1,
+      validated_table_count: 1,
+      missing_table_count: 0,
+      schema_link_count: 0,
+      all_target_tables_validated: true,
+      all_schema_links_have_source_reference: false,
+      guidance_ready: false,
+      readiness_status: "BLOCKED_SCHEMA_LINKS"
+    }
+  };
+}
+
+function schemaGuidanceReadiness() {
+  return {
+    items: [
+      {
+        macro_object_code: "RATE_RECORD",
+        macro_object_name: "Rate record",
+        category: "RATES_SETUP",
+        guidance_ready: true,
+        readiness_status: "READY",
+        target_table_count: 4,
+        validated_table_count: 4,
+        missing_table_count: 0,
+        schema_link_count: 2,
+        all_target_tables_validated: true,
+        all_schema_links_have_source_reference: true
+      },
+      {
+        macro_object_code: "ITEM",
+        macro_object_name: "Item",
+        category: "MASTER_DATA",
+        guidance_ready: false,
+        readiness_status: "BLOCKED_SCHEMA_LINKS",
+        target_table_count: 4,
+        validated_table_count: 4,
+        missing_table_count: 0,
+        schema_link_count: 0,
+        all_target_tables_validated: true,
+        all_schema_links_have_source_reference: false
+      }
+    ],
+    summary: {
+      macro_object_count: 2,
+      ready_count: 1,
+      blocked_count: 1
+    }
+  };
+}
+
+function schemaRootsByRole(role: string) {
+  const roots = {
+    ENVELOPE_ONLY: [
+      {
+        id: "root_transmission",
+        schema_pack_id: "pack_26a",
+        schema_file_id: "file_transmission",
+        root_name: "Transmission",
+        root_display_label: "Transmission",
+        canonical_root_name: "Transmission",
+        schema_root_aliases: ["Transmission"],
+        data_dictionary_family: "",
+        schema_guidance_role: "ENVELOPE_ONLY",
+        namespace: "http://xmlns.oracle.com/apps/otm/transmission",
+        domain_area: "TRANSMISSION",
+        root_type: "ENVELOPE",
+        envelope_role: "TRANSMISSION",
+        recommended_modules: ["integration_mapping"],
+        documentation: "Synthetic envelope root."
+      }
+    ],
+    MACRO_OBJECT: [
+      {
+        id: "root_planned_shipment",
+        schema_pack_id: "pack_26a",
+        schema_file_id: "file_shipment",
+        root_name: "PlannedShipment",
+        root_display_label: "Planned Shipment",
+        canonical_root_name: "PlannedShipment",
+        schema_root_aliases: ["Planned Shipment", "Shipment", "PlannedShipment"],
+        data_dictionary_family: "SHIPMENT",
+        schema_guidance_role: "MACRO_OBJECT",
+        namespace: "http://xmlns.oracle.com/apps/otm/shipment",
+        domain_area: "SHIPMENT",
+        root_type: "DOMAIN_ROOT",
+        envelope_role: "NONE",
+        recommended_modules: ["integration_mapping"],
+        documentation: "Synthetic planned shipment root."
+      }
+    ]
+  };
+  return {
+    items: roots[role as keyof typeof roots] ?? [],
+    total: roots[role as keyof typeof roots]?.length ?? 0,
+    page: 1,
+    page_size: roots[role as keyof typeof roots]?.length ?? 0
   };
 }
 
@@ -296,6 +446,19 @@ describe("Functional Catalog journey", () => {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(rateRecordLoadPlan()));
       }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/data-dictionary-cross-check")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(rateRecordCrossCheck()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
       if (url.endsWith("/api/v1/catalog/macro-objects/REGION")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(regionDetail()));
@@ -307,6 +470,10 @@ describe("Functional Catalog journey", () => {
       if (url.endsWith("/api/v1/catalog/macro-objects/REGION/load-plan")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(regionLoadPlan()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/data-dictionary-cross-check")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionCrossCheck()));
       }
       if (url.endsWith("/api/v1/catalog/validate/table")) {
         expect(init?.method).toBe("POST");
@@ -374,6 +541,13 @@ describe("Functional Catalog journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "OTM Catalog Core" });
+    expect(await screen.findByRole("heading", { name: "Schema guidance" })).toBeInTheDocument();
+    expect(screen.getByText("Ready guidance")).toBeInTheDocument();
+    expect(screen.getByText("Blocked guidance")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Integration envelope roots")).getByText("Transmission")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Macro schema roots")).getByText("Planned Shipment")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("RATE_RECORD")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("BLOCKED SCHEMA LINKS")).toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object load plan")).findByText("RATE_OFFERING")).toBeInTheDocument();
 
