@@ -194,6 +194,61 @@ def test_zip_analysis_accepts_csvutil_reference_package_shape(client, admin_head
     assert "SYNTH_ACC_COST_001" not in manifest.manifest_json
 
 
+def test_zip_analysis_flags_ctl_missing_csv_and_table_mismatch(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    artifact = db_session.query(Artifact).filter(Artifact.id == export["artifact_id"]).one()
+    artifact_path = Path(artifact.file_path)
+    rewritten_path = artifact_path.with_suffix(".csvutil_ctl_mismatch.zip")
+    with zipfile.ZipFile(rewritten_path, "w", compression=zipfile.ZIP_DEFLATED) as rewritten:
+        rewritten.writestr(
+            "csvutil.ctl",
+            "\n".join(
+                [
+                    "-dataFileName 001_ACCESSORIAL_COST.csv -command xcsv -tableName RATE_GEO",
+                    "-dataFileName 999_MISSING_TABLE.csv -command xcsv -tableName RATE_OFFERING",
+                ]
+            )
+            + "\n",
+        )
+        rewritten.writestr(
+            "export/csvutil.ctl",
+            "-dataFileName 001_ACCESSORIAL_COST.csv -command ii\n",
+        )
+        rewritten.writestr(
+            "export/001_ACCESSORIAL_COST.csv",
+            (
+                "ACCESSORIAL_COST\n"
+                "ACCESSORIAL_COST_GID,ACCESSORIAL_COST_XID\n"
+                "OTM1.SYNTH_ACC_COST_001,SYNTH_ACC_COST_001\n"
+            ),
+        )
+    artifact.file_path = str(rewritten_path)
+    artifact.file_name = rewritten_path.name
+    artifact.size_bytes = rewritten_path.stat().st_size
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    codes = [item["code"] for item in payload["findings"]]
+    assert "CSVUTIL_CTL_REFERENCED_CSV_MISSING" in codes
+    assert "CSVUTIL_CTL_TABLE_MISMATCH" in codes
+    missing = next(item for item in payload["findings"] if item["code"] == "CSVUTIL_CTL_REFERENCED_CSV_MISSING")
+    mismatch = next(item for item in payload["findings"] if item["code"] == "CSVUTIL_CTL_TABLE_MISMATCH")
+    assert missing["file_name"] == "csvutil.ctl"
+    assert missing["details"]["data_file_name"] == "999_MISSING_TABLE.csv"
+    assert mismatch["file_name"] == "csvutil.ctl"
+    assert mismatch["table_name"] == "ACCESSORIAL_COST"
+    assert mismatch["details"]["ctl_table_name"] == "RATE_GEO"
+    assert mismatch["details"]["csv_file_name"] == "export/001_ACCESSORIAL_COST.csv"
+    assert "SYNTH_ACC_COST_001" not in json.dumps(payload)
+
+
 def test_zip_analysis_list_and_detail(client, admin_header):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
     created = client.post(

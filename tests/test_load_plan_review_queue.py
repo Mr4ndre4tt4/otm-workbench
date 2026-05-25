@@ -85,6 +85,29 @@ def rewrite_export_with_unknown_column(db_session, export):
     db_session.commit()
 
 
+def rewrite_export_with_ctl_mismatch(db_session, export):
+    artifact = db_session.query(Artifact).filter(Artifact.id == export["artifact_id"]).one()
+    artifact_path = Path(artifact.file_path)
+    rewritten_path = artifact_path.with_suffix(".review-queue-ctl.zip")
+    with zipfile.ZipFile(rewritten_path, "w", compression=zipfile.ZIP_DEFLATED) as rewritten:
+        rewritten.writestr(
+            "csvutil.ctl",
+            "-dataFileName 001_ACCESSORIAL_COST.csv -command xcsv -tableName RATE_GEO\n",
+        )
+        rewritten.writestr(
+            "export/001_ACCESSORIAL_COST.csv",
+            (
+                "ACCESSORIAL_COST\n"
+                "ACCESSORIAL_COST_GID,ACCESSORIAL_COST_XID\n"
+                "OTM1.ACC_COST_001,ACC_COST_001\n"
+            ),
+        )
+    artifact.file_path = str(rewritten_path)
+    artifact.file_name = rewritten_path.name
+    artifact.size_bytes = rewritten_path.stat().st_size
+    db_session.commit()
+
+
 def create_zip_analysis(client, admin_header, package):
     response = client.post(
         "/api/v1/modules/load-plan/zip-analysis",
@@ -147,6 +170,30 @@ def test_review_queue_generation_creates_item_for_unknown_column(client, admin_h
     assert "DEMO" not in json.dumps(payload)
     assert "OTM1.ACC_COST_001" not in json.dumps(payload)
     assert db_session.query(LoadPlanReviewItem).count() == 1
+
+
+def test_review_queue_generation_creates_structural_item_for_ctl_table_mismatch(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    rewrite_export_with_ctl_mismatch(db_session, export)
+    analysis = create_zip_analysis(client, admin_header, package)
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/review-queue/from-zip-analysis/{analysis['id']}",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["created_count"] == 1
+    item = payload["items"][0]
+    assert item["source_code"] == "CSVUTIL_CTL_TABLE_MISMATCH"
+    assert item["category"] == "STRUCTURE"
+    assert item["table_name"] == "ACCESSORIAL_COST"
+    assert item["file_name"] == "csvutil.ctl"
+    assert item["title"] == "CSVUTIL CTL table mismatch"
+    assert item["details"]["ctl_table_name"] == "RATE_GEO"
+    assert item["details"]["csv_file_name"] == "export/001_ACCESSORIAL_COST.csv"
+    assert "OTM1.ACC_COST_001" not in json.dumps(payload)
 
 
 def test_review_queue_generation_is_idempotent_for_same_analysis(client, admin_header, db_session):

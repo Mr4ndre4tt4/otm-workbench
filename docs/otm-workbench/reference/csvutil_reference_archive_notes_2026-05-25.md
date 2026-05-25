@@ -273,10 +273,10 @@ Add or extend analyzer tests to verify:
 - ignores macOS metadata files [DONE first slice]
 - identifies package groups
 - reads CTL command mode (`xcsv`, `ii`) [DONE first slice]
-- maps CTL file names to CSV files
+- maps CTL file names to CSV files [DONE second slice]
 - reads table line and header line without exposing data rows [DONE first slice]
-- flags missing CSV files referenced by CTL
-- flags CSV table-line mismatch with CTL table name when tableName is present
+- flags missing CSV files referenced by CTL [DONE second slice]
+- flags CSV table-line mismatch with CTL table name when tableName is present [DONE second slice]
 - detects nested result ZIP artifacts [DONE first slice]
 - sanitizes mail notification settings
 ```
@@ -288,6 +288,15 @@ The Load Plan ZIP analyzer now accepts synthetic CSVUTIL package shapes where
 CSV files live outside `csv/`, including `export/<NNN_TABLE>.csv`. It records
 CTL file count, CTL command modes, ignored metadata files, and nested
 `*.result.zip` artifacts in the manifest/summary without copying row values.
+```
+
+Implementation note, 2026-05-25, second slice:
+
+```text
+The analyzer now parses CSVUTIL CTL references for `-dataFileName` and
+`-tableName`. It flags missing referenced CSV files and CTL table-name mismatch
+against CSV line 1. These findings flow into Load Plan Review Queue as
+STRUCTURE items with client-safe details only.
 ```
 
 ### Cutover Checklist

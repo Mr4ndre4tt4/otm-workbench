@@ -24,6 +24,8 @@ from otm_workbench.modules.rates.exports import iso_now
 
 ALTER_SESSION_LINE = "exec alter session set nls_date_format = 'YYYY-MM-DD HH24:MI:SS'"
 CSVUTIL_COMMAND_RE = re.compile(r"(?:^|\s)-command\s+([A-Za-z0-9_]+)(?:\s|$)", re.IGNORECASE)
+CSVUTIL_DATA_FILE_RE = re.compile(r"(?:^|\s)-dataFileName\s+([^\s]+)", re.IGNORECASE)
+CSVUTIL_TABLE_NAME_RE = re.compile(r"(?:^|\s)-tableName\s+([^\s]+)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -144,6 +146,64 @@ def extract_ctl_command_modes(archive: zipfile.ZipFile, ctl_names: list[str]) ->
         for match in CSVUTIL_COMMAND_RE.finditer(text):
             modes.add(match.group(1).lower())
     return sorted(modes)
+
+
+def csv_member_lookup(csv_files: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    lookup: dict[str, dict[str, object]] = {}
+    for csv_file in csv_files:
+        file_name = str(csv_file["file_name"])
+        lookup[file_name.lower()] = csv_file
+        lookup[Path(file_name).name.lower()] = csv_file
+    return lookup
+
+
+def analyze_ctl_members(
+    *,
+    archive: zipfile.ZipFile,
+    ctl_names: list[str],
+    csv_files: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    lookup = csv_member_lookup(csv_files)
+    findings: list[dict[str, object]] = []
+    for ctl_name in ctl_names:
+        text = archive.read(ctl_name).decode("utf-8-sig", errors="replace")
+        for line in text.splitlines():
+            data_file_match = CSVUTIL_DATA_FILE_RE.search(line)
+            if data_file_match is None:
+                continue
+            data_file_name = data_file_match.group(1).strip()
+            csv_file = lookup.get(data_file_name.lower()) or lookup.get(Path(data_file_name).name.lower())
+            if csv_file is None:
+                findings.append(
+                    finding(
+                        "ERROR",
+                        "CSVUTIL_CTL_REFERENCED_CSV_MISSING",
+                        "CSVUTIL CTL references a CSV file that is not present in the archive.",
+                        file_name=ctl_name,
+                        details={"data_file_name": data_file_name},
+                    )
+                )
+                continue
+            table_match = CSVUTIL_TABLE_NAME_RE.search(line)
+            if table_match is None:
+                continue
+            ctl_table_name = table_match.group(1).strip().upper()
+            csv_table_name = str(csv_file.get("table_name", "")).upper()
+            if ctl_table_name and csv_table_name and ctl_table_name != csv_table_name:
+                findings.append(
+                    finding(
+                        "ERROR",
+                        "CSVUTIL_CTL_TABLE_MISMATCH",
+                        "CSVUTIL CTL tableName does not match the table declared on the first CSV line.",
+                        table_name=csv_table_name,
+                        file_name=ctl_name,
+                        details={
+                            "ctl_table_name": ctl_table_name,
+                            "csv_file_name": csv_file["file_name"],
+                        },
+                    )
+                )
+    return findings
 
 
 def analyze_csv_member(
@@ -283,6 +343,7 @@ def generate_zip_analysis(
             )
             files.append(file_summary)
             findings.extend(csv_findings)
+        findings.extend(analyze_ctl_members(archive=archive, ctl_names=ctl_names, csv_files=files))
 
     error_count = sum(1 for item in findings if item["severity"] == "ERROR")
     warning_count = sum(1 for item in findings if item["severity"] == "WARNING")

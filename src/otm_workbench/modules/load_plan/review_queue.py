@@ -34,6 +34,8 @@ CATEGORY_BY_CODE = {
     "CSV_UNKNOWN_COLUMN": "DATA_DICTIONARY",
     "CSV_DATE_ALTER_SESSION_MISSING": "DATE_FORMAT",
     "CSV_ROW_COUNT_MISMATCH": "SEQUENCE",
+    "CSVUTIL_CTL_REFERENCED_CSV_MISSING": "STRUCTURE",
+    "CSVUTIL_CTL_TABLE_MISMATCH": "STRUCTURE",
 }
 
 TITLE_BY_CODE = {
@@ -46,6 +48,8 @@ TITLE_BY_CODE = {
     "CSV_UNKNOWN_COLUMN": "Unknown OTM Data Dictionary column",
     "CSV_DATE_ALTER_SESSION_MISSING": "Missing OTM date format directive",
     "CSV_ROW_COUNT_MISMATCH": "CSV row count differs from package sequence",
+    "CSVUTIL_CTL_REFERENCED_CSV_MISSING": "CSVUTIL CTL references missing CSV",
+    "CSVUTIL_CTL_TABLE_MISMATCH": "CSVUTIL CTL table mismatch",
 }
 
 DESCRIPTION_BY_CODE = {
@@ -58,6 +62,8 @@ DESCRIPTION_BY_CODE = {
     "CSV_UNKNOWN_COLUMN": "A CSV column was not found in the local OTM Data Dictionary and needs review before load planning continues.",
     "CSV_DATE_ALTER_SESSION_MISSING": "A CSV includes DATE columns but does not declare the expected NLS date format before value lines.",
     "CSV_ROW_COUNT_MISMATCH": "A CSV row count differs from the package load sequence and needs review before load planning continues.",
+    "CSVUTIL_CTL_REFERENCED_CSV_MISSING": "A CSVUTIL CTL references a CSV file that is not present in the archive.",
+    "CSVUTIL_CTL_TABLE_MISMATCH": "A CSVUTIL CTL tableName does not match the table declared on the first CSV line.",
 }
 
 
