@@ -251,6 +251,18 @@ Examples:
   the final output contract.
 ```
 
+Known roots can be auto-linked during Schema Pack indexing when the source
+reference is already pinned and client-safe:
+
+```text
+- RATE_OFFERING -> RATE_OFFERING
+- RATE_GEO -> RATE_RECORD
+- X_LANE -> RATE_RECORD as CSV_COMPANION
+- Location -> LOCATION
+- Item / ItemMaster -> ITEM
+- Release -> ORDER_RELEASE
+```
+
 ## API Surface
 
 First cut should be read-heavy and internal/admin-facing.
@@ -579,6 +591,8 @@ Remaining hardening before user-facing path guidance:
    SchemaRoot recommendation ready for user-facing guidance.
 8. Treat a macro object with validated tables but zero schema links as
    `BLOCKED_SCHEMA_LINKS`, not as guidance-ready.
+9. Auto-linked roots still need Data Dictionary cross-check readiness before
+   being shown as final UI guidance.
 ```
 
 Functional validation tracking:

@@ -64,6 +64,49 @@ def write_synthetic_schema_pack(folder):
     )
 
 
+def write_known_roots_schema_pack(folder):
+    folder.mkdir()
+    (folder / "Rate.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/rate">
+  <xs:element name="RATE_OFFERING" type="xs:string"/>
+  <xs:element name="RATE_GEO" type="xs:string"/>
+  <xs:element name="X_LANE" type="xs:string"/>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+    (folder / "LocationContact.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/location">
+  <xs:element name="Location" type="xs:string"/>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+    (folder / "Item.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/item">
+  <xs:element name="Item" type="xs:string"/>
+  <xs:element name="ItemMaster" type="xs:string"/>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+    (folder / "Order.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/order">
+  <xs:element name="Release" type="xs:string"/>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+
+
 def write_sensitive_schema_pack(folder):
     folder.mkdir()
     (folder / "ExternalService.wsdl").write_text(
@@ -352,6 +395,46 @@ def test_catalog_schema_pack_index_resolves_cross_file_complex_type_paths(client
     assert "/Release/ReleaseGid" in path_values
     assert "/Release/ReleaseGid/DomainName" in path_values
     assert "/Release/ReleaseGid/Xid" in path_values
+
+
+def test_catalog_schema_pack_index_creates_known_macro_object_schema_links(client, admin_header):
+    schema_folder = workspace_test_folder("known_roots_26a")
+    write_known_roots_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_KNOWN_ROOTS",
+            "name": "Synthetic known roots pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+    rate_record_links = client.get("/api/v1/catalog/macro-objects/RATE_RECORD/schema-links", headers=admin_header)
+    location_links = client.get("/api/v1/catalog/macro-objects/LOCATION/schema-links", headers=admin_header)
+    item_links = client.get("/api/v1/catalog/macro-objects/ITEM/schema-links", headers=admin_header)
+    order_links = client.get("/api/v1/catalog/macro-objects/ORDER_RELEASE/schema-links", headers=admin_header)
+
+    assert indexed.status_code == 200
+    assert rate_record_links.status_code == 200
+    assert location_links.status_code == 200
+    assert item_links.status_code == 200
+    assert order_links.status_code == 200
+    rate_roots = {item["root_name"]: item for item in rate_record_links.json()["items"]}
+    assert set(rate_roots) == {"RATE_GEO", "X_LANE"}
+    assert rate_roots["RATE_GEO"]["functional_confidence"] == "ORACLE_OFFICIAL_PINNED"
+    assert rate_roots["RATE_GEO"]["source_reference_status"] == "PINNED"
+    assert rate_roots["RATE_GEO"]["source_reference_url"].startswith("https://docs.oracle.com/")
+    assert location_links.json()["items"][0]["root_name"] == "Location"
+    assert location_links.json()["items"][0]["functional_confidence"] == "ORACLE_OFFICIAL_PINNED"
+    assert {item["root_name"] for item in item_links.json()["items"]} == {"Item", "ItemMaster"}
+    assert order_links.json()["items"][0]["root_name"] == "Release"
+    assert order_links.json()["items"][0]["macro_object_code"] == "ORDER_RELEASE"
+    assert "source_path" not in str(rate_record_links.json())
+    assert str(schema_folder) not in str(rate_record_links.json())
 
 
 def test_catalog_schema_pack_index_rejects_sensitive_wsdl_content(client, admin_header):

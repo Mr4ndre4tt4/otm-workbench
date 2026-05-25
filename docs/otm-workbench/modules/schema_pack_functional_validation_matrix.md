@@ -95,6 +95,8 @@ Backend status:
   readiness without exposing schema pack source paths.
 - Cross-check summaries expose `guidance_ready` and `readiness_status`; a macro
   object with zero schema links is `BLOCKED_SCHEMA_LINKS`.
+- Schema Pack indexing auto-links known roots to macro objects only when the
+  source reference is pinned and client-safe.
 ```
 
 ## Next Hardening Slices

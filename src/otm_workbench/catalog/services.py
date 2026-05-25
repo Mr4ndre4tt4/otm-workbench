@@ -88,6 +88,79 @@ SCHEMA_ROOT_ALIAS_METADATA: dict[str, dict[str, object]] = {
     },
 }
 
+KNOWN_SCHEMA_ROOT_LINKS: dict[str, list[dict[str, str]]] = {
+    "RATEOFFERING": [
+        {
+            "macro_object_code": "RATE_OFFERING",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Rate Offering",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/26a/otmol/planning/rate_manager/create_rate_offering.htm?agt=index",
+        }
+    ],
+    "RATEGEO": [
+        {
+            "macro_object_code": "RATE_RECORD",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Rate Record",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/rate_manager/create_rate_record.htm",
+        }
+    ],
+    "XLANE": [
+        {
+            "macro_object_code": "RATE_RECORD",
+            "relationship_role": "CSV_COMPANION",
+            "confidence": "MEDIUM",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Rate Record",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/rate_manager/create_rate_record.htm",
+        }
+    ],
+    "LOCATION": [
+        {
+            "macro_object_code": "LOCATION",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Location THU Capacity",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/26a/otmol/planning/location_manager/location_transport_handling_unit_capacity.htm",
+        }
+    ],
+    "ITEM": [
+        {
+            "macro_object_code": "ITEM",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Packaged Item",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/material_manager/create_pack_info.htm",
+        }
+    ],
+    "ITEMMASTER": [
+        {
+            "macro_object_code": "ITEM",
+            "relationship_role": "CSV_COMPANION",
+            "confidence": "MEDIUM",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Packaged Item",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/material_manager/create_pack_info.htm",
+        }
+    ],
+    "RELEASE": [
+        {
+            "macro_object_code": "ORDER_RELEASE",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Order Releasing Process",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/order_manager/create_order_release.htm",
+        }
+    ],
+}
+
 
 TRANSACTIONAL_TABLE_PREFIXES = (
     "SHIPMENT",
@@ -714,6 +787,37 @@ def _schema_root_name_candidates(root_name: str) -> list[str]:
     return sorted(candidates)
 
 
+def _seed_known_macro_object_schema_links(db: Session, root: SchemaRoot) -> int:
+    created = 0
+    for payload in KNOWN_SCHEMA_ROOT_LINKS.get(_alias_key(root.root_name), []):
+        exists = (
+            db.query(MacroObjectSchemaLink)
+            .filter(
+                MacroObjectSchemaLink.macro_object_code == payload["macro_object_code"],
+                MacroObjectSchemaLink.schema_root_id == root.id,
+                MacroObjectSchemaLink.relationship_role == payload["relationship_role"],
+            )
+            .first()
+        )
+        if exists is not None:
+            continue
+        db.add(
+            MacroObjectSchemaLink(
+                macro_object_code=payload["macro_object_code"],
+                schema_root_id=root.id,
+                relationship_role=payload["relationship_role"],
+                confidence=payload["confidence"],
+                functional_confidence=payload["functional_confidence"],
+                source_reference_status="PINNED",
+                source_reference_label=payload["source_reference_label"],
+                source_reference_url=payload["source_reference_url"],
+                notes="Auto-linked from known OTM SchemaRoot metadata during Schema Pack indexing.",
+            )
+        )
+        created += 1
+    return created
+
+
 def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
@@ -1208,6 +1312,7 @@ def _index_xsd_file(
         )
         db.add(root)
         db.flush()
+        _seed_known_macro_object_schema_links(db, root)
         for index, path_payload in enumerate(
             _schema_paths_for_root(schema, element, file_path.name, pack_complex_types),
             start=1,
