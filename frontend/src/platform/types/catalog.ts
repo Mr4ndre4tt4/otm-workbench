@@ -137,6 +137,31 @@ export type CatalogMacroObjectDataDictionaryCheck = {
   };
 };
 
+export type CatalogSchemaGuidanceReadiness = {
+  items: {
+    macro_object_code: string;
+    macro_object_name: string;
+    category: string;
+    guidance_ready: boolean;
+    readiness_status:
+      | "READY"
+      | "BLOCKED_DATA_DICTIONARY"
+      | "BLOCKED_SCHEMA_LINKS"
+      | "BLOCKED_SOURCE_REFERENCES";
+    target_table_count: number;
+    validated_table_count: number;
+    missing_table_count: number;
+    schema_link_count: number;
+    all_target_tables_validated: boolean;
+    all_schema_links_have_source_reference: boolean;
+  }[];
+  summary: {
+    macro_object_count: number;
+    ready_count: number;
+    blocked_count: number;
+  };
+};
+
 export type CatalogValidateTablePayload = {
   table_name: string;
   usage?: string | null;

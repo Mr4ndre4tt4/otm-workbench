@@ -278,6 +278,7 @@ GET  /api/v1/catalog/schema-roots/{schema_root_id}/paths
 GET  /api/v1/catalog/schema-operations
 GET  /api/v1/catalog/macro-objects/{macro_object_code}/schema-links
 GET  /api/v1/catalog/macro-objects/{macro_object_code}/data-dictionary-cross-check
+GET  /api/v1/catalog/schema-guidance/readiness
 ```
 
 API rules:
@@ -593,6 +594,8 @@ Remaining hardening before user-facing path guidance:
    `BLOCKED_SCHEMA_LINKS`, not as guidance-ready.
 9. Auto-linked roots still need Data Dictionary cross-check readiness before
    being shown as final UI guidance.
+10. Use schema-guidance readiness summaries for dashboards/backlogs; use the
+    per-macro cross-check for drilldown and evidence.
 ```
 
 Functional validation tracking:

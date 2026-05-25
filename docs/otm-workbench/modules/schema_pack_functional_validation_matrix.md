@@ -97,6 +97,8 @@ Backend status:
   object with zero schema links is `BLOCKED_SCHEMA_LINKS`.
 - Schema Pack indexing auto-links known roots to macro objects only when the
   source reference is pinned and client-safe.
+- `GET /api/v1/catalog/schema-guidance/readiness` summarizes guidance readiness
+  across macro objects for dashboards and backlog triage.
 ```
 
 ## Next Hardening Slices

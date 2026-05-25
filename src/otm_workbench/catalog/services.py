@@ -712,6 +712,38 @@ def serialize_macro_object_data_dictionary_cross_check(db: Session, macro: OtmMa
     }
 
 
+def serialize_schema_guidance_readiness(db: Session, dictionary_root: Path) -> dict[str, object]:
+    macros = list_macro_objects(db, dictionary_root)
+    items: list[dict[str, object]] = []
+    for macro in macros:
+        cross_check = serialize_macro_object_data_dictionary_cross_check(db, macro)
+        summary = cross_check["summary"]
+        items.append(
+            {
+                "macro_object_code": macro.code,
+                "macro_object_name": macro.name,
+                "category": macro.category,
+                "guidance_ready": summary["guidance_ready"],
+                "readiness_status": summary["readiness_status"],
+                "target_table_count": summary["target_table_count"],
+                "validated_table_count": summary["validated_table_count"],
+                "missing_table_count": summary["missing_table_count"],
+                "schema_link_count": summary["schema_link_count"],
+                "all_target_tables_validated": summary["all_target_tables_validated"],
+                "all_schema_links_have_source_reference": summary["all_schema_links_have_source_reference"],
+            }
+        )
+    ready_count = sum(1 for item in items if item["guidance_ready"])
+    return {
+        "items": items,
+        "summary": {
+            "macro_object_count": len(items),
+            "ready_count": ready_count,
+            "blocked_count": len(items) - ready_count,
+        },
+    }
+
+
 def serialize_macro_object(db: Session, macro: OtmMacroObject, include_children: bool = False) -> dict[str, object]:
     payload: dict[str, object] = {
         "id": macro.id,

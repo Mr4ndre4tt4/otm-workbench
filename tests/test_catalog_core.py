@@ -350,3 +350,67 @@ def test_catalog_macro_object_cross_check_blocks_guidance_without_schema_links(c
     assert payload["summary"]["all_schema_links_have_source_reference"] is False
     assert payload["summary"]["guidance_ready"] is False
     assert payload["summary"]["readiness_status"] == "BLOCKED_SCHEMA_LINKS"
+
+
+def test_catalog_schema_guidance_readiness_summarizes_macro_objects(client, admin_header, db_session):
+    pack = SchemaPack(
+        code="OTM_26A_CORE",
+        name="OTM 26A core contracts",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/otm/contracts/26A",
+        content_hash="hash-26a",
+        status="READY",
+    )
+    db_session.add(pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name="Rate.xsd",
+        relative_path="Rate.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    root = SchemaRoot(
+        schema_pack_id=pack.id,
+        schema_file_id=schema_file.id,
+        root_name="RATE_GEO",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        domain_area="RATE",
+        root_type="ROWSET",
+        envelope_role="NONE",
+        recommended_modules_json='["rates"]',
+    )
+    db_session.add(root)
+    db_session.flush()
+    db_session.add(
+        MacroObjectSchemaLink(
+            macro_object_code="RATE_RECORD",
+            schema_root_id=root.id,
+            relationship_role="SEMANTIC_ROOT",
+            confidence="HIGH",
+            functional_confidence="DATA_DICTIONARY_CROSSED",
+            source_reference_status="PINNED",
+            source_reference_label="Oracle Rate Record",
+            source_reference_url="https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/rate_manager/create_rate_record.htm",
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/catalog/schema-guidance/readiness", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    by_code = {item["macro_object_code"]: item for item in payload["items"]}
+    assert by_code["RATE_RECORD"]["readiness_status"] == "READY"
+    assert by_code["RATE_RECORD"]["guidance_ready"] is True
+    assert by_code["RATE_RECORD"]["schema_link_count"] == 1
+    assert by_code["ITEM"]["readiness_status"] == "BLOCKED_SCHEMA_LINKS"
+    assert by_code["ITEM"]["guidance_ready"] is False
+    assert payload["summary"]["ready_count"] == 1
+    assert payload["summary"]["blocked_count"] >= 1
+    assert "source_path" not in str(payload)
+    assert "C:/otm/contracts/26A" not in str(payload)

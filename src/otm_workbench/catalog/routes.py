@@ -30,6 +30,7 @@ from otm_workbench.catalog.services import (
     serialize_macro_object_data_dictionary_cross_check,
     serialize_macro_object_load_plan,
     serialize_macro_object_table,
+    serialize_schema_guidance_readiness,
     serialize_schema_pack,
     serialize_schema_path,
     serialize_schema_root,
@@ -171,6 +172,14 @@ def list_catalog_macro_objects(
 ):
     items = [serialize_macro_object(db, item) for item in list_macro_objects(db, dictionary_root())]
     return PageResponse(items=items, total=len(items))
+
+
+@router.get("/schema-guidance/readiness")
+def get_catalog_schema_guidance_readiness(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    return serialize_schema_guidance_readiness(db, dictionary_root())
 
 
 @router.get("/macro-objects/{macro_object_code}")
