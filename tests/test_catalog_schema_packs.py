@@ -106,6 +106,40 @@ def write_wsdl_with_sanitizable_address(folder):
     )
 
 
+def write_cross_file_schema_pack(folder):
+    folder.mkdir()
+    (folder / "Common.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/common">
+  <xs:complexType name="GidType">
+    <xs:sequence>
+      <xs:element name="DomainName" type="xs:string"/>
+      <xs:element name="Xid" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+    (folder / "Order.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:common="http://xmlns.oracle.com/apps/otm/common"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/order">
+  <xs:import namespace="http://xmlns.oracle.com/apps/otm/common" schemaLocation="Common.xsd"/>
+  <xs:element name="Release" type="ReleaseType"/>
+  <xs:complexType name="ReleaseType">
+    <xs:sequence>
+      <xs:element name="ReleaseGid" type="common:GidType"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+
+
 def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header):
     created = client.post(
         "/api/v1/catalog/schema-packs",
@@ -247,6 +281,36 @@ def test_catalog_schema_pack_index_ignores_wsdl_soap_address_without_storing_loc
     assert operations.json()["items"][0]["operation_name"] == "execute"
     assert "example.invalid" not in str(indexed.json())
     assert "example.invalid" not in str(operations.json())
+
+
+def test_catalog_schema_pack_index_resolves_cross_file_complex_type_paths(client, admin_header):
+    schema_folder = workspace_test_folder("cross_file_26a")
+    write_cross_file_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_CROSS_FILE",
+            "name": "Synthetic cross-file pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+    roots = client.get("/api/v1/catalog/schema-roots?root_name=Release", headers=admin_header)
+    paths = client.get(
+        f"/api/v1/catalog/schema-roots/{roots.json()['items'][0]['id']}/paths",
+        headers=admin_header,
+    )
+
+    assert indexed.status_code == 200
+    assert indexed.json()["files_parsed"] == 2
+    path_values = [item["path"] for item in paths.json()["items"]]
+    assert "/Release/ReleaseGid" in path_values
+    assert "/Release/ReleaseGid/DomainName" in path_values
+    assert "/Release/ReleaseGid/Xid" in path_values
 
 
 def test_catalog_schema_pack_index_rejects_sensitive_wsdl_content(client, admin_header):

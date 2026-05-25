@@ -160,6 +160,7 @@ Path extraction should support:
 
 ```text
 - named complexType inside the same XSD file;
+- named complexType across XSD files in the same schema pack;
 - anonymous complexType;
 - sequence;
 - choice;
@@ -170,7 +171,7 @@ Path extraction should support:
 Path extraction can defer:
 
 ```text
-- perfect cross-file type resolution;
+- perfect namespace-aware cross-file type resolution;
 - full simpleType inheritance;
 - every namespace edge case;
 - exhaustive recursion expansion.
@@ -373,7 +374,7 @@ Status update:
 - Sync API and `SCHEMA_PACK_INDEX` job both fail client-safe when blocked
   content is detected.
 - Broader negative QA is still open for invalid XSD, missing import, unknown
-  root, duplicate root, and deeper cross-file resolution.
+  root, duplicate root, and deeper namespace-aware resolution.
 ```
 
 ## Local 26A Validation Snapshot
@@ -388,7 +389,8 @@ XSD 26A folder:
 - files_parsed: 31
 - files_failed: 0
 - roots_created: 150
-- paths_created: 38821
+- paths_created before same-pack complexType resolution: 38821
+- paths_created after same-pack complexType resolution: 104551
 - operations_created: 0
 
 WSDL 26A GenericNameSpace folder:
@@ -405,12 +407,14 @@ Interpretation:
 ```text
 - The MVP parser can ingest the local OTM 26A XSD/WSDL inventory without parse
   failures.
-- XSD roots and same-file path extraction are already useful for browsing and
+- XSD roots and same-pack path extraction are already useful for browsing and
   module linking.
 - WSDL service operation extraction is usable, while endpoint locations must
   remain non-persistent.
-- Cross-file type/import resolution is still the main technical gap before the
-  path catalog should be treated as complete.
+- Same-pack named complexType resolution is available with bounded depth/path
+  budgets to avoid recursive/path explosion.
+- Functional Oracle/Data Dictionary validation is still required before the path
+  catalog should be treated as user-facing guidance.
 ```
 
 ## UI Acceptance Criteria Later
@@ -462,12 +466,12 @@ The same indexer is also available through Jobs Processing as
 `SCHEMA_PACK_INDEX` with `input.schema_pack_id`.
 
 Slice 3 - Path extraction:
-- support same-file complexType traversal and bounded recursion;
+- support same-file and same-pack complexType traversal with bounded recursion;
 - create high-value path catalog for Transmission, PlannedShipment, Release,
   Location, Item, RATE_OFFERING, RATE_GEO, DBObject, xml2sql.
-Status: partially delivered for same-file named/anonymous complexType traversal.
-High-value roots still need real 26A fixture validation and cross-file import
-resolution.
+Status: delivered for same-file and same-pack named/anonymous complexType
+traversal with bounded depth/path budget. High-value roots still need functional
+review before user-facing guidance.
 
 Slice 4 - Catalog Core API:
 - expose read-only endpoints for packs, roots, paths, operations, and macro

@@ -867,7 +867,7 @@ Status da primeira fatia:
 - Endpoints read-only/admin criados para packs, roots, paths, operations e
   macro-object schema links.
 - Indexer local minimo entregue para inventario XSD/WSDL, roots top-level,
-  paths same-file, operations WSDL e evidence client-safe.
+  paths same-file/same-pack, operations WSDL e evidence client-safe.
 - Job Processing integrado via handler `SCHEMA_PACK_INDEX` com input
   `schema_pack_id`, lifecycle/eventos/audit do motor existente e falha
   client-safe.
@@ -875,10 +875,10 @@ Status da primeira fatia:
   obvias ou marcadores explicitos de cliente real. `soap:address location` e
   tratado como endpoint especifico de ambiente e nao e persistido.
 - Validacao local controlada contra os folders OTM 26A passou: XSD 31/31,
-  WSDL 8/8, 150 roots, 38821 paths same-file e 13 operations, sem commitar
-  conteudo bruto ou endpoints.
-- Ainda falta validacao contra fixtures 26A completas, resolucao cross-file e
-  QA negativo de parse mais amplo.
+  WSDL 8/8, 150 roots, 104551 paths apos resolucao same-pack complexType e
+  13 operations, sem commitar conteudo bruto ou endpoints.
+- Ainda falta QA negativo de parse mais amplo e revisao funcional Oracle/Data
+  Dictionary antes de expor paths como guidance de usuario.
 ```
 
 ### Fora do primeiro recorte

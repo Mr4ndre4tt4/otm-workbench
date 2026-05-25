@@ -28,6 +28,8 @@ SENSITIVE_SCHEMA_PATTERNS = (
     re.compile(r"\b(password|passwd|secret|credential|api[_-]?key|token)\b\s*=", re.IGNORECASE),
     re.compile(r"\b(real[-_ ]?client|cliente[-_ ]?real)\b", re.IGNORECASE),
 )
+MAX_SCHEMA_PATH_DEPTH = 12
+MAX_SCHEMA_PATHS_PER_ROOT = 2000
 
 
 TRANSACTIONAL_TABLE_PREFIXES = (
@@ -671,12 +673,34 @@ def _iter_xsd_nested_elements(element: ET.Element) -> list[ET.Element]:
     return nested
 
 
-def _schema_paths_for_root(schema: ET.Element, root_element: ET.Element, file_name: str) -> list[dict[str, object]]:
-    complex_types = {
+def _complex_type_index_for_schema(schema: ET.Element) -> dict[str, ET.Element]:
+    return {
         child.attrib["name"]: child
         for child in _direct_children(schema, "complexType")
         if child.attrib.get("name")
     }
+
+
+def _build_pack_complex_type_index(source_root: Path) -> dict[str, ET.Element]:
+    complex_types: dict[str, ET.Element] = {}
+    for file_path in sorted(source_root.rglob("*.xsd")):
+        try:
+            _assert_client_safe_schema_content(file_path)
+            schema = ET.parse(file_path).getroot()
+        except (ET.ParseError, SensitiveSchemaContentError):
+            continue
+        for type_name, element in _complex_type_index_for_schema(schema).items():
+            complex_types.setdefault(type_name, element)
+    return complex_types
+
+
+def _schema_paths_for_root(
+    schema: ET.Element,
+    root_element: ET.Element,
+    file_name: str,
+    pack_complex_types: dict[str, ET.Element] | None = None,
+) -> list[dict[str, object]]:
+    complex_types = {**(pack_complex_types or {}), **_complex_type_index_for_schema(schema)}
     root_name = str(root_element.attrib["name"])
     rows: list[dict[str, object]] = [
         {
@@ -693,7 +717,9 @@ def _schema_paths_for_root(schema: ET.Element, root_element: ET.Element, file_na
         }
     ]
 
-    def add_children(parent: ET.Element, parent_path: str, visited_types: set[str]) -> None:
+    def add_children(parent: ET.Element, parent_path: str, visited_types: set[str], depth: int) -> None:
+        if depth >= MAX_SCHEMA_PATH_DEPTH or len(rows) >= MAX_SCHEMA_PATHS_PER_ROOT:
+            return
         child_source = _first_direct_child(parent, "complexType")
         named_type = _strip_prefix(parent.attrib.get("type"))
         if child_source is None and named_type in complex_types and named_type not in visited_types:
@@ -702,6 +728,8 @@ def _schema_paths_for_root(schema: ET.Element, root_element: ET.Element, file_na
         if child_source is None:
             return
         for child in _iter_xsd_nested_elements(child_source):
+            if len(rows) >= MAX_SCHEMA_PATHS_PER_ROOT:
+                return
             child_name = child.attrib.get("name")
             if not child_name:
                 continue
@@ -721,9 +749,9 @@ def _schema_paths_for_root(schema: ET.Element, root_element: ET.Element, file_na
                     "source_file": file_name,
                 }
             )
-            add_children(child, path, visited_types)
+            add_children(child, path, visited_types, depth + 1)
 
-    add_children(root_element, f"/{root_name}", set())
+    add_children(root_element, f"/{root_name}", set(), 0)
     return rows
 
 
@@ -942,8 +970,13 @@ def _clear_schema_pack_index(db: Session, pack: SchemaPack) -> None:
     if file_ids:
         db.query(SchemaFile).filter(SchemaFile.id.in_(file_ids)).delete(synchronize_session=False)
 
-
-def _index_xsd_file(db: Session, pack: SchemaPack, file_path: Path, source_root: Path) -> dict[str, int]:
+def _index_xsd_file(
+    db: Session,
+    pack: SchemaPack,
+    file_path: Path,
+    source_root: Path,
+    pack_complex_types: dict[str, ET.Element],
+) -> dict[str, int]:
     tree = ET.parse(file_path)
     schema = tree.getroot()
     target_namespace = schema.attrib.get("targetNamespace", "")
@@ -980,7 +1013,10 @@ def _index_xsd_file(db: Session, pack: SchemaPack, file_path: Path, source_root:
         )
         db.add(root)
         db.flush()
-        for index, path_payload in enumerate(_schema_paths_for_root(schema, element, file_path.name), start=1):
+        for index, path_payload in enumerate(
+            _schema_paths_for_root(schema, element, file_path.name, pack_complex_types),
+            start=1,
+        ):
             db.add(
                 SchemaPath(
                     schema_root_id=root.id,
@@ -1066,6 +1102,7 @@ def index_schema_pack(db: Session, pack: SchemaPack, *, created_by: str | None =
     }
     namespaces: set[str] = set()
     hasher = sha256()
+    pack_complex_types = _build_pack_complex_type_index(source_root)
     for file_path in sorted([*source_root.rglob("*.xsd"), *source_root.rglob("*.wsdl")]):
         totals["files_seen"] += 1
         _assert_client_safe_schema_content(file_path)
@@ -1073,7 +1110,7 @@ def index_schema_pack(db: Session, pack: SchemaPack, *, created_by: str | None =
         hasher.update(file_path.read_bytes())
         try:
             if file_path.suffix.lower() == ".xsd":
-                result = _index_xsd_file(db, pack, file_path, source_root)
+                result = _index_xsd_file(db, pack, file_path, source_root, pack_complex_types)
             else:
                 result = _index_wsdl_file(db, pack, file_path, source_root)
         except ET.ParseError as exc:
