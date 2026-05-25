@@ -119,3 +119,26 @@ Future slices should stay table-first until the list/detail/review workflow is
 stable. A visual canvas can be explored later, but should not replace backend
 contracts for mappings, loops, joins, lookups, validation, preview, artifacts,
 or audit evidence.
+
+## NDD-like UI QA Follow-up
+
+A 2026-05-25 browser QA attempted to recreate a synthetic version of the
+PlannedShipment XML to external delivery JSON scenario.
+
+Outcome:
+
+```text
+- The current UI can create the metadata/specification path.
+- It cannot yet prove a complete functional transformation because preview is
+  metadata-only.
+- Complex OTM XML paths need searchable tree pickers and grouped review, not
+  plain selects.
+- Joins, loops, lookups, transforms, and required target fields need semantic
+  validation before this module can be considered a strong accelerator.
+```
+
+Detailed notes:
+
+```text
+docs/otm-workbench/gui/GUI_INTEGRATION_MAPPING_NDD_UI_QA.md
+```

@@ -665,6 +665,50 @@ Padroes tecnicos confirmados pelos apoios:
 - OpenAPI/XSD complexo completo.
 ```
 
+### QA UI NDD-like de 2026-05-25
+
+Foi executada uma tentativa via UI de recriar, com dados sinteticos, o padrao:
+
+```text
+OTM PlannedShipment XML -> External delivery JSON
+```
+
+Resultado:
+
+```text
+- Possivel criar definition, payloads XML/JSON, schemas, mappings, loop, join,
+  lookup, validacao e spec.
+- Ainda nao e uma recriacao completa da integracao NDD-like, porque o preview
+  e metadata-only e nao materializa o JSON final.
+- A UI e utilizavel para catalogar/especificar, mas ainda nao e intuitiva o
+  bastante para mapping complexo: selectors longos deixam paths parecidos
+  indistinguiveis e permitem joins semanticamente fracos.
+- Como acelerador, hoje acelera governanca, inventario e spec; ainda nao acelera
+  de forma suficiente a construcao/validacao funcional da transformacao.
+```
+
+Evidencia local client-safe:
+
+```text
+docs/otm-workbench/gui/GUI_INTEGRATION_MAPPING_NDD_UI_QA.md
+var/qa/screenshots/integration_mapping_ndd_ui_qa.png
+```
+
+Backlog gerado pela rodada:
+
+```text
+18. Scenario pack sintetico PlannedShipment -> External Delivery JSON com checklist de campos obrigatorios. [BACKLOG pos-MVP0]
+19. Schema tree picker pesquisavel com contexto, tipo de no e caminho completo. [BACKLOG pos-MVP0]
+20. Review table agrupada por Header, Entregas, Lookups, Joins, Aggregations e Response Handling. [BACKLOG pos-MVP0]
+21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [BACKLOG pos-MVP0]
+22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [BACKLOG pos-MVP0]
+23. Mapping escopado por loop para campos de colecao como Entregas[]. [BACKLOG pos-MVP0]
+24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [BACKLOG pos-MVP0]
+25. Validacao semantica para join com mesmo path, target duplicado, target obrigatorio ausente, output lookup fora do escopo e config de transform ausente. [BACKLOG pos-MVP0]
+26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [BACKLOG pos-MVP0]
+27. Browser QA completo para o cenario NDD-like sintetico, incluindo caminho errado, reset, troca de definition e revisao de artifact. [BACKLOG pos-MVP0]
+```
+
 ### Posicao recomendada na fila
 
 ```text
