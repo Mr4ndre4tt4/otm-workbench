@@ -122,7 +122,7 @@ artifacts, not product source.
 | `OTM-141` | High | Browser functional scripts require a synthetic demo user, but local backend does not seed it automatically or document a command. |
 | `OTM-142` | High | Staged modules need a backend-owned next-action panel so users do not infer the workflow from steps alone. First slice delivered for Data Factory and Load Plan. |
 | `OTM-161` | Medium | Integration Mapping Studio now uses the shared next-action panel from selected definition, payload/schema, mapping, validation, preview/spec, and generated artifact state. |
-| `OTM-143` | Medium | Operational lists become noisy after seeded QA volume; need stronger filters, density and truncation. |
+| `OTM-143` | Medium | Operational list density first slice delivered for Rates, Evidence Hub, Assets Library, and Admin jobs: shared row caps, selected-row pinning, visual truncation, and full-value title text. Backend-owned presets/pagination remain future scope. |
 | `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. First slice delivered in the Rules stage. |
 | `OTM-145` | High | Integration Mapping backend needed cross-collection multi-hop joins, qualifier filters and aggregations. First slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop joins moved to explicit binding follow-up `OTM-147`. |
 | `OTM-147` | High | Backend join-binding contract delivered for multi-hop relationships and scalar preview provenance. |
@@ -147,7 +147,7 @@ artifacts, not product source.
 2. Continue `NextActionPanel` rollout only where the module has backend-owned state or `available_actions`: `OTM-142` first slice plus `OTM-161` Integration Mapping slice delivered.
 3. Continue Integration Mapping accelerator hardening: broader Catalog/Data Dictionary synonym coverage, schema path facets, and complex expression usability.
 4. Close the current `OTM-146` chaos QA round and open narrower hardening issues only when a module-specific new risk is found.
-5. Harden list density and high-volume states: `OTM-143`.
+5. Continue list-density hardening only where backend-owned presets/pagination are exposed; `OTM-143` first slice delivered for the noisiest current lists.
 
 ## 6. Acceptance Bar Going Forward
 

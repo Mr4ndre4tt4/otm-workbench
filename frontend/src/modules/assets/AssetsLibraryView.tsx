@@ -709,6 +709,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
                 title: asset.name
               }))}
+              maxVisibleItems={12}
               onSelect={handleSelectAsset}
               selectedId={effectiveAssetId}
             />

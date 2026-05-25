@@ -373,6 +373,7 @@ export function EvidenceHubView({ token }: { token: string }) {
             subtitle: item.source_module,
             title: item.evidence_type
           }))}
+          maxVisibleItems={12}
           onSelect={handleSelectEvidence}
           selectedId={effectiveEvidenceId}
         />

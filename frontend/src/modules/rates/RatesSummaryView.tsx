@@ -500,6 +500,7 @@ export function RatesSummaryView({ token }: { token: string }) {
             subtitle: batch.code,
             title: batch.display_name
           }))}
+          maxVisibleItems={12}
           onSelect={selectBatch}
           selectedId={effectiveBatchId}
         />

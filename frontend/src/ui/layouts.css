@@ -335,10 +335,20 @@
 .module-row strong,
 .module-row span {
   display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .module-row-selected {
   color: var(--accent);
+}
+
+.list-density-summary {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 4px 0 0;
 }
 
 .detail-stack {
@@ -438,7 +448,9 @@
 }
 
 .artifact-list-item strong {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .artifact-list-main {
@@ -465,6 +477,11 @@
   color: var(--muted);
   display: block;
   font-size: 13px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .blockers-panel {

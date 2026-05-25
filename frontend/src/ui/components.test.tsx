@@ -163,6 +163,30 @@ describe("ModuleObjectList", () => {
     expect(selected).toEqual([syntheticModuleObjects[0].id]);
   });
 
+  it("limits noisy object lists while preserving a selected object outside the first viewport", () => {
+    const manyObjects = Array.from({ length: 14 }, (_, index) => ({
+      ...syntheticModuleObjects[index % syntheticModuleObjects.length],
+      id: `synthetic_object_${index}`,
+      meta: [`${index} table(s)`, "42 row(s)", "0 issue(s)"],
+      title: `Synthetic very long object ${index}`
+    }));
+
+    render(
+      <ModuleObjectList
+        ariaLabel="High volume synthetic objects"
+        items={manyObjects}
+        maxVisibleItems={5}
+        onSelect={() => undefined}
+        selectedId="synthetic_object_13"
+      />
+    );
+
+    expect(screen.getAllByRole("button")).toHaveLength(5);
+    expect(screen.getByRole("button", { name: /Synthetic very long object 13/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Showing 5 of 14; selected item pinned")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic very long object 13")).toHaveAttribute("title", "Synthetic very long object 13");
+  });
+
   it("renders an empty state without caller-owned list markup", () => {
     render(
       <ModuleObjectList
@@ -175,6 +199,26 @@ describe("ModuleObjectList", () => {
     );
 
     expect(screen.getByText("No objects available.")).toBeInTheDocument();
+  });
+});
+
+describe("ArtifactList density", () => {
+  it("limits artifact rows and keeps long labels available through title attributes", () => {
+    const manyArtifacts = Array.from({ length: 12 }, (_, index) => ({
+      ...syntheticArtifactItems[index % syntheticArtifactItems.length],
+      id: `synthetic_artifact_${index}`,
+      subtitle: `Synthetic generated artifact subtitle ${index}`,
+      title: `synthetic_generated_artifact_with_long_identifier_${index}.json`
+    }));
+
+    render(<ArtifactList items={manyArtifacts} maxVisibleItems={4} />);
+
+    expect(screen.getAllByText(/synthetic_generated_artifact_with_long_identifier_/)).toHaveLength(4);
+    expect(screen.getByText("Showing 4 of 12")).toBeInTheDocument();
+    expect(screen.getByText("synthetic_generated_artifact_with_long_identifier_0.json")).toHaveAttribute(
+      "title",
+      "synthetic_generated_artifact_with_long_identifier_0.json"
+    );
   });
 });
 

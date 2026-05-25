@@ -635,6 +635,7 @@ export function AdminConsoleView({ token }: { token: string }) {
               </div>
             )
           }))}
+          maxVisibleItems={10}
         />
       </ModuleWorkspaceLayout>
     </>
