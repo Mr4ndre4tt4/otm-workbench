@@ -90,6 +90,9 @@ Backend status:
 - The `root_name` filter accepts known aliases such as `RateGeo` and resolves
   them to canonical XSD roots such as `RATE_GEO`.
 - Macro-object schema links return the same root naming metadata.
+- `GET /api/v1/catalog/macro-objects/{code}/data-dictionary-cross-check`
+  returns target table validation plus linked schema roots and source-reference
+  readiness without exposing schema pack source paths.
 ```
 
 ## Next Hardening Slices
@@ -103,6 +106,7 @@ Backend status:
    labels, not copied Oracle content or raw local files.
 3. Build a Data Dictionary cross-check report for Location, Item, Rate Offering,
    Rate Geo, Release, and Planned Shipment macro objects.
+   Status: first backend endpoint slice started in OTM-164.
 4. Add root alias normalization so APIs can present user-friendly labels while
    preserving canonical XSD names.
    Status: backend serializer/filter slice started in OTM-164.

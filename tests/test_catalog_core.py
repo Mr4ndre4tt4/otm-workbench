@@ -1,4 +1,4 @@
-from otm_workbench.models import ReferenceObject
+from otm_workbench.models import MacroObjectSchemaLink, ReferenceObject, SchemaFile, SchemaPack, SchemaRoot
 
 
 def seed_reference_options(db_session):
@@ -257,3 +257,79 @@ def test_catalog_macro_object_load_plan_orders_dependencies_before_target(client
         "target_table_count": 4,
         "all_target_tables_validated": True,
     }
+
+
+def test_catalog_macro_object_data_dictionary_cross_check_includes_schema_links(client, admin_header, db_session):
+    pack = SchemaPack(
+        code="OTM_26A_CORE",
+        name="OTM 26A core contracts",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/otm/contracts/26A",
+        content_hash="hash-26a",
+        status="READY",
+    )
+    db_session.add(pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=pack.id,
+        file_name="Rate.xsd",
+        relative_path="Rate.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    root = SchemaRoot(
+        schema_pack_id=pack.id,
+        schema_file_id=schema_file.id,
+        root_name="RATE_GEO",
+        namespace="http://xmlns.oracle.com/apps/otm",
+        domain_area="RATE",
+        root_type="ROWSET",
+        envelope_role="NONE",
+        recommended_modules_json='["rates"]',
+    )
+    db_session.add(root)
+    db_session.flush()
+    db_session.add(
+        MacroObjectSchemaLink(
+            macro_object_code="RATE_RECORD",
+            schema_root_id=root.id,
+            relationship_role="SEMANTIC_ROOT",
+            confidence="HIGH",
+            functional_confidence="DATA_DICTIONARY_CROSSED",
+            source_reference_status="PINNED",
+            source_reference_label="Oracle Rate Record",
+            source_reference_url="https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/rate_manager/create_rate_record.htm",
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/catalog/macro-objects/RATE_RECORD/data-dictionary-cross-check", headers=admin_header)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["macro_object_code"] == "RATE_RECORD"
+    assert payload["summary"] == {
+        "target_table_count": 4,
+        "validated_table_count": 4,
+        "missing_table_count": 0,
+        "schema_link_count": 1,
+        "all_target_tables_validated": True,
+        "all_schema_links_have_source_reference": True,
+    }
+    assert [item["table_name"] for item in payload["table_checks"]] == [
+        "RATE_GEO",
+        "RATE_GEO_COST",
+        "RATE_GEO_COST_GROUP",
+        "X_LANE",
+    ]
+    assert all(item["exists_in_data_dictionary"] is True for item in payload["table_checks"])
+    assert payload["schema_links"][0]["root_name"] == "RATE_GEO"
+    assert payload["schema_links"][0]["root_display_label"] == "Rate Record / Rate Geo"
+    assert payload["schema_links"][0]["data_dictionary_family"] == "RATE_GEO"
+    assert payload["schema_links"][0]["functional_confidence"] == "DATA_DICTIONARY_CROSSED"
+    assert "source_path" not in str(payload)
+    assert "C:/otm/contracts/26A" not in str(payload)

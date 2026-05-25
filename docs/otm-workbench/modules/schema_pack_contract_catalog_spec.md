@@ -265,6 +265,7 @@ GET  /api/v1/catalog/schema-roots/{schema_root_id}
 GET  /api/v1/catalog/schema-roots/{schema_root_id}/paths
 GET  /api/v1/catalog/schema-operations
 GET  /api/v1/catalog/macro-objects/{macro_object_code}/schema-links
+GET  /api/v1/catalog/macro-objects/{macro_object_code}/data-dictionary-cross-check
 ```
 
 API rules:
@@ -574,6 +575,8 @@ Remaining hardening before user-facing path guidance:
    credential, environment, and capability controls exist.
 6. Keep root aliases backend-owned so UI labels do not drift between browser,
    desktop, jobs, and evidence.
+7. Use the macro-object Data Dictionary cross-check endpoint before declaring a
+   SchemaRoot recommendation ready for user-facing guidance.
 ```
 
 Functional validation tracking:

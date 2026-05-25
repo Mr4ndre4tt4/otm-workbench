@@ -27,6 +27,7 @@ from otm_workbench.catalog.services import (
     serialize_columns,
     serialize_macro_object_schema_link,
     serialize_macro_object,
+    serialize_macro_object_data_dictionary_cross_check,
     serialize_macro_object_load_plan,
     serialize_macro_object_table,
     serialize_schema_pack,
@@ -207,6 +208,18 @@ def get_catalog_macro_object_load_plan(
     if macro is None:
         raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
     return serialize_macro_object_load_plan(db, macro)
+
+
+@router.get("/macro-objects/{macro_object_code}/data-dictionary-cross-check")
+def get_catalog_macro_object_data_dictionary_cross_check(
+    macro_object_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    macro = get_macro_object(db, dictionary_root(), macro_object_code)
+    if macro is None:
+        raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
+    return serialize_macro_object_data_dictionary_cross_check(db, macro)
 
 
 @router.get("/macro-objects/{macro_object_code}/schema-links")

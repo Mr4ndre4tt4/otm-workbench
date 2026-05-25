@@ -587,6 +587,45 @@ def serialize_macro_object_load_plan(db: Session, macro: OtmMacroObject) -> dict
     }
 
 
+def serialize_macro_object_data_dictionary_cross_check(db: Session, macro: OtmMacroObject) -> dict[str, object]:
+    target_tables = macro_object_tables(db, macro)
+    schema_link_rows = list_macro_object_schema_links(db, macro.code)
+    table_checks = [
+        {
+            "table_name": row.table_name,
+            "relationship_role": row.relationship_role,
+            "is_primary_table": row.is_primary_table,
+            "exists_in_data_dictionary": row.validated_by_datadict,
+            "allow_csvutil": row.allow_csvutil,
+            "allow_cutover": row.allow_cutover,
+            "data_category": row.data_category,
+        }
+        for row in target_tables
+    ]
+    schema_links = [
+        serialize_macro_object_schema_link(link, root, pack, schema_file)
+        for link, root, pack, schema_file in schema_link_rows
+    ]
+    validated_table_count = sum(1 for row in target_tables if row.validated_by_datadict)
+    source_referenced_link_count = sum(
+        1 for item in schema_links if item["source_reference_status"] in {"PINNED", "USER_CONFIRMED", "NOT_APPLICABLE"}
+    )
+    return {
+        "macro_object_code": macro.code,
+        "macro_object_name": macro.name,
+        "table_checks": table_checks,
+        "schema_links": schema_links,
+        "summary": {
+            "target_table_count": len(target_tables),
+            "validated_table_count": validated_table_count,
+            "missing_table_count": len(target_tables) - validated_table_count,
+            "schema_link_count": len(schema_links),
+            "all_target_tables_validated": validated_table_count == len(target_tables),
+            "all_schema_links_have_source_reference": source_referenced_link_count == len(schema_links),
+        },
+    }
+
+
 def serialize_macro_object(db: Session, macro: OtmMacroObject, include_children: bool = False) -> dict[str, object]:
     payload: dict[str, object] = {
         "id": macro.id,

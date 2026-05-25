@@ -86,6 +86,51 @@ export type CatalogMacroObjectLoadPlan = {
   };
 };
 
+export type CatalogMacroObjectDataDictionaryCheck = {
+  macro_object_code: string;
+  macro_object_name: string;
+  table_checks: {
+    table_name: string;
+    relationship_role: string;
+    is_primary_table: boolean;
+    exists_in_data_dictionary: boolean;
+    allow_csvutil: boolean;
+    allow_cutover: boolean;
+    data_category: string;
+  }[];
+  schema_links: {
+    id: string;
+    macro_object_code: string;
+    schema_root_id: string;
+    schema_pack_id: string;
+    schema_pack_code: string;
+    otm_version: string;
+    schema_file: string;
+    root_name: string;
+    root_display_label: string;
+    canonical_root_name: string;
+    schema_root_aliases: string[];
+    data_dictionary_family: string;
+    domain_area: string;
+    root_type: string;
+    relationship_role: string;
+    confidence: string;
+    functional_confidence: string;
+    source_reference_status: string;
+    source_reference_label: string;
+    source_reference_url: string;
+    notes: string;
+  }[];
+  summary: {
+    target_table_count: number;
+    validated_table_count: number;
+    missing_table_count: number;
+    schema_link_count: number;
+    all_target_tables_validated: boolean;
+    all_schema_links_have_source_reference: boolean;
+  };
+};
+
 export type CatalogValidateTablePayload = {
   table_name: string;
   usage?: string | null;
