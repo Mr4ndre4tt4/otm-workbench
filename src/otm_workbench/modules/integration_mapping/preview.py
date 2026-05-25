@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
+    IntegrationJoinBinding,
+    IntegrationJoinBindingHop,
     IntegrationJoinRule,
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
@@ -257,6 +259,12 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .order_by(IntegrationJoinRule.sequence_index, IntegrationJoinRule.created_at)
         .all()
     )
+    join_bindings = (
+        db.query(IntegrationJoinBinding)
+        .filter(IntegrationJoinBinding.definition_id == definition.id)
+        .order_by(IntegrationJoinBinding.sequence_index, IntegrationJoinBinding.created_at)
+        .all()
+    )
 
     lookups = (
         db.query(IntegrationLookupDefinition)
@@ -305,6 +313,11 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
     }
     if join_provenance:
         preview["join_provenance"] = join_provenance
+    multi_hop_join_provenance = materialize_multi_hop_join_bindings(db, bindings=join_bindings)
+    if multi_hop_join_provenance is None:
+        return None
+    if multi_hop_join_provenance:
+        preview["multi_hop_join_provenance"] = multi_hop_join_provenance
     return preview
 
 
@@ -348,6 +361,70 @@ def evaluate_join_operator(operator: str, left_value: object, right_value: objec
     if operator == "NE":
         return left_value != right_value
     return None
+
+
+def binding_hops(db: Session, binding_id: str) -> list[IntegrationJoinBindingHop]:
+    return (
+        db.query(IntegrationJoinBindingHop)
+        .filter(IntegrationJoinBindingHop.binding_id == binding_id)
+        .order_by(IntegrationJoinBindingHop.hop_sequence, IntegrationJoinBindingHop.created_at)
+        .all()
+    )
+
+
+def materialize_multi_hop_join_bindings(
+    db: Session,
+    *,
+    bindings: list[IntegrationJoinBinding],
+) -> list[dict[str, object]] | None:
+    provenance: list[dict[str, object]] = []
+    for binding in bindings:
+        source_payload = document_payload_content(db, binding.source_schema_document_id)
+        if source_payload is None:
+            return None
+        source_format, source_content = source_payload
+        if source_format != "XML":
+            return None
+        for hop in binding_hops(db, binding.id):
+            left_items = xml_elements_from_collection_path(source_content, hop.left_collection_path)
+            right_items = xml_elements_from_collection_path(source_content, hop.right_collection_path)
+            if not left_items or not right_items:
+                return None
+            matched = False
+            for left_index, left_item in enumerate(left_items):
+                left_value = xml_child_value(left_item, hop.left_value_path)
+                if left_value in (None, ""):
+                    continue
+                for right_index, right_item in enumerate(right_items):
+                    right_value = xml_child_value(right_item, hop.right_value_path)
+                    if right_value in (None, ""):
+                        continue
+                    result = evaluate_join_operator(hop.operator, left_value, right_value)
+                    if result is None:
+                        return None
+                    if not result:
+                        continue
+                    matched = True
+                    provenance.append(
+                        {
+                            "binding_id": binding.id,
+                            "hop_sequence": hop.hop_sequence,
+                            "result_alias": hop.result_alias,
+                            "left_collection_path": hop.left_collection_path,
+                            "right_collection_path": hop.right_collection_path,
+                            "left_item_path": (
+                                f"{hop.left_collection_path}[{left_index + 1}]/{hop.left_value_path}"
+                            ),
+                            "right_item_path": (
+                                f"{hop.right_collection_path}[{right_index + 1}]/{hop.right_value_path}"
+                            ),
+                            "operator": hop.operator,
+                            "result": result,
+                        }
+                    )
+            if not matched:
+                return None
+    return provenance
 
 
 def materialize_scalar_mappings(

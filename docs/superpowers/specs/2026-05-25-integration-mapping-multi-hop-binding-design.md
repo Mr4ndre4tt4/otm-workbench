@@ -1,6 +1,6 @@
 # Integration Mapping Multi-Hop Binding Design
 
-**Status:** design baseline for the remaining `OTM-145` scope  
+**Status:** first backend slice delivered under `OTM-147`
 **Date:** 2026-05-25  
 **Scope:** explicit backend contract for cross-collection and multi-hop joins in
 Integration Mapping preview execution.
@@ -193,4 +193,30 @@ No visual canvas is required for the first slice.
 - Preview exposes multi_hop_join_provenance.
 - Existing Integration Mapping preview and validation tests remain green.
 - Documentation marks OTM-145 first slice and binding follow-up separately.
+```
+
+## Delivered Slice
+
+`OTM-147` adds the explicit backend contract:
+
+```text
+- integration_join_bindings
+- integration_join_binding_hops
+- POST /definitions/{definition_id}/join-bindings
+- GET /definitions/{definition_id}/join-bindings
+- GET /join-bindings/{binding_id}
+- scalar executable preview provenance under multi_hop_join_provenance
+```
+
+The current execution slice proves hop relationships and emits provenance. It
+does not yet route downstream field mappings through alias-scoped joined
+collections; that remains a UI/backend hardening step before calling the
+NDD-like scenario a full accelerator.
+
+Verification run:
+
+```text
+python -m pytest tests/test_integration_mapping_join_bindings.py -q
+python -m pytest tests/test_integration_mapping_*.py -q
+python -m ruff check src/otm_workbench/models.py src/otm_workbench/modules/integration_mapping/join_bindings.py src/otm_workbench/modules/integration_mapping/preview.py src/otm_workbench/modules/integration_mapping/routes.py tests/test_integration_mapping_join_bindings.py
 ```

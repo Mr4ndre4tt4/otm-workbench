@@ -497,6 +497,39 @@ class IntegrationJoinRule(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationJoinBinding(Base, TimestampMixin):
+    __tablename__ = "integration_join_bindings"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    source_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    root_collection_path: Mapped[str] = mapped_column(String, index=True)
+    target_collection_path: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class IntegrationJoinBindingHop(Base, TimestampMixin):
+    __tablename__ = "integration_join_binding_hops"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    binding_id: Mapped[str] = mapped_column(ForeignKey("integration_join_bindings.id"), index=True)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    source_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    hop_sequence: Mapped[int] = mapped_column(Integer, index=True)
+    left_collection_path: Mapped[str] = mapped_column(String, index=True)
+    left_value_path: Mapped[str] = mapped_column(String)
+    right_collection_path: Mapped[str] = mapped_column(String, index=True)
+    right_value_path: Mapped[str] = mapped_column(String)
+    operator: Mapped[str] = mapped_column(String, default="EQ", index=True)
+    result_alias: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class IntegrationLookupDefinition(Base, TimestampMixin):
     __tablename__ = "integration_lookup_definitions"
 

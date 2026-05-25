@@ -75,8 +75,11 @@ test pass/fail:
    Rules stage; multi-hop/aggregation execution remains `OTM-145`.
 4. OTM-145: implement cross-collection/multi-hop joins, qualifier filters and
    aggregations in the Integration Mapping backend preview. First backend
-   slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT; multi-hop
-   joins remain explicit follow-up under `OTM-147`.
+   slice delivered for FILTER_BY_QUALIFIER and COUNT_DISTINCT.
+5. OTM-147: add explicit multi-hop join-binding contract for Integration
+   Mapping. First backend slice delivered with persisted bindings/hops and
+   scalar preview provenance; UI authoring/review and alias-scoped mapping
+   execution remain the next hardening slice.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```

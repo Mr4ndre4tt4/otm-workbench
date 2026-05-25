@@ -119,6 +119,9 @@ called complete for this class of integration:
 - Loop-scoped target mappings, so Entregas[] field mappings are clearly tied to
   the ShipmentStop loop.
 - Multi-hop join authoring for ShipmentStop -> ShipUnit -> Release.
+  First backend contract slice delivered in `OTM-147`: persisted join
+  bindings/hops and preview provenance exist; GUI authoring and downstream
+  alias-scoped mapping are still pending.
 - Semantic validation for joins, loop scope, duplicate target fields, missing
   required target fields, and transform configuration.
 - Executable local preview that materializes synthetic target JSON from
@@ -146,7 +149,9 @@ Recommended next backlog sequence:
    LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. `OTM-145` delivered
    FILTER_BY_QUALIFIER and COUNT_DISTINCT for scalar executable preview.
 6. Add loop-scoped field mapping support for target collections.
-7. Add multi-hop join metadata and validation.
+7. Add multi-hop join metadata and validation. First backend slice delivered in
+   `OTM-147`; next slice should expose it in the staged Rules UI and connect
+   aliases to downstream mappings.
 8. Harden validation to catch same-path joins, duplicate target paths, missing
    required target fields, invalid lookup output scope, and transform config
    gaps.

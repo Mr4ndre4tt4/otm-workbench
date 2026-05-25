@@ -15,6 +15,7 @@ from otm_workbench.models import (
     AuditLog,
     IntegrationDefinition,
     IntegrationEndpoint,
+    IntegrationJoinBinding,
     IntegrationJoinRule,
     IntegrationLoopDefinition,
     IntegrationLookupDefinition,
@@ -52,6 +53,10 @@ from otm_workbench.modules.integration_mapping.loops import (
 from otm_workbench.modules.integration_mapping.joins import (
     create_integration_join_rule,
     serialize_integration_join_rule,
+)
+from otm_workbench.modules.integration_mapping.join_bindings import (
+    create_integration_join_binding,
+    serialize_integration_join_binding,
 )
 from otm_workbench.modules.integration_mapping.lookups import (
     create_integration_lookup_definition,
@@ -198,6 +203,26 @@ class IntegrationJoinRuleCreateRequest(BaseModel):
     operator: str = "EQ"
     name: str
     description: str = ""
+    sequence_index: int = 0
+
+
+class IntegrationJoinBindingHopCreateRequest(BaseModel):
+    hop_sequence: int
+    left_collection_path: str
+    left_value_path: str
+    right_collection_path: str
+    right_value_path: str
+    operator: str = "EQ"
+    result_alias: str
+
+
+class IntegrationJoinBindingCreateRequest(BaseModel):
+    source_schema_document_id: str
+    root_collection_path: str
+    target_collection_path: str
+    name: str
+    description: str = ""
+    hops: list[IntegrationJoinBindingHopCreateRequest]
     sequence_index: int = 0
 
 
@@ -863,6 +888,94 @@ def get_join_rule(
     if join_rule is None:
         raise api_error(404, "INTEGRATION_JOIN_NOT_FOUND", "Integration join rule not found.")
     return serialize_integration_join_rule(join_rule)
+
+
+@router.post("/definitions/{definition_id}/join-bindings")
+def create_join_binding(
+    definition_id: str,
+    payload: IntegrationJoinBindingCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    try:
+        binding = create_integration_join_binding(db, definition=definition, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if str(exc) == "source_schema_document_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_SCHEMA_DOCUMENT_INVALID",
+                "Join binding schema document must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) == "operator_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_OPERATOR_INVALID",
+                "Join binding operator must be one of the controlled Integration Mapping operators.",
+            ) from exc
+        if str(exc) == "alias_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_ALIAS_INVALID",
+                "Join binding hops must use unique non-empty result_alias values.",
+            ) from exc
+        if str(exc) == "hop_sequence_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_SEQUENCE_INVALID",
+                "Join binding hops must use contiguous sequences starting at 1.",
+            ) from exc
+        if str(exc) == "hops_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_HOPS_INVALID",
+                "Join binding must include at least one hop.",
+            ) from exc
+        if str(exc) == "same_path_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_BINDING_SAME_PATH",
+                "Join binding hop paths must reference different source values.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_JOIN_BINDING_PATH_INVALID",
+            "Join binding collection and value paths must exist in the source schema document.",
+        ) from exc
+    return serialize_integration_join_binding(db, binding)
+
+
+@router.get("/definitions/{definition_id}/join-bindings")
+def list_join_bindings(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    bindings = (
+        db.query(IntegrationJoinBinding)
+        .filter(IntegrationJoinBinding.definition_id == definition.id)
+        .order_by(IntegrationJoinBinding.sequence_index, IntegrationJoinBinding.created_at)
+        .all()
+    )
+    items = [serialize_integration_join_binding(db, binding) for binding in bindings]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/join-bindings/{binding_id}")
+def get_join_binding(
+    binding_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    binding = db.get(IntegrationJoinBinding, binding_id)
+    if binding is None:
+        raise api_error(404, "INTEGRATION_JOIN_BINDING_NOT_FOUND", "Integration join binding not found.")
+    return serialize_integration_join_binding(db, binding)
 
 
 @router.post("/definitions/{definition_id}/lookups")
