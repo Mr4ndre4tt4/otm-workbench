@@ -5,7 +5,17 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from otm_workbench.catalog.canonical import MASTERDATA_TABLES, RATES_TABLES
-from otm_workbench.models import OtmMacroObject, OtmMacroObjectDependency, OtmMacroObjectTable
+from otm_workbench.models import (
+    MacroObjectSchemaLink,
+    OtmMacroObject,
+    OtmMacroObjectDependency,
+    OtmMacroObjectTable,
+    SchemaFile,
+    SchemaPack,
+    SchemaPath,
+    SchemaRoot,
+    ServiceOperation,
+)
 from otm_workbench.modules.rates.dictionary import TableDefinition, load_table_definition
 from otm_workbench.reference.services import ReferenceContext, allowed_domains, list_reference_options
 
@@ -531,3 +541,214 @@ def serialize_macro_object(db: Session, macro: OtmMacroObject, include_children:
             "cutover_table_count": sum(1 for row in tables if row.allow_cutover),
         }
     return payload
+
+
+def _json_list(value: str) -> list[str]:
+    try:
+        parsed = json.loads(value or "[]")
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed]
+
+
+def create_schema_pack(
+    db: Session,
+    *,
+    code: str,
+    name: str,
+    otm_version: str,
+    source_type: str,
+    source_path: str,
+    content_hash: str,
+    created_by: str | None = None,
+    asset_id: str | None = None,
+) -> SchemaPack:
+    pack = SchemaPack(
+        code=code.upper(),
+        name=name,
+        otm_version=otm_version.upper(),
+        source_type=source_type.upper(),
+        source_path=source_path,
+        content_hash=content_hash,
+        asset_id=asset_id,
+        created_by=created_by,
+    )
+    db.add(pack)
+    db.commit()
+    db.refresh(pack)
+    return pack
+
+
+def list_schema_packs(
+    db: Session,
+    *,
+    otm_version: str | None = None,
+    status: str | None = None,
+) -> list[SchemaPack]:
+    query = db.query(SchemaPack)
+    if otm_version:
+        query = query.filter(SchemaPack.otm_version == otm_version.upper())
+    if status:
+        query = query.filter(SchemaPack.status == status.upper())
+    return query.order_by(SchemaPack.otm_version, SchemaPack.code).all()
+
+
+def get_schema_pack(db: Session, schema_pack_id: str) -> SchemaPack | None:
+    return db.get(SchemaPack, schema_pack_id)
+
+
+def serialize_schema_pack(pack: SchemaPack) -> dict[str, object]:
+    return {
+        "id": pack.id,
+        "code": pack.code,
+        "name": pack.name,
+        "otm_version": pack.otm_version,
+        "source_type": pack.source_type,
+        "asset_id": pack.asset_id,
+        "status": pack.status,
+        "namespace_count": pack.namespace_count,
+        "root_count": pack.root_count,
+        "operation_count": pack.operation_count,
+        "content_hash": pack.content_hash,
+        "created_by": pack.created_by,
+        "created_at": pack.created_at.isoformat() if pack.created_at else None,
+        "updated_at": pack.updated_at.isoformat() if pack.updated_at else None,
+    }
+
+
+def list_schema_roots(
+    db: Session,
+    *,
+    schema_pack_id: str | None = None,
+    root_name: str | None = None,
+    domain_area: str | None = None,
+    recommended_module: str | None = None,
+) -> list[SchemaRoot]:
+    query = db.query(SchemaRoot)
+    if schema_pack_id:
+        query = query.filter(SchemaRoot.schema_pack_id == schema_pack_id)
+    if root_name:
+        query = query.filter(SchemaRoot.root_name == root_name)
+    if domain_area:
+        query = query.filter(SchemaRoot.domain_area == domain_area.upper())
+    roots = query.order_by(SchemaRoot.domain_area, SchemaRoot.root_name).all()
+    if recommended_module:
+        module = recommended_module.lower()
+        roots = [root for root in roots if module in [item.lower() for item in _json_list(root.recommended_modules_json)]]
+    return roots
+
+
+def get_schema_root(db: Session, schema_root_id: str) -> SchemaRoot | None:
+    return db.get(SchemaRoot, schema_root_id)
+
+
+def serialize_schema_root(root: SchemaRoot) -> dict[str, object]:
+    return {
+        "id": root.id,
+        "schema_pack_id": root.schema_pack_id,
+        "schema_file_id": root.schema_file_id,
+        "root_name": root.root_name,
+        "namespace": root.namespace,
+        "domain_area": root.domain_area,
+        "root_type": root.root_type,
+        "envelope_role": root.envelope_role,
+        "recommended_modules": _json_list(root.recommended_modules_json),
+        "documentation": root.documentation,
+    }
+
+
+def list_schema_paths(
+    db: Session,
+    *,
+    schema_root_id: str,
+    query_text: str | None = None,
+) -> list[SchemaPath]:
+    query = db.query(SchemaPath).filter(SchemaPath.schema_root_id == schema_root_id)
+    if query_text:
+        like = f"%{query_text}%"
+        query = query.filter(SchemaPath.path.like(like))
+    return query.order_by(SchemaPath.sequence_index, SchemaPath.path).all()
+
+
+def serialize_schema_path(path: SchemaPath) -> dict[str, object]:
+    return {
+        "id": path.id,
+        "schema_root_id": path.schema_root_id,
+        "parent_path": path.parent_path,
+        "path": path.path,
+        "node_name": path.node_name,
+        "data_type": path.data_type,
+        "min_occurs": path.min_occurs,
+        "max_occurs": path.max_occurs,
+        "is_required": path.is_required,
+        "is_repeatable": path.is_repeatable,
+        "documentation": path.documentation,
+        "source_file": path.source_file,
+        "sequence_index": path.sequence_index,
+    }
+
+
+def list_service_operations(
+    db: Session,
+    *,
+    schema_pack_id: str | None = None,
+    service_name: str | None = None,
+) -> list[ServiceOperation]:
+    query = db.query(ServiceOperation)
+    if schema_pack_id:
+        query = query.filter(ServiceOperation.schema_pack_id == schema_pack_id)
+    if service_name:
+        query = query.filter(ServiceOperation.service_name == service_name)
+    return query.order_by(ServiceOperation.service_name, ServiceOperation.operation_name).all()
+
+
+def serialize_service_operation(operation: ServiceOperation) -> dict[str, object]:
+    return {
+        "id": operation.id,
+        "schema_pack_id": operation.schema_pack_id,
+        "schema_file_id": operation.schema_file_id,
+        "service_name": operation.service_name,
+        "operation_name": operation.operation_name,
+        "input_message": operation.input_message,
+        "output_message": operation.output_message,
+        "fault_message": operation.fault_message,
+        "target_namespace": operation.target_namespace,
+        "related_roots": _json_list(operation.related_roots_json),
+    }
+
+
+def list_macro_object_schema_links(db: Session, macro_object_code: str) -> list[tuple[MacroObjectSchemaLink, SchemaRoot, SchemaPack, SchemaFile]]:
+    return (
+        db.query(MacroObjectSchemaLink, SchemaRoot, SchemaPack, SchemaFile)
+        .join(SchemaRoot, MacroObjectSchemaLink.schema_root_id == SchemaRoot.id)
+        .join(SchemaPack, SchemaRoot.schema_pack_id == SchemaPack.id)
+        .join(SchemaFile, SchemaRoot.schema_file_id == SchemaFile.id)
+        .filter(MacroObjectSchemaLink.macro_object_code == macro_object_code.upper())
+        .order_by(MacroObjectSchemaLink.confidence, SchemaRoot.root_name)
+        .all()
+    )
+
+
+def serialize_macro_object_schema_link(
+    row: MacroObjectSchemaLink,
+    root: SchemaRoot,
+    pack: SchemaPack,
+    schema_file: SchemaFile,
+) -> dict[str, object]:
+    return {
+        "id": row.id,
+        "macro_object_code": row.macro_object_code,
+        "schema_root_id": root.id,
+        "schema_pack_id": pack.id,
+        "schema_pack_code": pack.code,
+        "otm_version": pack.otm_version,
+        "schema_file": schema_file.file_name,
+        "root_name": root.root_name,
+        "domain_area": root.domain_area,
+        "root_type": root.root_type,
+        "relationship_role": row.relationship_role,
+        "confidence": row.confidence,
+        "notes": row.notes,
+    }

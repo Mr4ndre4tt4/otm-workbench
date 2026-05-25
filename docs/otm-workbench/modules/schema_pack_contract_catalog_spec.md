@@ -1,6 +1,6 @@
 # OTM Schema Pack / Contract Catalog Spec
 
-**Status:** draft backend-first spec
+**Status:** first persistence/API slice delivered
 **Linear:** `OTM-163`
 **Source discovery:** `docs/otm-workbench/discovery/OTM_26A_WSDL_XSD_DISCOVERY.md`
 
@@ -399,6 +399,7 @@ Slice 1 - Persistence and seed contract:
   ServiceOperation, MacroObjectSchemaLink.
 - repository/service serializers.
 - no UI.
+Status: delivered in first backend slice.
 
 Slice 2 - Local folder indexer:
 - parse WSDL/XSD inventory;

@@ -859,6 +859,16 @@ indexar `SchemaRoot`, `SchemaPath` e `ServiceOperation`, e expor essa base para:
    arquivo com dado sensivel em nome/conteudo.
 ```
 
+Status da primeira fatia:
+
+```text
+- Persistencia/API base entregue para SchemaPack, SchemaFile, SchemaRoot,
+  SchemaPath, ServiceOperation e MacroObjectSchemaLink.
+- Endpoints read-only/admin criados para packs, roots, paths, operations e
+  macro-object schema links.
+- Ainda falta indexer real de pasta local, job/evidence e QA negativo de parse.
+```
+
 ### Fora do primeiro recorte
 
 ```text

@@ -6,19 +6,32 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import api_error, get_db, require_user
+from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.models import ActiveContext, User
 from otm_workbench.catalog.services import (
+    create_schema_pack,
     get_macro_object,
+    get_schema_pack,
+    get_schema_root,
     list_dictionary_tables,
+    list_macro_object_schema_links,
     list_macro_objects,
+    list_schema_packs,
+    list_schema_paths,
+    list_schema_roots,
+    list_service_operations,
     macro_object_tables,
     reference_options_payload,
     safe_load_table,
     serialize_columns,
+    serialize_macro_object_schema_link,
     serialize_macro_object,
     serialize_macro_object_load_plan,
     serialize_macro_object_table,
+    serialize_schema_pack,
+    serialize_schema_path,
+    serialize_schema_root,
+    serialize_service_operation,
     serialize_table_definition,
     validate_column,
     validate_table,
@@ -47,6 +60,16 @@ class ValidateReferenceRequest(BaseModel):
     environment_id: str | None = None
     profile_id: str | None = None
     can_view_all_domains: bool = False
+
+
+class CreateSchemaPackRequest(BaseModel):
+    code: str
+    name: str
+    otm_version: str
+    source_type: str
+    source_path: str
+    content_hash: str = ""
+    asset_id: str | None = None
 
 
 def dictionary_root() -> Path:
@@ -182,6 +205,122 @@ def get_catalog_macro_object_load_plan(
     if macro is None:
         raise api_error(404, "CATALOG_MACRO_OBJECT_NOT_FOUND", "Catalog macro-object not found.")
     return serialize_macro_object_load_plan(db, macro)
+
+
+@router.get("/macro-objects/{macro_object_code}/schema-links")
+def list_catalog_macro_object_schema_links(
+    macro_object_code: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    rows = list_macro_object_schema_links(db, macro_object_code)
+    items = [serialize_macro_object_schema_link(link, root, pack, schema_file) for link, root, pack, schema_file in rows]
+    return {
+        "macro_object_code": macro_object_code.upper(),
+        "items": items,
+        "total": len(items),
+    }
+
+
+@router.post("/schema-packs")
+def create_catalog_schema_pack(
+    payload: CreateSchemaPackRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    pack = create_schema_pack(
+        db,
+        code=payload.code,
+        name=payload.name,
+        otm_version=payload.otm_version,
+        source_type=payload.source_type,
+        source_path=payload.source_path,
+        content_hash=payload.content_hash,
+        asset_id=payload.asset_id,
+        created_by=user.email,
+    )
+    return serialize_schema_pack(pack)
+
+
+@router.get("/schema-packs")
+def list_catalog_schema_packs(
+    otm_version: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    items = [serialize_schema_pack(pack) for pack in list_schema_packs(db, otm_version=otm_version, status=status)]
+    return PageResponse(items=items, total=len(items), page_size=len(items))
+
+
+@router.get("/schema-packs/{schema_pack_id}")
+def get_catalog_schema_pack(
+    schema_pack_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    pack = get_schema_pack(db, schema_pack_id)
+    if pack is None:
+        raise api_error(404, "SCHEMA_PACK_NOT_FOUND", "Schema pack not found.")
+    return serialize_schema_pack(pack)
+
+
+@router.get("/schema-roots")
+def list_catalog_schema_roots(
+    schema_pack_id: str | None = None,
+    root_name: str | None = None,
+    domain_area: str | None = None,
+    recommended_module: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    roots = list_schema_roots(
+        db,
+        schema_pack_id=schema_pack_id,
+        root_name=root_name,
+        domain_area=domain_area,
+        recommended_module=recommended_module,
+    )
+    items = [serialize_schema_root(root) for root in roots]
+    return PageResponse(items=items, total=len(items), page_size=len(items))
+
+
+@router.get("/schema-roots/{schema_root_id}")
+def get_catalog_schema_root(
+    schema_root_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    root = get_schema_root(db, schema_root_id)
+    if root is None:
+        raise api_error(404, "SCHEMA_ROOT_NOT_FOUND", "Schema root not found.")
+    return serialize_schema_root(root)
+
+
+@router.get("/schema-roots/{schema_root_id}/paths")
+def list_catalog_schema_root_paths(
+    schema_root_id: str,
+    query: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    if get_schema_root(db, schema_root_id) is None:
+        raise api_error(404, "SCHEMA_ROOT_NOT_FOUND", "Schema root not found.")
+    paths = list_schema_paths(db, schema_root_id=schema_root_id, query_text=query)
+    items = [serialize_schema_path(path) for path in paths]
+    return PageResponse(items=items, total=len(items), page_size=len(items))
+
+
+@router.get("/schema-operations")
+def list_catalog_schema_operations(
+    schema_pack_id: str | None = None,
+    service_name: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    operations = list_service_operations(db, schema_pack_id=schema_pack_id, service_name=service_name)
+    items = [serialize_service_operation(operation) for operation in operations]
+    return PageResponse(items=items, total=len(items), page_size=len(items))
 
 
 @router.post("/validate/table")

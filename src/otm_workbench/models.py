@@ -793,6 +793,100 @@ class OtmMacroObjectDependency(Base, TimestampMixin):
     notes: Mapped[str] = mapped_column(Text, default="")
 
 
+class SchemaPack(Base, TimestampMixin):
+    __tablename__ = "schema_packs"
+    __table_args__ = (UniqueConstraint("code", "otm_version", name="uq_schema_packs_code_version"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    otm_version: Mapped[str] = mapped_column(String, index=True)
+    source_type: Mapped[str] = mapped_column(String, index=True)
+    source_path: Mapped[str] = mapped_column(String)
+    asset_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    namespace_count: Mapped[int] = mapped_column(Integer, default=0)
+    root_count: Mapped[int] = mapped_column(Integer, default=0)
+    operation_count: Mapped[int] = mapped_column(Integer, default=0)
+    content_hash: Mapped[str] = mapped_column(String, default="", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class SchemaFile(Base, TimestampMixin):
+    __tablename__ = "schema_files"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    schema_pack_id: Mapped[str] = mapped_column(ForeignKey("schema_packs.id"), index=True)
+    file_name: Mapped[str] = mapped_column(String, index=True)
+    relative_path: Mapped[str] = mapped_column(String)
+    file_type: Mapped[str] = mapped_column(String, index=True)
+    namespace: Mapped[str] = mapped_column(String, default="", index=True)
+    import_count: Mapped[int] = mapped_column(Integer, default=0)
+    top_level_element_count: Mapped[int] = mapped_column(Integer, default=0)
+    complex_type_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String, default="PARSED", index=True)
+    parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class SchemaRoot(Base, TimestampMixin):
+    __tablename__ = "schema_roots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    schema_pack_id: Mapped[str] = mapped_column(ForeignKey("schema_packs.id"), index=True)
+    schema_file_id: Mapped[str] = mapped_column(ForeignKey("schema_files.id"), index=True)
+    root_name: Mapped[str] = mapped_column(String, index=True)
+    namespace: Mapped[str] = mapped_column(String, default="", index=True)
+    domain_area: Mapped[str] = mapped_column(String, default="OTHER", index=True)
+    root_type: Mapped[str] = mapped_column(String, default="OTHER", index=True)
+    envelope_role: Mapped[str] = mapped_column(String, default="NONE", index=True)
+    recommended_modules_json: Mapped[str] = mapped_column(Text, default="[]")
+    documentation: Mapped[str] = mapped_column(Text, default="")
+
+
+class SchemaPath(Base, TimestampMixin):
+    __tablename__ = "schema_paths"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    schema_root_id: Mapped[str] = mapped_column(ForeignKey("schema_roots.id"), index=True)
+    parent_path: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    path: Mapped[str] = mapped_column(String, index=True)
+    node_name: Mapped[str] = mapped_column(String, index=True)
+    data_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    min_occurs: Mapped[str] = mapped_column(String, default="1")
+    max_occurs: Mapped[str] = mapped_column(String, default="1")
+    is_required: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_repeatable: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    documentation: Mapped[str] = mapped_column(Text, default="")
+    source_file: Mapped[str] = mapped_column(String, default="")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+
+
+class ServiceOperation(Base, TimestampMixin):
+    __tablename__ = "service_operations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    schema_pack_id: Mapped[str] = mapped_column(ForeignKey("schema_packs.id"), index=True)
+    schema_file_id: Mapped[str] = mapped_column(ForeignKey("schema_files.id"), index=True)
+    service_name: Mapped[str] = mapped_column(String, index=True)
+    operation_name: Mapped[str] = mapped_column(String, index=True)
+    input_message: Mapped[str] = mapped_column(String, default="")
+    output_message: Mapped[str] = mapped_column(String, default="")
+    fault_message: Mapped[str] = mapped_column(String, default="")
+    target_namespace: Mapped[str] = mapped_column(String, default="")
+    related_roots_json: Mapped[str] = mapped_column(Text, default="[]")
+
+
+class MacroObjectSchemaLink(Base, TimestampMixin):
+    __tablename__ = "macro_object_schema_links"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    macro_object_code: Mapped[str] = mapped_column(String, index=True)
+    schema_root_id: Mapped[str] = mapped_column(ForeignKey("schema_roots.id"), index=True)
+    relationship_role: Mapped[str] = mapped_column(String, default="SEMANTIC_ROOT", index=True)
+    confidence: Mapped[str] = mapped_column(String, default="MEDIUM", index=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
 class ReferenceSnapshot(Base, TimestampMixin):
     __tablename__ = "reference_snapshots"
 
