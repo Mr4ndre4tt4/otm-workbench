@@ -125,11 +125,15 @@ Tests:
 ```text
 python -m pytest tests/test_master_data_templates.py -q
 npm run test -- AppFunctionalMasterData.test.tsx
+npm run qa:functional:master-data:browser
 ```
 
-The current pass covers backend scenario validity plus the first React
-functional GUI slice. Browser QA should reuse this pack next, proving the same
-story against local FastAPI + Vite.
+The current pass covers backend scenario validity, the React functional GUI
+slice, and the browser journey against local FastAPI + Vite. The browser path
+selects the backend-owned Location scenario pack, verifies the scenario story
+and hidden manual authoring controls, creates/validates/publishes the scenario
+draft, and resets authoring before continuing through the manual template and
+batch/export handoff journey.
 
 ## Replication Rule For Other Modules
 

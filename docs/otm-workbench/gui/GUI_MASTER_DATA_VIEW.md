@@ -124,11 +124,13 @@ or relationship rules in the backend draft.
 
 The seventh OTM-117 slice expands browser functional QA for Master Data. The
 `qa:functional:master-data:browser` script now validates the Author stage first:
-it creates a unique synthetic Location draft, exercises the child-table reset
-path, edits a friendly label and default value, enables the relationship rule,
-validates the definition, and publishes it before continuing through the
-workbook, upload, relationship validation, mapping, output, CSV, export, and
-return-state journey.
+it applies the backend-owned Location operational scenario pack, verifies the
+scenario story and hidden manual controls, creates/validates/publishes the
+scenario draft, resets authoring state, then creates a unique synthetic Location
+draft, exercises the child-table reset path, edits a friendly label and default
+value, enables the relationship rule, validates the definition, and publishes it
+before continuing through the workbook, upload, relationship validation,
+mapping, output, CSV, export, and return-state journey.
 
 The latest OTM-117 hardening slice adds explicit authoring-draft reset recovery.
 After table, column, mapping, relationship, and persisted draft/version state

@@ -147,6 +147,7 @@ async function run() {
   if (!playwright) return;
   const runId = Date.now().toString(36).toUpperCase();
   const authorTemplateCode = `LOC_BROWSER_${runId}`;
+  const scenarioTemplateCode = `LOC_SCENARIO_${runId}`;
 
   const login = await apiRequest("/api/v1/platform/session/login", {
     method: "POST",
@@ -202,6 +203,38 @@ async function run() {
     await page.getByLabel("Data Factory workflow").waitFor();
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Author" }).click();
+    await page.getByLabel("Master Data scenario pack").selectOption("LOCATION_OPERATIONAL");
+    await waitForVisibleOrThrow(
+      page,
+      page.getByLabel("Authoring scenario story").getByText("Location setup with address"),
+      "backend-owned Location scenario story",
+      { consoleErrors, failedResponses }
+    );
+    await page.getByLabel("Authoring scenario story").getByText("LOCATION_CAPACITY", { exact: true }).waitFor();
+    await page.getByLabel("Authoring scenario story").getByText(/ORACLE_OFFICIAL/).waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("34 user field(s)").waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("33 OTM mapping(s)").waitFor();
+    await page.getByLabel("Authoring mapping preview").getByText("6 relationship rule(s)").waitFor();
+    await assertHidden(
+      page.getByLabel("Catalog tables for LOCATION"),
+      "Manual Catalog table picker stayed visible after selecting a backend-owned scenario pack."
+    );
+    await page.getByLabel("Template code").fill(scenarioTemplateCode);
+    await page.getByLabel("Template name").fill(`Location Scenario Browser QA ${runId}`);
+    await page.getByRole("button", { name: "Create draft" }).click();
+    await waitForSuccessOrThrow(page, `Draft ${scenarioTemplateCode} created.`);
+    await page.getByRole("button", { name: "Validate definition" }).click();
+    await waitForSuccessOrThrow(page, "Definition validation is VALID.");
+    await page.getByRole("button", { name: "Publish template" }).click();
+    await waitForSuccessOrThrow(page, `Template ${scenarioTemplateCode} published.`);
+    await page.getByRole("button", { name: "Reset authoring draft" }).click();
+    await assertControlValue(page.getByLabel("Master Data scenario pack"), "CUSTOM", "Scenario pack after authoring reset");
+    await assertControlValue(page.getByLabel("Template code"), "LOCATIONS_DYNAMIC_UI", "Template code after scenario reset");
+    await assertHidden(
+      page.getByLabel("Authoring scenario story"),
+      "Backend-owned scenario story stayed visible after resetting the authoring draft."
+    );
+
     await page.getByLabel("Template code").fill(authorTemplateCode);
     await page.getByLabel("Template name").fill(`Locations Browser QA ${runId}`);
     const tablePicker = page.getByLabel("Catalog tables for LOCATION");
@@ -358,7 +391,9 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "master-data-author-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
+          journey:
+            "master-data-scenario-pack-author-manual-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
+          scenarioTemplateCode,
           authorTemplateCode,
           alternateTemplateCode,
           baseUrl,
