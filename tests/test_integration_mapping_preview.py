@@ -351,6 +351,90 @@ def test_preview_integration_definition_materializes_mock_lookup_with_provenance
     ]
 
 
+def test_preview_integration_definition_materializes_loop_mock_lookup_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentStop><StopSequence>1</StopSequence><StopType>D</StopType></ShipmentStop>"
+            "<ShipmentStop><StopSequence>2</StopSequence><StopType>D</StopType></ShipmentStop>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"deliveries":[{"sequence":"","carrierName":""}]}',
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json=loop_payload(source, target),
+        headers=admin_header,
+    )
+    lookup = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/lookups",
+        json=lookup_payload(
+            source,
+            target,
+            input_path="/Transmission/Shipment/ShipmentStop/StopSequence",
+            output_path="$.deliveries[].carrierName",
+            mock_response_json='{"carrierName":"Synthetic Carrier"}',
+        ),
+        headers=admin_header,
+    )
+    assert loop.status_code == 200
+    assert lookup.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {
+        "deliveries": [
+            {"carrierName": "Synthetic Carrier"},
+            {"carrierName": "Synthetic Carrier"},
+        ]
+    }
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "loop_id": loop.json()["id"],
+            "lookup_id": lookup.json()["id"],
+            "input_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "source_item_path": "/Transmission/Shipment/ShipmentStop[1]/StopSequence",
+            "output_path": "$.deliveries[].carrierName",
+            "target_item_path": "$.deliveries[0].carrierName",
+            "lookup_type": "MOCK",
+            "value_policy": "mock_lookup_response",
+        },
+        {
+            "loop_id": loop.json()["id"],
+            "lookup_id": lookup.json()["id"],
+            "input_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "source_item_path": "/Transmission/Shipment/ShipmentStop[2]/StopSequence",
+            "output_path": "$.deliveries[].carrierName",
+            "target_item_path": "$.deliveries[1].carrierName",
+            "lookup_type": "MOCK",
+            "value_policy": "mock_lookup_response",
+        },
+    ]
+
+
 def test_preview_integration_definition_materializes_loop_json_array_with_provenance(
     client,
     admin_header,

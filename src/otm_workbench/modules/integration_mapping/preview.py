@@ -245,14 +245,14 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .order_by(IntegrationMapping.sequence_index, IntegrationMapping.created_at)
         .all()
     )
+    if loops:
+        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings, lookups=lookups)
     if not mappings:
         if lookups:
             return build_lookup_executable_json_preview(db, lookups=lookups)
         return None
     if lookups:
         return None
-    if loops:
-        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings)
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
@@ -342,6 +342,7 @@ def build_loop_executable_json_preview(
     *,
     loops: list[IntegrationLoopDefinition],
     mappings: list[IntegrationMapping],
+    lookups: list[IntegrationLookupDefinition],
 ) -> dict[str, object] | None:
     if len(loops) != 1:
         return None
@@ -396,6 +397,45 @@ def build_loop_executable_json_preview(
                     + f".{target_field}",
                     "transform_type": mapping.transform_type,
                     "value_policy": value_policy,
+                }
+            )
+
+    for lookup in lookups:
+        if lookup.lookup_type != "MOCK":
+            return None
+        if not lookup.input_path.startswith(f"{loop.source_collection_path}/"):
+            return None
+        if not lookup.output_path.startswith(f"{loop.target_collection_path}."):
+            return None
+        relative_input_path = lookup.input_path.removeprefix(f"{loop.source_collection_path}/")
+        target_field = lookup.output_path.removeprefix(f"{loop.target_collection_path}.")
+        if not target_field or "." in target_field or "[]" in target_field:
+            return None
+        try:
+            response = json.loads(lookup.mock_response_json or "{}")
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(response, dict):
+            return None
+        value = response.get(target_field)
+        if value in (None, ""):
+            return None
+        for index, item in enumerate(loop_items):
+            input_value = xml_child_value(item, relative_input_path)
+            if input_value in (None, ""):
+                continue
+            set_loop_item_value(target_json, loop.target_collection_path, index, target_field, value)
+            field_provenance.append(
+                {
+                    "loop_id": loop.id,
+                    "lookup_id": lookup.id,
+                    "input_path": lookup.input_path,
+                    "source_item_path": f"{loop.source_collection_path}[{index + 1}]/{relative_input_path}",
+                    "output_path": lookup.output_path,
+                    "target_item_path": loop.target_collection_path.replace("[]", f"[{index}]")
+                    + f".{target_field}",
+                    "lookup_type": lookup.lookup_type,
+                    "value_policy": "mock_lookup_response",
                 }
             )
 
