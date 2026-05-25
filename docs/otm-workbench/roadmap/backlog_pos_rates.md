@@ -891,8 +891,13 @@ Status da primeira fatia:
   dinamicos podem referenciar roots oficiais como `Location` e `Item`, a API
   recusa root inexistente no draft/update e a validacao de definicao retorna
   resumo client-safe dos roots verificados.
-- Ainda falta expandir o consumo para Rates, alem de revisao funcional
-  Oracle/Data Dictionary antes de expor paths como guidance de usuario.
+- Quarto consumo por Rates Studio entregue: batches de tarifas podem
+  referenciar roots oficiais companion como `RateOffering` e `RateGeo`, a API
+  recusa root inexistente na criacao do batch e a validacao retorna resumo
+  client-safe dos roots verificados. Data Dictionary/CSV continua sendo a fonte
+  operacional para sequencia, colunas e formato CSVUtil.
+- Ainda falta revisao funcional Oracle/Data Dictionary antes de expor paths como
+  guidance de usuario.
 ```
 
 ### Fora do primeiro recorte

@@ -3,10 +3,40 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchRow, RateBatchTable, utcnow
+from otm_workbench.models import RateBatch, RateBatchIssue, RateBatchRow, RateBatchTable, SchemaRoot, utcnow
 from otm_workbench.modules.rates.dictionary import load_table_definition, validate_load_sequence
 from otm_workbench.modules.rates.scenarios import get_rate_scenario
 from otm_workbench.reference.services import ReferenceContext, validate_reference_value
+
+
+def schema_root_ids_for_batch(batch: RateBatch) -> list[str]:
+    try:
+        parsed = json.loads(batch.schema_root_ids_json or "[]")
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if str(item).strip()]
+
+
+def rate_batch_schema_validation_summary(db: Session, batch: RateBatch) -> dict[str, object] | None:
+    schema_root_ids = schema_root_ids_for_batch(batch)
+    if not schema_root_ids:
+        return None
+    checked_roots: list[str] = []
+    issues: list[dict[str, str]] = []
+    for schema_root_id in schema_root_ids:
+        schema_root = db.get(SchemaRoot, schema_root_id)
+        if schema_root is None:
+            issues.append({"code": "SCHEMA_ROOT_MISSING", "schema_root_id": schema_root_id})
+            continue
+        checked_roots.append(schema_root.root_name)
+    return {
+        "status": "PASSED" if not issues else "FAILED",
+        "schema_root_ids": schema_root_ids,
+        "checked_roots": checked_roots,
+        "issues": issues,
+    }
 
 
 def add_issue(
@@ -78,6 +108,17 @@ def validate_rate_batch(
         for table in tables
     }
     batch_gid_values = collect_batch_gid_values(rows_by_table, tables_by_id)
+    schema_validation = rate_batch_schema_validation_summary(db, batch)
+    if schema_validation is not None:
+        for schema_issue in schema_validation["issues"]:
+            add_issue(
+                db,
+                batch=batch,
+                severity="ERROR",
+                issue_code="RATES_SCHEMA_ROOT_INVALID",
+                message="Rate batch references a Schema Pack root that is not indexed.",
+                details=schema_issue,
+            )
 
     for required_table in scenario.required_tables:
         if required_table not in table_names:

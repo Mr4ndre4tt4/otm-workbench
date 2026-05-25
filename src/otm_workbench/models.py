@@ -1003,6 +1003,7 @@ class RateBatch(Base, TimestampMixin):
     source_type: Mapped[str] = mapped_column(String, default="api")
     domain_name: Mapped[str] = mapped_column(String, index=True)
     created_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    schema_root_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     validated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     exported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

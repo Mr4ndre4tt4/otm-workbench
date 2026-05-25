@@ -1,9 +1,49 @@
 from otm_workbench.modules.rates.scenarios import get_rate_scenario, list_rate_scenarios
 from otm_workbench.modules.rates.dictionary import validate_load_sequence
 from pathlib import Path
+from otm_workbench.models import SchemaFile, SchemaPack, SchemaRoot
 
 
 DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+
+
+def create_rates_schema_root(db_session, *, root_name: str):
+    schema_pack = SchemaPack(
+        code=f"OTM_26A_RATES_{root_name.upper()}",
+        name=f"OTM 26A Rates {root_name}",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/synthetic/otm/26A",
+        content_hash=f"hash-rates-{root_name.lower()}",
+        status="INDEXED",
+    )
+    db_session.add(schema_pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=schema_pack.id,
+        file_name=f"{root_name}.xsd",
+        relative_path=f"{root_name}.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        import_count=0,
+        top_level_element_count=1,
+        complex_type_count=1,
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    schema_root = SchemaRoot(
+        schema_pack_id=schema_pack.id,
+        schema_file_id=schema_file.id,
+        root_name=root_name,
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        domain_area="RATES",
+        root_type="OBJECT",
+        envelope_role="NONE",
+    )
+    db_session.add(schema_root)
+    db_session.commit()
+    return schema_root
 
 
 def test_rate_scenarios_include_supported_contracts():
@@ -137,6 +177,42 @@ def test_created_rate_batch_includes_catalog_context(client, admin_header):
     payload = response.json()
     assert payload["catalog_macro_object_code"] == "RATE_RECORD"
     assert payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
+
+
+def test_created_rate_batch_can_reference_catalog_schema_roots(client, admin_header, db_session):
+    rate_offering_root = create_rates_schema_root(db_session, root_name="RateOffering")
+    rate_geo_root = create_rates_schema_root(db_session, root_name="RateGeo")
+
+    response = client.post(
+        "/api/v1/modules/rates/batches",
+        headers=admin_header,
+        json={
+            "scenario_code": "RATE_GEO_ONLY",
+            "name": "Synthetic rate geo with schema roots",
+            "domain_name": "OTM1",
+            "schema_root_ids": [rate_offering_root.id, rate_geo_root.id],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["schema_root_ids"] == [rate_offering_root.id, rate_geo_root.id]
+
+
+def test_create_rate_batch_rejects_unknown_schema_root(client, admin_header):
+    response = client.post(
+        "/api/v1/modules/rates/batches",
+        headers=admin_header,
+        json={
+            "scenario_code": "RATE_GEO_ONLY",
+            "name": "Synthetic rate geo with unknown root",
+            "domain_name": "OTM1",
+            "schema_root_ids": ["missing-schema-root"],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "RATES_SCHEMA_ROOT_NOT_FOUND"
 
 
 def test_rates_batch_list_filters_by_catalog_macro_object(client, admin_header):

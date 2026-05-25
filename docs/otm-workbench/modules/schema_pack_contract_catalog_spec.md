@@ -390,6 +390,11 @@ Status update:
   reference one or more official `SchemaRoot` records, unknown root IDs are
   rejected during draft authoring/update, and definition validation reports a
   client-safe schema-root summary for Location/Item style guidance.
+- Rates Studio fourth consumer delivered: rate batches can reference official
+  companion `SchemaRoot` records such as `RateOffering` and `RateGeo`, unknown
+  root IDs are rejected at batch creation, and batch validation reports a
+  client-safe schema-root summary while Data Dictionary/CSV rules remain the
+  operational source of truth.
 ```
 
 ## Local 26A Validation Snapshot

@@ -1,13 +1,13 @@
+from tests.fixtures_rates import ltl_tl_rate_stack_tables
+from tests.test_rates_batch_scenarios import create_rates_schema_root
+
+
 def create_batch(client, admin_header, scenario_code="RATE_GEO_ONLY"):
     return client.post(
         "/api/v1/modules/rates/batches",
         json={"scenario_code": scenario_code, "name": "Synthetic batch", "domain_name": "OTM1"},
         headers=admin_header,
     ).json()
-
-
-from tests.fixtures_rates import ltl_tl_rate_stack_tables
-
 
 def test_validation_errors_when_required_table_missing(client, admin_header):
     batch = create_batch(client, admin_header)
@@ -121,6 +121,38 @@ def test_ltl_tl_rate_stack_batch_validates_internal_sequence(client, admin_heade
         issue["issue_code"] == "SEQUENCE_DEPENDENCY" and issue["severity"] == "ERROR"
         for issue in payload["issues"]
     )
+
+
+def test_rate_batch_validation_reports_schema_root_summary(client, admin_header, db_session):
+    rate_offering_root = create_rates_schema_root(db_session, root_name="RateOffering")
+    rate_geo_root = create_rates_schema_root(db_session, root_name="RateGeo")
+    batch = client.post(
+        "/api/v1/modules/rates/batches",
+        json={
+            "scenario_code": "LTL_TL_RATE_STACK",
+            "name": "Synthetic schema-rooted rates",
+            "domain_name": "OTM1",
+            "schema_root_ids": [rate_offering_root.id, rate_geo_root.id],
+        },
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/tables",
+        json={"tables": ltl_tl_rate_stack_tables()},
+        headers=admin_header,
+    )
+
+    validation = client.post(f"/api/v1/modules/rates/batches/{batch['id']}/validate", headers=admin_header)
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["valid"] is True
+    assert payload["schema_validation"] == {
+        "status": "PASSED",
+        "schema_root_ids": [rate_offering_root.id, rate_geo_root.id],
+        "checked_roots": ["RateOffering", "RateGeo"],
+        "issues": [],
+    }
 
 
 def test_batch_issues_endpoint_returns_persisted_issues(client, admin_header):

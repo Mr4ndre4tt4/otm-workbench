@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import get_db, require_user
+from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.catalog.services import reference_options_payload, serialize_table_definition
 from otm_workbench.models import (
     Artifact,
@@ -21,6 +21,7 @@ from otm_workbench.models import (
     User,
 )
 from otm_workbench.modules.rates.batches import (
+    UnknownRatesSchemaRoot,
     add_rate_batch_tables,
     create_rate_batch,
     get_batch_table_rows,
@@ -44,7 +45,7 @@ from otm_workbench.modules.rates.exports import (
     list_batch_export_evidence,
 )
 from otm_workbench.modules.rates.scenarios import get_rate_scenario, list_rate_scenarios
-from otm_workbench.modules.rates.validation import validate_rate_batch
+from otm_workbench.modules.rates.validation import rate_batch_schema_validation_summary, validate_rate_batch
 
 router = APIRouter(prefix="/api/v1/modules/rates", tags=["rates"])
 UNSUPPORTED_RATES_CATALOG_CODE = "UNSUPPORTED_RATES_CATALOG_MACRO_OBJECT"
@@ -100,6 +101,7 @@ class CreateRateBatchRequest(BaseModel):
     profile_id: str | None = None
     description: str = ""
     source_type: str = "api"
+    schema_root_ids: list[str] = []
 
 
 class RateBatchTablePayload(BaseModel):
@@ -117,6 +119,10 @@ class ApproveRateBatchRequest(BaseModel):
 
 def serialize_rate_batch(batch: RateBatch) -> dict[str, object]:
     scenario = get_rate_scenario(batch.scenario_code)
+    try:
+        schema_root_ids = json.loads(batch.schema_root_ids_json or "[]")
+    except json.JSONDecodeError:
+        schema_root_ids = []
     return {
         "id": batch.id,
         "project_id": batch.project_id,
@@ -131,6 +137,7 @@ def serialize_rate_batch(batch: RateBatch) -> dict[str, object]:
         "source_type": batch.source_type,
         "domain_name": batch.domain_name,
         "created_by": batch.created_by,
+        "schema_root_ids": schema_root_ids,
         "summary_json": batch.summary_json,
     }
 
@@ -498,8 +505,16 @@ def create_rates_batch(
             profile_id=payload.profile_id,
             description=payload.description,
             source_type=payload.source_type,
+            schema_root_ids=payload.schema_root_ids,
             created_by=user.email,
         )
+    except UnknownRatesSchemaRoot as exc:
+        raise api_error(
+            400,
+            "RATES_SCHEMA_ROOT_NOT_FOUND",
+            "Rate batch references an indexed Schema Pack root that does not exist.",
+            details={"schema_root_id": exc.schema_root_id},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_rate_batch(batch)
@@ -625,7 +640,7 @@ def validate_rates_batch(
         batch=batch,
     )
     scenario = get_rate_scenario(batch.scenario_code)
-    return {
+    result = {
         "batch_id": batch.id,
         "catalog_macro_object_code": scenario.catalog_macro_object_code,
         "catalog_load_plan_path": scenario.catalog_load_plan_path,
@@ -633,6 +648,10 @@ def validate_rates_batch(
         "valid": not any(issue.severity == "ERROR" for issue in issues),
         "issues": [serialize_rate_batch_issue(issue) for issue in issues],
     }
+    schema_validation = rate_batch_schema_validation_summary(db, batch)
+    if schema_validation is not None:
+        result["schema_validation"] = schema_validation
+    return result
 
 
 @router.get("/batches/{batch_id}/issues")

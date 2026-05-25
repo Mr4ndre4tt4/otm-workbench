@@ -3,7 +3,7 @@ import json
 
 from sqlalchemy.orm import Session
 
-from otm_workbench.models import RateBatch, RateBatchRow, RateBatchTable
+from otm_workbench.models import RateBatch, RateBatchRow, RateBatchTable, SchemaRoot
 from otm_workbench.modules.rates.dictionary import RATES_LOAD_SEQUENCE
 from otm_workbench.modules.rates.scenarios import get_rate_scenario, requirement_for_table
 
@@ -20,6 +20,29 @@ def stable_row_hash(payload: dict[str, object]) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+class UnknownRatesSchemaRoot(ValueError):
+    def __init__(self, *, schema_root_id: str) -> None:
+        self.schema_root_id = schema_root_id
+        super().__init__("Rate batch references an unknown schema root.")
+
+
+def normalize_schema_root_ids(values: list[str] | None) -> list[str]:
+    if values is None:
+        return []
+    normalized: list[str] = []
+    for value in values:
+        schema_root_id = str(value).strip()
+        if schema_root_id and schema_root_id not in normalized:
+            normalized.append(schema_root_id)
+    return normalized
+
+
+def require_schema_roots(db: Session, schema_root_ids: list[str]) -> None:
+    for schema_root_id in schema_root_ids:
+        if db.get(SchemaRoot, schema_root_id) is None:
+            raise UnknownRatesSchemaRoot(schema_root_id=schema_root_id)
+
+
 def create_rate_batch(
     db: Session,
     *,
@@ -31,9 +54,12 @@ def create_rate_batch(
     profile_id: str | None = None,
     description: str = "",
     source_type: str = "api",
+    schema_root_ids: list[str] | None = None,
     created_by: str | None = None,
 ) -> RateBatch:
     scenario = get_rate_scenario(scenario_code)
+    normalized_schema_root_ids = normalize_schema_root_ids(schema_root_ids)
+    require_schema_roots(db, normalized_schema_root_ids)
     batch = RateBatch(
         project_id=project_id,
         environment_id=environment_id,
@@ -45,6 +71,7 @@ def create_rate_batch(
         source_type=source_type,
         domain_name=domain_name.upper(),
         created_by=created_by,
+        schema_root_ids_json=json.dumps(normalized_schema_root_ids),
         summary_json="{}",
     )
     db.add(batch)
