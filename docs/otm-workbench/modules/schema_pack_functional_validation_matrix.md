@@ -51,7 +51,7 @@ Oracle official documentation or user confirmation.
 | Module | Root / contract | Data Dictionary tables to cross-check | Oracle status | Backend contract status | Use now | Blocked until |
 |---|---|---|---|---|---|---|
 | Integration Mapping Studio | `Transmission` | Not table-driven; map to XML integration metadata and payload roots | ORACLE_OFFICIAL_PINNED | Delivered via `source_schema_root_id` / `target_schema_root_id` | Yes, as XML envelope/path browser | UI guidance must label it as XML contract, not CSV load order |
-| Integration Mapping Studio | `PlannedShipment` / `Shipment` paths | Shipment domain tables only when mapping to CSV/DB artifacts | ORACLE_OFFICIAL_PARTIAL | Delivered as generic root reference | Yes, for sample/path browsing | Functional mapping recipes need scenario evidence and path-level review |
+| Integration Mapping Studio | `PlannedShipment` / `Shipment` paths | Shipment domain tables only when mapping to CSV/DB artifacts | ORACLE_OFFICIAL_PINNED | Delivered as generic root reference and Catalog Core `SHIPMENT` macro object | Yes, for sample/path browsing | Functional mapping recipes need scenario evidence and path-level review |
 | Integration Mapping Studio | External target schemas | Not OTM Data Dictionary | USER_CONFIRMATION_NEEDED | Delivered as generic root reference | Yes, if synthetic/non-client target contract | Do not infer business semantics without user-provided spec |
 | Order Release Generator | `Transmission` + `Release` | `ORDER_RELEASE` family, release lines/ship units, locations, items, refnums | ORACLE_OFFICIAL_PINNED | Delivered via template `transmission_schema_root_id` and `release_schema_root_id` | Yes, for XML preview envelope summary | Scenario generator still needs Data Dictionary-backed field/table mapping for CSV/db.xml companions |
 | Master Data Template Factory | `Location` | `LOCATION`, address/contact/refnum/capacity/activity time/dock/equipment profile related tables | ORACLE_OFFICIAL_PARTIAL | Delivered via `schema_root_ids` | Yes, as authoring hint only | Template generation must use Data Dictionary table dependencies before marking complete |
@@ -101,6 +101,8 @@ Backend status:
   across macro objects for dashboards and backlog triage.
 - Catalog Core now seeds `ORDER_RELEASE` as a transactional macro object for
   XML/schema guidance, blocked for CSVUtil/cutover in MVP0.
+- Catalog Core now seeds `SHIPMENT` as a transactional macro object for
+  Integration Mapping XML/schema guidance, blocked for CSVUtil/cutover in MVP0.
 ```
 
 ## Next Hardening Slices

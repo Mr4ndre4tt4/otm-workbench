@@ -159,6 +159,16 @@ KNOWN_SCHEMA_ROOT_LINKS: dict[str, list[dict[str, str]]] = {
             "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmol/planning/order_manager/create_order_release.htm",
         }
     ],
+    "PLANNEDSHIPMENT": [
+        {
+            "macro_object_code": "SHIPMENT",
+            "relationship_role": "SEMANTIC_ROOT",
+            "confidence": "HIGH",
+            "functional_confidence": "ORACLE_OFFICIAL_PINNED",
+            "source_reference_label": "Oracle Shipment.xsd Interfaces",
+            "source_reference_url": "https://docs.oracle.com/en/cloud/saas/transportation/25c/otmws/ShipmentInterface.html",
+        }
+    ],
 }
 
 
@@ -513,6 +523,24 @@ MACRO_OBJECT_SEED = [
             {"table_name": "ORDER_RELEASE", "relationship_role": "PRIMARY", "is_primary_table": True},
             {"table_name": "ORDER_RELEASE_LINE", "relationship_role": "LINE", "is_primary_table": False},
             {"table_name": "ORDER_RELEASE_REFNUM", "relationship_role": "REFNUM", "is_primary_table": False},
+        ],
+        "dependencies": [],
+    },
+    {
+        "code": "SHIPMENT",
+        "name": "Shipment",
+        "category": "TRANSACTIONAL",
+        "description": "Shipment transactional payload family for integration mapping and schema guidance.",
+        "default_load_order": 950,
+        "default_method": "XML",
+        "method_options": ["XML"],
+        "allow_cutover": False,
+        "allow_csvutil": False,
+        "tables": [
+            {"table_name": "SHIPMENT", "relationship_role": "PRIMARY", "is_primary_table": True},
+            {"table_name": "SHIPMENT_REFNUM", "relationship_role": "REFNUM", "is_primary_table": False},
+            {"table_name": "SHIPMENT_STOP", "relationship_role": "STOP", "is_primary_table": False},
+            {"table_name": "S_SHIP_UNIT", "relationship_role": "SHIP_UNIT", "is_primary_table": False},
         ],
         "dependencies": [],
     },
