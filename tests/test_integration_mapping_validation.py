@@ -267,6 +267,44 @@ def test_validate_integration_definition_reports_missing_required_targets_for_nd
     assert missing_paths == {"$.DataEmissao", "$.Entregas[]", "$.Entregas[].NumeroDocumento", "$.Entregas[].ChaveAcesso"}
 
 
+def test_validate_integration_definition_reports_lookup_output_without_loop_scope(
+    client,
+    admin_header,
+    db_session,
+):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    lookup = IntegrationLookupDefinition(
+        definition_id=definition["id"],
+        source_schema_document_id=source["id"],
+        target_schema_document_id=target["id"],
+        input_path="/Transmission/Shipment/ShipmentGid",
+        output_path="$.deliveries[].sequence",
+        lookup_type="MOCK",
+        name="Delivery lookup without loop",
+        description="Synthetic lookup into a collection without loop scope.",
+        mock_response_json='{"sequence":1}',
+        sequence_index=1,
+        status="ACTIVE",
+        created_by="qa@example.test",
+    )
+    db_session.add(lookup)
+    db_session.commit()
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is False
+    assert (
+        "lookup",
+        "output_path",
+        "INTEGRATION_VALIDATION_LOOKUP_OUTPUT_SCOPE_MISSING",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+
+
 def test_validate_integration_definition_rejects_missing_definition(client, admin_header):
     response = client.post(
         "/api/v1/modules/integration-mapping/definitions/missing-definition/validate",

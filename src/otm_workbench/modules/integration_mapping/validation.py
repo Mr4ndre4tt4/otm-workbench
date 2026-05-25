@@ -194,6 +194,45 @@ def validate_required_target_paths(
     ]
 
 
+def collection_scope_for_path(path: str) -> str | None:
+    marker = "[]"
+    marker_index = path.find(marker)
+    if marker_index == -1:
+        return None
+    return path[: marker_index + len(marker)]
+
+
+def validate_lookup_output_scopes(
+    *,
+    lookups: list[IntegrationLookupDefinition],
+    loops: list[IntegrationLoopDefinition],
+) -> list[ValidationIssue]:
+    loop_scopes = {
+        (loop.target_schema_document_id, loop.target_collection_path)
+        for loop in loops
+    }
+    issues: list[ValidationIssue] = []
+    for lookup in lookups:
+        collection_scope = collection_scope_for_path(lookup.output_path)
+        if collection_scope is None:
+            continue
+        if (lookup.target_schema_document_id, collection_scope) in loop_scopes:
+            continue
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_LOOKUP_OUTPUT_SCOPE_MISSING",
+                entity_type="lookup",
+                entity_id=lookup.id,
+                field="output_path",
+                message=(
+                    "Lookup output_path targets a collection field without a matching loop "
+                    f"target_collection_path: {collection_scope}"
+                ),
+            )
+        )
+    return issues
+
+
 def validate_integration_definition(db: Session, definition: IntegrationDefinition) -> dict[str, object]:
     issues: list[ValidationIssue] = []
     mappings = db.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition.id).all()
@@ -219,6 +258,7 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
         issues.extend(validate_join(db, join_rule))
     for lookup in lookups:
         issues.extend(validate_lookup(db, lookup))
+    issues.extend(validate_lookup_output_scopes(lookups=lookups, loops=loops))
     return {
         "definition_id": definition.id,
         "is_valid": not issues,
