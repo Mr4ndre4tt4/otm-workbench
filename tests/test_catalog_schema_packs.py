@@ -140,6 +140,47 @@ def write_cross_file_schema_pack(folder):
     )
 
 
+def write_invalid_schema_pack(folder):
+    folder.mkdir()
+    (folder / "Broken.xsd").write_text(
+        "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"><xs:element name=\"Broken\"",
+        encoding="utf-8",
+    )
+
+
+def write_missing_import_schema_pack(folder):
+    folder.mkdir()
+    (folder / "Order.xsd").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/order">
+  <xs:import namespace="http://xmlns.oracle.com/apps/otm/common" schemaLocation="MissingCommon.xsd"/>
+  <xs:element name="Release" type="ReleaseType"/>
+  <xs:complexType name="ReleaseType">
+    <xs:sequence>
+      <xs:element name="ReleaseGid" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+""",
+        encoding="utf-8",
+    )
+
+
+def write_duplicate_root_schema_pack(folder):
+    folder.mkdir()
+    for file_name in ("OrderA.xsd", "OrderB.xsd"):
+        (folder / file_name).write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/order">
+  <xs:element name="Release" type="xs:string"/>
+</xs:schema>
+""",
+            encoding="utf-8",
+        )
+
+
 def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header):
     created = client.post(
         "/api/v1/catalog/schema-packs",
@@ -334,6 +375,87 @@ def test_catalog_schema_pack_index_rejects_sensitive_wsdl_content(client, admin_
     assert indexed.json()["code"] == "SCHEMA_PACK_SENSITIVE_CONTENT"
     assert "real-client" not in str(indexed.json()).lower()
     assert str(schema_folder) not in str(indexed.json())
+
+
+def test_catalog_schema_pack_index_marks_invalid_xsd_failed_with_client_safe_evidence(
+    client,
+    admin_header,
+    db_session,
+):
+    schema_folder = workspace_test_folder("invalid_xsd_26a")
+    write_invalid_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_INVALID",
+            "name": "Invalid synthetic pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+    evidence = db_session.get(Evidence, indexed.json()["evidence_id"])
+
+    assert indexed.status_code == 200
+    assert indexed.json()["status"] == "FAILED"
+    assert indexed.json()["files_failed"] == 1
+    assert indexed.json()["files_parsed"] == 0
+    assert str(schema_folder) not in str(indexed.json())
+    assert evidence is not None
+    summary = json.loads(evidence.summary_json)
+    assert summary["status"] == "FAILED"
+    assert "Broken.xsd" not in str(summary)
+
+
+def test_catalog_schema_pack_index_marks_missing_import_failed(client, admin_header):
+    schema_folder = workspace_test_folder("missing_import_26a")
+    write_missing_import_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_MISSING_IMPORT",
+            "name": "Missing import synthetic pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+
+    assert indexed.status_code == 200
+    assert indexed.json()["status"] == "FAILED"
+    assert indexed.json()["files_failed"] == 1
+    assert indexed.json()["files_parsed"] == 0
+    assert "MissingCommon.xsd" not in str(indexed.json())
+    assert str(schema_folder) not in str(indexed.json())
+
+
+def test_catalog_schema_pack_index_marks_duplicate_root_failed(client, admin_header):
+    schema_folder = workspace_test_folder("duplicate_root_26a")
+    write_duplicate_root_schema_pack(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_DUPLICATE_ROOT",
+            "name": "Duplicate root synthetic pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+
+    assert indexed.status_code == 200
+    assert indexed.json()["status"] == "FAILED"
+    assert indexed.json()["files_failed"] == 1
+    assert "Release" not in str(indexed.json())
 
 
 def test_schema_pack_index_job_runs_through_jobs_processing(client, admin_header, db_session):

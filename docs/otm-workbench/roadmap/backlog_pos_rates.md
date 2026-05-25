@@ -877,8 +877,11 @@ Status da primeira fatia:
 - Validacao local controlada contra os folders OTM 26A passou: XSD 31/31,
   WSDL 8/8, 150 roots, 104551 paths apos resolucao same-pack complexType e
   13 operations, sem commitar conteudo bruto ou endpoints.
-- Ainda falta QA negativo de parse mais amplo e revisao funcional Oracle/Data
-  Dictionary antes de expor paths como guidance de usuario.
+- QA negativo entregue para XSD invalido, import target ausente, root duplicado
+  e sensitive-content detection.
+- Ainda falta unknown-root validation nos modulos consumidores e revisao
+  funcional Oracle/Data Dictionary antes de expor paths como guidance de
+  usuario.
 ```
 
 ### Fora do primeiro recorte

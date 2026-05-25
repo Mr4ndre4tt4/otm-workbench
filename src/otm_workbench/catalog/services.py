@@ -60,6 +60,10 @@ class SensitiveSchemaContentError(ValueError):
     pass
 
 
+class SchemaPackValidationError(ValueError):
+    pass
+
+
 def classify_table(table_name: str) -> TableClassification:
     normalized = table_name.upper()
     is_transactional = normalized in TRANSACTIONAL_TABLES or normalized.startswith(TRANSACTIONAL_TABLE_PREFIXES)
@@ -694,6 +698,41 @@ def _build_pack_complex_type_index(source_root: Path) -> dict[str, ET.Element]:
     return complex_types
 
 
+def _validate_xsd_import_locations(schema: ET.Element, file_path: Path, source_root: Path) -> None:
+    for import_node in _direct_children(schema, "import") + _direct_children(schema, "include"):
+        location = import_node.attrib.get("schemaLocation")
+        if not location:
+            continue
+        candidate = (file_path.parent / location).resolve()
+        try:
+            candidate.relative_to(source_root.resolve())
+        except ValueError as exc:
+            raise SchemaPackValidationError("Schema import points outside the schema pack.") from exc
+        if not candidate.exists():
+            raise SchemaPackValidationError("Schema import target is missing.")
+
+
+def _duplicate_root_failures(source_root: Path) -> set[Path]:
+    seen: dict[tuple[str, str], Path] = {}
+    failures: set[Path] = set()
+    for file_path in sorted(source_root.rglob("*.xsd")):
+        try:
+            schema = ET.parse(file_path).getroot()
+        except ET.ParseError:
+            continue
+        namespace = schema.attrib.get("targetNamespace", "")
+        for element in _direct_children(schema, "element"):
+            root_name = element.attrib.get("name")
+            if not root_name:
+                continue
+            key = (namespace, root_name)
+            if key in seen:
+                failures.add(file_path)
+            else:
+                seen[key] = file_path
+    return failures
+
+
 def _schema_paths_for_root(
     schema: ET.Element,
     root_element: ET.Element,
@@ -979,6 +1018,7 @@ def _index_xsd_file(
 ) -> dict[str, int]:
     tree = ET.parse(file_path)
     schema = tree.getroot()
+    _validate_xsd_import_locations(schema, file_path, source_root)
     target_namespace = schema.attrib.get("targetNamespace", "")
     imports = _direct_children(schema, "import") + _direct_children(schema, "include")
     top_level_elements = [element for element in _direct_children(schema, "element") if element.attrib.get("name")]
@@ -1103,17 +1143,20 @@ def index_schema_pack(db: Session, pack: SchemaPack, *, created_by: str | None =
     namespaces: set[str] = set()
     hasher = sha256()
     pack_complex_types = _build_pack_complex_type_index(source_root)
+    duplicate_root_files = _duplicate_root_failures(source_root)
     for file_path in sorted([*source_root.rglob("*.xsd"), *source_root.rglob("*.wsdl")]):
         totals["files_seen"] += 1
         _assert_client_safe_schema_content(file_path)
         hasher.update(file_path.name.encode("utf-8"))
         hasher.update(file_path.read_bytes())
         try:
+            if file_path in duplicate_root_files:
+                raise SchemaPackValidationError("Duplicate schema root.")
             if file_path.suffix.lower() == ".xsd":
                 result = _index_xsd_file(db, pack, file_path, source_root, pack_complex_types)
             else:
                 result = _index_wsdl_file(db, pack, file_path, source_root)
-        except ET.ParseError as exc:
+        except (ET.ParseError, SchemaPackValidationError) as exc:
             db.add(
                 SchemaFile(
                     schema_pack_id=pack.id,

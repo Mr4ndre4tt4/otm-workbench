@@ -373,8 +373,11 @@ Status update:
   service endpoint URLs are environment-specific and must not be persisted.
 - Sync API and `SCHEMA_PACK_INDEX` job both fail client-safe when blocked
   content is detected.
-- Broader negative QA is still open for invalid XSD, missing import, unknown
-  root, duplicate root, and deeper namespace-aware resolution.
+- Negative QA is delivered for invalid XSD, missing import target, duplicate
+  root, and sensitive-content detection.
+- Unknown-root validation remains module-consumer specific and should be covered
+  when Integration Mapping, Order Release, Master Data, and Rates consume the
+  catalog.
 ```
 
 ## Local 26A Validation Snapshot
