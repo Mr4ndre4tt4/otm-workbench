@@ -19,6 +19,7 @@ from otm_workbench.models import (
     MasterDataCsvFile,
     MasterDataOutputRecord,
     MasterDataTemplate,
+    SchemaRoot,
 )
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 from otm_workbench.platform.services import file_sha256
@@ -399,6 +400,48 @@ MASTER_DATA_RELATIONSHIP_RULES = {
 }
 
 
+class UnknownMasterDataSchemaRoot(ValueError):
+    def __init__(self, *, schema_root_id: str) -> None:
+        self.schema_root_id = schema_root_id
+        super().__init__("Master Data template references an unknown schema root.")
+
+
+def normalize_schema_root_ids(values: object) -> list[str]:
+    if values is None:
+        return []
+    if not isinstance(values, list):
+        return []
+    normalized: list[str] = []
+    for value in values:
+        schema_root_id = str(value).strip()
+        if schema_root_id and schema_root_id not in normalized:
+            normalized.append(schema_root_id)
+    return normalized
+
+
+def require_schema_roots(db: Session, schema_root_ids: list[str]) -> None:
+    for schema_root_id in schema_root_ids:
+        if db.get(SchemaRoot, schema_root_id) is None:
+            raise UnknownMasterDataSchemaRoot(schema_root_id=schema_root_id)
+
+
+def schema_root_validation_summary(db: Session, schema_root_ids: list[str]) -> dict[str, object]:
+    checked_roots: list[str] = []
+    issues: list[dict[str, str]] = []
+    for schema_root_id in schema_root_ids:
+        schema_root = db.get(SchemaRoot, schema_root_id)
+        if schema_root is None:
+            issues.append({"code": "SCHEMA_ROOT_MISSING", "schema_root_id": schema_root_id})
+            continue
+        checked_roots.append(schema_root.root_name)
+    return {
+        "status": "PASSED" if not issues else "FAILED",
+        "schema_root_ids": schema_root_ids,
+        "checked_roots": checked_roots,
+        "issues": issues,
+    }
+
+
 def seed_master_data_templates(db: Session) -> None:
     changed = False
     for seed in MASTER_DATA_TEMPLATE_SEEDS:
@@ -418,6 +461,7 @@ def seed_master_data_templates(db: Session) -> None:
                 data_category=seed["data_category"],
                 target_tables_json=json.dumps(seed["target_tables"]),
                 sheets_json=json.dumps(seed["sheets"]),
+                schema_root_ids_json=json.dumps(seed.get("schema_root_ids", [])),
                 description=seed["description"],
             )
         )
@@ -490,12 +534,15 @@ def master_data_template_definition_from_seed(seed: dict[str, object]) -> dict[s
                 "note": "Validated against local OTM Data Dictionary.",
             }
         ],
+        "schema_root_ids": seed.get("schema_root_ids", []),
     }
 
 
 def master_data_template_definition(template: MasterDataTemplate) -> dict[str, object]:
     if template.definition_json and template.definition_json != "{}":
-        return json.loads(template.definition_json)
+        definition = json.loads(template.definition_json)
+        definition.setdefault("schema_root_ids", json.loads(template.schema_root_ids_json or "[]"))
+        return definition
     seed = {
         "code": template.code,
         "name": template.name,
@@ -505,6 +552,7 @@ def master_data_template_definition(template: MasterDataTemplate) -> dict[str, o
         "data_category": template.data_category,
         "target_tables": json.loads(template.target_tables_json),
         "sheets": json.loads(template.sheets_json),
+        "schema_root_ids": json.loads(template.schema_root_ids_json or "[]"),
     }
     return master_data_template_definition_from_seed(seed)
 
@@ -577,6 +625,7 @@ def normalize_master_data_template_definition(payload: dict[str, object], status
         "mappings": mappings,
         "relationship_rules": payload.get("relationship_rules", []),
         "documentation_refs": payload.get("documentation_refs", []),
+        "schema_root_ids": normalize_schema_root_ids(payload.get("schema_root_ids")),
     }
 
 
@@ -633,6 +682,8 @@ def create_master_data_template_draft(
 
     target_tables = [table["table_name"] for table in definition["target_tables"]]
     legacy_sheets = v2_definition_to_legacy_sheets(definition)
+    schema_root_ids = definition["schema_root_ids"]
+    require_schema_roots(db, schema_root_ids)
     template = MasterDataTemplate(
         code=code,
         name=template_meta["name"],
@@ -643,6 +694,7 @@ def create_master_data_template_draft(
         target_tables_json=json.dumps(target_tables),
         sheets_json=json.dumps(legacy_sheets),
         definition_json=json.dumps(definition, sort_keys=True),
+        schema_root_ids_json=json.dumps(schema_root_ids),
         description=str(payload.get("description", "")),
     )
     db.add(template)
@@ -664,6 +716,8 @@ def update_master_data_template_draft(
         raise ValueError("Draft template code cannot be changed.")
 
     target_tables = [table["table_name"] for table in definition["target_tables"]]
+    schema_root_ids = definition["schema_root_ids"]
+    require_schema_roots(db, schema_root_ids)
     template.name = template_meta["name"]
     template.version = template_meta["version"]
     template.catalog_macro_object_code = template_meta["catalog_macro_object_code"]
@@ -671,6 +725,7 @@ def update_master_data_template_draft(
     template.target_tables_json = json.dumps(target_tables)
     template.sheets_json = json.dumps(v2_definition_to_legacy_sheets(definition))
     template.definition_json = json.dumps(definition, sort_keys=True)
+    template.schema_root_ids_json = json.dumps(schema_root_ids)
     template.description = str(payload.get("description", template.description))
     db.commit()
     db.refresh(template)
@@ -704,6 +759,7 @@ def create_master_data_template_version(
         target_tables_json=json.dumps(target_tables),
         sheets_json=json.dumps(v2_definition_to_legacy_sheets(definition)),
         definition_json=json.dumps(definition, sort_keys=True),
+        schema_root_ids_json=source_template.schema_root_ids_json,
         description=source_template.description,
     )
     db.add(template)
@@ -715,6 +771,7 @@ def create_master_data_template_version(
 def validate_master_data_template_definition(
     template: MasterDataTemplate,
     dictionary_root: Path,
+    db: Session | None = None,
 ) -> dict[str, object]:
     definition = master_data_template_definition(template)
     issues = []
@@ -722,6 +779,7 @@ def validate_master_data_template_definition(
     field_keys = {field["field_key"] for field in definition.get("fields", [])}
     sheet_codes = {sheet["code"] for sheet in definition.get("sheets", [])}
     documentation_refs = definition.get("documentation_refs", [])
+    schema_root_ids = normalize_schema_root_ids(definition.get("schema_root_ids"))
     allowed_documentation_sources = {"DATA_DICTIONARY", "ORACLE_OFFICIAL", "USER_CONFIRMED"}
 
     if not documentation_refs:
@@ -741,6 +799,19 @@ def validate_master_data_template_definition(
                     "severity": "ERROR",
                     "source_type": source_type,
                     "message": "Documentation reference source_type must be DATA_DICTIONARY, ORACLE_OFFICIAL, or USER_CONFIRMED.",
+                }
+            )
+
+    schema_validation = None
+    if db is not None and schema_root_ids:
+        schema_validation = schema_root_validation_summary(db, schema_root_ids)
+        for schema_issue in schema_validation["issues"]:
+            issues.append(
+                {
+                    "code": "MASTER_DATA_TEMPLATE_SCHEMA_ROOT_INVALID",
+                    "severity": "ERROR",
+                    **schema_issue,
+                    "message": "Template references a Schema Pack root that is not indexed.",
                 }
             )
 
@@ -845,7 +916,7 @@ def validate_master_data_template_definition(
                     }
                 )
 
-    return {
+    result: dict[str, object] = {
         "template_code": template.code,
         "valid": not issues,
         "severity": "INFO" if not issues else "ERROR",
@@ -858,6 +929,9 @@ def validate_master_data_template_definition(
             "mapping_count": len(definition.get("mappings", [])),
         },
     }
+    if schema_validation is not None:
+        result["schema_validation"] = schema_validation
+    return result
 
 
 def publish_master_data_template(
@@ -865,7 +939,7 @@ def publish_master_data_template(
     template: MasterDataTemplate,
     dictionary_root: Path,
 ) -> dict[str, object]:
-    validation = validate_master_data_template_definition(template, dictionary_root)
+    validation = validate_master_data_template_definition(template, dictionary_root, db)
     if not validation["valid"]:
         raise ValueError(json.dumps(validation, sort_keys=True))
     definition = master_data_template_definition(template)
@@ -969,6 +1043,7 @@ def build_master_data_template_available_actions(template: MasterDataTemplate) -
 
 
 def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, object]:
+    schema_root_ids = json.loads(template.schema_root_ids_json or "[]")
     return {
         "id": template.id,
         "code": template.code,
@@ -980,6 +1055,7 @@ def serialize_master_data_template(template: MasterDataTemplate) -> dict[str, ob
         "target_tables": json.loads(template.target_tables_json),
         "sheets": json.loads(template.sheets_json),
         "definition": master_data_template_definition(template),
+        "schema_root_ids": schema_root_ids,
         "available_actions": build_master_data_template_available_actions(template),
         "description": template.description,
         "created_at": template.created_at.isoformat() if template.created_at else None,

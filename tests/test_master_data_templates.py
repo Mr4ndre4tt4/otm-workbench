@@ -7,11 +7,50 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from sqlalchemy import text
 
-from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest
+from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest, SchemaFile, SchemaPack, SchemaRoot
 
 
 def action_by_key(actions, key):
     return next(action for action in actions if action["key"] == key)
+
+
+def create_master_data_schema_root(db_session, *, root_name: str):
+    schema_pack = SchemaPack(
+        code=f"OTM_26A_MD_{root_name.upper()}",
+        name=f"OTM 26A Master Data {root_name}",
+        otm_version="26A",
+        source_type="LOCAL_FOLDER",
+        source_path="C:/synthetic/otm/26A",
+        content_hash=f"hash-md-{root_name.lower()}",
+        status="INDEXED",
+    )
+    db_session.add(schema_pack)
+    db_session.flush()
+    schema_file = SchemaFile(
+        schema_pack_id=schema_pack.id,
+        file_name=f"{root_name}.xsd",
+        relative_path=f"{root_name}.xsd",
+        file_type="XSD",
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        import_count=0,
+        top_level_element_count=1,
+        complex_type_count=1,
+        status="PARSED",
+    )
+    db_session.add(schema_file)
+    db_session.flush()
+    schema_root = SchemaRoot(
+        schema_pack_id=schema_pack.id,
+        schema_file_id=schema_file.id,
+        root_name=root_name,
+        namespace="http://xmlns.oracle.com/apps/otm/synthetic",
+        domain_area="MASTER_DATA",
+        root_type="OBJECT",
+        envelope_role="NONE",
+    )
+    db_session.add(schema_root)
+    db_session.commit()
+    return schema_root
 
 
 def test_master_data_health(client, admin_header):
@@ -192,6 +231,50 @@ def test_master_data_scenario_packs_expose_backend_owned_draft_payloads(client, 
         for mapping in item_pack["draft_payload"]["mappings"]
         if mapping["target_table"] == "TI_HI"
     )
+
+
+def test_master_data_template_draft_can_reference_catalog_schema_roots(client, admin_header, db_session):
+    location_root = create_master_data_schema_root(db_session, root_name="Location")
+    payload = dynamic_locations_template_payload("LOCATIONS_SCHEMA_ROOTED")
+    payload["schema_root_ids"] = [location_root.id]
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=payload,
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    template = response.json()
+    assert template["schema_root_ids"] == [location_root.id]
+    assert template["definition"]["schema_root_ids"] == [location_root.id]
+
+    validation = client.post(
+        "/api/v1/modules/master-data/templates/LOCATIONS_SCHEMA_ROOTED/validate-definition",
+        headers=admin_header,
+    )
+    assert validation.status_code == 200
+    validation_payload = validation.json()
+    assert validation_payload["schema_validation"] == {
+        "status": "PASSED",
+        "schema_root_ids": [location_root.id],
+        "checked_roots": ["Location"],
+        "issues": [],
+    }
+
+
+def test_master_data_template_draft_rejects_unknown_schema_root(client, admin_header):
+    payload = dynamic_locations_template_payload("LOCATIONS_UNKNOWN_SCHEMA_ROOT")
+    payload["schema_root_ids"] = ["missing-schema-root"]
+
+    response = client.post(
+        "/api/v1/modules/master-data/templates/drafts",
+        json=payload,
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "MASTER_DATA_SCHEMA_ROOT_NOT_FOUND"
 
 
 def dynamic_locations_template_payload(code: str = "LOCATIONS_DYNAMIC") -> dict[str, object]:

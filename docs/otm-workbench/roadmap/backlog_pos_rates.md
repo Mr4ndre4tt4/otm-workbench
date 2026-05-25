@@ -887,9 +887,12 @@ Status da primeira fatia:
   referenciar roots oficiais `Transmission` e `Release`, a API recusa root
   inexistente e o preview XML retorna validacao client-safe do envelope quando
   roots oficiais estao configurados.
-- Ainda falta expandir o consumo para Master Data e Rates, alem de revisao
-  funcional Oracle/Data Dictionary antes de expor paths como guidance de
-  usuario.
+- Terceiro consumo por Master Data Template Factory entregue: templates
+  dinamicos podem referenciar roots oficiais como `Location` e `Item`, a API
+  recusa root inexistente no draft/update e a validacao de definicao retorna
+  resumo client-safe dos roots verificados.
+- Ainda falta expandir o consumo para Rates, alem de revisao funcional
+  Oracle/Data Dictionary antes de expor paths como guidance de usuario.
 ```
 
 ### Fora do primeiro recorte

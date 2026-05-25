@@ -598,6 +598,7 @@ class MasterDataTemplate(Base, TimestampMixin):
     target_tables_json: Mapped[str] = mapped_column(Text, default="[]")
     sheets_json: Mapped[str] = mapped_column(Text, default="[]")
     definition_json: Mapped[str] = mapped_column(Text, default="{}")
+    schema_root_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     description: Mapped[str] = mapped_column(Text, default="")
 
 

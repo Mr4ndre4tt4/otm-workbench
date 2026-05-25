@@ -23,6 +23,7 @@ from otm_workbench.modules.master_data.coordinate_quality.routes import router a
 from otm_workbench.modules.master_data.otm_import_guard import build_master_data_otm_import_readiness
 from otm_workbench.modules.master_data.scenario_packs import list_master_data_scenario_packs
 from otm_workbench.modules.master_data.templates import (
+    UnknownMasterDataSchemaRoot,
     build_master_data_csv_files,
     build_master_data_template_workbook,
     build_master_data_output_records,
@@ -411,6 +412,13 @@ def create_master_data_template_draft_endpoint(
     seed_master_data_templates(db)
     try:
         return create_master_data_template_draft(db, payload.model_dump())
+    except UnknownMasterDataSchemaRoot as exc:
+        raise api_error(
+            400,
+            "MASTER_DATA_SCHEMA_ROOT_NOT_FOUND",
+            "Master Data template references an indexed Schema Pack root that does not exist.",
+            details={"schema_root_id": exc.schema_root_id},
+        ) from exc
     except ValueError as exc:
         raise api_error(
             409,
@@ -521,6 +529,13 @@ def update_master_data_template_draft_endpoint(
         raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
     try:
         return update_master_data_template_draft(db, template, payload.model_dump())
+    except UnknownMasterDataSchemaRoot as exc:
+        raise api_error(
+            400,
+            "MASTER_DATA_SCHEMA_ROOT_NOT_FOUND",
+            "Master Data template references an indexed Schema Pack root that does not exist.",
+            details={"schema_root_id": exc.schema_root_id},
+        ) from exc
     except ValueError as exc:
         raise api_error(
             409,
@@ -562,7 +577,7 @@ def validate_master_data_template_definition_endpoint(
     template = db.query(MasterDataTemplate).filter(MasterDataTemplate.code == template_code.upper()).first()
     if template is None:
         raise api_error(404, "MASTER_DATA_TEMPLATE_NOT_FOUND", "Master Data template not found.")
-    return validate_master_data_template_definition(template, dictionary_root())
+    return validate_master_data_template_definition(template, dictionary_root(), db)
 
 
 @router.post("/templates/{template_code}/publish")

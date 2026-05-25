@@ -386,6 +386,10 @@ Status update:
   reference official `Transmission` and `Release` `SchemaRoot` records, unknown
   root IDs are rejected at authoring time, and XML preview reports a
   client-safe envelope validation summary when schema roots are configured.
+- Master Data Template Factory third consumer delivered: dynamic templates can
+  reference one or more official `SchemaRoot` records, unknown root IDs are
+  rejected during draft authoring/update, and definition validation reports a
+  client-safe schema-root summary for Location/Item style guidance.
 ```
 
 ## Local 26A Validation Snapshot
