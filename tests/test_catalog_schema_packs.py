@@ -82,6 +82,30 @@ def write_sensitive_schema_pack(folder):
     )
 
 
+def write_wsdl_with_sanitizable_address(folder):
+    folder.mkdir()
+    (folder / "TransmissionService.wsdl").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+  targetNamespace="http://xmlns.oracle.com/apps/otm/TransmissionService">
+  <wsdl:service name="TransmissionService">
+    <wsdl:port name="TransmissionPort" binding="tns:TransmissionBinding">
+      <soap:address location="https://example.invalid/GC3Services/TransmissionService/call"/>
+    </wsdl:port>
+  </wsdl:service>
+  <wsdl:portType name="TransmissionServicePortType">
+    <wsdl:operation name="execute">
+      <wsdl:input message="tns:Transmission"/>
+      <wsdl:output message="tns:TransmissionAck"/>
+    </wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>
+""",
+        encoding="utf-8",
+    )
+
+
 def test_catalog_schema_pack_create_and_list_is_client_safe(client, admin_header):
     created = client.post(
         "/api/v1/catalog/schema-packs",
@@ -191,6 +215,38 @@ def test_catalog_schema_pack_index_rejects_missing_local_folder(client, admin_he
     assert indexed.status_code == 400
     assert indexed.json()["code"] == "SCHEMA_PACK_SOURCE_NOT_FOUND"
     assert str(missing_folder) not in str(indexed.json())
+
+
+def test_catalog_schema_pack_index_ignores_wsdl_soap_address_without_storing_location(
+    client,
+    admin_header,
+):
+    schema_folder = workspace_test_folder("address_26a")
+    write_wsdl_with_sanitizable_address(schema_folder)
+    created = client.post(
+        "/api/v1/catalog/schema-packs",
+        json={
+            "code": "OTM_26A_ADDRESS",
+            "name": "Synthetic address pack",
+            "otm_version": "26A",
+            "source_type": "LOCAL_FOLDER",
+            "source_path": str(schema_folder),
+        },
+        headers=admin_header,
+    )
+
+    indexed = client.post(f"/api/v1/catalog/schema-packs/{created.json()['id']}/index", headers=admin_header)
+    operations = client.get(
+        "/api/v1/catalog/schema-operations?service_name=TransmissionService",
+        headers=admin_header,
+    )
+
+    assert indexed.status_code == 200
+    assert indexed.json()["operations_created"] == 1
+    assert operations.status_code == 200
+    assert operations.json()["items"][0]["operation_name"] == "execute"
+    assert "example.invalid" not in str(indexed.json())
+    assert "example.invalid" not in str(operations.json())
 
 
 def test_catalog_schema_pack_index_rejects_sensitive_wsdl_content(client, admin_header):

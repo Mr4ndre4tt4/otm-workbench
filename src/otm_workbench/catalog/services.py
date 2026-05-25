@@ -25,7 +25,6 @@ from otm_workbench.reference.services import ReferenceContext, allowed_domains, 
 
 
 SENSITIVE_SCHEMA_PATTERNS = (
-    re.compile(r"<\s*soap:address\b[^>]*\blocation\s*=", re.IGNORECASE),
     re.compile(r"\b(password|passwd|secret|credential|api[_-]?key|token)\b\s*=", re.IGNORECASE),
     re.compile(r"\b(real[-_ ]?client|cliente[-_ ]?real)\b", re.IGNORECASE),
 )

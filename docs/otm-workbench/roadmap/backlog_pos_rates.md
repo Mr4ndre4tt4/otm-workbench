@@ -871,8 +871,12 @@ Status da primeira fatia:
 - Job Processing integrado via handler `SCHEMA_PACK_INDEX` com input
   `schema_pack_id`, lifecycle/eventos/audit do motor existente e falha
   client-safe.
-- Sensitive-content detection entregue para bloquear WSDL/XSD com `soap:address
-  location`, credenciais obvias ou marcadores explicitos de cliente real.
+- Sensitive-content detection entregue para bloquear WSDL/XSD com credenciais
+  obvias ou marcadores explicitos de cliente real. `soap:address location` e
+  tratado como endpoint especifico de ambiente e nao e persistido.
+- Validacao local controlada contra os folders OTM 26A passou: XSD 31/31,
+  WSDL 8/8, 150 roots, 38821 paths same-file e 13 operations, sem commitar
+  conteudo bruto ou endpoints.
 - Ainda falta validacao contra fixtures 26A completas, resolucao cross-file e
   QA negativo de parse mais amplo.
 ```

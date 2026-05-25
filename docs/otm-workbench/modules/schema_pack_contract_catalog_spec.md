@@ -367,12 +367,50 @@ Status update:
 
 ```text
 - Sensitive-content detection delivered for obvious blocked patterns such as
-  `soap:address location`, credential-like assignments, and explicit real-client
-  markers.
+  credential-like assignments and explicit real-client markers.
+- WSDL `soap:address location` is intentionally ignored by the indexer because
+  service endpoint URLs are environment-specific and must not be persisted.
 - Sync API and `SCHEMA_PACK_INDEX` job both fail client-safe when blocked
   content is detected.
 - Broader negative QA is still open for invalid XSD, missing import, unknown
   root, duplicate root, and deeper cross-file resolution.
+```
+
+## Local 26A Validation Snapshot
+
+Controlled local validation was run against the provided OTM 26A folders using
+a temporary SQLite database. No raw WSDL/XSD content, endpoint URL, local path,
+or client data was committed.
+
+```text
+XSD 26A folder:
+- files_seen: 31
+- files_parsed: 31
+- files_failed: 0
+- roots_created: 150
+- paths_created: 38821
+- operations_created: 0
+
+WSDL 26A GenericNameSpace folder:
+- files_seen: 8
+- files_parsed: 8
+- files_failed: 0
+- roots_created: 0
+- paths_created: 0
+- operations_created: 13
+```
+
+Interpretation:
+
+```text
+- The MVP parser can ingest the local OTM 26A XSD/WSDL inventory without parse
+  failures.
+- XSD roots and same-file path extraction are already useful for browsing and
+  module linking.
+- WSDL service operation extraction is usable, while endpoint locations must
+  remain non-persistent.
+- Cross-file type/import resolution is still the main technical gap before the
+  path catalog should be treated as complete.
 ```
 
 ## UI Acceptance Criteria Later
