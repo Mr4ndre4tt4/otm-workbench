@@ -705,7 +705,7 @@ Backlog gerado pela rodada:
 23. Mapping escopado por loop para campos de colecao como Entregas[]. [ENTREGUE primeira fatia backend OTM-132: single XML loop -> JSON array com proveniencia em 2026-05-25; loops aninhados e multi-hop seguem backlog]
 24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [BACKLOG pos-MVP0]
 25. Validacao semantica para join com mesmo path, target duplicado, target obrigatorio ausente, output lookup fora do escopo, config de transform ausente e readiness separado para spec vs preview. [ENTREGUE primeira fatia: join mesmo path, target duplicado, required targets NDD-like, lookup output scope, transform config missing e readiness spec/preview em 2026-05-25]
-26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE fatias backend OTM-131/OTM-132/OTM-136/OTM-137: direct scalar XML -> JSON, single loop XML -> JSON array, MOCK lookup escalar e MOCK lookup em loop com field_provenance em 2026-05-25; joins seguem metadata-only/backlog]
+26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE fatias backend OTM-131/OTM-132/OTM-136/OTM-137/OTM-138: direct scalar XML -> JSON, single loop XML -> JSON array, MOCK lookup escalar, MOCK lookup em loop e composicao escalar mapping+lookup com field_provenance em 2026-05-25; joins seguem metadata-only/backlog]
 27. Browser QA completo para o cenario NDD-like sintetico, incluindo caminho errado, reset, troca de definition e revisao de artifact. [BACKLOG pos-MVP0]
 ```
 

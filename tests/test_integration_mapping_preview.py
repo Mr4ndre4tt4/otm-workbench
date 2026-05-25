@@ -351,6 +351,89 @@ def test_preview_integration_definition_materializes_mock_lookup_with_provenance
     ]
 
 
+def test_preview_integration_definition_materializes_scalar_mapping_and_mock_lookup_together(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment><ShipmentGid>OTM1.SHIPMENT_001</ShipmentGid></Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"shipmentId":"","carrierName":""}}',
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.shipmentId",
+            "transform_type": "DIRECT",
+            "description": "Direct shipment mapping.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    lookup = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/lookups",
+        json=lookup_payload(
+            source,
+            target,
+            output_path="$.header.carrierName",
+            mock_response_json='{"carrierName":"Synthetic Carrier"}',
+            sequence_index=2,
+        ),
+        headers=admin_header,
+    )
+    assert mapping.status_code == 200
+    assert lookup.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {
+        "header": {
+            "shipmentId": "OTM1.SHIPMENT_001",
+            "carrierName": "Synthetic Carrier",
+        }
+    }
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "mapping_id": mapping.json()["id"],
+            "source_path": "/Transmission/Shipment/ShipmentGid",
+            "target_path": "$.header.shipmentId",
+            "transform_type": "DIRECT",
+            "value_policy": "copied_from_synthetic_source",
+        },
+        {
+            "lookup_id": lookup.json()["id"],
+            "input_path": "/Transmission/Shipment/ShipmentGid",
+            "output_path": "$.header.carrierName",
+            "lookup_type": "MOCK",
+            "value_policy": "mock_lookup_response",
+        },
+    ]
+
+
 def test_preview_integration_definition_materializes_loop_mock_lookup_with_provenance(
     client,
     admin_header,

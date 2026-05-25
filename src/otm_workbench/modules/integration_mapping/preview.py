@@ -251,25 +251,47 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         if lookups:
             return build_lookup_executable_json_preview(db, lookups=lookups)
         return None
-    if lookups:
-        return None
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
+    if not materialize_scalar_mappings(db, mappings=mappings, target_json=target_json, field_provenance=field_provenance):
+        return None
+    if lookups and not materialize_scalar_lookups(
+        db,
+        lookups=lookups,
+        target_json=target_json,
+        field_provenance=field_provenance,
+    ):
+        return None
+
+    return {
+        "mode": "synthetic_executable_json",
+        "target_json": target_json,
+        "field_provenance": field_provenance,
+    }
+
+
+def materialize_scalar_mappings(
+    db: Session,
+    *,
+    mappings: list[IntegrationMapping],
+    target_json: dict[str, object],
+    field_provenance: list[dict[str, object]],
+) -> bool:
     for mapping in mappings:
         if mapping.transform_type not in {"DIRECT", "CONSTANT", "DATE_FORMAT", "CONCAT"} or "[]" in mapping.target_path:
-            return None
+            return False
         source_payload = document_payload_content(db, mapping.source_schema_document_id)
         target_payload = document_payload_content(db, mapping.target_schema_document_id)
         if source_payload is None or target_payload is None:
-            return None
+            return False
         source_format, source_content = source_payload
         target_format, _target_content = target_payload
         if source_format != "XML" or target_format != "JSON":
-            return None
+            return False
         value, value_policy = mapping_value_from_source(mapping, source_content)
         if value in (None, ""):
-            return None
+            return False
         set_json_path_value(target_json, mapping.target_path, value)
         field_provenance.append(
             {
@@ -280,12 +302,22 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
                 "value_policy": value_policy,
             }
         )
+    return bool(field_provenance)
 
-    return {
-        "mode": "synthetic_executable_json",
-        "target_json": target_json,
-        "field_provenance": field_provenance,
-    }
+
+def materialize_scalar_lookups(
+    db: Session,
+    *,
+    lookups: list[IntegrationLookupDefinition],
+    target_json: dict[str, object],
+    field_provenance: list[dict[str, object]],
+) -> bool:
+    for lookup in lookups:
+        provenance = materialize_scalar_lookup(db, lookup=lookup, target_json=target_json)
+        if provenance is None:
+            return False
+        field_provenance.append(provenance)
+    return True
 
 
 def build_lookup_executable_json_preview(
@@ -295,45 +327,55 @@ def build_lookup_executable_json_preview(
 ) -> dict[str, object] | None:
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
-    for lookup in lookups:
-        if lookup.lookup_type != "MOCK" or "[]" in lookup.output_path:
-            return None
-        source_payload = document_payload_content(db, lookup.source_schema_document_id)
-        target_payload = document_payload_content(db, lookup.target_schema_document_id)
-        if source_payload is None or target_payload is None:
-            return None
-        source_format, source_content = source_payload
-        target_format, _target_content = target_payload
-        if source_format != "XML" or target_format != "JSON":
-            return None
-        input_value = source_value_from_xml_path(source_content, lookup.input_path)
-        if input_value in (None, ""):
-            return None
-        try:
-            response = json.loads(lookup.mock_response_json or "{}")
-        except json.JSONDecodeError:
-            return None
-        if not isinstance(response, dict):
-            return None
-        value = response.get(json_last_path_segment(lookup.output_path))
-        if value in (None, ""):
-            return None
-        set_json_path_value(target_json, lookup.output_path, value)
-        field_provenance.append(
-            {
-                "lookup_id": lookup.id,
-                "input_path": lookup.input_path,
-                "output_path": lookup.output_path,
-                "lookup_type": lookup.lookup_type,
-                "value_policy": "mock_lookup_response",
-            }
-        )
-    if not field_provenance:
+    if not materialize_scalar_lookups(
+        db,
+        lookups=lookups,
+        target_json=target_json,
+        field_provenance=field_provenance,
+    ):
         return None
     return {
         "mode": "synthetic_executable_json",
         "target_json": target_json,
         "field_provenance": field_provenance,
+    }
+
+
+def materialize_scalar_lookup(
+    db: Session,
+    *,
+    lookup: IntegrationLookupDefinition,
+    target_json: dict[str, object],
+) -> dict[str, object] | None:
+    if lookup.lookup_type != "MOCK" or "[]" in lookup.output_path:
+        return None
+    source_payload = document_payload_content(db, lookup.source_schema_document_id)
+    target_payload = document_payload_content(db, lookup.target_schema_document_id)
+    if source_payload is None or target_payload is None:
+        return None
+    source_format, source_content = source_payload
+    target_format, _target_content = target_payload
+    if source_format != "XML" or target_format != "JSON":
+        return None
+    input_value = source_value_from_xml_path(source_content, lookup.input_path)
+    if input_value in (None, ""):
+        return None
+    try:
+        response = json.loads(lookup.mock_response_json or "{}")
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(response, dict):
+        return None
+    value = response.get(json_last_path_segment(lookup.output_path))
+    if value in (None, ""):
+        return None
+    set_json_path_value(target_json, lookup.output_path, value)
+    return {
+        "lookup_id": lookup.id,
+        "input_path": lookup.input_path,
+        "output_path": lookup.output_path,
+        "lookup_type": lookup.lookup_type,
+        "value_policy": "mock_lookup_response",
     }
 
 
