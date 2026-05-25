@@ -502,4 +502,55 @@ Slice 5 - Module integration:
 - Order Release XML validation;
 - Master Data hints;
 - Rates semantic companion docs.
+Status: backend-owned consumer contracts delivered for Integration Mapping,
+Order Release Generator, Master Data Template Factory, and Rates Studio. The UI
+path picker/guidance experience remains future scope and must wait for
+functional Oracle/Data Dictionary validation of the roots and paths shown to
+users.
+```
+
+## Consumer Completion Snapshot
+
+```text
+Completion date: 2026-05-25
+Linear: OTM-163
+GitHub commits:
+- ed90281f feat: link integration definitions to schema roots
+- 3741a2d9 feat: validate order release schema roots
+- 811d17f6 feat: link master data templates to schema roots
+- 03d4fb28 feat: link rate batches to schema roots
+```
+
+Delivered consumer contracts:
+
+| Module | Persisted contract | Unknown-root behavior | Validation behavior |
+|---|---|---|---|
+| Integration Mapping Studio | `IntegrationDefinition.source_schema_root_id`, `target_schema_root_id` | `INTEGRATION_SCHEMA_ROOT_NOT_FOUND` | `INTEGRATION_VALIDATION_SCHEMA_ROOT_MISSING` |
+| Order Release Generator | `OrderReleaseTemplate.transmission_schema_root_id`, `release_schema_root_id` | `ORDER_RELEASE_SCHEMA_ROOT_NOT_FOUND` | XML preview `schema_validation` envelope summary |
+| Master Data Template Factory | `MasterDataTemplate.schema_root_ids_json` | `MASTER_DATA_SCHEMA_ROOT_NOT_FOUND` | definition `schema_validation` summary |
+| Rates Studio | `RateBatch.schema_root_ids_json` | `RATES_SCHEMA_ROOT_NOT_FOUND` | batch validation `schema_validation` summary and `RATES_SCHEMA_ROOT_INVALID` issue for broken references |
+
+Verification evidence:
+
+```text
+- Integration Mapping + Catalog: 49 backend tests passed.
+- Order Release + Catalog: 49 backend tests passed.
+- Master Data + Catalog: 54 + 19 backend tests passed.
+- Rates + Catalog: 51 backend tests passed; final focused rerun: 30 passed.
+- Fresh Alembic upgrade checks passed for each consumer migration.
+- Ruff checks passed for touched files in each slice.
+```
+
+Remaining hardening before user-facing path guidance:
+
+```text
+1. Validate high-value roots/paths against Oracle official documentation and
+   the Data Dictionary before showing path guidance as functional advice.
+2. Create a UI path-picker contract that consumes Catalog APIs without exposing
+   raw WSDL/XSD content or local paths.
+3. Add richer scenario-specific guidance only after the functional source is
+   recorded as DATA_DICTIONARY, ORACLE_OFFICIAL, or USER_CONFIRMED.
+4. Keep Rates CSV/table sequencing governed by Data Dictionary, not XSD.
+5. Keep direct OTM execution out of scope until governed connection,
+   credential, environment, and capability controls exist.
 ```

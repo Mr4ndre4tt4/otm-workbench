@@ -900,6 +900,26 @@ Status da primeira fatia:
   guidance de usuario.
 ```
 
+### Fechamento da trilha Schema Pack consumer
+
+```text
+Status: backend consumer contracts entregues para Integration Mapping, Order
+Release Generator, Master Data Template Factory e Rates Studio.
+
+Commits:
+- ed90281f Integration Mapping definitions -> SchemaRoot
+- 3741a2d9 Order Release templates -> Transmission/Release roots
+- 811d17f6 Master Data templates -> schema_root_ids
+- 03d4fb28 Rates batches -> schema_root_ids
+
+Proximo trabalho recomendado:
+1. Abrir hardening de validacao funcional Oracle/Data Dictionary dos roots e
+   paths de maior valor antes de qualquer path guidance na UI.
+2. Desenhar contrato de UI para path picker/guidance consumindo Catalog APIs.
+3. Manter WSDL/XSD raw content, endpoints, caminhos locais e dados reais fora
+   da UI, evidencias e commits.
+```
+
 ### Fora do primeiro recorte
 
 ```text
