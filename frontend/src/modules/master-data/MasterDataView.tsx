@@ -1649,7 +1649,7 @@ export function MasterDataView({ token }: { token: string }) {
                       emptyText="Edited workbook rows have no blockers."
                       items={workbookEditorValidation.issues.map((issue, index) => ({
                         codes: [issue.code],
-                        id: `${issue.code}-${issue.sheet_code ?? "sheet"}-${issue.row_id ?? index}`,
+                        id: `${issue.code}-${issue.sheet_code ?? "sheet"}-${issue.row_id ?? index}-${issue.field_key ?? "field"}`,
                         message: issue.message
                       }))}
                       title="Workbook editor issues"

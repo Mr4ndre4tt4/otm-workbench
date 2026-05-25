@@ -1,34 +1,9 @@
 /* global console, fetch, process */
 
-import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 const baseUrl = process.env.OTM_WORKBENCH_BASE_URL ?? "http://127.0.0.1:5173";
 const apiBaseUrl = process.env.OTM_WORKBENCH_API_BASE_URL ?? "http://127.0.0.1:8000";
 const email = process.env.OTM_WORKBENCH_QA_EMAIL ?? "demo@example.test";
 const password = process.env.OTM_WORKBENCH_QA_PASSWORD ?? "DemoPass123!";
-
-function createSyntheticRegionsWorkbook() {
-  const dir = mkdtempSync(join(tmpdir(), "otm-master-data-qa-"));
-  const filePath = join(dir, "regions_basic_browser_upload.xlsx");
-  const script = [
-    "from openpyxl import Workbook",
-    "import sys",
-    "wb = Workbook()",
-    "regions = wb.active",
-    "regions.title = 'REGIONS'",
-    "regions.append(['Region GID', 'Region XID', 'Region Name'])",
-    "regions.append(['SYN.REGION_BROWSER', 'REGION_BROWSER', 'Synthetic Browser Region'])",
-    "details = wb.create_sheet('REGION_DETAILS')",
-    "details.append(['Region GID', 'Location GID'])",
-    "details.append(['SYN.REGION_BROWSER', 'SYN.LOCATION_BROWSER'])",
-    "wb.save(sys.argv[1])"
-  ].join("\n");
-  execFileSync("python", ["-c", script, filePath], { stdio: "pipe" });
-  return filePath;
-}
 
 async function loadPlaywright() {
   try {
@@ -345,10 +320,16 @@ async function run() {
     await page.getByLabel("Selected Master Data template").getByText("REGIONS_BASIC", { exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
 
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Upload" }).click();
-    await page.getByLabel("Workbook file").setInputFiles(createSyntheticRegionsWorkbook());
-    await page.getByRole("button", { name: "Upload workbook" }).click();
-    await page.getByText(/^Workbook uploaded as batch .+\.$/).waitFor();
+    await page.getByRole("button", { name: "Validate edited rows" }).click();
+    await page.getByText("Edited rows validation is INVALID.").waitFor();
+    await page.getByText("REQUIRED_FIELD_MISSING").first().waitFor();
+    await page.getByLabel("REGIONS row 1 Region GID").fill("SYN.REGION_EDITOR");
+    await page.getByLabel("REGIONS row 1 Region XID").fill("REGION_EDITOR");
+    await page.getByLabel("REGIONS row 1 Region Name").fill("Synthetic Editor Region");
+    await page.getByLabel("REGION_DETAILS row 1 Region GID").fill("SYN.REGION_EDITOR");
+    await page.getByLabel("REGION_DETAILS row 1 Location GID").fill("SYN.LOCATION_EDITOR");
+    await page.getByRole("button", { name: "Create batch from edited rows" }).click();
+    await page.getByText(/^Workbook editor batch .+ created\.$/).waitFor();
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Validate" }).click();
     await page.getByRole("button", { name: "Validate relationships" }).click();
@@ -425,7 +406,7 @@ async function run() {
         {
           status: "passed",
           journey:
-            "master-data-scenario-packs-author-manual-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
+            "master-data-scenario-packs-author-manual-template-workbook-editor-output-export-load-plan-registration-route-recovery",
           scenarioTemplateCode,
           itemScenarioTemplateCode,
           authorTemplateCode,

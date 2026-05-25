@@ -488,7 +488,7 @@ Expected: tests and lint pass.
 - Modify: `docs/otm-workbench/gui/GUI_MASTER_DATA_VIEW.md`
 - Modify: `docs/otm-workbench/gui/GUI_FUNCTIONAL_QA_JOURNEYS.md`
 
-- [ ] **Step 1: Extend browser QA**
+- [x] **Step 1: Extend browser QA**
 
 Add browser steps after selecting a template and before file upload:
 - enter invalid edited row
@@ -497,7 +497,7 @@ Add browser steps after selecting a template and before file upload:
 - create batch from edited rows
 - continue through relationship validation, map, output, CSV, export, Load Plan handoff, checklist readiness, filters, and route return-state
 
-- [ ] **Step 2: Run browser QA**
+- [x] **Step 2: Run browser QA**
 
 Run local API and Vite, then:
 
@@ -509,7 +509,7 @@ npm run qa:functional:master-data:browser
 
 Expected: browser journey passes and includes workbook editor branch in its JSON journey name.
 
-- [ ] **Step 3: Update docs and Linear**
+- [x] **Step 3: Update docs and Linear**
 
 Docs must state:
 - workbook editor is backend-owned

@@ -130,8 +130,18 @@ creates/validates/publishes each scenario draft, resets authoring state, then
 creates a unique synthetic Location draft, exercises the child-table reset path,
 edits a friendly label and default value, enables the relationship rule,
 validates the definition, and publishes it before continuing through the
-workbook, upload, relationship validation, mapping, output, CSV, export, and
-return-state journey.
+workbook editor, relationship validation, mapping, output, CSV, export, and
+return-state journey. The legacy workbook-file upload path remains available in
+the Upload stage.
+
+The first OTM-127 slice adds the backend-owned workbook editor path. The
+Workbook stage fetches `GET
+/api/v1/modules/master-data/templates/{template_code}/workbook-editor`, renders
+the template-owned starter rows, validates row drafts through `POST
+/workbook-editor/validate`, and creates parsed batches through `POST
+/workbook-editor/batches`. The browser journey now proves required-field
+failure, row correction, batch creation from edited rows, and continuation
+through the normal batch validation/output/export/Load Plan handoff path.
 
 The latest OTM-117 hardening slice adds explicit authoring-draft reset recovery.
 After table, column, mapping, relationship, and persisted draft/version state
