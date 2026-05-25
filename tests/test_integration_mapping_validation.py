@@ -1,4 +1,5 @@
 from otm_workbench.models import (
+    IntegrationDefinition,
     IntegrationJoinRule,
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
@@ -59,6 +60,30 @@ def test_validate_integration_definition_returns_no_issues_for_valid_metadata(cl
     assert payload["is_valid"] is True
     assert payload["issue_count"] == 0
     assert payload["issues"] == []
+
+
+def test_validate_integration_definition_reports_missing_schema_root(client, admin_header):
+    definition = create_definition(client, admin_header)
+
+    from otm_workbench.database import session_scope
+
+    with session_scope() as db:
+        row = db.get(IntegrationDefinition, definition["id"])
+        row.source_schema_root_id = "missing-schema-root"
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    assert (
+        "definition",
+        "source_schema_root_id",
+        "INTEGRATION_VALIDATION_SCHEMA_ROOT_MISSING",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
 
 
 def test_validate_integration_definition_reports_structural_issues(client, admin_header, db_session):

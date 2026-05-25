@@ -10,6 +10,7 @@ from otm_workbench.models import (
     IntegrationLoopDefinition,
     IntegrationMapping,
     IntegrationResponseHandler,
+    SchemaRoot,
 )
 from otm_workbench.modules.integration_mapping.joins import ALLOWED_JOIN_OPERATORS
 from otm_workbench.modules.integration_mapping.lookups import ALLOWED_LOOKUP_TYPES
@@ -91,6 +92,26 @@ def catalog_issue(entity_type: str, entity_id: str, field: str, value: str) -> V
         field=field,
         message=f"{field} is not active in the controlled Integration Mapping catalog: {value}",
     )
+
+
+def validate_definition_schema_roots(db: Session, definition: IntegrationDefinition) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    for field in ("source_schema_root_id", "target_schema_root_id"):
+        schema_root_id = getattr(definition, field)
+        if not schema_root_id:
+            continue
+        if db.get(SchemaRoot, schema_root_id) is not None:
+            continue
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_SCHEMA_ROOT_MISSING",
+                entity_type="definition",
+                entity_id=definition.id,
+                field=field,
+                message=f"{field} does not reference an indexed Schema Pack root.",
+            )
+        )
+    return issues
 
 
 def has_text_value(config: dict[str, object], key: str) -> bool:
@@ -503,6 +524,7 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     response_handlers = (
         db.query(IntegrationResponseHandler).filter(IntegrationResponseHandler.definition_id == definition.id).all()
     )
+    issues.extend(validate_definition_schema_roots(db, definition))
     alias_scopes = alias_scopes_for_definition(db, definition.id)
     for mapping in mappings:
         issues.extend(validate_mapping(db, mapping))

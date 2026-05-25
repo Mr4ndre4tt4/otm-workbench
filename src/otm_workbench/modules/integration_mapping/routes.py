@@ -30,6 +30,7 @@ from otm_workbench.models import (
 )
 from otm_workbench.modules.rates.exports import file_sha256
 from otm_workbench.modules.integration_mapping.definitions import (
+    UnknownIntegrationSchemaRoot,
     create_integration_definition,
     serialize_integration_definition,
 )
@@ -147,6 +148,8 @@ class IntegrationDefinitionCreateRequest(BaseModel):
     target_system: str
     source_format: str
     target_format: str
+    source_schema_root_id: str | None = None
+    target_schema_root_id: str | None = None
     status: str | None = None
 
 
@@ -283,6 +286,12 @@ def create_definition(
 ):
     try:
         definition = create_integration_definition(db, payload=payload.model_dump(), user=user)
+    except UnknownIntegrationSchemaRoot as exc:
+        raise api_error(
+            400,
+            "INTEGRATION_SCHEMA_ROOT_NOT_FOUND",
+            f"{exc.field} does not reference an indexed Schema Pack root.",
+        ) from exc
     except IntegrityError as exc:
         db.rollback()
         raise api_error(

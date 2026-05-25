@@ -879,9 +879,13 @@ Status da primeira fatia:
   13 operations, sem commitar conteudo bruto ou endpoints.
 - QA negativo entregue para XSD invalido, import target ausente, root duplicado
   e sensitive-content detection.
-- Ainda falta unknown-root validation nos modulos consumidores e revisao
-  funcional Oracle/Data Dictionary antes de expor paths como guidance de
-  usuario.
+- Primeiro consumo por Integration Mapping Studio entregue: definicoes podem
+  referenciar `SchemaRoot` oficial de source/target, a API recusa root
+  inexistente e a validacao aponta referencia quebrada se o banco for alterado
+  por fora.
+- Ainda falta expandir o consumo para Order Release, Master Data e Rates, alem
+  de revisao funcional Oracle/Data Dictionary antes de expor paths como
+  guidance de usuario.
 ```
 
 ### Fora do primeiro recorte

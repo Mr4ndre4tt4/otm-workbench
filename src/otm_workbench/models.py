@@ -365,6 +365,16 @@ class IntegrationDefinition(Base, TimestampMixin):
     target_system: Mapped[str] = mapped_column(String, index=True)
     source_format: Mapped[str] = mapped_column(String, index=True)
     target_format: Mapped[str] = mapped_column(String, index=True)
+    source_schema_root_id: Mapped[str | None] = mapped_column(
+        ForeignKey("schema_roots.id"),
+        nullable=True,
+        index=True,
+    )
+    target_schema_root_id: Mapped[str | None] = mapped_column(
+        ForeignKey("schema_roots.id"),
+        nullable=True,
+        index=True,
+    )
     status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 

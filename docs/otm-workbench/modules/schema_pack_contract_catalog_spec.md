@@ -378,6 +378,10 @@ Status update:
 - Unknown-root validation remains module-consumer specific and should be covered
   when Integration Mapping, Order Release, Master Data, and Rates consume the
   catalog.
+- Integration Mapping Studio first consumer delivered: definitions can now
+  reference backend-owned `SchemaRoot` records for source/target contracts,
+  unknown root IDs are rejected at creation, and validation reports stale
+  schema-root references if the database is changed outside the API.
 ```
 
 ## Local 26A Validation Snapshot
