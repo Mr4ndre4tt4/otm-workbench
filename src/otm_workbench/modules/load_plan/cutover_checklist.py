@@ -11,6 +11,7 @@ from otm_workbench.models import (
     DomainEvent,
     Evidence,
     LoadPlanPackage,
+    LoadPlanZipAnalysis,
 )
 from otm_workbench.modules.load_plan.packages import parse_json_list, parse_json_object
 
@@ -334,6 +335,40 @@ def readiness_blocker(item: CutoverChecklistItem, code: str, severity: str, mess
     }
 
 
+def latest_zip_analysis_for_package(db: Session, package_id: str) -> LoadPlanZipAnalysis | None:
+    return (
+        db.query(LoadPlanZipAnalysis)
+        .filter(LoadPlanZipAnalysis.package_id == package_id)
+        .order_by(LoadPlanZipAnalysis.analyzed_at.desc(), LoadPlanZipAnalysis.created_at.desc())
+        .first()
+    )
+
+
+def zip_analysis_readiness_blockers(analysis: LoadPlanZipAnalysis) -> list[dict[str, object]]:
+    blockers: list[dict[str, object]] = []
+    for finding_item in parse_json_list(analysis.findings_json):
+        severity = str(finding_item.get("severity", "WARNING")).upper()
+        if severity not in {"ERROR", "WARNING"}:
+            continue
+        source_code = str(finding_item.get("code", "ZIP_ANALYSIS_FINDING"))
+        details = dict(finding_item.get("details", {})) if isinstance(finding_item.get("details"), dict) else {}
+        details["source_code"] = source_code
+        details["zip_analysis_id"] = analysis.id
+        blockers.append(
+            {
+                "code": "ZIP_ANALYSIS_ERROR" if severity == "ERROR" else "ZIP_ANALYSIS_WARNING",
+                "severity": severity,
+                "item_id": None,
+                "item_code": None,
+                "table_name": finding_item.get("table_name"),
+                "file_name": finding_item.get("file_name"),
+                "message": str(finding_item.get("message", "ZIP analysis finding requires review.")),
+                "details": details,
+            }
+        )
+    return blockers
+
+
 def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dict[str, object]:
     items = (
         db.query(CutoverChecklistItem)
@@ -370,6 +405,12 @@ def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dic
                 readiness_blocker(item, "ITEM_SKIPPED", "WARNING", "Checklist item was skipped and needs review.")
             )
 
+    latest_zip_analysis = latest_zip_analysis_for_package(db, checklist.package_id)
+    zip_analysis_summary: dict[str, object] = {}
+    if latest_zip_analysis is not None:
+        zip_analysis_summary = parse_json_object(latest_zip_analysis.summary_json)
+        blockers.extend(zip_analysis_readiness_blockers(latest_zip_analysis))
+
     status_counts = checklist_status_counts(db, checklist.id)
     error_count = sum(1 for blocker in blockers if blocker["severity"] == "ERROR")
     warning_count = sum(1 for blocker in blockers if blocker["severity"] == "WARNING")
@@ -395,6 +436,15 @@ def checklist_readiness_payload(db: Session, checklist: CutoverChecklist) -> dic
         "warning_count": warning_count,
         "status_counts": status_counts,
     }
+    if latest_zip_analysis is not None:
+        readiness_summary.update(
+            {
+                "latest_zip_analysis_id": latest_zip_analysis.id,
+                "zip_analysis_finding_count": int(zip_analysis_summary.get("finding_count", 0)),
+                "zip_analysis_error_count": int(zip_analysis_summary.get("error_count", 0)),
+                "zip_analysis_warning_count": int(zip_analysis_summary.get("warning_count", 0)),
+            }
+        )
     for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
         if summary.get(key):
             readiness_summary[key] = summary[key]

@@ -326,7 +326,16 @@ Each package should produce checklist items for:
 - table order matches Catalog/Data Dictionary dependency plan
 - date/datetime CSV parity checked
 - result ZIP attached or expected as post-run evidence
-- blocked items reviewed before Go/No-Go
+- blocked items reviewed before Go/No-Go [DONE first readiness slice]
+```
+
+Implementation note, 2026-05-25, cutover readiness first slice:
+
+```text
+Cutover Checklist readiness now considers the latest ZIP analysis for the
+package. ERROR findings block readiness and WARNING findings move readiness to
+review, even when manual checklist items are DONE. The readiness payload
+includes only client-safe finding details and analyzer counts.
 ```
 
 ### Rates And Master Data Tests
@@ -350,6 +359,8 @@ Recommended Linear/backlog follow-ups:
    [FIRST SLICE DELIVERED: generic CSV discovery, CTL mode scan, ignored
    metadata, nested result ZIP detection]
 2. Cutover checklist: package-family readiness from CTL/CSV analyzer output.
+   [FIRST SLICE DELIVERED: latest ZIP analysis findings now feed readiness
+   blockers/review state]
 3. Rates QA: synthetic LTL/TL rate stack based on the observed table sequence.
 4. Master Data QA: synthetic location/equipment/geography package family.
 5. Security: ensure reference archives and generated QA artifacts never leak

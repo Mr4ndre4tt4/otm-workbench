@@ -3,7 +3,7 @@ import json
 from sqlalchemy import inspect
 
 from otm_workbench.database import engine
-from otm_workbench.models import AuditLog, DomainEvent, Evidence, LoadPlanPackage
+from otm_workbench.models import AuditLog, DomainEvent, Evidence, LoadPlanPackage, LoadPlanZipAnalysis
 
 
 def create_registered_locations_package(db_session) -> LoadPlanPackage:
@@ -355,6 +355,70 @@ def test_cutover_checklist_readiness_reports_blockers(client, admin_header, db_s
     )
     assert event.aggregate_id == checklist["id"]
     assert "synthetic_locations_batch" not in event.payload_json
+
+
+def test_cutover_checklist_readiness_blocks_on_latest_zip_analysis_findings(client, admin_header, db_session):
+    package = create_registered_locations_package(db_session)
+    checklist = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/from-package/{package.id}",
+        headers=admin_header,
+    ).json()
+    mark_all_checklist_items_done(client, admin_header, db_session, checklist)
+    analysis = LoadPlanZipAnalysis(
+        package_id=package.id,
+        status="ANALYZED",
+        source_artifact_id=package.artifact_id,
+        source_manifest_id=package.manifest_id,
+        summary_json=json.dumps(
+            {
+                "package_id": package.id,
+                "error_count": 1,
+                "warning_count": 0,
+                "finding_count": 1,
+                "catalog_macro_object_code": "LOCATION",
+            },
+            sort_keys=True,
+        ),
+        findings_json=json.dumps(
+            [
+                {
+                    "severity": "ERROR",
+                    "code": "CSVUTIL_CTL_TABLE_MISMATCH",
+                    "message": "CSVUTIL CTL tableName does not match the first CSV line.",
+                    "table_name": "LOCATION",
+                    "file_name": "csvutil.ctl",
+                    "details": {
+                        "ctl_table_name": "LOCATION_ADDRESS",
+                        "csv_file_name": "export/001_LOCATION.csv",
+                    },
+                }
+            ],
+            sort_keys=True,
+        ),
+        created_by="admin@example.com",
+    )
+    db_session.add(analysis)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/load-plan/cutover-checklists/{checklist['id']}/readiness",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "BLOCKED"
+    assert payload["summary"]["zip_analysis_error_count"] == 1
+    assert payload["summary"]["zip_analysis_warning_count"] == 0
+    assert payload["summary"]["zip_analysis_finding_count"] == 1
+    assert payload["summary"]["latest_zip_analysis_id"] == analysis.id
+    blocker = next(item for item in payload["blockers"] if item["code"] == "ZIP_ANALYSIS_ERROR")
+    assert blocker["severity"] == "ERROR"
+    assert blocker["table_name"] == "LOCATION"
+    assert blocker["file_name"] == "csvutil.ctl"
+    assert blocker["details"]["source_code"] == "CSVUTIL_CTL_TABLE_MISMATCH"
+    assert blocker["details"]["csv_file_name"] == "export/001_LOCATION.csv"
+    assert "synthetic_locations_batch" not in json.dumps(payload)
 
 
 def test_cutover_checklist_readiness_is_ready_when_required_items_done(
