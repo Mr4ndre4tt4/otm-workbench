@@ -41,6 +41,12 @@ The screen includes:
 - blockers panel;
 - backend-owned available action buttons.
 
+Batch selection is batch-workspace scoped. Selecting a different backend-owned
+batch clears CSV preview rows, approval confirmation drafts, action feedback,
+download state, and running action state from the previously selected batch.
+Artifacts, evidence, tables, and available actions continue to reload from
+backend queries keyed by the selected batch id.
+
 Other module routes continue to use the shared placeholder template until their
 read models are attached.
 
@@ -48,5 +54,9 @@ read models are attached.
 
 - `frontend/src/app/App.test.tsx` verifies `/rates` calls
   `/api/v1/modules/rates/summary` with bearer auth and renders the summary.
+- `frontend/src/app/AppFunctionalRates.test.tsx` covers create/stage/preview/export/download,
+  approval, validation, and batch-switch recovery.
+- `frontend/scripts/functional-rates-browser.mjs` covers the same browser path
+  against local FastAPI + Vite with synthetic data only.
 - `tests/test_rates_summary.py` validates the backend contract and client-safe
   blocker behavior.

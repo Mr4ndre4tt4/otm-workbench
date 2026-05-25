@@ -100,6 +100,7 @@ async function run() {
   const context = await seedSyntheticContext(token);
   const suffix = syntheticSuffix();
   const batchName = `Synthetic browser rates batch ${suffix}`;
+  const alternateBatchName = `Synthetic alternate rates batch ${suffix}`;
   const rowGid = `OTM1.ACC_COST_${suffix}`;
 
   const browser = await playwright.chromium.launch({ headless: true });
@@ -131,6 +132,18 @@ async function run() {
     await contextControls.locator("input").fill("otm1");
     await page.getByRole("button", { name: "Apply context" }).click();
     await page.getByText("Project context ready").waitFor();
+
+    await apiRequest("/api/v1/modules/rates/batches", {
+      method: "POST",
+      token,
+      body: {
+        scenario_code: "RATE_GEO_ONLY",
+        name: alternateBatchName,
+        domain_name: "OTM1",
+        description: "",
+        source_type: "api"
+      }
+    });
 
     await page.locator('a[href="/rates"]').click();
     await page.getByRole("heading", { name: "Rates Studio" }).waitFor();
@@ -166,6 +179,21 @@ async function run() {
       throw new Error(`Expected ZIP download, received ${download.suggestedFilename()}`);
     }
     await page.getByText(/Download started: .*\.zip\./).waitFor();
+
+    await page.getByLabel("Rate batches").getByRole("button", { name: new RegExp(alternateBatchName) }).click();
+    await selectedBatchPanel.getByText(alternateBatchName).waitFor();
+    if (await page.getByText(/Download started: .*\.zip\./).isVisible().catch(() => false)) {
+      throw new Error("Rates kept stale download feedback after switching batches.");
+    }
+    if (await page.getByLabel("CSV preview output").isVisible().catch(() => false)) {
+      throw new Error("Rates kept stale CSV preview output after switching batches.");
+    }
+    if (!(await selectedBatchPanel.getByRole("button", { name: "Export CSV" }).last().isDisabled())) {
+      throw new Error("Rates export remained enabled after switching to a batch without preview.");
+    }
+
+    await page.getByLabel("Rate batches").getByRole("button", { name: new RegExp(batchName) }).click();
+    await selectedBatchPanel.getByText(batchName).waitFor();
 
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await page.getByRole("heading", { name: "Confirm rate batch approval" }).waitFor();
@@ -204,6 +232,7 @@ async function run() {
           profile_id: context.profile.id,
           environment_id: context.environment.id,
           batch_name: batchName,
+          alternate_batch_name: alternateBatchName,
           downloaded_file: download.suggestedFilename()
         },
         null,

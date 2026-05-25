@@ -798,5 +798,11 @@ describe("Functional Rates journey", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(anchorClick).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:synthetic-export");
+
+    await userEvent.click(screen.getByRole("button", { name: /Synthetic ready batch/ }));
+    expect(await screen.findByLabelText("Selected rate batch")).toHaveTextContent("Synthetic ready batch");
+    expect(screen.queryByText("Download started: synthetic_created_rates_export.zip.")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("CSV preview output")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
   });
 });

@@ -77,6 +77,22 @@ export function RatesSummaryView({ token }: { token: string }) {
 
   const data = rates.data;
 
+  function clearBatchWorkspaceState() {
+    setCsvPreviews([]);
+    setApprovalAction(null);
+    setApprovalNote("");
+    setActionMessage(null);
+    setActionError(null);
+    setRunningActionKey(null);
+    setDownloadingArtifactId(null);
+  }
+
+  function selectBatch(batchId: string) {
+    if (batchId === effectiveBatchId) return;
+    setSelectedBatchId(batchId);
+    clearBatchWorkspaceState();
+  }
+
   function runModuleAction(action: AvailableAction) {
     if (action.key === "create_batch" && !action.disabled) {
       setActionMessage(null);
@@ -484,7 +500,7 @@ export function RatesSummaryView({ token }: { token: string }) {
             subtitle: batch.code,
             title: batch.display_name
           }))}
-          onSelect={setSelectedBatchId}
+          onSelect={selectBatch}
           selectedId={effectiveBatchId}
         />
       </ModuleWorkspaceLayout>
