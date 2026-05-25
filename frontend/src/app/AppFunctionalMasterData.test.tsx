@@ -297,10 +297,13 @@ describe("Functional Master Data journey", () => {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/master-data/templates")) {
-        return Promise.resolve(jsonResponse({ items: [regionsTemplate()], total: 1 }));
+        return Promise.resolve(jsonResponse({ items: [regionsTemplate(), recoveredLocationsTemplate()], total: 2 }));
       }
       if (url.endsWith("/api/v1/modules/master-data/templates/REGIONS_BASIC")) {
         return Promise.resolve(jsonResponse(regionsTemplate()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/LOCATIONS_RECOVERED")) {
+        return Promise.resolve(jsonResponse(recoveredLocationsTemplate()));
       }
       if (parsedUrl.pathname === "/api/v1/modules/master-data/batches/summary") {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -731,6 +734,16 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Build workbook" }));
     await screen.findByText("Workbook regions_basic_v1.xlsx generated.");
     expect(screen.getByLabelText("Workbook artifact")).toHaveTextContent("regions_basic_v1.xlsx");
+
+    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
+    await userEvent.click(screen.getByRole("button", { name: /LOCATIONS_RECOVERED/ }));
+    expect(screen.queryByText("Workbook regions_basic_v1.xlsx generated.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));
+    expect(screen.queryByLabelText("Workbook artifact")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("LOCATIONS_RECOVERED");
+    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
+    await userEvent.click(screen.getByRole("button", { name: /REGIONS_BASIC/ }));
+    await userEvent.click(screen.getByRole("button", { name: /3Workbook/ }));
 
     await userEvent.click(screen.getByRole("button", { name: /4Upload/ }));
     const uploadFile = new File(["synthetic workbook bytes"], "regions_basic_upload.xlsx", {

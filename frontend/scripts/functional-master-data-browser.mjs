@@ -163,6 +163,11 @@ async function run() {
       sidebar_mode: "expanded"
     }
   });
+  const templatesIndex = await apiRequest("/api/v1/modules/master-data/templates", { token });
+  const alternateTemplateCode = templatesIndex.items?.find((template) => template.code !== "REGIONS_BASIC")?.code;
+  if (!alternateTemplateCode) {
+    throw new Error("Master Data browser functional QA requires a second synthetic template for template-switch recovery.");
+  }
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1360, height: 980 } });
@@ -252,6 +257,27 @@ async function run() {
     await page.getByText("Template validation is VALID.").waitFor();
     await page.getByRole("button", { name: "Build workbook" }).click();
     await page.getByText("Workbook regions_basic_v1.xlsx generated.").waitFor();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
+    await page
+      .getByLabel("Master Data templates")
+      .locator(".module-row")
+      .filter({ hasText: alternateTemplateCode })
+      .click();
+    await page.getByLabel("Selected Master Data template").getByText(alternateTemplateCode, { exact: true }).waitFor();
+    await assertHidden(
+      page.getByText("Workbook regions_basic_v1.xlsx generated."),
+      "Workbook generation feedback stayed visible after selecting another template."
+    );
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
+    await assertHidden(page.getByLabel("Workbook artifact"), "Workbook artifact stayed visible after selecting another template.");
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
+    await page
+      .getByLabel("Master Data templates")
+      .locator(".module-row")
+      .filter({ hasText: "REGIONS_BASIC" })
+      .click();
+    await page.getByLabel("Selected Master Data template").getByText("REGIONS_BASIC", { exact: true }).waitFor();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Upload" }).click();
     await page.getByLabel("Workbook file").setInputFiles(createSyntheticRegionsWorkbook());
@@ -332,8 +358,9 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "master-data-author-template-workbook-upload-output-export-load-plan-registration-route-recovery",
+          journey: "master-data-author-template-workbook-switch-upload-output-export-load-plan-registration-route-recovery",
           authorTemplateCode,
+          alternateTemplateCode,
           baseUrl,
           apiBaseUrl
         },

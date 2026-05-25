@@ -299,6 +299,13 @@ CSV and exported ZIP content now have regression coverage proving the OTM CSV
 shape remains table line, header line, `exec alter session set nls_date_format =
 'YYYY-MM-DD HH24:MI:SS'`, then data rows.
 
+The latest OTM-119 hardening slice adds selected-template switch recovery.
+Selecting another template now clears route-session workbook validation,
+workbook artifact, upload file, active uploaded batch, output/CSV/export,
+Load Plan handoff, checklist readiness, and stale feedback before loading the
+new backend template. Durable batch history remains backend-owned and can still
+be reselected from the Output stage.
+
 OTM-119 closes the current Master Data MVP workflow hardening pass, and OTM-91
 now has its first GUI workflow slice. The module is not marked `Module
 complete` because direct OTM import, richer workbook/spreadsheet editing,

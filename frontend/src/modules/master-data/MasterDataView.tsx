@@ -480,6 +480,20 @@ export function MasterDataView({ token }: { token: string }) {
     setCutoverChecklist(null);
     setCutoverChecklistReadiness(null);
   }
+  function clearTemplateWorkspaceState() {
+    setTemplateValidation(null);
+    setWorkbookArtifact(null);
+    setUploadedBatch(null);
+    setSelectedUploadFile(null);
+    clearBatchWorkflowState();
+    setOperationMessage(null);
+    setOperationError(null);
+  }
+  function handleSelectTemplate(templateCode: string) {
+    if (templateCode === effectiveTemplateCode) return;
+    clearTemplateWorkspaceState();
+    setSelectedTemplateCode(templateCode);
+  }
   const batches = useMasterDataBatches(token, batchFilters);
   const batchSummary = useMasterDataBatchSummary(token, batchFilters);
   const targetTableCount = new Set(templateItems.flatMap((item) => item.target_tables)).size;
@@ -1061,7 +1075,7 @@ export function MasterDataView({ token }: { token: string }) {
               subtitle: item.name,
               title: item.code
             }))}
-            onSelect={setSelectedTemplateCode}
+            onSelect={handleSelectTemplate}
             selectedId={effectiveTemplateCode}
           />
         ) : null}
