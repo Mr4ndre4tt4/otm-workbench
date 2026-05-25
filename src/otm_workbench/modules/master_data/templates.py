@@ -597,14 +597,14 @@ def v2_definition_to_legacy_sheets(definition: dict[str, object]) -> list[dict[s
         for field_key in sheet.get("field_keys", []):
             field = fields_by_key.get(field_key)
             mapping = first_mapping_by_field.get(field_key)
-            if field is None or mapping is None:
+            if field is None:
                 continue
-            target_table = target_table or mapping["target_table"]
+            target_table = target_table or (mapping["target_table"] if mapping else None)
             legacy_fields.append(
                 {
                     "name": field["field_key"],
                     "label": field["label"],
-                    "target_column": mapping["target_column"],
+                    "target_column": mapping["target_column"] if mapping else "",
                     "required": bool(field.get("required", False)),
                     "data_type": field.get("data_type", "string"),
                 }
@@ -1010,6 +1010,8 @@ def validate_master_data_template(template: MasterDataTemplate, dictionary_root:
             )
         for field in sheet["fields"]:
             field_count += 1
+            if not field["target_column"]:
+                continue
             column_result = validate_column(dictionary_root, target_table, field["target_column"])
             if column_result["exists"]:
                 validated_column_count += 1
@@ -1263,7 +1265,12 @@ def map_master_data_batch_to_canonical_records(
     template: MasterDataTemplate,
     batch: MasterDataBatch,
 ) -> dict[str, object]:
-    if MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code):
+    definition = master_data_template_definition(template)
+    relationship_rules = MASTER_DATA_RELATIONSHIP_RULES.get(batch.template_code) or definition.get(
+        "relationship_rules",
+        [],
+    )
+    if relationship_rules:
         if batch.status != "RELATIONSHIP_VALIDATED":
             raise ValueError(
                 "Master Data batch must be relationship-validated before mapping."
@@ -1272,7 +1279,6 @@ def map_master_data_batch_to_canonical_records(
         raise ValueError("Only parsed Master Data batches can be mapped.")
 
     sheets = json.loads(template.sheets_json)
-    definition = master_data_template_definition(template)
     definition_mappings = definition.get("mappings", [])
     definition_fields_by_sheet: dict[str, set[str]] = {}
     for field in definition.get("fields", []):

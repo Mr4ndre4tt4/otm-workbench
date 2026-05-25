@@ -331,6 +331,11 @@ MACRO_OBJECT_SEED = [
         "tables": [
             {"table_name": "LOCATION", "relationship_role": "PRIMARY", "is_primary_table": True},
             {"table_name": "LOCATION_ADDRESS", "relationship_role": "ADDRESS", "is_primary_table": False},
+            {"table_name": "LOCATION_CAPACITY", "relationship_role": "CAPACITY", "is_primary_table": False},
+            {"table_name": "LOCATION_ACTIVITY_TIME_DEF", "relationship_role": "ACTIVITY_TIME", "is_primary_table": False},
+            {"table_name": "LOCATION_LOAD_UNLOAD_POINT", "relationship_role": "DOCK", "is_primary_table": False},
+            {"table_name": "EQUIPMENT_GROUP_PROFILE", "relationship_role": "EQUIPMENT_RESTRICTION", "is_primary_table": False},
+            {"table_name": "EQUIPMENT_GROUP_PROFILE_D", "relationship_role": "EQUIPMENT_RESTRICTION_DETAIL", "is_primary_table": False},
         ],
         "dependencies": [],
     },

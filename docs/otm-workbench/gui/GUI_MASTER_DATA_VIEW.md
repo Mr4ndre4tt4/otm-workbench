@@ -219,6 +219,20 @@ and renders the backend status, ready/review result, blocker count, item count,
 evidence id, and backend-returned readiness blockers. Data Factory does not
 decide readiness or edit item evidence.
 
+The first OTM-119 scenario-QA slice adds Data Dictionary-backed functional
+coverage for richer Master Data templates. Backend tests now prove two
+synthetic operational scenarios: Location with address, capacity reference,
+activity time reference, dock/load-unload point, and equipment group profile
+restriction; and Item with Ship Unit Spec, Packaged Item, and TiHi including
+`TRANSPORT_HANDLING_UNIT_GID`. The runtime also supports relationship-only
+workbook fields and blocks mapping until dynamic relationship rules have been
+validated.
+
+Next frontend follow-up: expose these richer scenario templates through the
+Author stage without stacking disconnected controls. The user should experience
+them as a staged template story: choose macro object, choose scenario/tables,
+review relationships, then generate workbook.
+
 The first backend-owned preview slice adds read-only output and CSV previews to
 the Output stage. `GET /output-records` returns generated OTM target-table
 payloads, and `GET /csv-files` returns generated CSV file metadata plus a short
