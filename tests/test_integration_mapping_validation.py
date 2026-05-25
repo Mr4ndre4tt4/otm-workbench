@@ -128,6 +128,62 @@ def test_validate_integration_definition_reports_structural_issues(client, admin
     assert ("lookup", "output_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
 
 
+def test_validate_integration_definition_reports_semantic_mapping_issues(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    rows = [
+        IntegrationMapping(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            source_path="/Transmission/Shipment/ShipmentGid",
+            target_path="$.header.shipmentId",
+            transform_type="DIRECT",
+            description="First synthetic mapping.",
+            sequence_index=1,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+        IntegrationMapping(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            target_schema_document_id=target["id"],
+            source_path="/Transmission/Shipment/ShipmentStop/StopSequence",
+            target_path="$.header.shipmentId",
+            transform_type="DIRECT",
+            description="Duplicate target synthetic mapping.",
+            sequence_index=2,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+        IntegrationJoinRule(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            left_path="/Transmission/Shipment/ShipmentGid",
+            right_path="/Transmission/Shipment/ShipmentGid",
+            operator="EQ",
+            name="Same path join",
+            description="Join with no semantic value.",
+            sequence_index=3,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        ),
+    ]
+    db_session.add_all(rows)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    issues = {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+    assert ("mapping", "target_path", "INTEGRATION_VALIDATION_DUPLICATE_TARGET_PATH") in issues
+    assert ("join", "right_path", "INTEGRATION_VALIDATION_JOIN_SAME_PATH") in issues
+
+
 def test_validate_integration_definition_rejects_missing_definition(client, admin_header):
     response = client.post(
         "/api/v1/modules/integration-mapping/definitions/missing-definition/validate",

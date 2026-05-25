@@ -96,6 +96,19 @@ def test_create_integration_join_rule_rejects_unknown_operator(client, admin_hea
     assert response.json()["code"] == "INTEGRATION_JOIN_OPERATOR_INVALID"
 
 
+def test_create_integration_join_rule_rejects_same_source_path_pair(client, admin_header):
+    definition, source, _target = create_source_and_target_documents(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/joins",
+        json=join_payload(source, right_path="/Transmission/Shipment/ShipmentGid"),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "INTEGRATION_JOIN_SAME_PATH"
+
+
 def test_create_integration_join_rule_rejects_missing_definition(client, admin_header):
     _definition, source, _target = create_source_and_target_documents(client, admin_header)
 

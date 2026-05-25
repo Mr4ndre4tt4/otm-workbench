@@ -41,6 +41,8 @@ def create_integration_join_rule(
         raise ValueError("left_path_invalid")
     if not schema_path_exists(db, schema_document_id=source_schema_document_id, path=right_path):
         raise ValueError("right_path_invalid")
+    if left_path == right_path:
+        raise ValueError("same_path_invalid")
 
     join_rule = IntegrationJoinRule(
         definition_id=definition.id,

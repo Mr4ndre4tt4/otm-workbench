@@ -90,6 +90,16 @@ def validate_join(db: Session, join_rule: IntegrationJoinRule) -> list[Validatio
         issues.append(path_issue("join", join_rule.id, "left_path", join_rule.left_path))
     if not schema_path_exists(db, schema_document_id=join_rule.source_schema_document_id, path=join_rule.right_path):
         issues.append(path_issue("join", join_rule.id, "right_path", join_rule.right_path))
+    if join_rule.left_path == join_rule.right_path:
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_JOIN_SAME_PATH",
+                entity_type="join",
+                entity_id=join_rule.id,
+                field="right_path",
+                message="Join left_path and right_path must reference different source schema paths.",
+            )
+        )
     if join_rule.operator not in ALLOWED_JOIN_OPERATORS:
         issues.append(catalog_issue("join", join_rule.id, "operator", join_rule.operator))
     return issues
@@ -117,6 +127,30 @@ def serialize_issue(validation_issue: ValidationIssue) -> dict[str, str]:
     }
 
 
+def validate_duplicate_target_paths(mappings: list[IntegrationMapping]) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    first_by_target_path: dict[tuple[str, str], IntegrationMapping] = {}
+    for mapping in sorted(mappings, key=lambda item: (item.sequence_index, item.created_at or "")):
+        key = (mapping.target_schema_document_id, mapping.target_path)
+        first = first_by_target_path.get(key)
+        if first is None:
+            first_by_target_path[key] = mapping
+            continue
+        issues.append(
+            issue(
+                code="INTEGRATION_VALIDATION_DUPLICATE_TARGET_PATH",
+                entity_type="mapping",
+                entity_id=mapping.id,
+                field="target_path",
+                message=(
+                    "target_path is already mapped by another mapping in this Integration Definition: "
+                    f"{mapping.target_path}"
+                ),
+            )
+        )
+    return issues
+
+
 def validate_integration_definition(db: Session, definition: IntegrationDefinition) -> dict[str, object]:
     issues: list[ValidationIssue] = []
     mappings = db.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition.id).all()
@@ -127,6 +161,7 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     )
     for mapping in mappings:
         issues.extend(validate_mapping(db, mapping))
+    issues.extend(validate_duplicate_target_paths(mappings))
     for loop in loops:
         issues.extend(validate_loop(db, loop))
     for join_rule in joins:

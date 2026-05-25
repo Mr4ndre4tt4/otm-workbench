@@ -812,6 +812,12 @@ def create_join_rule(
                 "INTEGRATION_JOIN_OPERATOR_INVALID",
                 "Join operator must be one of the controlled Integration Mapping operators.",
             ) from exc
+        if str(exc) == "same_path_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_JOIN_SAME_PATH",
+                "Join left_path and right_path must reference different source schema paths.",
+            ) from exc
         raise api_error(
             400,
             "INTEGRATION_JOIN_PATH_INVALID",
