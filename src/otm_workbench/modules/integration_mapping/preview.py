@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,8 @@ from otm_workbench.models import (
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
     IntegrationMapping,
+    IntegrationPayloadArtifact,
+    IntegrationSchemaDocument,
     Job,
     utcnow,
 )
@@ -37,26 +40,129 @@ def build_preview_payload(
     definition: IntegrationDefinition,
     validation: dict[str, object],
     counts: dict[str, int],
+    executable_preview: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    preview = {
+        "mode": "synthetic_metadata_only",
+        "external_calls_executed": False,
+        "scenario": {
+            "code": "planned_shipment_to_external_delivery",
+            "source_object": "OTM PlannedShipment",
+            "target_object": "External Delivery JSON",
+            "payload_policy": "metadata_only_no_external_calls",
+        },
+        "entity_counts": counts,
+        "sample_result": {
+            "status": "generated_from_metadata",
+            "records_previewed": 1,
+        },
+    }
+    if executable_preview is not None:
+        preview.update(executable_preview)
+        preview["sample_result"] = {
+            "status": "materialized_from_synthetic_source",
+            "records_previewed": 1,
+        }
     return {
         "definition_id": definition.id,
         "definition_code": definition.code,
-        "preview": {
-            "mode": "synthetic_metadata_only",
-            "external_calls_executed": False,
-            "scenario": {
-                "code": "planned_shipment_to_external_delivery",
-                "source_object": "OTM PlannedShipment",
-                "target_object": "External Delivery JSON",
-                "payload_policy": "metadata_only_no_external_calls",
-            },
-            "entity_counts": counts,
-            "sample_result": {
-                "status": "generated_from_metadata",
-                "records_previewed": 1,
-            },
-        },
+        "preview": preview,
         "validation": validation,
+    }
+
+
+def source_value_from_xml_path(content: str, path: str) -> object:
+    root = ET.fromstring(content)
+    parts = [part for part in path.strip("/").split("/") if part]
+    if not parts or parts[0] != root.tag:
+        return None
+    element = root
+    for part in parts[1:]:
+        element = element.find(part)
+        if element is None:
+            return None
+    return (element.text or "").strip()
+
+
+def set_json_path_value(target: dict[str, object], path: str, value: object) -> None:
+    parts = [part for part in path.removeprefix("$.").split(".") if part]
+    if not parts:
+        return
+    current = target
+    for part in parts[:-1]:
+        existing = current.get(part)
+        if not isinstance(existing, dict):
+            existing = {}
+            current[part] = existing
+        current = existing
+    current[parts[-1]] = value
+
+
+def document_payload_content(db: Session, document_id: str) -> tuple[str, str] | None:
+    document = db.get(IntegrationSchemaDocument, document_id)
+    if document is None:
+        return None
+    payload_artifact = db.get(IntegrationPayloadArtifact, document.payload_artifact_id)
+    if payload_artifact is None:
+        return None
+    artifact = db.get(Artifact, payload_artifact.artifact_id)
+    if artifact is None:
+        return None
+    path = Path(artifact.file_path)
+    if not path.exists() or not path.is_file():
+        return None
+    return document.payload_format, path.read_text(encoding="utf-8")
+
+
+def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
+    has_complex_rules = (
+        db.query(IntegrationLoopDefinition).filter(IntegrationLoopDefinition.definition_id == definition.id).count()
+        or db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
+        or db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).count()
+    )
+    if has_complex_rules:
+        return None
+
+    mappings = (
+        db.query(IntegrationMapping)
+        .filter(IntegrationMapping.definition_id == definition.id)
+        .order_by(IntegrationMapping.sequence_index, IntegrationMapping.created_at)
+        .all()
+    )
+    if not mappings:
+        return None
+
+    target_json: dict[str, object] = {}
+    field_provenance: list[dict[str, object]] = []
+    for mapping in mappings:
+        if mapping.transform_type != "DIRECT" or "[]" in mapping.target_path:
+            return None
+        source_payload = document_payload_content(db, mapping.source_schema_document_id)
+        target_payload = document_payload_content(db, mapping.target_schema_document_id)
+        if source_payload is None or target_payload is None:
+            return None
+        source_format, source_content = source_payload
+        target_format, _target_content = target_payload
+        if source_format != "XML" or target_format != "JSON":
+            return None
+        value = source_value_from_xml_path(source_content, mapping.source_path)
+        if value in (None, ""):
+            return None
+        set_json_path_value(target_json, mapping.target_path, value)
+        field_provenance.append(
+            {
+                "mapping_id": mapping.id,
+                "source_path": mapping.source_path,
+                "target_path": mapping.target_path,
+                "transform_type": mapping.transform_type,
+                "value_policy": "copied_from_synthetic_source",
+            }
+        )
+
+    return {
+        "mode": "synthetic_executable_json",
+        "target_json": target_json,
+        "field_provenance": field_provenance,
     }
 
 
@@ -173,7 +279,13 @@ def build_integration_preview(
     created_by: str,
 ) -> dict[str, object]:
     counts = preview_counts(db, definition.id)
-    preview_payload = build_preview_payload(definition=definition, validation=validation, counts=counts)
+    executable_preview = build_executable_json_preview(db, definition=definition)
+    preview_payload = build_preview_payload(
+        definition=definition,
+        validation=validation,
+        counts=counts,
+        executable_preview=executable_preview,
+    )
     artifact = create_preview_artifact(db, definition=definition, artifact_root=artifact_root, payload=preview_payload)
     job = record_completed_preview_job(
         db,
