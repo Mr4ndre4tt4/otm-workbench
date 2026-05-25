@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -176,6 +176,7 @@ class IntegrationMappingCreateRequest(BaseModel):
     source_path: str
     target_path: str
     transform_type: str = "DIRECT"
+    transform_config: dict[str, object] = Field(default_factory=dict)
     description: str = ""
     sequence_index: int = 0
 
@@ -690,6 +691,12 @@ def create_mapping(
                 400,
                 "INTEGRATION_MAPPING_TRANSFORM_TYPE_INVALID",
                 "Mapping transform_type must be active in the Integration Mapping catalog.",
+            ) from exc
+        if str(exc) == "transform_config_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_MAPPING_TRANSFORM_CONFIG_INVALID",
+                "Mapping transform_config must be a JSON object.",
             ) from exc
         raise api_error(
             400,

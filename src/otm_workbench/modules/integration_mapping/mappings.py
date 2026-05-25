@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy.orm import Session
 
 from otm_workbench.models import (
@@ -54,6 +56,7 @@ def create_integration_mapping(
     transform_type = normalize_transform_type_code(payload.get("transform_type"))
     if not transform_type_is_active(db, transform_type):
         raise ValueError("transform_type_invalid")
+    transform_config_json = json.dumps(normalize_transform_config(payload.get("transform_config")), sort_keys=True)
 
     mapping = IntegrationMapping(
         definition_id=definition.id,
@@ -62,6 +65,7 @@ def create_integration_mapping(
         source_path=source_path,
         target_path=target_path,
         transform_type=transform_type,
+        transform_config_json=transform_config_json,
         description=str(payload.get("description") or "").strip(),
         sequence_index=int(payload.get("sequence_index") or 0),
         status="ACTIVE",
@@ -73,6 +77,40 @@ def create_integration_mapping(
     return mapping
 
 
+def normalize_transform_config(value: object) -> dict[str, object]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("transform_config_invalid")
+    return {
+        str(key).strip(): sanitize_transform_config_value(config_value)
+        for key, config_value in value.items()
+        if str(key).strip()
+    }
+
+
+def sanitize_transform_config_value(value: object) -> object:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [sanitize_transform_config_value(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key).strip(): sanitize_transform_config_value(config_value)
+            for key, config_value in value.items()
+            if str(key).strip()
+        }
+    return str(value)
+
+
+def parse_transform_config(value: str | None) -> dict[str, object]:
+    try:
+        payload = json.loads(value or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def serialize_integration_mapping(mapping: IntegrationMapping) -> dict[str, object]:
     return {
         "id": mapping.id,
@@ -82,6 +120,7 @@ def serialize_integration_mapping(mapping: IntegrationMapping) -> dict[str, obje
         "source_path": mapping.source_path,
         "target_path": mapping.target_path,
         "transform_type": mapping.transform_type,
+        "transform_config": parse_transform_config(mapping.transform_config_json),
         "description": mapping.description,
         "sequence_index": mapping.sequence_index,
         "status": mapping.status,

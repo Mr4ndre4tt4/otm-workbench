@@ -445,6 +445,7 @@ class IntegrationMapping(Base, TimestampMixin):
     source_path: Mapped[str] = mapped_column(String, index=True)
     target_path: Mapped[str] = mapped_column(String, index=True)
     transform_type: Mapped[str] = mapped_column(String, default="DIRECT", index=True)
+    transform_config_json: Mapped[str] = mapped_column(Text, default="{}")
     description: Mapped[str] = mapped_column(Text, default="")
     sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
     status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)

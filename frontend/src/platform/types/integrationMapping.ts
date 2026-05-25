@@ -75,6 +75,7 @@ export type IntegrationMapping = {
   source_path: string;
   target_path: string;
   transform_type: string;
+  transform_config: Record<string, unknown>;
   description: string;
   sequence_index: number;
   status: string;
@@ -215,6 +216,7 @@ export type IntegrationMappingCreatePayload = {
   source_path: string;
   target_path: string;
   transform_type: string;
+  transform_config?: Record<string, unknown>;
   description: string;
   sequence_index: number;
 };

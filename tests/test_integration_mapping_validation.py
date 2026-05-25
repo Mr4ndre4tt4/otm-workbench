@@ -336,8 +336,75 @@ def test_validate_integration_definition_reports_missing_transform_config_for_ex
     assert "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING" in payload["readiness"]["preview_blockers"]
     assert (
         "mapping",
-        "transform_type",
+        "transform_config",
         "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
+
+
+def test_validate_integration_definition_accepts_date_format_transform_config(
+    client,
+    admin_header,
+):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            source_path="/Transmission/Shipment/ShipmentGid",
+            target_path="$.header.shipmentId",
+            transform_type="DATE_FORMAT",
+            transform_config={
+                "source_format": "OTM_GLOGDATE",
+                "target_format": "ISO8601",
+            },
+        ),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is True
+    assert payload["readiness"]["specification_ready"] is True
+    assert payload["readiness"]["preview_executable"] is True
+    assert "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING" not in payload["readiness"]["preview_blockers"]
+
+
+def test_validate_integration_definition_reports_invalid_date_format_transform_config(
+    client,
+    admin_header,
+):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            transform_type="DATE_FORMAT",
+            transform_config={"target_format": "ISO8601"},
+        ),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    validation = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert validation.status_code == 200
+    payload = validation.json()
+    assert payload["is_valid"] is False
+    assert (
+        "mapping",
+        "transform_config",
+        "INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
     ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
 
 

@@ -13,6 +13,7 @@ from otm_workbench.models import (
     Job,
     utcnow,
 )
+from otm_workbench.modules.integration_mapping.mappings import parse_transform_config
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 from otm_workbench.platform.jobs import audit_job, dumps_limited_json_object, emit_job_event
 
@@ -37,6 +38,15 @@ def _rows_or_empty(rows: list[str]) -> str:
     return "\n".join(rows)
 
 
+def _format_transform_config(mapping: IntegrationMapping) -> str:
+    config = parse_transform_config(mapping.transform_config_json)
+    if not config:
+        return ""
+    fragments = [f"{key}={value}" for key, value in sorted(config.items())]
+    config_text = "; ".join(fragments)
+    return f" config `{config_text}`"
+
+
 def _build_markdown(
     *,
     definition: IntegrationDefinition,
@@ -53,7 +63,8 @@ def _build_markdown(
         for document in schema_documents
     ]
     mapping_rows = [
-        f"- `{mapping.sequence_index}` `{mapping.transform_type}`: `{mapping.source_path}` -> `{mapping.target_path}`."
+        f"- `{mapping.sequence_index}` `{mapping.transform_type}`: `{mapping.source_path}` -> "
+        f"`{mapping.target_path}`{_format_transform_config(mapping)}."
         for mapping in mappings
     ]
     loop_rows = [

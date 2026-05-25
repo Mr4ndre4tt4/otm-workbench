@@ -700,7 +700,7 @@ Backlog gerado pela rodada:
 18. Scenario pack sintetico PlannedShipment -> External Delivery JSON com checklist de campos obrigatorios. [BACKLOG pos-MVP0]
 19. Schema tree picker pesquisavel com contexto, tipo de no e caminho completo. [BACKLOG pos-MVP0]
 20. Review table agrupada por Header, Entregas, Lookups, Joins, Aggregations e Response Handling. [BACKLOG pos-MVP0]
-21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [BACKLOG pos-MVP0]
+21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [ENTREGUE primeira fatia backend OTM-130: contrato persistido `transform_config`, validacao controlada e spec markdown em 2026-05-25; UI authoring segue backlog]
 22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [BACKLOG pos-MVP0]
 23. Mapping escopado por loop para campos de colecao como Entregas[]. [BACKLOG pos-MVP0]
 24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [BACKLOG pos-MVP0]

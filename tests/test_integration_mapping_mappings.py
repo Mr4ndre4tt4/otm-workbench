@@ -72,9 +72,11 @@ def mapping_payload(source, target, **overrides):
 
 def test_integration_mappings_table_exists_after_metadata_reset(db_session):
     table_names = inspect(db_session.bind).get_table_names()
+    mapping_columns = {column["name"] for column in inspect(db_session.bind).get_columns("integration_mappings")}
 
     assert "integration_mappings" in table_names
     assert "integration_transform_types" in table_names
+    assert "transform_config_json" in mapping_columns
 
 
 def test_list_integration_transform_types_seeds_controlled_catalog(client, admin_header):
@@ -108,7 +110,38 @@ def test_create_integration_mapping_validates_schema_paths(client, admin_header,
     assert payload["source_path"] == "/Transmission/Shipment/ShipmentGid"
     assert payload["target_path"] == "$.header.shipmentId"
     assert payload["transform_type"] == "DIRECT"
+    assert payload["transform_config"] == {}
     assert "SYNTHETIC" not in str(payload)
+
+
+def test_create_integration_mapping_persists_controlled_transform_config(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(
+            source,
+            target,
+            transform_type="DATE_FORMAT",
+            transform_config={
+                "source_format": "OTM_GLOGDATE",
+                "target_format": "ISO8601",
+                "timezone": "America/Sao_Paulo",
+            },
+        ),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    mapping = db_session.get(IntegrationMapping, payload["id"])
+    assert mapping is not None
+    assert payload["transform_config"] == {
+        "source_format": "OTM_GLOGDATE",
+        "target_format": "ISO8601",
+        "timezone": "America/Sao_Paulo",
+    }
+    assert "SYNTHETIC" not in str(payload["transform_config"])
 
 
 def test_list_and_get_integration_mappings(client, admin_header):

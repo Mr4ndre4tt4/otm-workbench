@@ -11,7 +11,7 @@ from otm_workbench.models import (
 )
 from otm_workbench.modules.integration_mapping.joins import ALLOWED_JOIN_OPERATORS
 from otm_workbench.modules.integration_mapping.lookups import ALLOWED_LOOKUP_TYPES
-from otm_workbench.modules.integration_mapping.mappings import schema_path_exists
+from otm_workbench.modules.integration_mapping.mappings import parse_transform_config, schema_path_exists
 from otm_workbench.modules.integration_mapping.transform_types import (
     transform_type_is_active,
     transform_type_requires_expression,
@@ -81,6 +81,53 @@ def catalog_issue(entity_type: str, entity_id: str, field: str, value: str) -> V
     )
 
 
+def has_text_value(config: dict[str, object], key: str) -> bool:
+    value = config.get(key)
+    return isinstance(value, str) and bool(value.strip())
+
+
+def validate_transform_config(mapping: IntegrationMapping) -> ValidationIssue | None:
+    transform_type = mapping.transform_type.upper()
+    config = parse_transform_config(mapping.transform_config_json)
+    if not config:
+        return issue(
+            code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING",
+            entity_type="mapping",
+            entity_id=mapping.id,
+            field="transform_config",
+            message=f"transform_type requires persisted config metadata: {mapping.transform_type}",
+        )
+    if transform_type == "CONSTANT" and "value" not in config:
+        return issue(
+            code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+            entity_type="mapping",
+            entity_id=mapping.id,
+            field="transform_config",
+            message="CONSTANT transform_config must include a value key.",
+        )
+    if transform_type == "CONCAT":
+        parts = config.get("parts")
+        if not isinstance(parts, list) or not parts:
+            return issue(
+                code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+                entity_type="mapping",
+                entity_id=mapping.id,
+                field="transform_config",
+                message="CONCAT transform_config must include a non-empty parts array.",
+            )
+    if transform_type == "DATE_FORMAT" and not (
+        has_text_value(config, "source_format") and has_text_value(config, "target_format")
+    ):
+        return issue(
+            code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_INVALID",
+            entity_type="mapping",
+            entity_id=mapping.id,
+            field="transform_config",
+            message="DATE_FORMAT transform_config must include source_format and target_format.",
+        )
+    return None
+
+
 def validate_mapping(db: Session, mapping: IntegrationMapping) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     if not schema_path_exists(db, schema_document_id=mapping.source_schema_document_id, path=mapping.source_path):
@@ -90,18 +137,9 @@ def validate_mapping(db: Session, mapping: IntegrationMapping) -> list[Validatio
     if not transform_type_is_active(db, mapping.transform_type):
         issues.append(catalog_issue("mapping", mapping.id, "transform_type", mapping.transform_type))
     elif transform_type_requires_expression(db, mapping.transform_type):
-        issues.append(
-            issue(
-                code="INTEGRATION_VALIDATION_TRANSFORM_CONFIG_MISSING",
-                entity_type="mapping",
-                entity_id=mapping.id,
-                field="transform_type",
-                message=(
-                    "transform_type requires expression/config metadata that is not persisted "
-                    f"for this mapping yet: {mapping.transform_type}"
-                ),
-            )
-        )
+        transform_config_issue = validate_transform_config(mapping)
+        if transform_config_issue is not None:
+            issues.append(transform_config_issue)
     return issues
 
 
