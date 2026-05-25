@@ -109,7 +109,7 @@ artifacts, not product source.
 | Master Data / Data Factory | Browser QA passed | Broadest workflow and meets current acceptance scope, including templates, workbook, upload, output, export, direct import guard, Load Plan handoff, and backend-owned next-action guidance from template/batch actions. | Advanced spreadsheet audit remains future. |
 | Coordinate Quality | Browser QA passed | Correctly embedded in Data Factory as a quality stage rather than a detached module. | External provider governance and map diagnostics remain future. |
 | Load Plan / Cutover | Browser QA passed | Functional and valuable end-to-end; CSVUTIL, readiness, review, exports, Go/No-Go, handoff, and next-action guidance are connected. | Dedicated backend `available_actions` for cutover packages should replace the temporary UI-derived next-action sequence later. |
-| Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
+| Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. Out-of-order chaos QA now confirms dirty metadata drafts, selected upload files, and link target drafts do not leak when the selected asset changes. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
 | Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, the Rules stage has grouped review, join-binding authoring/review is visible, alias-backed mappings can be selected in the UI, invalid mappings can be removed through a backend-owned action, required target scenario packs are visible as a checklist, response handling rules are backend-owned and visible in review/spec output, guided transform config authoring exists for CONSTANT, DATE_FORMAT, FILTER_BY_QUALIFIER, and COUNT_DISTINCT, schema node search and backend-owned mapping suggestions reduce path-hunting, suggestion scoring now handles exact matches, ambiguous exact matches, and first OTM-context semantics, and the preview engine executes first-slice qualifier extraction, count-distinct aggregation, explicit multi-hop join-binding provenance, mixed header + loop alias mappings, loop-scoped lookup values, constant values, date formatting, and artifact-level executable JSON assertions for the synthetic NDD-like browser scenario. | To become a full accelerator for NDD-like mappings, it still needs broader Catalog/Data Dictionary synonym coverage, richer schema path facets, and dedicated aggregation objects if needed. |
@@ -138,14 +138,14 @@ artifacts, not product source.
 | `OTM-158` | Medium | Schema node search and deterministic mapping suggestions delivered for Integration Mapping Rules stage, with React/browser QA. |
 | `OTM-159` | Medium | Integration Mapping suggestions moved to a backend-owned contract with schema ownership validation, explicit Rules-stage load/apply UI, React QA, and browser QA. |
 | `OTM-160` | Medium | Integration Mapping backend suggestion scoring now covers exact matches, ambiguous exact matches, and first OTM-context suggestions for stop sequence and refnum access key scenarios. |
-| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. First Integration Mapping chaos slice delivered with dirty draft/stale suggestion definition-switch recovery. |
+| `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. Integration Mapping and Assets Library chaos slices delivered through `npm run qa:chaos:browser`. |
 
 ## 5. Recommended Next Queue
 
 1. Fix QA/dev reproducibility first: `OTM-141`.
 2. Browser-QA the `NextActionPanel` first slice and then roll it out to the next staged modules: `OTM-142`.
 3. Continue Integration Mapping accelerator hardening: broader Catalog/Data Dictionary synonym coverage, schema path facets, and complex expression usability.
-4. Continue chaos/out-of-order browser QA for Data Factory, Load Plan, Assets and Order Release: `OTM-146`.
+4. Continue chaos/out-of-order browser QA for Data Factory, Load Plan and Order Release: `OTM-146`.
 5. Harden list density and high-volume states: `OTM-143`.
 
 ## 6. Acceptance Bar Going Forward
