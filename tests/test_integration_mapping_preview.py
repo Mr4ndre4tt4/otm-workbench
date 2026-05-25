@@ -679,6 +679,104 @@ def test_preview_integration_definition_materializes_loop_json_array_with_proven
     ]
 
 
+def test_preview_integration_definition_allows_loop_scoped_join_guard_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment>"
+            "<ShipmentStop><StopSequence>1</StopSequence><StopRef>1</StopRef></ShipmentStop>"
+            "<ShipmentStop><StopSequence>2</StopSequence><StopRef>2</StopRef></ShipmentStop>"
+            "</Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"deliveries":[{"sequence":""}]}',
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json=loop_payload(source, target),
+        headers=admin_header,
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "transform_type": "DIRECT",
+            "description": "Loop-scoped stop sequence mapping guarded by join.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    join = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/joins",
+        json=join_payload(
+            source,
+            left_path="/Transmission/Shipment/ShipmentStop/StopSequence",
+            right_path="/Transmission/Shipment/ShipmentStop/StopRef",
+            operator="EQ",
+            sequence_index=2,
+        ),
+        headers=admin_header,
+    )
+    assert loop.status_code == 200
+    assert mapping.status_code == 200
+    assert join.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {
+        "deliveries": [
+            {"sequence": "1"},
+            {"sequence": "2"},
+        ]
+    }
+    assert payload["preview"]["join_provenance"] == [
+        {
+            "loop_id": loop.json()["id"],
+            "join_id": join.json()["id"],
+            "left_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "right_path": "/Transmission/Shipment/ShipmentStop/StopRef",
+            "left_item_path": "/Transmission/Shipment/ShipmentStop[1]/StopSequence",
+            "right_item_path": "/Transmission/Shipment/ShipmentStop[1]/StopRef",
+            "operator": "EQ",
+            "result": True,
+        },
+        {
+            "loop_id": loop.json()["id"],
+            "join_id": join.json()["id"],
+            "left_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "right_path": "/Transmission/Shipment/ShipmentStop/StopRef",
+            "left_item_path": "/Transmission/Shipment/ShipmentStop[2]/StopSequence",
+            "right_item_path": "/Transmission/Shipment/ShipmentStop[2]/StopRef",
+            "operator": "EQ",
+            "result": True,
+        },
+    ]
+
+
 def test_preview_integration_definition_rejects_invalid_metadata(client, admin_header, db_session):
     definition, source, target = create_source_and_target_documents(client, admin_header)
     db_session.add(

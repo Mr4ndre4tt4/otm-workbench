@@ -678,8 +678,9 @@ Resultado:
 ```text
 - Possivel criar definition, payloads XML/JSON, schemas, mappings, loop, join,
   lookup, validacao e spec.
-- Ainda nao e uma recriacao completa da integracao NDD-like, porque o preview
-  e metadata-only e nao materializa o JSON final.
+- Ainda nao e uma recriacao completa da integracao NDD-like. O preview ja
+  materializa fatias escalares, um loop simples, lookups mock e join guards
+  escalares/loop-scoped, mas ainda nao executa join multi-hop entre colecoes.
 - A UI e utilizavel para catalogar/especificar, mas ainda nao e intuitiva o
   bastante para mapping complexo: selectors longos deixam paths parecidos
   indistinguiveis e permitem joins semanticamente fracos.
@@ -702,10 +703,10 @@ Backlog gerado pela rodada:
 20. Review table agrupada por Header, Entregas, Lookups, Joins, Aggregations e Response Handling. [BACKLOG pos-MVP0]
 21. UI de expression/config para CONSTANT, CONCAT, DATE_FORMAT e transforms futuros. [ENTREGUE primeira fatia backend OTM-130: contrato persistido `transform_config`, validacao controlada e spec markdown em 2026-05-25; UI authoring segue backlog]
 22. Transform catalog estendido: FILTER_BY_QUALIFIER, COUNT_DISTINCT, LOOKUP_VALUE, DEFAULT_IF_EMPTY, FORMAT_DATE_ISO8601. [ENTREGUE fatias backend OTM-133/OTM-134/OTM-135: execucao CONSTANT, DATE_FORMAT OTM_GLOGDATE -> ISO8601 e CONCAT controlado no preview em 2026-05-25; demais transforms seguem backlog]
-23. Mapping escopado por loop para campos de colecao como Entregas[]. [ENTREGUE primeira fatia backend OTM-132: single XML loop -> JSON array com proveniencia em 2026-05-25; loops aninhados e multi-hop seguem backlog]
-24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [ENTREGUE primeira fatia backend OTM-139: scalar join guard EQ/NE com join_provenance no preview em 2026-05-25; multi-hop ShipmentStop -> ShipUnit -> Release segue backlog]
+23. Mapping escopado por loop para campos de colecao como Entregas[]. [ENTREGUE fatias backend OTM-132/OTM-140: single XML loop -> JSON array com proveniencia e join guard dentro do item iterado em 2026-05-25; loops aninhados e multi-hop seguem backlog]
+24. Join multi-hop para ShipmentStop -> ShipUnit -> Release. [ENTREGUE fatias backend OTM-139/OTM-140: scalar join guard EQ/NE e loop-scoped join guard EQ/NE com join_provenance no preview em 2026-05-25; multi-hop ShipmentStop -> ShipUnit -> Release segue backlog]
 25. Validacao semantica para join com mesmo path, target duplicado, target obrigatorio ausente, output lookup fora do escopo, config de transform ausente e readiness separado para spec vs preview. [ENTREGUE primeira fatia: join mesmo path, target duplicado, required targets NDD-like, lookup output scope, transform config missing e readiness spec/preview em 2026-05-25]
-26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE fatias backend OTM-131/OTM-132/OTM-136/OTM-137/OTM-138/OTM-139: direct scalar XML -> JSON, single loop XML -> JSON array, MOCK lookup escalar, MOCK lookup em loop, composicao escalar mapping+lookup com field_provenance e scalar join guard com join_provenance em 2026-05-25; joins em loop/multi-hop seguem backlog]
+26. Preview executavel local que materializa JSON alvo sintetico com proveniencia de campo. [ENTREGUE fatias backend OTM-131/OTM-132/OTM-136/OTM-137/OTM-138/OTM-139/OTM-140: direct scalar XML -> JSON, single loop XML -> JSON array, MOCK lookup escalar, MOCK lookup em loop, composicao escalar mapping+lookup com field_provenance, scalar join guard e loop-scoped join guard com join_provenance em 2026-05-25; joins cross-collection/multi-hop seguem backlog]
 27. Browser QA completo para o cenario NDD-like sintetico, incluindo caminho errado, reset, troca de definition e revisao de artifact. [BACKLOG pos-MVP0]
 ```
 

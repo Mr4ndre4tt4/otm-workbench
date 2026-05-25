@@ -249,9 +249,7 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .all()
     )
     if loops:
-        if joins:
-            return None
-        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings, lookups=lookups)
+        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings, joins=joins, lookups=lookups)
     if not mappings:
         if lookups:
             return build_lookup_executable_json_preview(db, lookups=lookups)
@@ -299,11 +297,8 @@ def materialize_scalar_join_guards(
         right_value = source_value_from_xml_path(source_content, join.right_path)
         if left_value in (None, "") or right_value in (None, ""):
             return None
-        if join.operator == "EQ":
-            result = left_value == right_value
-        elif join.operator == "NE":
-            result = left_value != right_value
-        else:
+        result = evaluate_join_operator(join.operator, left_value, right_value)
+        if result is None:
             return None
         if not result:
             return None
@@ -317,6 +312,14 @@ def materialize_scalar_join_guards(
             }
         )
     return provenance
+
+
+def evaluate_join_operator(operator: str, left_value: object, right_value: object) -> bool | None:
+    if operator == "EQ":
+        return left_value == right_value
+    if operator == "NE":
+        return left_value != right_value
+    return None
 
 
 def materialize_scalar_mappings(
@@ -432,6 +435,7 @@ def build_loop_executable_json_preview(
     *,
     loops: list[IntegrationLoopDefinition],
     mappings: list[IntegrationMapping],
+    joins: list[IntegrationJoinRule],
     lookups: list[IntegrationLookupDefinition],
 ) -> dict[str, object] | None:
     if len(loops) != 1:
@@ -449,6 +453,9 @@ def build_loop_executable_json_preview(
     loop_items = xml_elements_from_collection_path(source_content, loop.source_collection_path)
     if not loop_items:
         return None
+    eligible_loop_items, join_provenance = materialize_loop_join_guards(loop=loop, joins=joins, loop_items=loop_items)
+    if eligible_loop_items is None:
+        return None
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
@@ -463,7 +470,7 @@ def build_loop_executable_json_preview(
         target_field = mapping.target_path.removeprefix(f"{loop.target_collection_path}.")
         if not target_field or "." in target_field or "[]" in target_field:
             return None
-        for index, item in enumerate(loop_items):
+        for target_index, (source_index, item) in enumerate(eligible_loop_items):
             if mapping.transform_type == "CONSTANT":
                 config = parse_transform_config(mapping.transform_config_json)
                 value = config.get("value")
@@ -473,17 +480,17 @@ def build_loop_executable_json_preview(
                 value_policy = "copied_from_synthetic_loop_item"
             if value in (None, ""):
                 continue
-            set_loop_item_value(target_json, loop.target_collection_path, index, target_field, value)
+            set_loop_item_value(target_json, loop.target_collection_path, target_index, target_field, value)
             field_provenance.append(
                 {
                     "loop_id": loop.id,
                     "mapping_id": mapping.id,
                     "source_path": mapping.source_path,
                     "source_item_path": (
-                        f"{loop.source_collection_path}[{index + 1}]/{relative_source_path}"
+                        f"{loop.source_collection_path}[{source_index + 1}]/{relative_source_path}"
                     ),
                     "target_path": mapping.target_path,
-                    "target_item_path": loop.target_collection_path.replace("[]", f"[{index}]")
+                    "target_item_path": loop.target_collection_path.replace("[]", f"[{target_index}]")
                     + f".{target_field}",
                     "transform_type": mapping.transform_type,
                     "value_policy": value_policy,
@@ -510,19 +517,19 @@ def build_loop_executable_json_preview(
         value = response.get(target_field)
         if value in (None, ""):
             return None
-        for index, item in enumerate(loop_items):
+        for target_index, (source_index, item) in enumerate(eligible_loop_items):
             input_value = xml_child_value(item, relative_input_path)
             if input_value in (None, ""):
                 continue
-            set_loop_item_value(target_json, loop.target_collection_path, index, target_field, value)
+            set_loop_item_value(target_json, loop.target_collection_path, target_index, target_field, value)
             field_provenance.append(
                 {
                     "loop_id": loop.id,
                     "lookup_id": lookup.id,
                     "input_path": lookup.input_path,
-                    "source_item_path": f"{loop.source_collection_path}[{index + 1}]/{relative_input_path}",
+                    "source_item_path": f"{loop.source_collection_path}[{source_index + 1}]/{relative_input_path}",
                     "output_path": lookup.output_path,
-                    "target_item_path": loop.target_collection_path.replace("[]", f"[{index}]")
+                    "target_item_path": loop.target_collection_path.replace("[]", f"[{target_index}]")
                     + f".{target_field}",
                     "lookup_type": lookup.lookup_type,
                     "value_policy": "mock_lookup_response",
@@ -531,11 +538,73 @@ def build_loop_executable_json_preview(
 
     if not field_provenance:
         return None
-    return {
+    preview = {
         "mode": "synthetic_executable_json",
         "target_json": target_json,
         "field_provenance": field_provenance,
     }
+    if join_provenance:
+        preview["join_provenance"] = join_provenance
+    return preview
+
+
+def materialize_loop_join_guards(
+    *,
+    loop: IntegrationLoopDefinition,
+    joins: list[IntegrationJoinRule],
+    loop_items: list[ET.Element],
+) -> tuple[list[tuple[int, ET.Element]], list[dict[str, object]]] | tuple[None, None]:
+    if not joins:
+        return list(enumerate(loop_items)), []
+
+    relative_joins: list[tuple[IntegrationJoinRule, str, str]] = []
+    for join in joins:
+        if join.source_schema_document_id != loop.source_schema_document_id:
+            return None, None
+        if not join.left_path.startswith(f"{loop.source_collection_path}/"):
+            return None, None
+        if not join.right_path.startswith(f"{loop.source_collection_path}/"):
+            return None, None
+        relative_joins.append(
+            (
+                join,
+                join.left_path.removeprefix(f"{loop.source_collection_path}/"),
+                join.right_path.removeprefix(f"{loop.source_collection_path}/"),
+            )
+        )
+
+    eligible_items: list[tuple[int, ET.Element]] = []
+    provenance: list[dict[str, object]] = []
+    for index, item in enumerate(loop_items):
+        item_allowed = True
+        for join, left_relative_path, right_relative_path in relative_joins:
+            left_value = xml_child_value(item, left_relative_path)
+            right_value = xml_child_value(item, right_relative_path)
+            if left_value in (None, "") or right_value in (None, ""):
+                return None, None
+            result = evaluate_join_operator(join.operator, left_value, right_value)
+            if result is None:
+                return None, None
+            provenance.append(
+                {
+                    "loop_id": loop.id,
+                    "join_id": join.id,
+                    "left_path": join.left_path,
+                    "right_path": join.right_path,
+                    "left_item_path": f"{loop.source_collection_path}[{index + 1}]/{left_relative_path}",
+                    "right_item_path": f"{loop.source_collection_path}[{index + 1}]/{right_relative_path}",
+                    "operator": join.operator,
+                    "result": result,
+                }
+            )
+            if not result:
+                item_allowed = False
+        if item_allowed:
+            eligible_items.append((index, item))
+
+    if not eligible_items:
+        return None, None
+    return eligible_items, provenance
 
 
 def create_preview_artifact(
