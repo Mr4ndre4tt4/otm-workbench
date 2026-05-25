@@ -119,6 +119,13 @@ export function AdminConsoleView({ token }: { token: string }) {
     setOperationError(null);
   };
 
+  const handleSelectJob = (jobId: string) => {
+    if (jobId === effectiveSelectedJobId) return;
+    setSelectedJobId(jobId);
+    setOperationMessage(null);
+    setOperationError(null);
+  };
+
   const handleCreateWorkspace = async () => {
     const name = workspaceName.trim();
     if (!name) {
@@ -610,7 +617,7 @@ export function AdminConsoleView({ token }: { token: string }) {
             title: job.id,
             action: (
               <div className="admin-job-actions">
-                <Button aria-label={`View events ${job.id}`} disabled={isMutating} onClick={() => setSelectedJobId(job.id)}>
+                <Button aria-label={`View events ${job.id}`} disabled={isMutating} onClick={() => handleSelectJob(job.id)}>
                   View
                 </Button>
                 {job.status === "PENDING" ? (

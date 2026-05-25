@@ -473,6 +473,10 @@ describe("Functional Admin Console journey", () => {
     expect((await screen.findAllByText("Demo job completed.")).length).toBeGreaterThan(0);
     expect(runRequests).toHaveLength(1);
 
+    await userEvent.click(screen.getByRole("button", { name: "View events job_pending" }));
+    expect(document.querySelector(".form-success")?.textContent ?? "").not.toContain("Demo job completed.");
+    expect(await within(await screen.findByLabelText("Selected job events")).findByText("JOB_CANCELLED")).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await screen.findByRole("heading", { name: "Project Cockpit" });
     await userEvent.click(screen.getByRole("link", { name: /Admin Console/ }));

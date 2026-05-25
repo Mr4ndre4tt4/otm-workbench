@@ -236,6 +236,15 @@ async function run() {
     await page.getByLabel("Selected job events").getByText("JOB_SUCCEEDED", { exact: true }).first().waitFor();
     await page.getByLabel("Platform jobs").getByText("SUCCEEDED", { exact: true }).first().waitFor();
     await page.getByLabel("Audit trail").getByText("job.create").first().waitFor();
+    await page.getByRole("button", { name: `View events ${cancelledJobId}` }).click();
+    const successFeedback = page.locator(".form-success");
+    if ((await successFeedback.count()) > 0) {
+      const feedbackText = (await successFeedback.first().textContent()) ?? "";
+      if (feedbackText.includes("Demo job completed.")) {
+        throw new Error("Job completion feedback stayed visible after selecting another job.");
+      }
+    }
+    await page.getByLabel("Selected job events").getByText("JOB_CANCELLED", { exact: true }).first().waitFor();
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -260,7 +269,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "admin-setup-capabilities-jobs-audit-create-run-return",
+          journey: "admin-setup-capabilities-jobs-audit-create-run-switch-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
