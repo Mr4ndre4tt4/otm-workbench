@@ -121,7 +121,8 @@ called complete for this class of integration:
 - Multi-hop join authoring for ShipmentStop -> ShipUnit -> Release.
   Backend contract delivered in `OTM-147`; staged Rules UI authoring and grouped
   review delivered in `OTM-148`; scalar downstream alias-scoped mapping
-  delivered in `OTM-149`.
+  delivered in `OTM-149`; loop-scoped alias mapping for `Entregas[]` delivered
+  in `OTM-150`.
 - Semantic validation for joins, loop scope, duplicate target fields, missing
   required target fields, and transform configuration.
 - Executable local preview that materializes synthetic target JSON from
@@ -151,7 +152,8 @@ Recommended next backlog sequence:
 6. Add loop-scoped field mapping support for target collections.
 7. Add multi-hop join metadata and validation. Backend slice delivered in
    `OTM-147`; staged Rules UI authoring/review delivered in `OTM-148`; scalar
-   alias-scoped downstream mapping delivered in `OTM-149`.
+   alias-scoped downstream mapping delivered in `OTM-149`; loop-scoped alias
+   mapping delivered in `OTM-150`.
 8. Harden validation to catch same-path joins, duplicate target paths, missing
    required target fields, invalid lookup output scope, and transform config
    gaps.

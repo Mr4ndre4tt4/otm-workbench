@@ -307,3 +307,174 @@ def test_preview_integration_definition_rejects_missing_join_binding_alias(clien
     assert response.status_code == 200
     assert response.json()["preview"]["mode"] == "synthetic_metadata_only"
     assert "target_json" not in response.json()["preview"]
+
+
+def test_preview_integration_definition_uses_join_binding_alias_inside_loop(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_loop_alias.json",
+        content='{"deliveries":[{"sequence":"","accessKey":""}]}',
+    )
+    binding = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/join-bindings",
+        json=join_binding_payload(source),
+        headers=admin_header,
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_collection_path": "/Transmission/Shipment/ShipmentStop",
+            "target_collection_path": "$.deliveries[]",
+            "name": "Delivery stops",
+            "description": "Loop over synthetic delivery stops.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    stop_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/ShipmentStop/StopSequence",
+            "target_path": "$.deliveries[].sequence",
+            "transform_type": "DIRECT",
+            "description": "Stop sequence from loop item.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    alias_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.deliveries[].accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {
+                "source_alias": "ship_unit_release",
+            },
+            "description": "Release access key from alias in the delivery loop.",
+            "sequence_index": 2,
+        },
+        headers=admin_header,
+    )
+    assert binding.status_code == 200
+    assert loop.status_code == 200
+    assert stop_mapping.status_code == 200
+    assert alias_mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    preview = response.json()["preview"]
+    assert preview["mode"] == "synthetic_executable_json"
+    assert preview["target_json"] == {
+        "deliveries": [
+            {
+                "sequence": "1",
+                "accessKey": "KEY-001",
+            }
+        ]
+    }
+    assert {
+        "loop_id": loop.json()["id"],
+        "mapping_id": alias_mapping.json()["id"],
+        "source_alias": "ship_unit_release",
+        "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+        "source_item_path": "/Transmission/Shipment/Release[1]/ReleaseRefnum/ReleaseRefnumValue",
+        "target_path": "$.deliveries[].accessKey",
+        "target_item_path": "$.deliveries[0].accessKey",
+        "transform_type": "DIRECT",
+        "value_policy": "copied_from_join_binding_alias",
+    } in preview["field_provenance"]
+    assert preview["multi_hop_join_provenance"] == [
+        {
+            "binding_id": binding.json()["id"],
+            "hop_sequence": 1,
+            "result_alias": "stop_ship_unit",
+            "left_collection_path": "/Transmission/Shipment/ShipmentStop",
+            "right_collection_path": "/Transmission/Shipment/ShipUnit",
+            "left_item_path": "/Transmission/Shipment/ShipmentStop[1]/ShipmentStopDetail/ShipUnitGid/Gid/Xid",
+            "right_item_path": "/Transmission/Shipment/ShipUnit[1]/ShipUnitGid/Gid/Xid",
+            "operator": "EQ",
+            "result": True,
+        },
+        {
+            "binding_id": binding.json()["id"],
+            "hop_sequence": 2,
+            "result_alias": "ship_unit_release",
+            "left_collection_path": "/Transmission/Shipment/ShipUnit",
+            "right_collection_path": "/Transmission/Shipment/Release",
+            "left_item_path": "/Transmission/Shipment/ShipUnit[1]/ShipUnitContent/ReleaseGid/Gid/Xid",
+            "right_item_path": "/Transmission/Shipment/Release[1]/ReleaseGid/Gid/Xid",
+            "operator": "EQ",
+            "result": True,
+        },
+    ]
+
+
+def test_preview_integration_definition_rejects_missing_join_binding_alias_inside_loop(client, admin_header):
+    definition = create_definition(client, admin_header)
+    source = planned_shipment_source_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery_loop_missing_alias.json",
+        content='{"deliveries":[{"accessKey":""}]}',
+    )
+    loop = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/loops",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_collection_path": "/Transmission/Shipment/ShipmentStop",
+            "target_collection_path": "$.deliveries[]",
+            "name": "Delivery stops",
+            "description": "Loop over synthetic delivery stops.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json={
+            "source_schema_document_id": source["id"],
+            "target_schema_document_id": target["id"],
+            "source_path": "/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue",
+            "target_path": "$.deliveries[].accessKey",
+            "transform_type": "DIRECT",
+            "transform_config": {
+                "source_alias": "missing_alias",
+            },
+            "description": "Missing alias must block loop preview.",
+            "sequence_index": 1,
+        },
+        headers=admin_header,
+    )
+    assert loop.status_code == 200
+    assert mapping.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["preview"]["mode"] == "synthetic_metadata_only"
+    assert "target_json" not in response.json()["preview"]

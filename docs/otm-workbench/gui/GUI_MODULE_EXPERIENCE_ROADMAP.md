@@ -84,8 +84,10 @@ test pass/fail:
    QA.
 7. OTM-149: execute alias-scoped downstream mappings from join bindings.
    First backend slice delivered for scalar mappings with
-   `transform_config.source_alias`; loop-scoped alias execution remains future
-   accelerator hardening.
+   `transform_config.source_alias`.
+8. OTM-150: execute loop-scoped alias mappings for Integration Mapping
+   deliveries. Delivered for `$.deliveries[]` style target rows with
+   source/target item provenance.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
 6. OTM-143: harden high-volume list density and signal quality.
 ```

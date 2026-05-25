@@ -217,8 +217,15 @@ joined collection item and emits `source_alias` plus `source_item_path` in
 field provenance. Missing aliases block executable preview instead of silently
 falling back to global XML traversal.
 
-Remaining accelerator hardening is loop-scoped alias mapping for full
-`Entregas[]` materialization and deeper semantic validation.
+`OTM-150` extends alias-scoped mapping execution into loop preview. A mapping
+under a target collection such as `$.deliveries[].accessKey` can read from a
+join-binding alias while the loop still controls the target row index. Field
+provenance now includes loop id, alias, source item path, target item path, and
+the alias value policy.
+
+Remaining accelerator hardening is deeper semantic validation, UI assistance
+for configuring alias-backed mappings, and a browser scenario that proves a
+larger NDD-like target payload end to end.
 
 Verification run:
 

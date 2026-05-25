@@ -287,7 +287,14 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .all()
     )
     if loops:
-        return build_loop_executable_json_preview(db, loops=loops, mappings=mappings, joins=joins, lookups=lookups)
+        return build_loop_executable_json_preview(
+            db,
+            loops=loops,
+            mappings=mappings,
+            joins=joins,
+            join_bindings=join_bindings,
+            lookups=lookups,
+        )
     if not mappings:
         if lookups:
             return build_lookup_executable_json_preview(db, lookups=lookups)
@@ -608,6 +615,7 @@ def build_loop_executable_json_preview(
     loops: list[IntegrationLoopDefinition],
     mappings: list[IntegrationMapping],
     joins: list[IntegrationJoinRule],
+    join_bindings: list[IntegrationJoinBinding] | None = None,
     lookups: list[IntegrationLookupDefinition],
 ) -> dict[str, object] | None:
     if len(loops) != 1:
@@ -628,13 +636,21 @@ def build_loop_executable_json_preview(
     eligible_loop_items, join_provenance = materialize_loop_join_guards(loop=loop, joins=joins, loop_items=loop_items)
     if eligible_loop_items is None:
         return None
+    multi_hop_join_provenance, join_alias_contexts = materialize_multi_hop_join_bindings(
+        db,
+        bindings=join_bindings or [],
+    )
+    if multi_hop_join_provenance is None:
+        return None
 
     target_json: dict[str, object] = {}
     field_provenance: list[dict[str, object]] = []
     for mapping in mappings:
         if mapping.transform_type not in {"DIRECT", "CONSTANT"}:
             return None
-        if not mapping.source_path.startswith(f"{loop.source_collection_path}/"):
+        config = parse_transform_config(mapping.transform_config_json)
+        source_alias = str(config.get("source_alias") or "").strip()
+        if not source_alias and not mapping.source_path.startswith(f"{loop.source_collection_path}/"):
             return None
         if not mapping.target_path.startswith(f"{loop.target_collection_path}."):
             return None
@@ -644,12 +660,18 @@ def build_loop_executable_json_preview(
             return None
         for target_index, (source_index, item) in enumerate(eligible_loop_items):
             if mapping.transform_type == "CONSTANT":
-                config = parse_transform_config(mapping.transform_config_json)
                 value = config.get("value")
                 value_policy = "constant_from_transform_config"
+                alias_provenance: dict[str, object] = {}
+            elif source_alias:
+                alias_value = mapping_value_from_join_alias(mapping, join_alias_contexts, config=config)
+                if alias_value is None:
+                    return None
+                value, value_policy, alias_provenance = alias_value
             else:
                 value = xml_child_value(item, relative_source_path)
                 value_policy = "copied_from_synthetic_loop_item"
+                alias_provenance = {}
             if value in (None, ""):
                 continue
             set_loop_item_value(target_json, loop.target_collection_path, target_index, target_field, value)
@@ -666,6 +688,7 @@ def build_loop_executable_json_preview(
                     + f".{target_field}",
                     "transform_type": mapping.transform_type,
                     "value_policy": value_policy,
+                    **alias_provenance,
                 }
             )
 
@@ -717,6 +740,8 @@ def build_loop_executable_json_preview(
     }
     if join_provenance:
         preview["join_provenance"] = join_provenance
+    if multi_hop_join_provenance:
+        preview["multi_hop_join_provenance"] = multi_hop_join_provenance
     return preview
 
 
