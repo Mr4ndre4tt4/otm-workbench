@@ -113,7 +113,14 @@ async function run() {
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
     await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill("bad-password");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    const loginError = page.locator(".login-form .form-error");
+    await loginError.waitFor();
     await page.getByLabel("Password").fill(password);
+    await loginError.waitFor({ state: "hidden" });
+    consoleErrors.length = 0;
+    failedResponses.length = 0;
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();

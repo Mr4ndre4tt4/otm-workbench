@@ -45,7 +45,8 @@ Those remain backend-owned and are fetched after authentication.
 2. Submit credentials through POST /api/v1/platform/session/login.
 3. Store only the returned browser session token through AuthProvider.
 4. Render backend auth errors inside the shared shell form pattern.
-5. Keep the unauthenticated message focused on backend-owned contracts.
+5. Clear stale backend auth errors when the user edits email or password.
+6. Keep the unauthenticated message focused on backend-owned contracts.
 ```
 
 ## 4. Component Rule
@@ -68,5 +69,6 @@ frontend/tests/loginPanelPatternContract.test.ts
 ```
 
 The tests verify that the component calls the backend session endpoint, persists
-only the returned session token, renders backend auth errors, and keeps login
-markup centralized in the shell component.
+only the returned session token, renders backend auth errors, clears stale
+errors when the login draft changes, and keeps login markup centralized in the
+shell component.

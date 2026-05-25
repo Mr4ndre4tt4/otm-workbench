@@ -12,6 +12,10 @@ export function LoginPanel() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
+  function clearDraftError() {
+    setError(null);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -43,7 +47,10 @@ export function LoginPanel() {
           <input
             autoComplete="email"
             name="email"
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              clearDraftError();
+            }}
             required
             type="email"
             value={email}
@@ -54,7 +61,10 @@ export function LoginPanel() {
           <input
             autoComplete="current-password"
             name="password"
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              clearDraftError();
+            }}
             required
             type="password"
             value={password}

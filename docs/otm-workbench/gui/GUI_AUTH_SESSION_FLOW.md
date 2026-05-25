@@ -19,6 +19,8 @@ FastAPI session token instead of calling platform endpoints anonymously.
 - API client attaches `Authorization: Bearer <token>` when a token is present.
 - Navigation, Project Cockpit summary, and user preferences queries are enabled
   only after authentication.
+- Backend auth errors are scoped to the current login draft. Editing email or
+  password clears stale error feedback before the next submit.
 - Sign out clears the session token and returns the shell to the login state.
 
 ## Ownership Boundary
@@ -49,10 +51,13 @@ frontend/src/app/shell/LoginPanel.tsx
 ## Verification
 
 ```text
-npm run test
+npm run test -- LoginPanel.test.tsx
+npm run qa:functional:shell:browser
 npm run lint
 npm run build
 ```
 
 The auth tests assert that protected contracts are not called before login and
-that authenticated requests receive the bearer token after login.
+that authenticated requests receive the bearer token after login. The shell
+browser journey also covers failed-login recovery before the successful
+session handoff.

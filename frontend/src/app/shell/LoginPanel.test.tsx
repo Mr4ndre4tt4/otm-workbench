@@ -69,4 +69,30 @@ describe("LoginPanel", () => {
     expect(await screen.findByText("Invalid credentials.")).toBeInTheDocument();
     expect(sessionStorage.getItem("otm_workbench.session_token")).toBeNull();
   });
+
+  it("clears stale auth errors when the user edits the login draft", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ code: "AUTH_FAILED", message: "Invalid credentials." }), {
+        headers: { "Content-Type": "application/json" },
+        status: 401
+      })
+    );
+
+    render(
+      <AuthProvider>
+        <LoginPanel />
+      </AuthProvider>
+    );
+
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "bad-password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByText("Invalid credentials.")).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Password"));
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+
+    expect(screen.queryByText("Invalid credentials.")).not.toBeInTheDocument();
+  });
 });
