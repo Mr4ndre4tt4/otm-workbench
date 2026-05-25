@@ -86,6 +86,9 @@ Current accelerator value:
 - Useful as a first path-hunting accelerator because mapping suggestions are now
   served by the backend from parsed schema documents, not inferred only in the
   browser.
+- Useful for a first set of OTM-context matches because backend scoring now
+  recognizes simple OTM path semantics such as `ShipmentStop/StopSequence` to
+  `deliveries[].sequence` and `ReleaseRefnumValue` to `accessKey`.
 ```
 
 Current limits:
@@ -95,8 +98,9 @@ Current limits:
   transformation without external interpretation.
 - Not yet enough to cover all complex transformations from the reference
   mapping: filtered refnums, date formatting, aggregations, response handling,
-- Suggestion scoring is still intentionally simple and needs richer Catalog/Data
-  Dictionary semantics before it can be treated as a smart mapper.
+- Suggestion scoring is still intentionally conservative. It now handles exact,
+  ambiguous, and first OTM-context matches, but broader Catalog/Data Dictionary
+  semantics remain future hardening.
 - Negative browser recovery for invalid alias/path authoring is covered by
   `OTM-153`.
 ```
@@ -206,6 +210,10 @@ Recommended next backlog sequence:
     `GET /definitions/{definition_id}/mapping-suggestions`, schema ownership
     validation, frontend consumption through an explicit `Load backend
     suggestions` action, and browser QA that applies the returned suggestion.
+17. Enrich backend suggestion scoring. `OTM-160` delivered deterministic
+    confidence/reason scoring for exact matches, ambiguous exact matches, and
+    first OTM-context suggestions for stop sequence and release refnum access
+    key scenarios.
 ```
 
 ## OTM-152 Evidence

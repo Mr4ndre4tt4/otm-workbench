@@ -213,6 +213,11 @@ async function run() {
     await mappingRuleForm.getByLabel("Source schema").selectOption({ label: "Transmission" });
     await mappingRuleForm.getByLabel("Target schema").selectOption({ label: "$" });
     await page.getByRole("button", { name: "Load backend suggestions" }).click();
+    await page
+      .getByRole("button", {
+        name: "Apply suggestion /Transmission/Shipment/ShipmentStop/StopSequence to $.deliveries[].sequence"
+      })
+      .waitFor();
     await page.getByLabel("Mapping source node search").fill("shipment");
     await page.getByLabel("Mapping target node search").fill("shipment");
     await page
