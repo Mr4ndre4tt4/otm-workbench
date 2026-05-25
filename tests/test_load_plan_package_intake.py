@@ -325,9 +325,8 @@ def prepare_exported_operational_locations_batch(client, admin_header):
     return batch, export.json()
 
 
-def prepare_exported_item_packaging_batch(client, admin_header):
-    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "ITEM_PACKAGING_OPERATIONAL")
-    editor_payload = {
+def item_packaging_editor_payload() -> dict[str, object]:
+    return {
         "file_name": "item_packaging_load_plan.xlsx",
         "sheets": [
             {
@@ -432,6 +431,11 @@ def prepare_exported_item_packaging_batch(client, admin_header):
             },
         ],
     }
+
+
+def prepare_exported_item_packaging_batch(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "ITEM_PACKAGING_OPERATIONAL")
+    editor_payload = item_packaging_editor_payload()
     batch_response = client.post(
         f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
         json=editor_payload,
@@ -457,6 +461,18 @@ def prepare_exported_item_packaging_batch(client, admin_header):
     )
     assert export.status_code == 200
     return batch, export.json()
+
+
+def create_item_packaging_batch_with_missing_transport_unit_parent(client, admin_header):
+    template_code = create_master_data_template_from_scenario_pack(client, admin_header, "ITEM_PACKAGING_OPERATIONAL")
+    editor_payload = item_packaging_editor_payload()
+    tihi_rows = next(sheet["rows"] for sheet in editor_payload["sheets"] if sheet["sheet_code"] == "TI_HI")
+    tihi_rows[0]["values"]["transport_handling_unit_gid"] = "SYN.SUS_MISSING_PALLET"
+    return client.post(
+        f"/api/v1/modules/master-data/templates/{template_code}/workbook-editor/batches",
+        json=editor_payload,
+        headers=admin_header,
+    )
 
 
 def test_load_plan_packages_table_exists_after_metadata_reset():
@@ -895,6 +911,26 @@ def test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_rea
     assert not any(blocker["code"] == "ZIP_ANALYSIS_ERROR" for blocker in readiness["blockers"])
     assert "SYN.ITEM_WIDGET_001" not in json.dumps(zip_payload)
     assert "SYN.ITEM_WIDGET_001" not in json.dumps(readiness)
+
+
+def test_item_packaging_master_data_blocks_orphan_transport_handling_unit_before_mapping(
+    client,
+    admin_header,
+):
+    response = create_item_packaging_batch_with_missing_transport_unit_parent(client, admin_header)
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["code"] == "MASTER_DATA_WORKBOOK_EDITOR_INVALID"
+    assert "validation" in payload["details"], payload
+    orphan = next(
+        issue
+        for issue in payload["details"]["validation"]["issues"]
+        if issue["field_key"] == "transport_handling_unit_gid"
+    )
+    assert orphan["code"] == "RELATIONSHIP_PARENT_NOT_FOUND"
+    assert orphan["parent_sheet_code"] == "SHIP_UNIT_SPECS"
+    assert orphan["message"].endswith("SHIP_UNIT_SPECS.ship_unit_spec_gid.")
 
 
 def test_register_master_data_package_creates_client_safe_evidence_audit_and_event(

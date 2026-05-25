@@ -41,6 +41,7 @@ from otm_workbench.modules.master_data.templates import (
     validate_master_data_template,
 )
 from otm_workbench.modules.master_data.workbook_editor import (
+    WorkbookEditorValidationError,
     build_master_data_workbook_editor_contract,
     create_master_data_batch_from_editor_rows,
     validate_master_data_workbook_rows,
@@ -472,6 +473,13 @@ def create_master_data_batch_from_workbook_editor_rows(
     try:
         result = create_master_data_batch_from_editor_rows(db, template, payload)
         return serialize_master_data_batch(db, get_master_data_batch_or_404(db, str(result["batch_id"])))
+    except WorkbookEditorValidationError as exc:
+        raise api_error(
+            422,
+            "MASTER_DATA_WORKBOOK_EDITOR_INVALID",
+            "Workbook editor rows are not valid for batch creation.",
+            details={"error": str(exc), "validation": exc.validation},
+        ) from exc
     except ValueError as exc:
         raise api_error(
             422,

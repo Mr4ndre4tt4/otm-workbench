@@ -133,6 +133,9 @@ Delivered backend changes:
   analysis, and Cutover readiness with no ZIP analysis structure errors,
   preserving the `ITEM`, `SHIP_UNIT_SPEC`, `PACKAGED_ITEM`, `TI_HI` technical
   sequence and `TRANSPORT_HANDLING_UNIT_GID` coverage.
+- The Item Packaging negative editor path now rejects a TiHi transport handling
+  unit that has no `SHIP_UNIT_SPECS` parent and returns structured
+  `validation.issues` details for the UI before a batch is created.
 
 Tests:
 
@@ -140,6 +143,7 @@ Tests:
 python -m pytest tests/test_master_data_templates.py -q
 python -m pytest tests/test_load_plan_package_intake.py::test_operational_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
 python -m pytest tests/test_load_plan_package_intake.py::test_item_packaging_master_data_package_reaches_zip_analysis_and_cutover_readiness -q
+python -m pytest tests/test_load_plan_package_intake.py::test_item_packaging_master_data_blocks_orphan_transport_handling_unit_before_mapping -q
 npm run test -- AppFunctionalMasterData.test.tsx
 npm run qa:functional:master-data:browser
 ```

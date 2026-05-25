@@ -10,6 +10,12 @@ from otm_workbench.modules.master_data.templates import (
 )
 
 
+class WorkbookEditorValidationError(ValueError):
+    def __init__(self, validation: dict[str, object]):
+        super().__init__("Workbook editor rows are invalid.")
+        self.validation = validation
+
+
 def _string_value(value: object) -> str:
     return "" if value is None else str(value).strip()
 
@@ -168,7 +174,7 @@ def create_master_data_batch_from_editor_rows(
 ) -> dict[str, object]:
     validation = validate_master_data_workbook_rows(template, payload)
     if not validation["valid"]:
-        raise ValueError("Workbook editor rows are invalid.")
+        raise WorkbookEditorValidationError(validation)
 
     definition = master_data_template_definition(template)
     field_keys_by_sheet = {
