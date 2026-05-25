@@ -69,6 +69,20 @@ describe("Functional Integration Mapping Studio journey", () => {
     let joins: Array<Record<string, unknown>> = [];
     let lookups: Array<Record<string, unknown>> = [];
     let generatedArtifacts: Array<Record<string, unknown>> = [];
+    const alternateDefinition = {
+      id: "definition_2",
+      code: "ALT_EXTERNAL_DELIVERY_UI",
+      name: "Alternate External Delivery UI",
+      description: "Synthetic alternate mapping definition.",
+      source_system: "OTM",
+      target_system: "EXTERNAL_DELIVERY_ALT",
+      source_format: "XML",
+      target_format: "JSON",
+      status: "DRAFT",
+      created_by: "admin@example.test",
+      created_at: "2026-05-21T10:10:00",
+      updated_at: "2026-05-21T10:10:00"
+    };
     const createObjectURL = vi.fn(() => "blob:integration-mapping-artifact");
     const revokeObjectURL = vi.fn();
     vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
@@ -247,13 +261,16 @@ describe("Functional Integration Mapping Studio journey", () => {
             created_at: "2026-05-21T10:00:00",
             updated_at: "2026-05-21T10:00:00"
           };
-          definitions = [definition];
+          definitions = [definition, alternateDefinition];
           return Promise.resolve(jsonResponse(definition));
         }
         return Promise.resolve(jsonResponse({ items: definitions, total: definitions.length, page: 1, page_size: 50 }));
       }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1")) {
         return Promise.resolve(jsonResponse(definitions[0]));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2")) {
+        return Promise.resolve(jsonResponse(alternateDefinition));
       }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/payload-artifacts")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -477,6 +494,27 @@ describe("Functional Integration Mapping Studio journey", () => {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse({ definition_id: "definition_1", items: generatedArtifacts, total: generatedArtifacts.length }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/payload-artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/schema-documents")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/mappings") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/loops") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/joins") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/lookups")
+      ) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/artifacts")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ definition_id: "definition_2", items: [], total: 0 }));
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/artifacts/artifact_spec/download")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         artifactDownloadRequests.push(url);
@@ -693,6 +731,15 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(artifactDownloadRequests).toHaveLength(1);
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(actionRequests).toEqual(["validate", "preview", "generate-spec"]);
+
+    await userEvent.click(screen.getByRole("button", { name: /5Definitions list/ }));
+    await userEvent.click(within(screen.getByLabelText("Integration mapping definitions")).getByRole("button", { name: /ALT_EXTERNAL_DELIVERY_UI/ }));
+    expect(await screen.findByLabelText("Selected integration mapping definition")).toHaveTextContent("ALT_EXTERNAL_DELIVERY_UI");
+    expect(screen.queryByText("Download started: integration_mapping_spec.md.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Integration mapping generated artifacts")).toHaveTextContent("No generated artifacts for this definition.");
+    await userEvent.click(screen.getByRole("button", { name: /4Mapping rules/ }));
+    expect(screen.getByLabelText("Source schema")).toHaveValue("");
+    expect(screen.getByLabelText("Target schema")).toHaveValue("");
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Integration Mapping Studio/ }));

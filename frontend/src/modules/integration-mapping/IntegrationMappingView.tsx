@@ -221,6 +221,22 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setOperationError(null);
   };
 
+  const clearDefinitionWorkspaceState = () => {
+    setPayloadRole('SOURCE_SAMPLE');
+    setPayloadFormat('XML');
+    setPayloadFileName('');
+    setPayloadDescription('');
+    setPayloadContent('');
+    setDownloadingArtifactId(null);
+    resetMappingRuleDrafts();
+  };
+
+  const handleSelectDefinition = (definitionId: string) => {
+    if (definitionId === effectiveDefinitionId) return;
+    setSelectedDefinitionId(definitionId);
+    clearDefinitionWorkspaceState();
+  };
+
   const handleCreateSystem = async () => {
     setIsMutating(true);
     setOperationMessage(null);
@@ -1264,7 +1280,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
             subtitle: item.name,
             title: item.code
           }))}
-          onSelect={setSelectedDefinitionId}
+          onSelect={handleSelectDefinition}
           selectedId={effectiveDefinitionId}
         />
         ) : null}

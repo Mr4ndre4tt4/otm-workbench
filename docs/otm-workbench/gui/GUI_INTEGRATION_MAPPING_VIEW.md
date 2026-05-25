@@ -66,6 +66,7 @@ Current panels:
 - Mapping rows
 - Generated preview/spec artifacts
 - Mapping-rule draft reset recovery
+- Definition-switch recovery
 ```
 
 ## Safety Boundaries
@@ -77,6 +78,12 @@ external credentials.
 Generated artifact rows expose only client-safe metadata and download through
 guarded backend URLs. The frontend does not infer artifact paths, hashes,
 ownership, or eligibility.
+
+Definition switching is definition-workspace scoped. Selecting another
+backend-owned definition clears payload draft fields, mapping/loop/join/lookup
+drafts, download state, and stale feedback from the previously selected
+definition. Generated artifacts, schemas, mappings, loops, joins, and lookups
+continue to come from backend queries keyed by the selected definition id.
 
 ## Test Coverage
 
@@ -100,6 +107,7 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Mapping-rule draft reset after mapping, loop, join, and lookup authoring
 - Validate, preview, and generate-spec actions
 - Generated artifact listing and guarded download
+- Definition-switch recovery after artifact download/spec generation
 ```
 
 It also guards against disconnected stacked authoring panels through the staged

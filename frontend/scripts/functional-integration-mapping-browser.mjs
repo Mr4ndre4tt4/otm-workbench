@@ -62,6 +62,7 @@ async function run() {
   const endpointCode = `CREATE_DELIVERY_UI_${suffix}`;
   const definitionCode = `PS_TO_EXTERNAL_DELIVERY_UI_${suffix}`;
   const definitionName = `Planned Shipment to External Delivery UI ${suffix}`;
+  const alternateDefinitionCode = `ALT_EXTERNAL_DELIVERY_UI_${suffix}`;
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1360, height: 980 } });
@@ -119,6 +120,20 @@ async function run() {
     await page.getByRole("button", { name: "Create definition" }).click();
     await page.getByText(`Created definition ${definitionCode}.`).waitFor();
     await page.getByText(definitionCode, { exact: true }).first().waitFor();
+
+    await page.getByLabel("Definition code").fill(alternateDefinitionCode);
+    await page.getByLabel("Definition name").fill(`Alternate External Delivery UI ${suffix}`);
+    await page.getByLabel("Source system").fill("OTM");
+    await page.getByLabel("Target system").fill("EXTERNAL_DELIVERY_ALT");
+    await page.getByLabel("Source format").selectOption("XML");
+    await page.getByLabel("Target format").selectOption("JSON");
+    await page.getByLabel("Definition description").fill("Synthetic alternate browser mapping definition.");
+    await page.getByRole("button", { name: "Create definition" }).click();
+    await page.getByText(`Created definition ${alternateDefinitionCode}.`).waitFor();
+
+    await page.locator(".integration-workflow-step").filter({ hasText: "Definitions list" }).click();
+    await page.getByLabel("Integration mapping definitions").getByRole("button", { name: new RegExp(definitionCode) }).click();
+    await page.getByLabel("Selected integration mapping definition").getByText(definitionCode, { exact: true }).waitFor();
 
     await page.locator(".integration-workflow-step").filter({ hasText: "Payloads & schemas" }).click();
     const payloadForm = page.locator(".integration-payload-form");
@@ -230,11 +245,26 @@ async function run() {
     }
     await page.getByText("Download started: integration_mapping_spec.md.").waitFor();
 
+    await page.locator(".integration-workflow-step").filter({ hasText: "Definitions list" }).click();
+    await page.getByLabel("Integration mapping definitions").getByRole("button", { name: new RegExp(alternateDefinitionCode) }).click();
+    await page.getByLabel("Selected integration mapping definition").getByText(alternateDefinitionCode, { exact: true }).waitFor();
+    if (await page.getByText("Download started: integration_mapping_spec.md.").isVisible().catch(() => false)) {
+      throw new Error("Integration Mapping kept stale artifact download feedback after switching definitions.");
+    }
+    await page.getByLabel("Integration mapping generated artifacts").getByText("No generated artifacts for this definition.").waitFor();
+    await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
+    await page.locator(".integration-mapping-form").getByLabel("Source schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping source schema after definition switch: ${element.value}`);
+    });
+    await page.locator(".integration-mapping-form").getByLabel("Target schema").evaluate((element) => {
+      if (element.value !== "") throw new Error(`Unexpected mapping target schema after definition switch: ${element.value}`);
+    });
+
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/integration-mapping"]').click();
     await page.getByRole("heading", { name: "Integration Mapping Studio" }).waitFor();
-    await page.getByText(definitionCode, { exact: true }).first().waitFor();
+    await page.getByText(alternateDefinitionCode, { exact: true }).first().waitFor();
 
     if (consoleErrors.length || failedResponses.length) {
       throw new Error(
@@ -257,7 +287,8 @@ async function run() {
           apiBaseUrl,
           system_code: systemCode,
           endpoint_code: endpointCode,
-          definition_code: definitionCode
+          definition_code: definitionCode,
+          alternate_definition_code: alternateDefinitionCode
         },
         null,
         2
