@@ -249,6 +249,60 @@ def test_zip_analysis_flags_ctl_missing_csv_and_table_mismatch(client, admin_hea
     assert "SYNTH_ACC_COST_001" not in json.dumps(payload)
 
 
+def test_zip_analysis_sanitizes_ctl_mail_notification_options(client, admin_header, db_session):
+    batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
+    artifact = db_session.query(Artifact).filter(Artifact.id == export["artifact_id"]).one()
+    artifact_path = Path(artifact.file_path)
+    rewritten_path = artifact_path.with_suffix(".csvutil_mail_options.zip")
+    with zipfile.ZipFile(rewritten_path, "w", compression=zipfile.ZIP_DEFLATED) as rewritten:
+        rewritten.writestr(
+            "csvutil.ctl",
+            (
+                "-dataFileName 001_ACCESSORIAL_COST.csv -command xcsv "
+                "-tableName ACCESSORIAL_COST -mailTo ops@example.test "
+                "-mailFrom loader@example.test -mailSubject Synthetic Load\n"
+            ),
+        )
+        rewritten.writestr(
+            "export/001_ACCESSORIAL_COST.csv",
+            (
+                "ACCESSORIAL_COST\n"
+                "ACCESSORIAL_COST_GID,ACCESSORIAL_COST_XID\n"
+                "OTM1.SYNTH_ACC_COST_001,SYNTH_ACC_COST_001\n"
+            ),
+        )
+    artifact.file_path = str(rewritten_path)
+    artifact.file_name = rewritten_path.name
+    artifact.size_bytes = rewritten_path.stat().st_size
+    db_session.commit()
+
+    response = client.post(
+        "/api/v1/modules/load-plan/zip-analysis",
+        json={"package_id": package["id"]},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["ctl_mail_option_count"] == 3
+    assert payload["summary"]["ctl_has_mail_options"] is True
+    manifest = db_session.query(Manifest).filter(Manifest.id == payload["manifest_id"]).one()
+    manifest_json = json.loads(manifest.manifest_json)
+    assert manifest_json["ctl_mail_options"] == [
+        {"file_name": "csvutil.ctl", "option": "mailFrom"},
+        {"file_name": "csvutil.ctl", "option": "mailSubject"},
+        {"file_name": "csvutil.ctl", "option": "mailTo"},
+    ]
+    response_text = json.dumps(payload)
+    assert "ops@example.test" not in response_text
+    assert "loader@example.test" not in response_text
+    assert "Synthetic Load" not in response_text
+    assert "ops@example.test" not in manifest.manifest_json
+    assert "loader@example.test" not in manifest.manifest_json
+    assert "Synthetic Load" not in manifest.manifest_json
+    assert "SYNTH_ACC_COST_001" not in response_text
+
+
 def test_zip_analysis_list_and_detail(client, admin_header):
     batch, export, approval, package = prepare_registered_load_plan_package(client, admin_header)
     created = client.post(

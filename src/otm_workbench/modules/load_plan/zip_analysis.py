@@ -26,6 +26,7 @@ ALTER_SESSION_LINE = "exec alter session set nls_date_format = 'YYYY-MM-DD HH24:
 CSVUTIL_COMMAND_RE = re.compile(r"(?:^|\s)-command\s+([A-Za-z0-9_]+)(?:\s|$)", re.IGNORECASE)
 CSVUTIL_DATA_FILE_RE = re.compile(r"(?:^|\s)-dataFileName\s+([^\s]+)", re.IGNORECASE)
 CSVUTIL_TABLE_NAME_RE = re.compile(r"(?:^|\s)-tableName\s+([^\s]+)", re.IGNORECASE)
+CSVUTIL_MAIL_OPTION_RE = re.compile(r"(?:^|\s)-(mail[A-Za-z0-9_]+)(?:\s+[^\s]+)?", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -146,6 +147,15 @@ def extract_ctl_command_modes(archive: zipfile.ZipFile, ctl_names: list[str]) ->
         for match in CSVUTIL_COMMAND_RE.finditer(text):
             modes.add(match.group(1).lower())
     return sorted(modes)
+
+
+def extract_ctl_mail_options(archive: zipfile.ZipFile, ctl_names: list[str]) -> list[dict[str, str]]:
+    options: set[tuple[str, str]] = set()
+    for ctl_name in ctl_names:
+        text = archive.read(ctl_name).decode("utf-8-sig", errors="replace")
+        for match in CSVUTIL_MAIL_OPTION_RE.finditer(text):
+            options.add((ctl_name, match.group(1)))
+    return [{"file_name": file_name, "option": option} for file_name, option in sorted(options)]
 
 
 def csv_member_lookup(csv_files: list[dict[str, object]]) -> dict[str, dict[str, object]]:
@@ -328,6 +338,7 @@ def generate_zip_analysis(
         ctl_names = sorted(name for name in names if is_ctl_member(name))
         nested_result_zip_names = sorted(name for name in names if is_nested_result_zip(name))
         ctl_command_modes = extract_ctl_command_modes(archive, ctl_names)
+        ctl_mail_options = extract_ctl_mail_options(archive, ctl_names)
         if "manifest.json" not in names and not ctl_names:
             findings.append(finding("WARNING", "ZIP_MANIFEST_MISSING", "ZIP does not include manifest.json."))
         csv_names = sorted(name for name in names if is_csv_member(name))
@@ -364,6 +375,8 @@ def generate_zip_analysis(
         "ignored_file_count": len(ignored_names),
         "nested_result_zip_count": len(nested_result_zip_names),
         "ctl_command_modes": ctl_command_modes,
+        "ctl_has_mail_options": bool(ctl_mail_options),
+        "ctl_mail_option_count": len(ctl_mail_options),
         **catalog_context,
     }
     manifest_payload = {
@@ -389,6 +402,7 @@ def generate_zip_analysis(
         "ctl_files": ctl_names,
         "ignored_files": ignored_names,
         "nested_result_zips": nested_result_zip_names,
+        "ctl_mail_options": ctl_mail_options,
         "summary": summary,
         "findings": findings,
         "analyzed_at": analyzed_at,

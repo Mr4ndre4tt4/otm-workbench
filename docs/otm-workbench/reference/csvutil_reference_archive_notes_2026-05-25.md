@@ -278,7 +278,7 @@ Add or extend analyzer tests to verify:
 - flags missing CSV files referenced by CTL [DONE second slice]
 - flags CSV table-line mismatch with CTL table name when tableName is present [DONE second slice]
 - detects nested result ZIP artifacts [DONE first slice]
-- sanitizes mail notification settings
+- sanitizes mail notification settings [DONE third slice]
 ```
 
 Implementation note, 2026-05-25:
@@ -297,6 +297,14 @@ The analyzer now parses CSVUTIL CTL references for `-dataFileName` and
 `-tableName`. It flags missing referenced CSV files and CTL table-name mismatch
 against CSV line 1. These findings flow into Load Plan Review Queue as
 STRUCTURE items with client-safe details only.
+```
+
+Implementation note, 2026-05-25, third slice:
+
+```text
+The analyzer now detects CTL options beginning with `mail` and stores only
+sanitized option names per CTL file. It does not persist or return addresses,
+subjects, or notification values.
 ```
 
 ### Cutover Checklist
