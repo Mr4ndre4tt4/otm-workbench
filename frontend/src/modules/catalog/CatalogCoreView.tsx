@@ -8,6 +8,7 @@ import {
   useCatalogMacroObjects,
   useCatalogMacroObjectTables,
   useCatalogSchemaGuidanceReadiness,
+  useCatalogSchemaRootPaths,
   useCatalogSchemaRootsByRole,
   validateCatalogColumn,
   validateCatalogReference,
@@ -65,6 +66,7 @@ export function CatalogCoreView({ token }: { token: string }) {
   const [referenceValidation, setReferenceValidation] = useState<CatalogValidateReferenceResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [runningValidation, setRunningValidation] = useState<string | null>(null);
+  const [selectedSchemaRootId, setSelectedSchemaRootId] = useState<string | null>(null);
   const macroItems = macroObjects.data?.items ?? [];
   const effectiveMacroCode = selectedMacroCode ?? macroItems[0]?.code ?? null;
   const macroDetail = useCatalogMacroObjectDetail(token, effectiveMacroCode);
@@ -74,12 +76,16 @@ export function CatalogCoreView({ token }: { token: string }) {
   const schemaReadiness = useCatalogSchemaGuidanceReadiness(token);
   const envelopeRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
   const macroRoots = useCatalogSchemaRootsByRole(token, "MACRO_OBJECT");
+  const schemaRootPaths = useCatalogSchemaRootPaths(token, selectedSchemaRootId);
   const selectedMacro = macroDetail.data;
   const tableItems = macroTables.data?.items ?? [];
   const loadPlanItems = macroLoadPlan.data?.items ?? [];
   const readinessItems = schemaReadiness.data?.items ?? [];
   const envelopeRootItems = envelopeRoots.data?.items ?? [];
   const macroRootItems = macroRoots.data?.items ?? [];
+  const schemaRootItems = [...envelopeRootItems, ...macroRootItems];
+  const selectedSchemaRoot = schemaRootItems.find((item) => item.id === selectedSchemaRootId) ?? null;
+  const selectedSchemaPathItems = schemaRootPaths.data?.items ?? [];
   const schemaLinkItems = macroCrossCheck.data?.schema_links ?? [];
   const csvutilMacroCount = macroItems.filter((item) => item.allow_csvutil).length;
   const cutoverMacroCount = macroItems.filter((item) => item.allow_cutover).length;
@@ -250,6 +256,53 @@ export function CatalogCoreView({ token }: { token: string }) {
             }))}
           />
         </div>
+        <div className="catalog-root-picker" aria-label="Schema root inspector">
+          {schemaRootItems.map((item) => (
+            <Button
+              key={item.id}
+              aria-pressed={selectedSchemaRootId === item.id}
+              onClick={() => setSelectedSchemaRootId(item.id)}
+              type="button"
+              variant={selectedSchemaRootId === item.id ? "primary" : "secondary"}
+            >
+              {`Inspect ${item.root_display_label}`}
+            </Button>
+          ))}
+        </div>
+        <section className="catalog-schema-root-detail" aria-label="Selected schema root detail">
+          <div className="panel-header">
+            <div>
+              <h3>{selectedSchemaRoot?.root_display_label ?? "Select a schema root"}</h3>
+              <p className="empty-text">
+                {selectedSchemaRoot
+                  ? `${selectedSchemaRoot.canonical_root_name} from ${selectedSchemaRoot.domain_area}`
+                  : "Choose one root above to review backend-indexed XML paths."}
+              </p>
+            </div>
+          </div>
+          <DetailList
+            ariaLabel="Selected schema root paths"
+            emptyText={
+              selectedSchemaRootId
+                ? schemaRootPaths.isLoading
+                  ? "Loading schema paths..."
+                  : "No paths indexed for this schema root."
+                : "No schema root selected."
+            }
+            items={selectedSchemaPathItems.map((item) => ({
+              id: item.id,
+              meta: [
+                item.node_name,
+                item.data_type || "No type",
+                item.is_required ? "Required" : "Optional",
+                item.is_repeatable ? "Repeatable" : "Single",
+                item.documentation || item.source_file
+              ],
+              status: item.is_required ? "REQUIRED" : "OPTIONAL",
+              title: item.path
+            }))}
+          />
+        </section>
         <DetailList
           ariaLabel="Schema guidance readiness"
           emptyText={schemaReadiness.isLoading ? "Loading schema guidance readiness..." : "No schema readiness data available."}
@@ -396,7 +449,7 @@ export function CatalogCoreView({ token }: { token: string }) {
               emptyText={macroCrossCheck.isLoading ? "Loading schema links..." : "No schema links ready for this macro object."}
               items={schemaLinkItems.map((item) => ({
                 id: item.id,
-                meta: [item.schema_guidance_role, item.data_dictionary_family || "No table family", item.functional_confidence],
+                meta: [item.schema_guidance_role, item.domain_area, item.data_dictionary_family || "No table family", item.functional_confidence],
                 status: item.source_reference_status,
                 subtitle: item.root_name,
                 title: item.root_display_label

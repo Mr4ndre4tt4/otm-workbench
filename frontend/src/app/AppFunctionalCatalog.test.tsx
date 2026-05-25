@@ -392,6 +392,49 @@ function schemaRootsByRole(role: string) {
   };
 }
 
+function schemaRootPaths(schemaRootId: string) {
+  const paths = {
+    root_transmission: [
+      {
+        id: "path_transmission_header",
+        schema_root_id: "root_transmission",
+        parent_path: "/Transmission",
+        path: "/Transmission/TransmissionHeader",
+        node_name: "TransmissionHeader",
+        data_type: "complexType",
+        min_occurs: "1",
+        max_occurs: "1",
+        is_required: true,
+        is_repeatable: false,
+        documentation: "Synthetic transmission header path.",
+        source_file: "Transmission.xsd",
+        sequence_index: 1
+      },
+      {
+        id: "path_transmission_body",
+        schema_root_id: "root_transmission",
+        parent_path: "/Transmission",
+        path: "/Transmission/TransmissionBody",
+        node_name: "TransmissionBody",
+        data_type: "complexType",
+        min_occurs: "1",
+        max_occurs: "unbounded",
+        is_required: true,
+        is_repeatable: true,
+        documentation: "Synthetic repeatable transmission body path.",
+        source_file: "Transmission.xsd",
+        sequence_index: 2
+      }
+    ]
+  };
+  return {
+    items: paths[schemaRootId as keyof typeof paths] ?? [],
+    total: paths[schemaRootId as keyof typeof paths]?.length ?? 0,
+    page: 1,
+    page_size: paths[schemaRootId as keyof typeof paths]?.length ?? 0
+  };
+}
+
 describe("Functional Catalog journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -453,6 +496,10 @@ describe("Functional Catalog journey", () => {
       if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-roots/root_transmission/paths")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaRootPaths("root_transmission")));
       }
       if (url.includes("/api/v1/catalog/schema-roots")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -548,6 +595,10 @@ describe("Functional Catalog journey", () => {
     expect(within(screen.getByLabelText("Macro schema roots")).getByText("Planned Shipment")).toBeInTheDocument();
     expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("RATE_RECORD")).toBeInTheDocument();
     expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("BLOCKED SCHEMA LINKS")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Inspect Transmission" }));
+    expect(await within(await screen.findByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionHeader")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Selected schema root paths")).getByText("/Transmission/TransmissionBody")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic repeatable transmission body path.")).toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object load plan")).findByText("RATE_OFFERING")).toBeInTheDocument();
 

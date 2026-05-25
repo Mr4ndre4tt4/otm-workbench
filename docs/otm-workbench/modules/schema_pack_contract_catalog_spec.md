@@ -502,6 +502,9 @@ Current Catalog Core GUI slice delivered:
 - staged Schema guidance workspace in Catalog Core;
 - backend-owned readiness metrics from /catalog/schema-guidance/readiness;
 - role-separated root lists for ENVELOPE_ONLY and MACRO_OBJECT roots;
+- schema root inspector action that fetches
+  /catalog/schema-roots/{schema_root_id}/paths only after the user selects a
+  root;
 - selected macro-object schema links from Data Dictionary cross-check;
 - no frontend inference of root aliases, readiness, confidence, or reference
   status.

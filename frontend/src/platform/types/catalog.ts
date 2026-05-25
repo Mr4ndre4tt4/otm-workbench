@@ -108,6 +108,24 @@ export type CatalogSchemaRoot = {
 
 export type CatalogSchemaRootsResponse = PageResponse<CatalogSchemaRoot>;
 
+export type CatalogSchemaPath = {
+  id: string;
+  schema_root_id: string;
+  parent_path?: string | null;
+  path: string;
+  node_name: string;
+  data_type?: string | null;
+  min_occurs: string;
+  max_occurs: string;
+  is_required: boolean;
+  is_repeatable: boolean;
+  documentation: string;
+  source_file: string;
+  sequence_index: number;
+};
+
+export type CatalogSchemaPathsResponse = PageResponse<CatalogSchemaPath>;
+
 export type CatalogMacroObjectDataDictionaryCheck = {
   macro_object_code: string;
   macro_object_name: string;

@@ -9,6 +9,7 @@ import type {
   CatalogMacroObjectTablesResponse,
   CatalogSchemaGuidanceReadiness,
   CatalogSchemaGuidanceRole,
+  CatalogSchemaPathsResponse,
   CatalogSchemaRootsResponse,
   CatalogTablesResponse,
   CatalogTableColumnsResponse,
@@ -80,6 +81,14 @@ export function useCatalogSchemaRootsByRole(token: string | null, schemaGuidance
     queryKey: ["catalog", "schema-roots", "role", schemaGuidanceRole],
     queryFn: () => apiGet<CatalogSchemaRootsResponse>(`/api/v1/catalog/schema-roots?${queryString}`, { token }),
     enabled: Boolean(token && schemaGuidanceRole)
+  });
+}
+
+export function useCatalogSchemaRootPaths(token: string | null, schemaRootId: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "schema-roots", schemaRootId, "paths"],
+    queryFn: () => apiGet<CatalogSchemaPathsResponse>(`/api/v1/catalog/schema-roots/${schemaRootId}/paths`, { token }),
+    enabled: Boolean(token && schemaRootId)
   });
 }
 

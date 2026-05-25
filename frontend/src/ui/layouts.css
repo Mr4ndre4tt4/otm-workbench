@@ -588,6 +588,21 @@
   gap: 12px;
 }
 
+.catalog-root-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.catalog-schema-root-detail {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
 .catalog-validation-form {
   display: grid;
   align-content: start;
