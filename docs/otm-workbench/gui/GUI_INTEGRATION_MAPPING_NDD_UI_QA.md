@@ -134,7 +134,10 @@ Recommended next backlog sequence:
 2. Replace plain schema selects with searchable tree pickers that show path,
    parent context, node type, and sample-safe metadata.
 3. Add mapping review table grouped by Header, Entregas loop, Lookups, Joins,
-   Aggregations, and Response Handling.
+   Aggregations, and Response Handling. First slice delivered in `OTM-144`:
+   the Rules stage now shows a grouped executable review using current
+   mappings, loops, joins, lookups, validation readiness, and explicit future
+   scope rows for aggregations and response handling.
 4. Add expression/config UI for CONSTANT, CONCAT, DATE_FORMAT and future
    transform types.
 5. Extend transform catalog with FILTER_BY_QUALIFIER, COUNT_DISTINCT,
@@ -150,4 +153,3 @@ Recommended next backlog sequence:
     path selection, reset/recovery, definition switching, and generated
     artifact review.
 ```
-

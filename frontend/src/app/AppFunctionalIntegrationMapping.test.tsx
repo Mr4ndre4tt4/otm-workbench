@@ -667,6 +667,10 @@ describe("Functional Integration Mapping Studio journey", () => {
 
     await waitFor(() => expect(mappingRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.shipmentId")).toBeInTheDocument();
+    const reviewPanelAfterMapping = await screen.findByLabelText("Integration mapping grouped executable review");
+    expect(reviewPanelAfterMapping).toHaveTextContent("Header");
+    expect(reviewPanelAfterMapping).toHaveTextContent("$.header.shipmentId");
+    expect(reviewPanelAfterMapping).toHaveTextContent("DIRECT");
 
     await userEvent.selectOptions(screen.getByLabelText("Loop source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Loop target schema"), "schema_target");
@@ -707,6 +711,15 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create lookup" }));
     await waitFor(() => expect(lookupRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition lookups")).findByText("Synthetic carrier lookup")).toBeInTheDocument();
+    const reviewPanel = await screen.findByLabelText("Integration mapping grouped executable review");
+    expect(reviewPanel).toHaveTextContent("Header");
+    expect(reviewPanel).toHaveTextContent("Entregas loop");
+    expect(reviewPanel).toHaveTextContent("Joins");
+    expect(reviewPanel).toHaveTextContent("Lookups");
+    expect(reviewPanel).toHaveTextContent("Response Handling");
+    expect(reviewPanel).toHaveTextContent("Synthetic shipment stop join");
+    expect(reviewPanel).toHaveTextContent("Synthetic carrier lookup");
+    expect(reviewPanel).toHaveTextContent("No response handling rules defined.");
 
     await userEvent.click(screen.getByRole("button", { name: "Reset mapping rule drafts" }));
     expect(screen.getByLabelText("Source schema")).toHaveValue("");

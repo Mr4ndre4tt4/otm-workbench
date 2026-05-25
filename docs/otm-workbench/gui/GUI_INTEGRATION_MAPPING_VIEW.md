@@ -62,6 +62,8 @@ Current panels:
 - Definition authoring
 - Payload and schema authoring
 - Mapping, loop, join, and lookup authoring
+- Grouped executable review for Header, Entregas loop, Joins, Lookups,
+  Transforms, Aggregations, and Response Handling
 - Selected definition summary
 - Payload artifact metadata
 - Schema document metadata
@@ -113,6 +115,8 @@ The fixture uses neutral synthetic data and verifies that the screen renders:
 - Mapping target path
 - Staged workflow navigation
 - Schema node selector usage
+- Grouped executable review visibility after mapping, loop, join, and lookup
+  authoring
 - Mapping-rule draft reset after mapping, loop, join, and lookup authoring
 - Validate, preview, and generate-spec actions
 - Specification readiness and preview executability after validation
@@ -146,6 +150,9 @@ Outcome:
   plain selects.
 - Joins, loops, lookups, transforms, and required target fields need semantic
   validation before this module can be considered a strong accelerator.
+- `OTM-144` delivered the first grouped review surface, which makes the
+  accelerator gaps explicit without claiming multi-hop joins or aggregation
+  execution are already solved.
 ```
 
 Detailed notes:

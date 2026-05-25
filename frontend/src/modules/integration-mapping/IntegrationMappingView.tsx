@@ -43,7 +43,8 @@ import {
   ModuleWorkspaceLayout,
   OperationalPanel,
   SelectedObjectPanel,
-  StatePanel
+  StatePanel,
+  StatusChip
 } from '../../ui/components';
 import { booleanStatus } from '../moduleStatus';
 
@@ -65,6 +66,158 @@ const integrationWorkflowStages = [
 ] as const;
 
 type IntegrationWorkflowStage = (typeof integrationWorkflowStages)[number]["id"];
+type IntegrationReviewRow = {
+  blocker?: string;
+  group: string;
+  id: string;
+  policy: string;
+  source: string;
+  status: string;
+  target: string;
+  transform: string;
+};
+
+function mappingReviewGroup(targetPath: string) {
+  const normalized = targetPath.toLowerCase();
+  if (normalized.includes("entregas") || normalized.includes("deliveries") || normalized.includes("delivery")) {
+    return "Entregas loop";
+  }
+  return "Header";
+}
+
+function buildIntegrationReviewRows({
+  joins,
+  lookups,
+  loops,
+  mappings,
+  validationResult
+}: {
+  joins: Array<{ id: string; left_path: string; name: string; operator: string; right_path: string; status: string }>;
+  lookups: Array<{ id: string; input_path: string; lookup_type: string; name: string; output_path: string; status: string }>;
+  loops: Array<{ id: string; name: string; source_collection_path: string; status: string; target_collection_path: string }>;
+  mappings: Array<{ id: string; source_path: string; status: string; target_path: string; transform_type: string }>;
+  validationResult: IntegrationValidationResult | null;
+}) {
+  const validationStatus = validationResult
+    ? validationResult.readiness?.preview_executable
+      ? "EXECUTABLE"
+      : "BLOCKED"
+    : "NEEDS_VALIDATION";
+  const rows: IntegrationReviewRow[] = [
+    ...mappings.map((mapping) => ({
+      group: mappingReviewGroup(mapping.target_path),
+      id: `mapping-${mapping.id}`,
+      policy: validationResult ? "Validation checked" : "Run validation",
+      source: mapping.source_path,
+      status: validationStatus === "BLOCKED" ? "BLOCKED" : mapping.status === "ACTIVE" ? validationStatus : mapping.status,
+      target: mapping.target_path,
+      transform: mapping.transform_type
+    })),
+    ...loops.map((loop) => ({
+      group: "Entregas loop",
+      id: `loop-${loop.id}`,
+      policy: "Loop scope",
+      source: loop.source_collection_path,
+      status: loop.status,
+      target: loop.target_collection_path,
+      transform: loop.name
+    })),
+    ...joins.map((join) => ({
+      blocker: join.left_path === join.right_path ? "JOIN_PATHS_MUST_DIFFER" : undefined,
+      group: "Joins",
+      id: `join-${join.id}`,
+      policy: join.operator,
+      source: join.left_path,
+      status: join.left_path === join.right_path ? "BLOCKED" : join.status,
+      target: join.right_path,
+      transform: join.name
+    })),
+    ...lookups.map((lookup) => ({
+      group: "Lookups",
+      id: `lookup-${lookup.id}`,
+      policy: lookup.lookup_type,
+      source: lookup.input_path,
+      status: lookup.status,
+      target: lookup.output_path,
+      transform: lookup.name
+    })),
+    ...mappings.map((mapping) => ({
+      group: "Transforms",
+      id: `transform-${mapping.id}`,
+      policy: mapping.transform_type === "DIRECT" ? "No config required" : "Config required",
+      source: mapping.source_path,
+      status: mapping.status,
+      target: mapping.target_path,
+      transform: mapping.transform_type
+    })),
+    {
+      blocker: "COUNT_DISTINCT_AND_FILTERED_AGGREGATIONS_PENDING_OTM_145",
+      group: "Aggregations",
+      id: "aggregation-future-scope",
+      policy: "Future scope",
+      source: "No aggregation rules defined.",
+      status: "FUTURE_SCOPE",
+      target: "QtdNFe / QtdCTe style fields",
+      transform: "COUNT_DISTINCT"
+    },
+    {
+      blocker: "RESPONSE_HANDLING_MODEL_PENDING",
+      group: "Response Handling",
+      id: "response-handling-future-scope",
+      policy: "Future scope",
+      source: "No response handling rules defined.",
+      status: "FUTURE_SCOPE",
+      target: "Success/error response paths",
+      transform: "RESPONSE_POLICY"
+    }
+  ];
+
+  return rows;
+}
+
+function IntegrationGroupedReview({ rows }: { rows: IntegrationReviewRow[] }) {
+  const groups = ["Header", "Entregas loop", "Lookups", "Joins", "Transforms", "Aggregations", "Response Handling"];
+
+  return (
+    <section className="integration-review-panel" aria-label="Integration mapping grouped executable review">
+      <div className="panel-header">
+        <h3>Grouped executable review</h3>
+        <StatusChip status={rows.some((row) => row.status === "BLOCKED") ? "BLOCKED" : "REVIEW"} />
+      </div>
+      <div className="integration-review-grid">
+        {groups.map((group) => {
+          const groupRows = rows.filter((row) => row.group === group);
+          return (
+            <div className="integration-review-group" key={group}>
+              <div className="integration-review-group-header">
+                <strong>{group}</strong>
+                <StatusChip status={groupRows.some((row) => row.status === "BLOCKED") ? "BLOCKED" : groupRows.length ? "READY" : "EMPTY"} />
+              </div>
+              {groupRows.length ? (
+                <div className="integration-review-rows">
+                  {groupRows.map((row) => (
+                    <div className="integration-review-row" key={row.id}>
+                      <div>
+                        <strong>{row.transform}</strong>
+                        <span>{row.policy}</span>
+                      </div>
+                      <span>{row.source}</span>
+                      <span>{row.target}</span>
+                      <span>{row.blocker ?? "No blocker"}</span>
+                      <StatusChip status={row.status} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-text">No rows in this group.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function SchemaNodeSelect({
   label,
@@ -174,6 +327,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
+  const integrationReviewRows = buildIntegrationReviewRows({
+    joins: joins.data?.items ?? [],
+    lookups: lookups.data?.items ?? [],
+    loops: loops.data?.items ?? [],
+    mappings: mappings.data?.items ?? [],
+    validationResult
+  });
 
   const refreshDefinitionData = async (definitionId = effectiveDefinitionId) => {
     await Promise.all([
@@ -1053,6 +1213,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
               Reset mapping rule drafts
             </Button>
           </div>
+          <IntegrationGroupedReview rows={integrationReviewRows} />
           <form
             className="integration-mapping-form"
             onSubmit={(event) => {

@@ -112,7 +112,7 @@ artifacts, not product source.
 | Assets Library | Browser QA passed | Staged lifecycle is much improved; create/version/link/lifecycle make sense. | High-volume target/evidence lists need density and filtering hardening later. |
 | Evidence Hub | Browser QA passed | Useful for client-safe evidence review, download and archive creation. | Archive drill-down and high-volume filtering are future improvements. |
 | Order Release Generator | Browser QA passed | Good generator workflow for template -> batch -> preview -> artifact -> guarded submit. | Richer row/template authoring and governed submit remain future. |
-| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules. | To become a real accelerator for NDD-like mappings, it needs grouped executable review and multi-hop/aggregation execution. |
+| Integration Mapping Studio | Browser QA passed | Backend is materially stronger after executable preview slices; UI can author and validate rules, and the Rules stage now has a grouped executable review first slice for NDD-like mappings. | To become a full accelerator for NDD-like mappings, it still needs multi-hop/aggregation execution and deeper semantic validation. |
 | Admin Console | Browser QA passed | Functional setup, capability, feature flag, jobs and audit visibility. | Advanced edit/delete/pagination and volume management remain future. |
 
 ## 4. Findings Added To Pipeline
@@ -122,7 +122,7 @@ artifacts, not product source.
 | `OTM-141` | High | Browser functional scripts require a synthetic demo user, but local backend does not seed it automatically or document a command. |
 | `OTM-142` | High | Staged modules need a backend-owned next-action panel so users do not infer the workflow from steps alone. First slice delivered for Data Factory and Load Plan. |
 | `OTM-143` | Medium | Operational lists become noisy after seeded QA volume; need stronger filters, density and truncation. |
-| `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. |
+| `OTM-144` | High | Integration Mapping needs a grouped executable review table for NDD-like mappings. First slice delivered in the Rules stage. |
 | `OTM-145` | High | Integration Mapping backend still needs cross-collection multi-hop joins, qualifier filters and aggregations. |
 | `OTM-146` | Medium | Add destructive/out-of-order browser journeys by module to test human recovery behavior. |
 

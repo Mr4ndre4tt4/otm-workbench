@@ -771,6 +771,63 @@
   margin: 0;
 }
 
+.integration-review-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  padding: 12px;
+}
+
+.integration-review-grid,
+.integration-review-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.integration-review-group {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.integration-review-group-header,
+.integration-review-row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+
+.integration-review-group-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.integration-review-row {
+  grid-template-columns: minmax(120px, 1.1fr) minmax(140px, 1.3fr) minmax(140px, 1.3fr) minmax(100px, 1fr) auto;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.integration-review-row div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.integration-review-row strong,
+.integration-review-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.integration-review-row span,
+.integration-review-row div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .load-plan-action-bar {
   display: grid;
   gap: 8px;
@@ -849,6 +906,7 @@
 }
 
 @media (max-width: 760px) {
+  .integration-review-row,
   .load-plan-workflow {
     grid-template-columns: 1fr;
   }

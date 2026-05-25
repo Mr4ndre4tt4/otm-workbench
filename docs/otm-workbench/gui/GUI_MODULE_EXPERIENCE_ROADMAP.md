@@ -71,7 +71,8 @@ test pass/fail:
    with Data Factory and Load Plan. First slice delivered; roll out to other
    staged modules after the pattern has one browser QA pass.
 3. OTM-144: add grouped executable review for Integration Mapping so NDD-like
-   mappings are understandable as an accelerator.
+   mappings are understandable as an accelerator. First slice delivered in the
+   Rules stage; multi-hop/aggregation execution remains `OTM-145`.
 4. OTM-145: implement cross-collection/multi-hop joins, qualifier filters and
    aggregations in the Integration Mapping backend preview.
 5. OTM-146: add destructive/out-of-order browser journeys by module.
