@@ -4,6 +4,26 @@
 **Date:** 2026-05-21
 **Scope:** functional UI journeys, state transitions, and backend contract validation.
 
+## General QA Review - 2026-05-25
+
+A general module-by-module web QA review was recorded in
+`GUI_GENERAL_SOLUTION_QA_2026_05_25.md`.
+
+Evidence from this round:
+
+```text
+- All module browser functional scripts passed after seeding the synthetic local
+  demo user.
+- `npm run qa:functional` passed: 11 files, 18 tests.
+- Manual route review found no console errors across the main module routes.
+- Follow-up issues were added to Linear as OTM-141 through OTM-146.
+```
+
+The main conclusion is that MVP0 module functionality is broadly in place, but
+the next hardening round should improve next-action clarity, QA reproducibility,
+high-volume list density, Integration Mapping review/execution depth, and
+out-of-order human behavior tests.
+
 ## 1. Purpose
 
 The visual QA matrix proves that screens render consistently. This document

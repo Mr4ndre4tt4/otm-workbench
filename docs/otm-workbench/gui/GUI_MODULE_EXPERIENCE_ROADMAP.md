@@ -55,6 +55,28 @@ For each module:
 
 ## 4. Recommended Next GUI Queue
 
+### 4.0 General QA Hardening Queue
+
+The general solution QA on 2026-05-25 is recorded in
+`GUI_GENERAL_SOLUTION_QA_2026_05_25.md`.
+
+All browser functional module scripts and React functional tests passed in that
+round, but the next roadmap items should target product usefulness, not only
+test pass/fail:
+
+```text
+1. OTM-141: make browser QA reproducible with a backend-owned synthetic demo
+   seed or documented local bootstrap command.
+2. OTM-142: add a backend-owned next-action panel for staged modules, starting
+   with Data Factory and Load Plan.
+3. OTM-144: add grouped executable review for Integration Mapping so NDD-like
+   mappings are understandable as an accelerator.
+4. OTM-145: implement cross-collection/multi-hop joins, qualifier filters and
+   aggregations in the Integration Mapping backend preview.
+5. OTM-146: add destructive/out-of-order browser journeys by module.
+6. OTM-143: harden high-volume list density and signal quality.
+```
+
 ### 4.1 Load Plan / Cutover
 
 First GUI slice delivered because it connects planning, readiness, CSVUTIL,
