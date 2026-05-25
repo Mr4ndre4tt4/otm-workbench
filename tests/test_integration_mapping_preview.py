@@ -3,6 +3,7 @@ from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
 from tests.test_integration_mapping_loops import loop_payload
+from tests.test_integration_mapping_lookups import lookup_payload
 from tests.test_integration_mapping_mappings import (
     create_definition,
     create_schema_document,
@@ -290,6 +291,62 @@ def test_preview_integration_definition_materializes_concat_transform_with_prove
             "target_path": "$.header.lane",
             "transform_type": "CONCAT",
             "value_policy": "concat_from_transform_config",
+        }
+    ]
+
+
+def test_preview_integration_definition_materializes_mock_lookup_with_provenance(
+    client,
+    admin_header,
+):
+    definition = create_definition(client, admin_header)
+    source = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        content=(
+            "<Transmission>"
+            "<Shipment><ShipmentGid>OTM1.SHIPMENT_001</ShipmentGid></Shipment>"
+            "</Transmission>"
+        ),
+    )
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="delivery.json",
+        content='{"header":{"carrierName":""}}',
+    )
+    lookup = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/lookups",
+        json=lookup_payload(
+            source,
+            target,
+            output_path="$.header.carrierName",
+            mock_response_json='{"carrierName":"Synthetic Carrier"}',
+        ),
+        headers=admin_header,
+    )
+    assert lookup.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["mode"] == "synthetic_executable_json"
+    assert payload["preview"]["target_json"] == {"header": {"carrierName": "Synthetic Carrier"}}
+    assert payload["preview"]["field_provenance"] == [
+        {
+            "lookup_id": lookup.json()["id"],
+            "input_path": "/Transmission/Shipment/ShipmentGid",
+            "output_path": "$.header.carrierName",
+            "lookup_type": "MOCK",
+            "value_policy": "mock_lookup_response",
         }
     ]
 

@@ -130,6 +130,10 @@ def set_json_path_value(target: dict[str, object], path: str, value: object) -> 
     current[parts[-1]] = value
 
 
+def json_last_path_segment(path: str) -> str:
+    return path.replace("[]", "").split(".")[-1]
+
+
 def set_loop_item_value(target: dict[str, object], collection_path: str, index: int, item_field: str, value: object) -> None:
     collection_name = collection_path.removeprefix("$.").removesuffix("[]")
     if not collection_name or "." in collection_name:
@@ -220,12 +224,15 @@ def format_date_value(value: object, config: dict[str, object]) -> str | None:
 
 def build_executable_json_preview(db: Session, *, definition: IntegrationDefinition) -> dict[str, object] | None:
     joins_count = db.query(IntegrationJoinRule).filter(IntegrationJoinRule.definition_id == definition.id).count()
-    lookups_count = (
-        db.query(IntegrationLookupDefinition).filter(IntegrationLookupDefinition.definition_id == definition.id).count()
-    )
-    if joins_count or lookups_count:
+    if joins_count:
         return None
 
+    lookups = (
+        db.query(IntegrationLookupDefinition)
+        .filter(IntegrationLookupDefinition.definition_id == definition.id)
+        .order_by(IntegrationLookupDefinition.sequence_index, IntegrationLookupDefinition.created_at)
+        .all()
+    )
     loops = (
         db.query(IntegrationLoopDefinition)
         .filter(IntegrationLoopDefinition.definition_id == definition.id)
@@ -239,6 +246,10 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
         .all()
     )
     if not mappings:
+        if lookups:
+            return build_lookup_executable_json_preview(db, lookups=lookups)
+        return None
+    if lookups:
         return None
     if loops:
         return build_loop_executable_json_preview(db, loops=loops, mappings=mappings)
@@ -270,6 +281,55 @@ def build_executable_json_preview(db: Session, *, definition: IntegrationDefinit
             }
         )
 
+    return {
+        "mode": "synthetic_executable_json",
+        "target_json": target_json,
+        "field_provenance": field_provenance,
+    }
+
+
+def build_lookup_executable_json_preview(
+    db: Session,
+    *,
+    lookups: list[IntegrationLookupDefinition],
+) -> dict[str, object] | None:
+    target_json: dict[str, object] = {}
+    field_provenance: list[dict[str, object]] = []
+    for lookup in lookups:
+        if lookup.lookup_type != "MOCK" or "[]" in lookup.output_path:
+            return None
+        source_payload = document_payload_content(db, lookup.source_schema_document_id)
+        target_payload = document_payload_content(db, lookup.target_schema_document_id)
+        if source_payload is None or target_payload is None:
+            return None
+        source_format, source_content = source_payload
+        target_format, _target_content = target_payload
+        if source_format != "XML" or target_format != "JSON":
+            return None
+        input_value = source_value_from_xml_path(source_content, lookup.input_path)
+        if input_value in (None, ""):
+            return None
+        try:
+            response = json.loads(lookup.mock_response_json or "{}")
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(response, dict):
+            return None
+        value = response.get(json_last_path_segment(lookup.output_path))
+        if value in (None, ""):
+            return None
+        set_json_path_value(target_json, lookup.output_path, value)
+        field_provenance.append(
+            {
+                "lookup_id": lookup.id,
+                "input_path": lookup.input_path,
+                "output_path": lookup.output_path,
+                "lookup_type": lookup.lookup_type,
+                "value_policy": "mock_lookup_response",
+            }
+        )
+    if not field_provenance:
+        return None
     return {
         "mode": "synthetic_executable_json",
         "target_json": target_json,
