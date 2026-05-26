@@ -1,6 +1,6 @@
 # GUI Evidence Hub View
 
-**Status:** functional slice delivered plus archive history and filter reset recovery
+**Status:** functional slice delivered plus archive history and filter reset recovery; superseded for future UX direction by `GUI_EVIDENCE_HUB_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/master-data-hardening-next`
 **Linear:** OTM-94
 

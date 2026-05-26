@@ -53,7 +53,7 @@ For each module:
 | Master Data / Data Factory | OTM-115 completion acceptance met for MVP0; next-action panel first slice delivered; out-of-order chaos slice done | Backend flows ready for template authoring, backend-owned scenario packs, workbook editor contract/validation/batch creation, filtered/paginated batches, output/CSV preview, CSV/ZIP export, guarded direct OTM import readiness/submit refusal, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail + next action | Completion review captured in `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`. `OTM-146` now proves template-switch cleanup through workbook, output, CSV, export, direct import guard, Load Plan handoff, and cutover checklist state; active-batch fallback is scoped to the selected template. Real governed direct OTM submission, deeper Load Plan analytics, advanced Coordinate Quality diagnostics, larger scenario library, and richer audited spreadsheet editing remain future scope. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done; out-of-order chaos, list density slices, and consolidated redesign spec done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow, moving toward route-level asset lifecycle screens | `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: hub, library, asset detail, create, edit metadata, versions, upload, links, classifications, download/history, and archive as route-level journeys. Current backend coverage includes create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, selected-asset switch recovery, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery. `OTM-146` proves dirty metadata drafts, selected file upload state, and link target drafts are cleared when switching assets out of order; `OTM-143` caps noisy asset rows at 12 visible rows while preserving the selected asset. |
-| Evidence Hub | Functional slice plus archive history and list density done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. `OTM-143` caps noisy evidence rows at 12 visible rows with long-label truncation. |
+| Evidence Hub | Functional slice plus archive history, list density, and consolidated redesign spec done | Evidence/artifact/archive APIs ready | Route-level audit and handoff cockpit, moving beyond side-panel-only detail | `GUI_EVIDENCE_HUB_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: evidence hub, evidence detail, guarded download review, archive builder, archive library/detail, source object timeline, artifact detail, and optional audit search as route-level journeys. Current UI remains valid functional evidence for filter -> inspect -> guarded download -> archive -> archive history, but archive history, download review, and evidence detail should become first-class routes. `OTM-143` caps noisy evidence rows at 12 visible rows with long-label truncation. |
 | Order Release Generator | First functional slice plus row, invalid-batch recovery, template authoring, template versioning, out-of-order chaos hardening, and consolidated redesign spec done | Template list/create/version, batch, XML artifact/list/download APIs ready | Route-level generator workflow, moving beyond single staged workspace | `GUI_ORDER_RELEASE_GENERATOR_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: generator hub, template detail, template builder/versioning, batch creation, batch detail, row editor, XML preview, artifacts, submit readiness, and history as route-level journeys. Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; template switching resets row drafts to the selected template defaults and clears active batch, stale preview, artifact, and submit guard state; governed direct OTM submit remains a guarded follow-up outside MVP0. |
 
 ## 4. Recommended Next GUI Queue
@@ -240,23 +240,27 @@ Remaining GUI work before `Module complete`:
 
 ### 4.3 Evidence Hub
 
-First GUI slice delivered after Load Plan and Master Data produced richer
-evidence/artifacts.
+Consolidated route-level spec now exists in
+`GUI_EVIDENCE_HUB_CONSOLIDATED_SPEC.md`.
 
 ```text
 Primary object: evidence item or archive package
-Primary pattern: object list/detail + operational surfaces
+Primary pattern: route-level audit and handoff cockpit
 First story: filter evidence -> inspect detail -> download guarded artifact ->
 create archive package -> review backend-owned archive history.
 ```
 
-Remaining GUI work:
+Required GUI work before further expansion:
 
 ```text
-- Add dedicated archive detail/audit drill-down only if archives need to be
-  investigated as first-class objects.
-- Add deeper audit log exploration only when the backend exposes a focused
-  Evidence Hub audit story.
+- Add evidence detail, guarded download, archive builder, archive library,
+  archive detail, source object timeline, and artifact detail routes.
+- Keep raw payloads, raw manifest JSON, local artifact paths, credentials, and
+  client identifiers out of the UI.
+- Keep download readiness, archive eligibility, hash checks, permissions, and
+  audit backend-owned.
+- Add deeper audit search only when the backend exposes a focused Evidence Hub
+  audit story.
 ```
 
 ### 4.4 Order Release Generator
