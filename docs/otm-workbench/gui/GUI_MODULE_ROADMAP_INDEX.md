@@ -51,8 +51,8 @@ Module specs must preserve the project rules:
 | Assets Library | `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` | `GUI_ASSETS_LIBRARY_VIEW.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | Consolidated objective, MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Assets Library UI implementation changes. |
 | Order Release Generator | `GUI_ORDER_RELEASE_GENERATOR_CONSOLIDATED_SPEC.md` | `GUI_ORDER_RELEASE_GENERATOR_VIEW.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | Consolidated objective, current MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Order Release Generator UI implementation changes. |
 | Integration Mapping Studio | `GUI_INTEGRATION_MAPPING_CONSOLIDATED_SPEC.md` | `GUI_INTEGRATION_MAPPING_VIEW.md`, `GUI_INTEGRATION_MAPPING_NDD_UI_QA.md`, `GUI_INTEGRATION_MAPPING_VISUAL_QA_OTM79.md`, `GUI_LOCAL_INTEGRATION_VALIDATION.md` | Consolidated objective, current MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Integration Mapping UI implementation changes. |
-| Admin Console / Jobs | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md` | Covered only by shared roadmap and API matrix. | Create `GUI_ADMIN_CONSOLE_ROADMAP_SPEC.md` if setup flags, jobs, audit, edit/delete, or role governance expand. |
-| Developer Tools | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md`, `GUI_BROWSER_QA_ATTEMPT.md` | Covered only indirectly. | Create a module spec only if Developer Tools becomes user-facing beyond diagnostics. |
+| Admin Console / Jobs | `GUI_ADMIN_CONSOLE_CONSOLIDATED_SPEC.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md`, `GUI_GENERAL_SCREEN_PASS_2026_05_26.md` | Consolidated objective, current browser findings, and click-by-click route-level administration spec exists. | Use the consolidated spec before expanding setup, users/roles, feature flags, jobs, audit, OTM connections, or module governance UI. |
+| Developer Tools | `GUI_DEVELOPER_TOOLS_CONSOLIDATED_SPEC.md` | `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md`, `GUI_BROWSER_QA_ATTEMPT.md`, `GUI_MODULE_API_CONTRACT_MATRIX.md` | Consolidated objective, current placeholder/browser findings, route-level controlled technical tools spec exists. | Use the consolidated spec before exposing any real Developer/DBA tool beyond the guarded placeholder. |
 | Backend-Owned Icon / Asset Registry | `GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md` | `GUI_DESIGN_SYSTEM_HANDOFF.md`, `GUI_COMPONENT_GALLERY_PLAN.md` | Backend-facing contract exists. | Link each module spec to this registry when defining sidebar icons, labels, empty-state assets, and status visuals. |
 
 ## 4. Spec Template For New Module Roadmaps
@@ -97,9 +97,15 @@ Use this queue after the Master Data redesign is reviewed:
    Because schema packs, official OTM paths, Data Dictionary references, and
    macro-object search are now shared inputs for Master Data, Rates,
    Integration Mapping, and Order Release Generator.
-2. `GUI_ADMIN_CONSOLE_ROADMAP_SPEC.md`
-   Because setup flags, jobs, audit, permissions, and guarded operations are
-   now cross-module concerns.
+2. `GUI_SHELL_AUTH_SIGNOUT_RECOVERY_SPEC.md`
+   Because the 2026-05-26 browser pass showed the login form can appear while
+   authenticated sidebar navigation remains visible after sign out.
+3. `GUI_GLOBAL_ACTION_DESTINATION_CONTRACT.md`
+   Because Project Cockpit global actions like `View jobs` and `View evidence`
+   need route-level outcomes instead of invisible same-screen clicks.
+4. `GUI_ROW_ACCESSIBLE_NAME_CONTRACT.md`
+   Because object-list rows currently expose oversized row text as button names
+   in several modules.
 
 ## 6. Maintenance Rule
 
