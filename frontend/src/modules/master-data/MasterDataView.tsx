@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import {
   buildMasterDataCsv,
@@ -152,6 +153,7 @@ const masterDataWorkflowStages = [
 ] as const;
 
 type MasterDataWorkflowStage = (typeof masterDataWorkflowStages)[number]["id"];
+type MasterDataRouteMode = "hub" | "factory" | "builder" | "quality";
 type AuthorSourceType = "USER_FIELD" | "FIXED_VALUE" | "DEFAULT_VALUE";
 type AuthorMappingConfig = {
   defaultValue?: string;
@@ -162,6 +164,29 @@ type AuthorMappingConfig = {
 
 function summaryMeta(summary: Record<string, unknown> | undefined) {
   return Object.entries(summary ?? {}).map(([key, value]) => `${key}: ${String(value)}`);
+}
+
+function masterDataRouteMode(pathname: string): MasterDataRouteMode {
+  if (pathname.startsWith("/master-data/template-builder")) {
+    return "builder";
+  }
+  if (pathname.startsWith("/master-data/quality")) {
+    return "quality";
+  }
+  if (pathname.startsWith("/master-data/factory")) {
+    return "factory";
+  }
+  return "hub";
+}
+
+function masterDataRouteStage(mode: MasterDataRouteMode): MasterDataWorkflowStage {
+  if (mode === "builder") {
+    return "author";
+  }
+  if (mode === "quality") {
+    return "quality";
+  }
+  return "templates";
 }
 
 function parseJsonObject(text: string) {
@@ -417,6 +442,9 @@ function locationDraftPayload(
 }
 
 export function MasterDataView({ token }: { token: string }) {
+  const location = useLocation();
+  const routeMode = masterDataRouteMode(location.pathname);
+  const routeStage = masterDataRouteStage(routeMode);
   const templates = useMasterDataTemplates(token);
   const scenarioPacks = useMasterDataScenarioPacks(token);
   const coordinateQualityBatches = useCoordinateQualityBatches(token);
@@ -424,7 +452,10 @@ export function MasterDataView({ token }: { token: string }) {
   const [authorMacroObjectCode, setAuthorMacroObjectCode] = useState("LOCATION");
   const catalogAuthorTables = useCatalogMacroObjectTables(token, authorMacroObjectCode);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<string | null>(null);
-  const [activeStage, setActiveStage] = useState<MasterDataWorkflowStage>("templates");
+  const [activeStageState, setActiveStageState] = useState<{
+    mode: MasterDataRouteMode;
+    stage: MasterDataWorkflowStage;
+  }>({ mode: routeMode, stage: routeStage });
   const [templateValidation, setTemplateValidation] = useState<MasterDataTemplateValidation | null>(null);
   const [workbookArtifact, setWorkbookArtifact] = useState<MasterDataWorkbookArtifact | null>(null);
   const [uploadedBatch, setUploadedBatch] = useState<MasterDataBatch | null>(null);
@@ -476,6 +507,10 @@ export function MasterDataView({ token }: { token: string }) {
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
+  const activeStage = activeStageState.mode === routeMode ? activeStageState.stage : routeStage;
+  const setActiveMasterDataStage = (stage: MasterDataWorkflowStage) => {
+    setActiveStageState({ mode: routeMode, stage });
+  };
   const templateItems = templates.data?.items ?? [];
   const effectiveTemplateCode = selectedTemplateCode ?? templateItems[0]?.code ?? null;
   const templateDetail = useMasterDataTemplateDetail(token, effectiveTemplateCode);
@@ -561,6 +596,36 @@ export function MasterDataView({ token }: { token: string }) {
   const selectedMasterDataNextAction = pickMasterDataNextAction(selectedTemplate, activeBatch);
   const activeMasterDataStageTitle =
     masterDataWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
+  const visibleMasterDataWorkflowStages = masterDataWorkflowStages.filter((stage) => {
+    if (routeMode === "builder") {
+      return ["templates", "author"].includes(stage.id);
+    }
+    if (routeMode === "quality") {
+      return stage.id === "quality";
+    }
+    return !["author", "quality"].includes(stage.id);
+  });
+  const routeHeader =
+    routeMode === "builder"
+      ? {
+          description: "Template design, table mapping, reusable field labels, constants, and publish controls.",
+          label: "Master Data / Configuration",
+          title: "Template Builder",
+          workspaceTitle: "Template Builder workspace"
+        }
+      : routeMode === "quality"
+        ? {
+            description: "Independent data quality utilities for master data preparation.",
+            label: "Master Data / Quality",
+            title: "Quality Tools",
+            workspaceTitle: "Quality workspace"
+          }
+        : {
+            description: "Published template execution, workbook upload, validation, mapping, and OTM CSV output.",
+            label: "Master Data / Factory",
+            title: "Data Factory",
+            workspaceTitle: "Data Factory workflow"
+          };
   const isInspectingHistoricalBatch = Boolean(
     uploadedBatch && latestSelectedTemplateBatch && uploadedBatch.batch_id !== latestSelectedTemplateBatch.batch_id
   );
@@ -1125,12 +1190,55 @@ export function MasterDataView({ token }: { token: string }) {
     return <StatePanel tone="error">Data Factory is unavailable.</StatePanel>;
   }
 
+  if (routeMode === "hub") {
+    return (
+      <>
+        <PageHeader
+          description="Master data preparation, template governance, and quality utilities for backend-first OTM loads."
+          label="Module hub"
+          title="Master Data"
+        />
+
+        <MetricGrid
+          ariaLabel="Master Data metrics"
+          items={[
+            { key: "templates", label: "Templates", status: booleanStatus(templates.data.total), value: templates.data.total },
+            { key: "tables", label: "Target tables", status: booleanStatus(targetTableCount), value: targetTableCount },
+            { key: "sheets", label: "Sheets", status: booleanStatus(sheetCount), value: sheetCount },
+            { key: "fields", label: "Fields", status: booleanStatus(fieldCount), value: fieldCount }
+          ]}
+        />
+
+        <section className="master-data-hub" aria-label="Master Data entry points">
+          <Link className="master-data-hub-card" to="/master-data/factory" aria-label="Open Data Factory">
+            <span>Operational flow</span>
+            <strong>Data Factory</strong>
+            <p>Published templates, workbook batches, validations, mapping, and OTM CSV or ZIP outputs.</p>
+            <small>{templates.data.total} template(s)</small>
+          </Link>
+          <Link className="master-data-hub-card" to="/master-data/template-builder" aria-label="Open Template Builder">
+            <span>Governance flow</span>
+            <strong>Template Builder</strong>
+            <p>Template header, target tables, user labels, fixed values, reusable mappings, and versioning.</p>
+            <small>{targetTableCount} target table(s)</small>
+          </Link>
+          <Link className="master-data-hub-card" to="/master-data/quality" aria-label="Open Quality Tools">
+            <span>Quality flow</span>
+            <strong>Quality Tools</strong>
+            <p>Standalone checks such as Lat/Lon review without mixing authoring and batch export workflows.</p>
+            <small>{coordinateQualityBatches.data?.total ?? 0} batch(es)</small>
+          </Link>
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
-        description="Template factory and master data batch preparation for backend-first OTM implementation flows."
-        label="Module workspace"
-        title="Data Factory"
+        description={routeHeader.description}
+        label={routeHeader.label}
+        title={routeHeader.title}
       />
 
       <MetricGrid
@@ -1201,10 +1309,10 @@ export function MasterDataView({ token }: { token: string }) {
           </SelectedObjectPanel>
         }
         status={templateItems.length ? "ACTIVE" : "EMPTY"}
-        title="Data Factory workflow"
+        title={routeHeader.workspaceTitle}
       >
         <div className="master-data-workflow" aria-label="Data Factory workflow">
-          {masterDataWorkflowStages.map((stage) => (
+          {visibleMasterDataWorkflowStages.map((stage) => (
             <button
               aria-pressed={activeStage === stage.id}
               className={
@@ -1213,7 +1321,7 @@ export function MasterDataView({ token }: { token: string }) {
                   : "master-data-workflow-step"
               }
               key={stage.id}
-              onClick={() => setActiveStage(stage.id)}
+              onClick={() => setActiveMasterDataStage(stage.id)}
               type="button"
             >
               <span>{stage.status}</span>

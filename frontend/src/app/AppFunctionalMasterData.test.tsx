@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { AuthProvider } from "../platform/auth";
 
-function renderFunctionalApp(initialPath = "/master-data") {
+function renderFunctionalApp(initialPath = "/master-data/factory") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false }
@@ -1134,6 +1134,7 @@ describe("Functional Master Data journey", () => {
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Data Factory/ }));
+    await userEvent.click(screen.getByRole("link", { name: /Open Data Factory/ }));
     await screen.findByRole("heading", { name: "Data Factory" });
     expect((await screen.findAllByText("REGIONS_BASIC")).length).toBeGreaterThan(0);
   }, 60000);
@@ -1460,12 +1461,12 @@ describe("Functional Master Data journey", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderFunctionalApp();
+    renderFunctionalApp("/master-data/template-builder");
     await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await screen.findByRole("heading", { name: "Data Factory" });
+    await screen.findByRole("heading", { name: "Template Builder" });
     await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
     await screen.findByLabelText("Catalog tables for LOCATION");
     await userEvent.click(screen.getByRole("checkbox", { name: "LOCATION_ADDRESS" }));
@@ -1659,12 +1660,12 @@ describe("Functional Master Data journey", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderFunctionalApp();
+    renderFunctionalApp("/master-data/template-builder");
     await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await screen.findByRole("heading", { name: "Data Factory" });
+    await screen.findByRole("heading", { name: "Template Builder" });
     await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
     await screen.findByLabelText("Master Data scenario pack");
     await userEvent.selectOptions(screen.getByLabelText("Master Data scenario pack"), "LOCATION_OPERATIONAL");
@@ -1789,12 +1790,13 @@ describe("Functional Master Data journey", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderFunctionalApp();
+    renderFunctionalApp("/master-data/template-builder");
     await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await screen.findByRole("heading", { name: "Data Factory" });
+    await screen.findByRole("heading", { name: "Template Builder" });
+    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
     await userEvent.click(screen.getByText("LOCATIONS_RECOVERED"));
     await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
     await userEvent.click(screen.getByRole("button", { name: "Load selected template" }));

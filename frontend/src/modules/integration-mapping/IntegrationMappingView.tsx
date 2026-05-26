@@ -402,7 +402,7 @@ function OfficialSchemaPathPicker({
   rootLabel,
   roots,
   selectRootText,
-  usePathLabel
+  pathActionLabel
 }: {
   emptyText: string;
   isLoading: boolean;
@@ -418,7 +418,7 @@ function OfficialSchemaPathPicker({
   rootLabel: string;
   roots: CatalogSchemaRoot[];
   selectRootText: string;
-  usePathLabel: (path: string) => string;
+  pathActionLabel: (path: string) => string;
 }) {
   return (
     <>
@@ -449,7 +449,7 @@ function OfficialSchemaPathPicker({
         {paths.map((path) => (
           <div className="integration-official-path-row" key={path.id}>
             <Button onClick={() => onUsePath(path.path)} type="button">
-              {usePathLabel(path.path)}
+              {pathActionLabel(path.path)}
             </Button>
             <span>{path.is_required ? "Required" : "Optional"}</span>
             <span>{path.is_repeatable ? "Repeatable" : "Single"}</span>
@@ -1901,7 +1901,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
               rootLabel="Official source root"
               roots={officialSourceRoots.data?.items ?? []}
               selectRootText="Select official source root"
-              usePathLabel={(path) => `Use official source path ${path}`}
+              pathActionLabel={(path) => `Use official source path ${path}`}
             />
             <OfficialSchemaPathPicker
               emptyText="No official target paths found."
@@ -1918,7 +1918,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
               rootLabel="Official target root"
               roots={officialTargetRoots.data?.items ?? []}
               selectRootText="Select official target root"
-              usePathLabel={(path) => `Use official target path ${path}`}
+              pathActionLabel={(path) => `Use official target path ${path}`}
             />
             <SchemaNodeSelect
               label="Mapping source node"
@@ -2219,7 +2219,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
               rootLabel="Official loop source root"
               roots={officialSourceRoots.data?.items ?? []}
               selectRootText="Select official loop source root"
-              usePathLabel={(path) => `Use official loop source path ${path}`}
+              pathActionLabel={(path) => `Use official loop source path ${path}`}
             />
             <SchemaNodeSelect
               label="Loop source node"

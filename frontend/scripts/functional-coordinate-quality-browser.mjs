@@ -126,7 +126,12 @@ async function run() {
       failedResponses
     });
     await page.locator('a[href="/master-data"]').click();
-    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "Data Factory", exact: true }), "Data Factory", {
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "Master Data", exact: true }), "Master Data hub", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByRole("link", { name: "Open Quality Tools" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "Quality Tools", exact: true }), "Quality Tools", {
       consoleErrors,
       failedResponses
     });
@@ -149,7 +154,9 @@ async function run() {
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
     await page.locator('a[href="/master-data"]').click();
-    await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Master Data", exact: true }).waitFor();
+    await page.getByRole("link", { name: "Open Quality Tools" }).click();
+    await page.getByRole("heading", { name: "Quality Tools", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Quality" }).click();
     await page.getByLabel("Coordinate Quality batches").getByText("PROCESSED").first().waitFor();
 

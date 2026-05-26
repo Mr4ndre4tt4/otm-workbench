@@ -932,3 +932,32 @@ The redesign is accepted when:
 - Do not merge Template Builder and Data Factory back into one staged workflow.
 - Do not make Lat/Lon a step in Data Factory export.
 - Do not expose real client data in tests or documentation.
+
+## 22. Implementation Log
+
+### 2026-05-26 Slice 1
+
+Delivered the first routing and hub slice:
+
+- `/master-data` now opens a focused Master Data hub with Data Factory,
+  Template Builder, and Quality Tools entry points.
+- `/master-data/factory` keeps the existing operational workflow while hiding
+  authoring and quality stages from the Data Factory stage strip.
+- `/master-data/template-builder` opens the authoring-focused route family and
+  keeps `Templates` available only as builder context for recovering existing
+  definitions.
+- `/master-data/quality` opens the Lat/Lon quality route family without making
+  it a Data Factory export step.
+- React and browser QA scripts were updated to enter the correct route family
+  instead of assuming the sidebar link opens the operational workflow directly.
+
+Evidence generated:
+
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/src/app/AppFunctionalCoordinateQuality.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `frontend/scripts/functional-coordinate-quality-browser.mjs`
+- `output/gui-qa/master-data/01-master-data-hub.png`
+- `output/gui-qa/master-data/02-template-builder-entry.png`
+- `output/gui-qa/master-data/03-data-factory-entry.png`

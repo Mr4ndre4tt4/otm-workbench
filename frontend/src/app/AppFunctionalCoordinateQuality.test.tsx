@@ -16,7 +16,7 @@ function renderFunctionalApp() {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MemoryRouter initialEntries={["/master-data"]}>
+        <MemoryRouter initialEntries={["/master-data/quality"]}>
           <App />
         </MemoryRouter>
       </AuthProvider>
@@ -243,7 +243,7 @@ describe("Functional Coordinate Quality journey", () => {
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await screen.findByRole("heading", { name: "Data Factory" });
+    await screen.findByRole("heading", { name: "Quality Tools" });
     await userEvent.click(screen.getByRole("button", { name: /8Quality/ }));
     await userEvent.click(screen.getByRole("button", { name: "Preview coordinates" }));
     await screen.findByText("Coordinate Quality preview processed 1 location(s).");
@@ -259,7 +259,8 @@ describe("Functional Coordinate Quality journey", () => {
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     await userEvent.click(screen.getByRole("link", { name: /Data Factory/ }));
-    await screen.findByRole("heading", { name: "Data Factory" });
+    await userEvent.click(screen.getByRole("link", { name: /Open Quality Tools/ }));
+    await screen.findByRole("heading", { name: "Quality Tools" });
     await userEvent.click(screen.getByRole("button", { name: /8Quality/ }));
     expect(await screen.findByLabelText("Coordinate Quality batches")).toHaveTextContent("coordinate_batch_1");
 

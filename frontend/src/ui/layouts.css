@@ -1042,6 +1042,52 @@
   }
 }
 
+.master-data-hub {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.master-data-hub-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 176px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+  padding: 18px;
+  text-decoration: none;
+}
+
+.master-data-hub-card:hover {
+  border-color: var(--accent);
+}
+
+.master-data-hub-card span,
+.master-data-hub-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.master-data-hub-card strong {
+  color: var(--text);
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.master-data-hub-card p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .master-data-workflow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
@@ -1439,6 +1485,7 @@
 
 @media (max-width: 900px) {
   .evidence-filter-bar,
+  .master-data-hub,
   .master-data-mapping-row,
   .master-data-workflow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1449,6 +1496,7 @@
   .evidence-filter-actions,
   .evidence-filter-bar,
   .evidence-workflow,
+  .master-data-hub,
   .master-data-mapping-row,
   .master-data-output-actions,
   .master-data-workflow {

@@ -31,6 +31,15 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function platformPreferences() {
+  return {
+    density: "comfortable",
+    follow_system_theme: false,
+    sidebar_mode: "expanded",
+    theme_mode: "light"
+  };
+}
+
 describe("App shell", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -1340,7 +1349,7 @@ describe("App shell", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Load Plan" });
-    expect(await screen.findByText("rates_csv_zip")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("rates_csv_zip").length).toBeGreaterThan(0));
     expect(screen.getAllByText("RATE_RECORD").length).toBeGreaterThan(0);
     expect(screen.getByText("RATE_GEO")).toBeInTheDocument();
     expect(screen.getByText("3 rows")).toBeInTheDocument();
@@ -1625,16 +1634,62 @@ describe("App shell", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderApp("/master-data");
+    renderApp("/master-data/factory");
     await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Data Factory" });
-    expect(await screen.findByText("REGION_TEMPLATE")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("REGION_TEMPLATE").length).toBeGreaterThan(0));
     expect(screen.getAllByText("REGION").length).toBeGreaterThan(0);
     expect(screen.getByText("Region GID")).toBeInTheDocument();
     expect(screen.queryByText(/build workbook/i)).not.toBeInTheDocument();
+  });
+
+  it("renders Master Data as a focused hub before entering factory workflows", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Master Data" });
+    expect(screen.getByRole("link", { name: /Open Data Factory/i })).toHaveAttribute("href", "/master-data/factory");
+    expect(screen.getByRole("link", { name: /Open Template Builder/i })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder"
+    );
+    expect(screen.getByRole("link", { name: /Open Quality Tools/i })).toHaveAttribute("href", "/master-data/quality");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
   });
 
   it("renders Order Release Generator from backend template contracts", async () => {
