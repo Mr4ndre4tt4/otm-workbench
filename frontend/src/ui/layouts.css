@@ -802,6 +802,17 @@
   padding: 8px 10px;
 }
 
+.integration-suggestion-review-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.integration-suggestion-review-header .button {
+  width: auto;
+}
+
 .integration-suggestion-review span {
   color: var(--muted);
   font-size: 12px;

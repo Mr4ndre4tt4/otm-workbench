@@ -1900,9 +1900,18 @@ export function IntegrationMappingView({ token }: { token: string }) {
               ) : null}
               {mappingSuggestionItems.length ? (
                 <div className="integration-suggestion-review" aria-label="Selected mapping suggestion review">
-                  <strong>{`${selectedMappingSuggestions.length} selected suggestion${
-                    selectedMappingSuggestions.length === 1 ? "" : "s"
-                  }`}</strong>
+                  <div className="integration-suggestion-review-header">
+                    <strong>{`${selectedMappingSuggestions.length} selected suggestion${
+                      selectedMappingSuggestions.length === 1 ? "" : "s"
+                    }`}</strong>
+                    <Button
+                      disabled={!selectedMappingSuggestions.length}
+                      onClick={() => setSelectedMappingSuggestionIds([])}
+                      type="button"
+                    >
+                      Clear selected suggestions
+                    </Button>
+                  </div>
                   {selectedMappingSuggestions.length ? (
                     <div className="integration-suggestion-review-rows">
                       {selectedMappingSuggestions.map((suggestion) => (
