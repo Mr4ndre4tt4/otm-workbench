@@ -1,7 +1,14 @@
 # GUI Load Plan View
 
-**Status:** implemented
+**Status:** implemented MVP slice; superseded for future UX direction by `GUI_LOAD_PLAN_CUTOVER_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/gui-load-plan-view`
+
+> 2026-05-26 update: the current `/load-plan` screen remains valid as backend
+> contract evidence, but browser review found it combines the package library,
+> selected package detail, checklist, readiness, CSVUTIL, ZIP review, sequence,
+> exports, Go/No-Go, and handoff in one stateful route. Use
+> `GUI_LOAD_PLAN_CUTOVER_CONSOLIDATED_SPEC.md` before implementing major Load
+> Plan / Cutover UI changes.
 
 ## Objective
 

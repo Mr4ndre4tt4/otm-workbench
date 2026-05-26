@@ -44,7 +44,7 @@ Module specs must preserve the project rules:
 | Shell / Project Cockpit | `GUI_SHELL_SCAFFOLD.md`, `GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md` | `GUI_AUTH_SESSION_FLOW.md`, `GUI_CONTEXT_SWITCHER.md`, `GUI_THEME_PREFERENCES.md` | Shell contracts exist; not a click-by-click module spec. | Create `GUI_PROJECT_COCKPIT_REDESIGN_SPEC.md` if cockpit workflows expand beyond summary/navigation. |
 | Rates Studio | `GUI_RATES_STUDIO_CONSOLIDATED_SPEC.md` | `GUI_RATES_SUMMARY_VIEW.md`, `GUI_RATES_BATCH_DETAIL_PANEL.md`, `GUI_RATES_ACTION_EXECUTION.md`, `GUI_RATES_ARTIFACT_DOWNLOAD.md`, `GUI_RATES_ARTIFACTS_EVIDENCE.md`, `GUI_RATES_MVP_COMPLETION_REVIEW_OTM58.md`, `GUI_RATES_VISUAL_QA_OTM78.md` | Consolidated objective, MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Rates UI implementation changes. |
 | OTM Catalog Core | `GUI_CATALOG_CORE_VIEW.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md`, `GUI_MODULE_RECONCILIATION_COMPLETION_REVIEW_OTM86.md` | View contract exists. | Create `GUI_CATALOG_CORE_ROADMAP_SPEC.md` when adding table/detail/search authoring flows. |
-| Load Plan / Cutover | `GUI_LOAD_PLAN_VIEW.md` | `GUI_FUNCTIONAL_QA_JOURNEYS.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists; flow is accepted for current GUI slice. | Create `GUI_LOAD_PLAN_CUTOVER_ROADMAP_SPEC.md` before expanding handoff, sequence, Go/No-Go, or CSVUTIL flows. |
+| Load Plan / Cutover | `GUI_LOAD_PLAN_CUTOVER_CONSOLIDATED_SPEC.md` | `GUI_LOAD_PLAN_VIEW.md`, `GUI_FUNCTIONAL_QA_JOURNEYS.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | Consolidated objective, MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Load Plan / Cutover UI implementation changes. |
 | Master Data / Data Factory | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md`, `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`, `GUI_MASTER_DATA_MVP_WORKFLOW_REVIEW_OTM119.md` | Full click-by-click redesign spec exists and supersedes current view direction. | Use as the model for all new module roadmap specs. |
 | Coordinate Quality / Lat-Lon | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md` | Covered as `Quality Tools` under Master Data redesign. | Create a separate `GUI_COORDINATE_QUALITY_ROADMAP_SPEC.md` only if it becomes a standalone module. |
 | Evidence Hub | `GUI_EVIDENCE_HUB_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_EVIDENCE_HUB_ROADMAP_SPEC.md` before archive/audit drill-down becomes first-class. |
@@ -99,9 +99,7 @@ Use this queue after the Master Data redesign is reviewed:
 2. `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md`
    Because the NDD-like scenario needs a clearer accelerator story and stronger
    route separation.
-3. `GUI_LOAD_PLAN_CUTOVER_ROADMAP_SPEC.md`
-   Because cutover has many operational actions and needs strong route clarity.
-4. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
+3. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
    Because it shares generator/template/artifact patterns with Master Data.
 
 ## 6. Maintenance Rule
