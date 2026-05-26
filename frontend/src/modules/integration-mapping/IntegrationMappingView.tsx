@@ -18,6 +18,8 @@ import {
   generateIntegrationSpec,
   listIntegrationMappingSuggestions,
   previewIntegrationDefinition,
+  useCatalogSchemaRootPaths,
+  useCatalogSchemaRootsByRole,
   useIntegrationArtifacts,
   useIntegrationDefinitionDetail,
   useIntegrationDefinitions,
@@ -412,6 +414,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const targetSchemaIdRef = useRef('');
   const [mappingSourceNodeSearch, setMappingSourceNodeSearch] = useState('');
   const [mappingTargetNodeSearch, setMappingTargetNodeSearch] = useState('');
+  const [officialSourceRootId, setOfficialSourceRootId] = useState('');
+  const [officialSourcePathQuery, setOfficialSourcePathQuery] = useState('');
   const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
@@ -497,6 +501,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const schemaDocuments = useIntegrationSchemaDocuments(token, effectiveDefinitionId);
   const sourceSchemaNodes = useIntegrationSchemaNodes(token, sourceSchemaId || null);
   const targetSchemaNodes = useIntegrationSchemaNodes(token, targetSchemaId || null);
+  const officialSourceRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
+  const officialSourceRootPaths = useCatalogSchemaRootPaths(token, officialSourceRootId || null, officialSourcePathQuery);
   const loopSourceSchemaNodes = useIntegrationSchemaNodes(token, loopSourceSchemaId || null);
   const loopTargetSchemaNodes = useIntegrationSchemaNodes(token, loopTargetSchemaId || null);
   const joinSourceSchemaNodes = useIntegrationSchemaNodes(token, joinSourceSchemaId || null);
@@ -1727,6 +1733,44 @@ export function IntegrationMappingView({ token }: { token: string }) {
               Mapping target node search
               <input onChange={(event) => setMappingTargetNodeSearch(event.target.value)} value={mappingTargetNodeSearch} />
             </label>
+            <label>
+              Official source root
+              <select
+                onChange={(event) => {
+                  setOfficialSourceRootId(event.target.value);
+                  setOfficialSourcePathQuery('');
+                }}
+                value={officialSourceRootId}
+              >
+                <option value="">Select official source root</option>
+                {(officialSourceRoots.data?.items ?? []).map((root) => (
+                  <option key={root.id} value={root.id}>
+                    {root.root_display_label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Official source path search
+              <input
+                disabled={!officialSourceRootId}
+                onChange={(event) => setOfficialSourcePathQuery(event.target.value)}
+                value={officialSourcePathQuery}
+              />
+            </label>
+            <div className="integration-action-bar" aria-label="Official source paths">
+              {officialSourceRootId && officialSourceRootPaths.isLoading ? (
+                <span className="empty-text">Loading official source paths...</span>
+              ) : null}
+              {officialSourceRootId && !officialSourceRootPaths.isLoading && !(officialSourceRootPaths.data?.items ?? []).length ? (
+                <span className="empty-text">No official source paths found.</span>
+              ) : null}
+              {(officialSourceRootPaths.data?.items ?? []).map((path) => (
+                <Button key={path.id} onClick={() => setSourcePath(path.path)} type="button">
+                  {`Use official source path ${path.path}`}
+                </Button>
+              ))}
+            </div>
             <SchemaNodeSelect
               label="Mapping source node"
               nodes={sourceSchemaNodes.data?.items ?? []}

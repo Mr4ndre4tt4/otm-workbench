@@ -65,6 +65,76 @@ function coveredScenarioPack() {
   };
 }
 
+function catalogSchemaRootsByRole(role: string) {
+  const roots = {
+    ENVELOPE_ONLY: [
+      {
+        id: "root_transmission",
+        schema_pack_id: "pack_26a",
+        schema_file_id: "file_transmission",
+        root_name: "Transmission",
+        root_display_label: "Transmission",
+        canonical_root_name: "Transmission",
+        schema_root_aliases: ["Transmission"],
+        data_dictionary_family: "",
+        schema_guidance_role: "ENVELOPE_ONLY",
+        namespace: "http://xmlns.oracle.com/apps/otm/transmission",
+        domain_area: "TRANSMISSION",
+        root_type: "ENVELOPE",
+        envelope_role: "TRANSMISSION",
+        recommended_modules: ["integration_mapping"],
+        documentation: "Synthetic official OTM transmission root."
+      }
+    ]
+  };
+  return {
+    items: roots[role as keyof typeof roots] ?? [],
+    total: roots[role as keyof typeof roots]?.length ?? 0,
+    page: 1,
+    page_size: roots[role as keyof typeof roots]?.length ?? 0
+  };
+}
+
+function catalogSchemaRootPaths(schemaRootId: string, query = "") {
+  const paths = {
+    root_transmission: [
+      {
+        id: "catalog_path_shipment_gid",
+        schema_root_id: "root_transmission",
+        parent_path: "/Transmission/Shipment",
+        path: "/Transmission/Shipment/ShipmentGid",
+        node_name: "ShipmentGid",
+        data_type: "complexType",
+        min_occurs: "1",
+        max_occurs: "1",
+        is_required: true,
+        is_repeatable: false,
+        documentation: "Synthetic official shipment identifier path.",
+        source_file: "Shipment.xsd",
+        sequence_index: 10
+      },
+      {
+        id: "catalog_path_planned_time",
+        schema_root_id: "root_transmission",
+        parent_path: "/Transmission/Shipment/StartDt",
+        path: "/Transmission/Shipment/StartDt/PlannedTime",
+        node_name: "PlannedTime",
+        data_type: "string",
+        min_occurs: "0",
+        max_occurs: "1",
+        is_required: false,
+        is_repeatable: false,
+        documentation: "Synthetic official planned time path.",
+        source_file: "Shipment.xsd",
+        sequence_index: 20
+      }
+    ]
+  };
+  const allItems = paths[schemaRootId as keyof typeof paths] ?? [];
+  const items = query ? allItems.filter((item) => item.path.includes(query)) : allItems;
+  return { items, total: items.length, page: 1, page_size: items.length };
+}
+
 describe("Functional Integration Mapping Studio journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -86,6 +156,8 @@ describe("Functional Integration Mapping Studio journey", () => {
     const responseHandlerRequests: unknown[] = [];
     const artifactDownloadRequests: string[] = [];
     const actionRequests: string[] = [];
+    const catalogRootRequests: string[] = [];
+    const catalogPathRequests: string[] = [];
     const systemRequests: unknown[] = [];
     const endpointRequests: unknown[] = [];
     let definitions: Array<Record<string, unknown>> = [];
@@ -114,9 +186,10 @@ describe("Functional Integration Mapping Studio journey", () => {
       created_at: "2026-05-21T10:10:00",
       updated_at: "2026-05-21T10:10:00"
     };
+    const NativeURL = URL;
     const createObjectURL = vi.fn(() => "blob:integration-mapping-artifact");
     const revokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+    vi.stubGlobal("URL", Object.assign(NativeURL, { createObjectURL, revokeObjectURL }));
     const sourceSchemaNodes = [
       {
         id: "node_source_gid",
@@ -306,6 +379,20 @@ describe("Functional Integration Mapping Studio journey", () => {
       if (url.endsWith("/api/v1/platform/user-preferences")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots/root_transmission/paths")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        catalogPathRequests.push(url);
+        const parsedUrl = new NativeURL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(catalogSchemaRootPaths("root_transmission", parsedUrl.searchParams.get("query") ?? "")));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        catalogRootRequests.push(url);
+        const parsedUrl = new NativeURL(url, "http://localhost");
+        const response = catalogSchemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "");
+        expect(response.total).toBe(1);
+        return Promise.resolve(jsonResponse(response));
       }
       if (url.endsWith("/api/v1/modules/integration-mapping/transform-types")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -1048,6 +1135,17 @@ describe("Functional Integration Mapping Studio journey", () => {
     fireEvent.change(screen.getByLabelText("Target schema"), { target: { value: "schema_target" } });
     expect(screen.getByLabelText("Source schema")).toHaveValue("schema_source");
     expect(screen.getByLabelText("Target schema")).toHaveValue("schema_target");
+    await waitFor(() =>
+      expect(catalogRootRequests.some((requestUrl) => requestUrl.includes("schema_guidance_role=ENVELOPE_ONLY"))).toBe(true)
+    );
+    await waitFor(() =>
+      expect(within(screen.getByLabelText("Official source root")).getByRole("option", { name: "Transmission" })).toBeInTheDocument()
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Official source root"), "root_transmission");
+    await userEvent.type(screen.getByLabelText("Official source path search"), "ShipmentGid");
+    await userEvent.click(await screen.findByRole("button", { name: "Use official source path /Transmission/Shipment/ShipmentGid" }));
+    expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
+    expect(catalogPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=ShipmentGid"))).toBe(true);
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
     await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
     await userEvent.selectOptions(await screen.findByLabelText("Mapping source node", { exact: true }), "/Transmission/Shipment/ShipmentGid");
