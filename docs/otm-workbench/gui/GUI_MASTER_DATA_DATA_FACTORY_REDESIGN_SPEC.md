@@ -58,6 +58,15 @@ No screen should combine these three responsibilities.
 /master-data/template-builder/:templateCode
   Template builder detail, authoring, mapping, validation, publish/version actions
 
+/master-data/template-builder/:templateCode/edit
+  Dedicated template edit screen with Back action
+
+/master-data/template-builder/:templateCode/copy
+  Dedicated template copy screen with Back action and new-header review
+
+/master-data/template-builder/:templateCode/delete
+  Dedicated delete/retire confirmation screen with Back action
+
 /master-data/quality
   Quality tools hub
 
@@ -399,11 +408,68 @@ Data Factory load flow.
 - Header: `Template Builder`
 - Subtitle: `Create, map, validate, version, and publish reusable master data templates.`
 - Primary action: `Create template`
+- Search and filter panel above the list
 - List with tabs:
   - `Published`
   - `Drafts`
   - `Needs validation`
   - `Archived`
+
+### Template Header Search Contract
+
+Template search must be backend-owned. The UI renders searchable fields from
+the template header/search metadata returned by the backend, but the MVP0
+baseline should support these fields:
+
+| Field | Purpose | Example |
+|---|---|---|
+| template code | technical identifier | `LOCATIONS_STANDARD` |
+| template name | user-facing name | `Locations Standard` |
+| client | implementation/client qualifier; never real client data in seed/demo docs | `DEMO_CLIENT` |
+| type | template family or business type | `MASTER_DATA`, `RATE`, `CUTOVER` |
+| macro object | OTM object group | `LOCATION`, `ITEM`, `RATE` |
+| status | lifecycle state | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
+| version | template version | `1`, `2` |
+| scenario pack | source scenario/package | `LOCATION_BASELINE` |
+| owner team | functional owner | `TRANSPORTATION`, `MASTER_DATA` |
+| tags | reusable qualifiers | `dock,capacity,address` |
+| source basis | origin of definition | `DATA_DICTIONARY`, `OFFICIAL_DOC`, `CUSTOM` |
+| target OTM version | intended OTM version | `26A` |
+| description | searchable business explanation | `Location template with address and dock fields` |
+
+Every searchable field supports the same operator set:
+
+| Operator | Behavior |
+|---|---|
+| `begins with` | case-insensitive prefix match |
+| `contains` | case-insensitive substring match |
+| `one of` | comma-separated list; trims spaces around values |
+| `not one of` | comma-separated exclusion list; trims spaces around values |
+
+Search behavior rules:
+
+- Multiple filters combine with `AND`.
+- `one of` and `not one of` values are entered as comma-separated values in one
+  field, for example `LOCATION,ITEM,RATE`.
+- Empty values are ignored, not sent as broken filters.
+- Invalid operator/value combinations show a local validation message before
+  calling the backend.
+- Backend returns the normalized filters applied so the UI can show the active
+  search state.
+- Saved searches may come later, but must be backend-owned if implemented.
+
+### Template List Row Actions
+
+Row actions are secondary and never execute destructive or complex authoring
+work inline.
+
+| Row action | Opens | Backend load |
+|---|---|---|
+| `View` or row click | `/master-data/template-builder/:templateCode` | full template detail |
+| `Edit` | `/master-data/template-builder/:templateCode/edit` | editable template detail, locks/permissions |
+| `Copy` | `/master-data/template-builder/:templateCode/copy` | source template detail and proposed new header |
+| `Delete` or `Retire` | `/master-data/template-builder/:templateCode/delete` | impact summary, usage count, permissions |
+| `Open in Data Factory` | `/master-data/factory/templates/:templateCode` | published operational detail |
 
 ### Clicks
 
@@ -411,6 +477,11 @@ Data Factory load flow.
 |---|---|---|
 | `Create template` | `/master-data/template-builder/new` | scenario packs, macro objects, table metadata |
 | Template row | `/master-data/template-builder/:templateCode` | full template draft/detail |
+| Search `Apply` | stays on `/master-data/template-builder` | filtered template list and normalized filters |
+| Search `Clear` | stays on `/master-data/template-builder` | unfiltered default list |
+| `Edit` row action | `/master-data/template-builder/:templateCode/edit` | editable template detail |
+| `Copy` row action | `/master-data/template-builder/:templateCode/copy` | source detail and proposed new header |
+| `Delete` row action | `/master-data/template-builder/:templateCode/delete` | deletion/retirement impact summary |
 | `Open in Data Factory` | `/master-data/factory/templates/:templateCode` | published operational detail |
 
 ## 10. Screen: `/master-data/template-builder/new`
@@ -541,9 +612,9 @@ hidden authoring controls.
 - `Back to Template Builder`
 - template title/status/version
 - action bar:
-  - `Save draft`
-  - `Validate definition`
-  - `Publish`
+  - `Edit`
+  - `Copy`
+  - `Delete` or `Retire`
   - `Create next version`
   - `Open in Data Factory`
 - tabs:
@@ -561,13 +632,15 @@ hidden authoring controls.
 | table row | table detail section within same route |
 | field row | field mapping editor panel within same route |
 | version row | version detail read-only state |
+| `Edit` | `/master-data/template-builder/:templateCode/edit` |
+| `Copy` | `/master-data/template-builder/:templateCode/copy` |
+| `Delete` or `Retire` | `/master-data/template-builder/:templateCode/delete` |
 | `Open in Data Factory` | `/master-data/factory/templates/:templateCode` |
 
 ### Actions
 
 | Action | Executes | Result |
 |---|---|---|
-| `Save draft` | backend draft patch/update | success status, no navigation |
 | `Validate definition` | backend validation | validation tab/result |
 | `Publish` | backend publish | status published, action disabled if already published |
 | `Create next version` | backend version create | route updates to new version/draft |
@@ -579,7 +652,118 @@ hidden authoring controls.
 - Long OTM column names truncate with tooltip or expand-on-row detail.
 - Primary actions are always visible at top or sticky bottom.
 
-## 12. Screen: `/master-data/quality`
+## 12. Screen: `/master-data/template-builder/:templateCode/edit`
+
+### Purpose
+
+Edit one template in a focused route. This screen is the only place where
+existing template header, table, field, mapping, and validation settings are
+changed.
+
+### Layout
+
+- `Back to Template Detail`
+- template identity/status/version summary
+- warning banner if editing a published template requires creating a draft or
+  next version
+- tabs:
+  - `Header`
+  - `Tables`
+  - `Fields`
+  - `Mapping`
+  - `Review`
+- sticky action bar:
+  - `Save draft`
+  - `Validate definition`
+  - `Publish`
+  - `Discard changes`
+
+### Header Fields
+
+The editable header should include at least:
+
+- template code, read-only after creation unless copying
+- template name
+- client
+- type
+- macro object
+- status, backend-controlled
+- version, backend-controlled
+- scenario pack
+- owner team
+- tags
+- source basis
+- target OTM version
+- description
+
+### Actions
+
+| Action | Executes | Result |
+|---|---|---|
+| `Save draft` | backend template draft patch/update | stays on edit screen, shows saved state |
+| `Validate definition` | backend validation | opens `Review` tab with blockers/warnings |
+| `Publish` | backend publish/version promotion | navigates to detail route if successful |
+| `Discard changes` | backend/local draft discard depending on state | returns to template detail |
+| `Back to Template Detail` | navigation only; warn if unsaved changes | `/master-data/template-builder/:templateCode` |
+
+## 13. Screen: `/master-data/template-builder/:templateCode/copy`
+
+### Purpose
+
+Create a new draft template from an existing template without mutating the
+source.
+
+### Layout
+
+- `Back to Template Detail`
+- source template summary, read-only
+- new template header form
+- copy options:
+  - copy tables
+  - copy fields
+  - copy fixed values
+  - copy relationship rules
+  - copy validation rules
+  - copy tags
+- preview of resulting draft scope
+
+### Actions
+
+| Action | Executes | Result |
+|---|---|---|
+| `Create copy` | backend clone/create draft from source with new header | opens new template edit route |
+| `Reset header` | frontend reset to backend proposed defaults | stays on copy screen |
+| `Cancel` | navigation only | returns to source template detail |
+
+## 14. Screen: `/master-data/template-builder/:templateCode/delete`
+
+### Purpose
+
+Confirm deletion, archive, or retirement in a focused screen with impact
+visibility. Published templates that have historical batches should normally be
+retired/archived instead of hard-deleted.
+
+### Layout
+
+- `Back to Template Detail`
+- template summary
+- backend impact summary:
+  - published status
+  - active batches
+  - historical batches
+  - dependent saved searches or references, if any
+  - whether hard delete is allowed
+- confirmation input for destructive actions
+
+### Actions
+
+| Action | Executes | Result |
+|---|---|---|
+| `Archive` or `Retire` | backend lifecycle transition | returns to Template Builder list with status filter |
+| `Delete draft` | backend hard delete only when allowed | returns to Template Builder list |
+| `Cancel` | navigation only | returns to template detail |
+
+## 15. Screen: `/master-data/quality`
 
 ### Purpose
 
@@ -597,7 +781,7 @@ Separate quality utilities from Data Factory operations.
 |---|---|---|
 | `Lat/Lon Validator` | `/master-data/quality/lat-lon` | recent coordinate batches |
 
-## 13. Screen: `/master-data/quality/lat-lon`
+## 16. Screen: `/master-data/quality/lat-lon`
 
 ### Purpose
 
@@ -620,7 +804,7 @@ Validate Location coordinates independently from template download/upload/export
 | Recent batch row | load batch detail | `/master-data/quality/lat-lon/batches/:batchId` |
 | `Export correction package` | export quality review artifact | stays on batch detail with artifact link |
 
-## 14. Screen: `/master-data/quality/lat-lon/batches/:batchId`
+## 17. Screen: `/master-data/quality/lat-lon/batches/:batchId`
 
 ### Purpose
 
@@ -642,7 +826,7 @@ Inspect coordinate validation results and export review/correction artifacts.
 | `Export correction package` | export endpoint | artifact/evidence |
 | `Download package` | guarded artifact download | download |
 
-## 15. Backend Contract Alignment
+## 18. Backend Contract Alignment
 
 The redesign should reuse existing backend contracts where possible:
 
@@ -665,9 +849,15 @@ Potential backend/API improvements:
 2. batch detail endpoint with grouped available actions by workflow stage
 3. route-safe latest artifact/download metadata per batch
 4. template builder endpoints separated from operational template consumption
-5. quality tools index endpoint, if more quality utilities are added
+5. template header search endpoint with backend-owned searchable fields,
+   operators, normalized filters, and pagination/sort metadata
+6. template copy endpoint that clones a source template into a new draft using
+   a reviewed header and selected copy options
+7. template delete/retire endpoint that returns impact constraints and only
+   allows hard delete when safe
+8. quality tools index endpoint, if more quality utilities are added
 
-## 16. Implementation Slices
+## 19. Implementation Slices
 
 ### Slice 1: Routing And Hub
 
@@ -692,6 +882,10 @@ Potential backend/API improvements:
 
 - Build `/master-data/template-builder`.
 - Move `Author` and mapping controls out of Data Factory.
+- Add backend-owned template header search with operators: `begins with`,
+  `contains`, `one of`, and `not one of`.
+- Add dedicated routes for `Edit`, `Copy`, and `Delete/Retire`, each with a
+  visible Back action and no inline destructive execution from the list.
 - Replace field card wall with dense table and row editor.
 
 ### Slice 5: Quality Tools Separation
@@ -711,7 +905,7 @@ Potential backend/API improvements:
   - user opens Template Builder from Data Factory and comes back
 - Update docs and Linear issues.
 
-## 17. Acceptance Criteria
+## 20. Acceptance Criteria
 
 The redesign is accepted when:
 
@@ -721,13 +915,17 @@ The redesign is accepted when:
 4. Clicking a batch opens a route-level batch execution page.
 5. Template authoring is reachable but separated as `Template Builder`.
 6. Lat/Lon validation is reachable but separated as `Quality Tools`.
-7. No screen relies on a heavy selected-object side panel for core actions.
-8. Primary actions are visible without scrolling to the bottom of a long form.
-9. Long table/field names do not overlap.
-10. All critical actions execute backend-owned contracts and show backend errors.
-11. Functional QA covers the happy path and realistic human out-of-order paths.
+7. Template search supports backend-owned searchable header fields with
+   `begins with`, `contains`, `one of`, and `not one of` operators.
+8. Template edit, copy, and delete/retire actions open dedicated screens with
+   Back actions and clear impact/state handling.
+9. No screen relies on a heavy selected-object side panel for core actions.
+10. Primary actions are visible without scrolling to the bottom of a long form.
+11. Long table/field names do not overlap.
+12. All critical actions execute backend-owned contracts and show backend errors.
+13. Functional QA covers the happy path and realistic human out-of-order paths.
 
-## 18. Explicit Non-Goals
+## 21. Explicit Non-Goals
 
 - Do not redesign the whole Workbench shell.
 - Do not remove backend capabilities.

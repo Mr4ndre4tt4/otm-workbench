@@ -209,6 +209,12 @@ Required UX correction before further hardening:
 - Remove `Author`, `Map`, and `Quality` from the operational Data Factory
   workflow.
 - Move authoring/mapping/version/publish actions into Template Builder.
+- Add Template Builder search against backend-owned template header fields such
+  as template code, client, type, macro object, status, version, tags, source
+  basis, target OTM version, and description, with `begins with`, `contains`,
+  `one of`, and `not one of` operators.
+- Move template edit, copy, and delete/retire into dedicated route-level screens
+  with visible Back actions and impact/state handling.
 - Move Lat/Lon Validator into Quality Tools.
 - Stop relying on the heavy selected-object side panel for core actions.
 ```
