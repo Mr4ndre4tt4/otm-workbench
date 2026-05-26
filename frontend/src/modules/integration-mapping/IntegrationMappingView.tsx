@@ -1766,9 +1766,14 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 <span className="empty-text">No official source paths found.</span>
               ) : null}
               {(officialSourceRootPaths.data?.items ?? []).map((path) => (
-                <Button key={path.id} onClick={() => setSourcePath(path.path)} type="button">
-                  {`Use official source path ${path.path}`}
-                </Button>
+                <div className="integration-official-path-row" key={path.id}>
+                  <Button onClick={() => setSourcePath(path.path)} type="button">
+                    {`Use official source path ${path.path}`}
+                  </Button>
+                  <span>{path.is_required ? "Required" : "Optional"}</span>
+                  <span>{path.is_repeatable ? "Repeatable" : "Single"}</span>
+                  <span>{path.documentation || path.source_file}</span>
+                </div>
               ))}
             </div>
             <SchemaNodeSelect

@@ -1143,6 +1143,10 @@ describe("Functional Integration Mapping Studio journey", () => {
     );
     await userEvent.selectOptions(screen.getByLabelText("Official source root"), "root_transmission");
     await userEvent.type(screen.getByLabelText("Official source path search"), "ShipmentGid");
+    const officialSourcePaths = await screen.findByLabelText("Official source paths");
+    expect(officialSourcePaths).toHaveTextContent("Required");
+    expect(officialSourcePaths).toHaveTextContent("Single");
+    expect(officialSourcePaths).toHaveTextContent("Synthetic official shipment identifier path.");
     await userEvent.click(await screen.findByRole("button", { name: "Use official source path /Transmission/Shipment/ShipmentGid" }));
     expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
     expect(catalogPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=ShipmentGid"))).toBe(true);

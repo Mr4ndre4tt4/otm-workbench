@@ -510,6 +510,8 @@ Current Catalog Core GUI slice delivered:
 - Integration Mapping Rules-stage authoring can reuse the same Catalog Core
   source root/path browser to apply an official OTM source path into a mapping
   draft;
+- Integration Mapping shows Catalog-owned path metadata such as required,
+  repeatable, and documentation beside the apply action;
 - selected macro-object schema links from Data Dictionary cross-check;
 - no frontend inference of root aliases, readiness, confidence, or reference
   status.
