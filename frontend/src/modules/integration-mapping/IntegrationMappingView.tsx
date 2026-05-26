@@ -464,6 +464,10 @@ function collectionNodes(nodes: IntegrationSchemaNode[]) {
   return nodes.filter((node) => ["array", "object"].includes(node.node_type.toLowerCase()));
 }
 
+function suggestionConfidenceLabel(confidence: number) {
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
 export function IntegrationMappingView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
@@ -1855,19 +1859,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
               </Button>
               {mappingSuggestionItems.length ? (
                 mappingSuggestionItems.map((suggestion) => (
-                  <Button
-                    key={suggestion.id}
-                    onClick={() => {
-                      setSourcePath(suggestion.source_path);
-                      setTargetPath(suggestion.target_path);
-                      setTransformType(suggestion.transform_type);
-                      setMappingSourceNodeSearch('');
-                      setMappingTargetNodeSearch('');
-                    }}
-                    type="button"
-                  >
-                    {`Apply suggestion ${suggestion.source_path} to ${suggestion.target_path}`}
-                  </Button>
+                  <div className="integration-suggestion-row" key={suggestion.id}>
+                    <Button
+                      onClick={() => {
+                        setSourcePath(suggestion.source_path);
+                        setTargetPath(suggestion.target_path);
+                        setTransformType(suggestion.transform_type);
+                        setMappingSourceNodeSearch('');
+                        setMappingTargetNodeSearch('');
+                      }}
+                      type="button"
+                    >
+                      {`Apply suggestion ${suggestion.source_path} to ${suggestion.target_path}`}
+                    </Button>
+                    <span>{suggestionConfidenceLabel(suggestion.confidence)}</span>
+                    <span>{suggestion.transform_type}</span>
+                    <span>{suggestion.reason}</span>
+                  </div>
                 ))
               ) : (
                 <span className="empty-text">No mapping suggestions for the selected schemas.</span>

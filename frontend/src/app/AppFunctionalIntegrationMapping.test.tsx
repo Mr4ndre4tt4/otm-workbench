@@ -1165,6 +1165,9 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Use official source path /Transmission/Shipment/ShipmentGid" }));
     expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
     expect(catalogPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=ShipmentGid"))).toBe(true);
+    const mappingSuggestionsPanel = await screen.findByLabelText("Mapping suggestions");
+    expect(mappingSuggestionsPanel).toHaveTextContent("90% confidence");
+    expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
     await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
     await userEvent.selectOptions(await screen.findByLabelText("Mapping source node", { exact: true }), "/Transmission/Shipment/ShipmentGid");

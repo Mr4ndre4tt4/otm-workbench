@@ -773,6 +773,20 @@
   overflow-wrap: anywhere;
 }
 
+.integration-suggestion-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) max-content max-content minmax(160px, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.integration-suggestion-row span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .integration-workflow {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
