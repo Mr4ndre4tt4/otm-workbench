@@ -1,0 +1,118 @@
+# GUI Module Roadmap Index
+
+**Status:** active index
+**Date:** 2026-05-26
+**Scope:** module-by-module roadmap entry point for GUI/product specs, module
+views, QA evidence, and next documentation gaps.
+
+## 1. Purpose
+
+This file is the navigation index for module roadmaps.
+
+`GUI_MODULE_EXPERIENCE_ROADMAP.md` remains the narrative roadmap. This index
+keeps each module discoverable and points to the most specific module document
+available. When a module needs a deeper click-by-click redesign like Master
+Data, the new module-specific spec should be added here.
+
+## 2. Index Rules
+
+Every module should have, in order of preference:
+
+1. a module-specific UX/product spec with route map, screens, clicks, actions,
+   backend contracts, QA criteria, and non-goals;
+2. a module view contract when the screen already exists but does not yet have
+   a full redesign spec;
+3. QA/review evidence for what has already been tested;
+4. a clear next documentation gap.
+
+Module specs must preserve the project rules:
+
+- backend-owned state, labels, available actions, permissions, preferences,
+  menu metadata, templates, and validation rules;
+- no real client data in docs, fixtures, screenshots, or seeds;
+- route-level detail screens for complex objects and destructive actions;
+- one primary task per screen;
+- visible `Back` action on drill-down, edit, copy, delete/retire, and result
+  screens;
+- functional QA must test happy path, negative path, out-of-order path, and
+  route leave/return recovery.
+
+## 3. Module Roadmap Matrix
+
+| Module | Current specific doc | Supporting docs | Current doc status | Next documentation action |
+|---|---|---|---|---|
+| Shell / Project Cockpit | `GUI_SHELL_SCAFFOLD.md`, `GUI_PROJECT_COCKPIT_SUMMARY_CONTRACT.md` | `GUI_AUTH_SESSION_FLOW.md`, `GUI_CONTEXT_SWITCHER.md`, `GUI_THEME_PREFERENCES.md` | Shell contracts exist; not a click-by-click module spec. | Create `GUI_PROJECT_COCKPIT_REDESIGN_SPEC.md` if cockpit workflows expand beyond summary/navigation. |
+| Rates Studio | `GUI_RATES_SUMMARY_VIEW.md` | `GUI_RATES_BATCH_DETAIL_PANEL.md`, `GUI_RATES_ACTION_EXECUTION.md`, `GUI_RATES_ARTIFACT_DOWNLOAD.md`, `GUI_RATES_ARTIFACTS_EVIDENCE.md`, `GUI_RATES_MVP_COMPLETION_REVIEW_OTM58.md`, `GUI_RATES_VISUAL_QA_OTM78.md` | Strong reference implementation, but split across focused contracts. | Consolidate into `GUI_RATES_STUDIO_ROADMAP_SPEC.md` before major Rates UI redesign. |
+| OTM Catalog Core | `GUI_CATALOG_CORE_VIEW.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md`, `GUI_MODULE_RECONCILIATION_COMPLETION_REVIEW_OTM86.md` | View contract exists. | Create `GUI_CATALOG_CORE_ROADMAP_SPEC.md` when adding table/detail/search authoring flows. |
+| Load Plan / Cutover | `GUI_LOAD_PLAN_VIEW.md` | `GUI_FUNCTIONAL_QA_JOURNEYS.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists; flow is accepted for current GUI slice. | Create `GUI_LOAD_PLAN_CUTOVER_ROADMAP_SPEC.md` before expanding handoff, sequence, Go/No-Go, or CSVUTIL flows. |
+| Master Data / Data Factory | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md`, `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`, `GUI_MASTER_DATA_MVP_WORKFLOW_REVIEW_OTM119.md` | Full click-by-click redesign spec exists and supersedes current view direction. | Use as the model for all new module roadmap specs. |
+| Coordinate Quality / Lat-Lon | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md` | Covered as `Quality Tools` under Master Data redesign. | Create a separate `GUI_COORDINATE_QUALITY_ROADMAP_SPEC.md` only if it becomes a standalone module. |
+| Evidence Hub | `GUI_EVIDENCE_HUB_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_EVIDENCE_HUB_ROADMAP_SPEC.md` before archive/audit drill-down becomes first-class. |
+| Assets Library | `GUI_ASSETS_LIBRARY_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists; UX concerns about stacked screens/storytelling remain relevant. | Create `GUI_ASSETS_LIBRARY_ROADMAP_SPEC.md` with route map for list, asset detail, edit, upload version, link, archive, and classification authoring. |
+| Order Release Generator | `GUI_ORDER_RELEASE_GENERATOR_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md` before expanding template authoring, XML preview, and governed OTM submit. |
+| Integration Mapping Studio | `GUI_INTEGRATION_MAPPING_VIEW.md` | `GUI_INTEGRATION_MAPPING_NDD_UI_QA.md`, `GUI_INTEGRATION_MAPPING_VISUAL_QA_OTM79.md`, `GUI_LOCAL_INTEGRATION_VALIDATION.md` | View/QA docs exist; NDD-like QA revealed acceleration and clarity needs. | Create `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md` with story-driven routes for systems, definitions, schemas, mappings, joins, suggestions, preview, spec generation, and artifacts. |
+| Admin Console / Jobs | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md` | Covered only by shared roadmap and API matrix. | Create `GUI_ADMIN_CONSOLE_ROADMAP_SPEC.md` if setup flags, jobs, audit, edit/delete, or role governance expand. |
+| Developer Tools | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md`, `GUI_BROWSER_QA_ATTEMPT.md` | Covered only indirectly. | Create a module spec only if Developer Tools becomes user-facing beyond diagnostics. |
+| Backend-Owned Icon / Asset Registry | `GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md` | `GUI_DESIGN_SYSTEM_HANDOFF.md`, `GUI_COMPONENT_GALLERY_PLAN.md` | Backend-facing contract exists. | Link each module spec to this registry when defining sidebar icons, labels, empty-state assets, and status visuals. |
+
+## 4. Spec Template For New Module Roadmaps
+
+New module-specific specs should follow this minimum structure:
+
+```text
+# GUI <Module Name> Roadmap Specification
+
+Status / Date / Scope
+1. Problem Statement
+2. Design Decision
+3. Core Navigation Map
+4. Global UX Rules
+5. Screen-by-screen route specs
+6. Clicks: what each click opens
+7. Actions: what each action executes
+8. Backend Contract Alignment
+9. QA Journeys
+10. Implementation Slices
+11. Acceptance Criteria
+12. Explicit Non-Goals
+```
+
+Each screen section must answer:
+
+```text
+- What problem does this screen solve?
+- What object is selected or created here?
+- What data does the backend load when the route opens?
+- What does each click open?
+- What does each action execute?
+- What errors, blocked states, empty states, and permission states appear?
+- What should never be placed on this screen?
+```
+
+## 5. Recommended Documentation Queue
+
+Use this queue after the Master Data redesign is reviewed:
+
+1. `GUI_ASSETS_LIBRARY_ROADMAP_SPEC.md`
+   Because the current feedback about stacked screens/storytelling already
+   applies there.
+2. `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md`
+   Because the NDD-like scenario needs a clearer accelerator story and stronger
+   route separation.
+3. `GUI_RATES_STUDIO_ROADMAP_SPEC.md`
+   Because Rates is the first major module and should become the canonical
+   pattern for batch/detail/artifact flows.
+4. `GUI_LOAD_PLAN_CUTOVER_ROADMAP_SPEC.md`
+   Because cutover has many operational actions and needs strong route clarity.
+5. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
+   Because it shares generator/template/artifact patterns with Master Data.
+
+## 6. Maintenance Rule
+
+When a new module-specific roadmap spec is created:
+
+1. add it to this file;
+2. add it to `GUI_CONTRACT_INDEX.md`;
+3. link it from `GUI_MODULE_EXPERIENCE_ROADMAP.md`;
+4. update or create the matching Linear issue;
+5. commit the documentation before implementation begins.

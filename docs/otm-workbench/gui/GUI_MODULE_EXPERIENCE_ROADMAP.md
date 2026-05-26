@@ -7,6 +7,9 @@
 See `GUI_MODULE_API_CONTRACT_MATRIX.md` for the backend API contract readiness
 map across implemented GUI modules.
 
+See `GUI_MODULE_ROADMAP_INDEX.md` for the module-by-module documentation index
+that links each module to its most specific roadmap/spec/view/QA document.
+
 ## 1. Purpose
 
 This roadmap applies `GUI_MODULE_EXPERIENCE_ARCHITECTURE.md` to the current
