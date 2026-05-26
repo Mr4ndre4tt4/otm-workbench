@@ -1905,13 +1905,26 @@ export function IntegrationMappingView({ token }: { token: string }) {
                     <strong>{`${selectedMappingSuggestions.length} selected suggestion${
                       selectedMappingSuggestions.length === 1 ? "" : "s"
                     }`}</strong>
-                    <Button
-                      disabled={!selectedMappingSuggestions.length}
-                      onClick={() => setSelectedMappingSuggestionIds([])}
-                      type="button"
-                    >
-                      Clear selected suggestions
-                    </Button>
+                    <div className="integration-suggestion-review-actions">
+                      <Button
+                        disabled={!visibleMappingSuggestions.length}
+                        onClick={() =>
+                          setSelectedMappingSuggestionIds(
+                            visibleMappingSuggestions.map((suggestion) => suggestion.id)
+                          )
+                        }
+                        type="button"
+                      >
+                        Select visible suggestions
+                      </Button>
+                      <Button
+                        disabled={!selectedMappingSuggestions.length}
+                        onClick={() => setSelectedMappingSuggestionIds([])}
+                        type="button"
+                      >
+                        Clear selected suggestions
+                      </Button>
+                    </div>
                   </div>
                   {selectedMappingSuggestions.length ? (
                     <div className="integration-suggestion-review-rows">

@@ -278,7 +278,10 @@ A module journey is ready when it records:
    response handler authoring/review, and guided CONSTANT, DATE_FORMAT,
    FILTER_BY_QUALIFIER, and COUNT_DISTINCT transform_config authoring.
    OTM-158 adds schema node search and mapping suggestion application to the
-   same journey.
+   same journey. OTM-160 adds backend-owned suggestion confidence/reason,
+   transform-type faceting, visible suggestion subset selection, selected
+   suggestion review, clear recovery, and selected-suggestion cleanup after
+   mapping creation.
 6. Load Plan/Cutover/CSVUTIL journey: OTM-92.
 7. Master Data, Assets, Evidence, and Order Release module journeys.
 ```

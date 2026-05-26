@@ -813,6 +813,13 @@
   width: auto;
 }
 
+.integration-suggestion-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .integration-suggestion-review span {
   color: var(--muted);
   font-size: 12px;

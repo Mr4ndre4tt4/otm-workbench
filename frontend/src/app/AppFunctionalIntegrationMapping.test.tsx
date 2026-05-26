@@ -1195,6 +1195,10 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
     await userEvent.selectOptions(screen.getByLabelText("Suggestion transform filter"), "DIRECT");
     expect(mappingSuggestionsPanel).not.toHaveTextContent("Date-like source and target names match.");
+    await userEvent.click(screen.getByRole("button", { name: "Select visible suggestions" }));
+    expect(selectedSuggestionReview).toHaveTextContent("1 selected suggestion");
+    await userEvent.click(screen.getByRole("button", { name: "Clear selected suggestions" }));
+    expect(selectedSuggestionReview).toHaveTextContent("0 selected suggestions");
     await userEvent.click(
       within(mappingSuggestionsPanel).getByLabelText(
         "Select suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
