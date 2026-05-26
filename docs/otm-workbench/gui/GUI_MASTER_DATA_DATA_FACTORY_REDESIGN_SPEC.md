@@ -961,3 +961,26 @@ Evidence generated:
 - `output/gui-qa/master-data/01-master-data-hub.png`
 - `output/gui-qa/master-data/02-template-builder-entry.png`
 - `output/gui-qa/master-data/03-data-factory-entry.png`
+
+### 2026-05-26 Slice 2A
+
+Delivered the first route-level operational template detail slice:
+
+- Template selection from `/master-data/factory` now opens
+  `/master-data/factory/templates/:templateCode`.
+- Template detail has a visible `Back to Data Factory` action.
+- Template detail shows an operational summary, sheets, and fields in the main
+  route content instead of relying on the persistent selected-object side
+  panel.
+- Data Factory route state now separates factory landing and factory detail
+  stages so returning from a template detail lands back on the template list.
+- The existing operational workflow remains available on the template detail
+  route while the next slice moves batch execution into first-class batch
+  routes.
+
+Evidence generated:
+
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `output/gui-qa/master-data/04-template-detail-regions-basic.png`

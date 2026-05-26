@@ -1646,6 +1646,95 @@ describe("App shell", () => {
     expect(screen.queryByText(/build workbook/i)).not.toBeInTheDocument();
   });
 
+  it("renders a route-level Master Data template detail with a Back action", async () => {
+    const template = {
+      id: "template_region",
+      code: "REGION_TEMPLATE",
+      name: "Region Template",
+      catalog_macro_object_code: "REGION",
+      data_category: "MASTER_DATA",
+      version: 1,
+      status: "PUBLISHED",
+      target_tables: ["REGION"],
+      available_actions: [
+        {
+          disabled: false,
+          disabled_reason: null,
+          href: "",
+          icon_key: "file-spreadsheet",
+          key: "build_workbook",
+          label: "Build workbook",
+          method: "POST",
+          recommended: true,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        }
+      ],
+      sheets: [
+        {
+          code: "REGIONS",
+          name: "Regions",
+          target_table: "REGION",
+          fields: [
+            {
+              name: "region_gid",
+              label: "Region GID",
+              target_column: "REGION_GID",
+              required: true
+            }
+          ]
+        }
+      ],
+      description: "Synthetic master data template for region setup.",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [template], page: 1, page_size: 50, total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGION_TEMPLATE")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(template));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data/factory/templates/REGION_TEMPLATE");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "REGION_TEMPLATE" });
+    expect(screen.getByRole("link", { name: "Back to Data Factory" })).toHaveAttribute("href", "/master-data/factory");
+    expect(screen.getByLabelText("Template operational summary")).toHaveTextContent("REGION");
+    expect(screen.getByLabelText("Template operational summary")).toHaveTextContent("Region GID");
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+  });
+
   it("renders Master Data as a focused hub before entering factory workflows", async () => {
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);

@@ -324,34 +324,37 @@ async function run() {
       .locator(".module-row")
       .filter({ hasText: "REGIONS_BASIC" })
       .click();
-    await page.getByLabel("Selected Master Data template").getByText("REGIONS_BASIC", { exact: true }).waitFor();
+    await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/04-template-detail-regions-basic.png` });
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
     await page.getByRole("button", { name: "Validate template" }).click();
     await page.getByText("Template validation is VALID.").waitFor();
     await page.getByRole("button", { name: "Build workbook" }).click();
     await page.getByText("Workbook regions_basic_v1.xlsx generated.").waitFor();
+    await page.getByRole("link", { name: "Back to Data Factory" }).click();
+    await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
     await page
       .getByLabel("Master Data templates")
       .locator(".module-row")
       .filter({ hasText: alternateTemplateCode })
       .click();
-    await page.getByLabel("Selected Master Data template").getByText(alternateTemplateCode, { exact: true }).waitFor();
+    await page.getByRole("heading", { name: alternateTemplateCode, exact: true }).waitFor();
     await assertHidden(
       page.getByText("Workbook regions_basic_v1.xlsx generated."),
       "Workbook generation feedback stayed visible after selecting another template."
     );
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
     await assertHidden(page.getByLabel("Workbook artifact"), "Workbook artifact stayed visible after selecting another template.");
+    await page.getByRole("link", { name: "Back to Data Factory" }).click();
+    await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
     await page
       .getByLabel("Master Data templates")
       .locator(".module-row")
       .filter({ hasText: "REGIONS_BASIC" })
       .click();
-    await page.getByLabel("Selected Master Data template").getByText("REGIONS_BASIC", { exact: true }).waitFor();
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Workbook" }).click();
+    await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
 
     await page.getByRole("button", { name: "Validate edited rows" }).click();
     await page.getByText("Edited rows validation is INVALID.").waitFor();
@@ -433,7 +436,7 @@ async function run() {
       .locator(".module-row")
       .filter({ hasText: "REGIONS_BASIC" })
       .click();
-    await page.getByLabel("Selected Master Data template").getByText("REGIONS_BASIC", { exact: true }).waitFor();
+    await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
     await page.getByLabel("Durable Master Data batches").getByText("REGIONS_BASIC", { exact: true }).first().waitFor();
     await assertActiveBatchRowMarked(page);

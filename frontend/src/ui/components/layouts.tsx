@@ -11,7 +11,7 @@ type ModuleWorkspaceLayoutProps = PropsWithChildren<{
 
 export function ModuleWorkspaceLayout({ ariaLabel, children, side, status, title }: ModuleWorkspaceLayoutProps) {
   return (
-    <section className="module-template" aria-label={ariaLabel}>
+    <section className={side ? "module-template" : "module-template module-template-single"} aria-label={ariaLabel}>
       <div className="module-template-main">
         <div className="panel-header">
           <h2>{title}</h2>
