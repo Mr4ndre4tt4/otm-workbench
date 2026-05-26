@@ -1,11 +1,30 @@
-# GUI Rates Studio Roadmap Specification
+# GUI Rates Studio Consolidated Specification
 
 **Status:** draft for product review
 **Date:** 2026-05-26
 **Linear:** OTM-165
-**Scope:** Rates Studio GUI information architecture, route map, click-by-click
-operating model, and redesign direction after browser review of the current
-`/rates` MVP screen.
+**Scope:** consolidated Rates Studio objective, current MVP evidence, browser
+review findings, GUI information architecture, route map, click-by-click
+operating model, and redesign direction.
+
+## 0. Source Documents Consolidated
+
+This document consolidates the Rates Studio direction that was previously split
+across focused MVP contracts:
+
+```text
+docs/otm-workbench/modules/rates_estado_atual_mvp0.md
+docs/otm-workbench/gui/GUI_RATES_SUMMARY_VIEW.md
+docs/otm-workbench/gui/GUI_RATES_BATCH_DETAIL_PANEL.md
+docs/otm-workbench/gui/GUI_RATES_ACTION_EXECUTION.md
+docs/otm-workbench/gui/GUI_RATES_ARTIFACT_DOWNLOAD.md
+docs/otm-workbench/gui/GUI_RATES_ARTIFACTS_EVIDENCE.md
+docs/otm-workbench/gui/GUI_RATES_MVP_COMPLETION_REVIEW_OTM58.md
+docs/otm-workbench/gui/GUI_RATES_VISUAL_QA_OTM78.md
+```
+
+Those files remain valid historical evidence. This consolidated spec is the
+current navigation point for future Rates Studio UX and implementation work.
 
 ## 1. Current UI Review
 
