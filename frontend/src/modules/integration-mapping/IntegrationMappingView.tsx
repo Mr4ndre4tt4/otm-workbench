@@ -1903,11 +1903,21 @@ export function IntegrationMappingView({ token }: { token: string }) {
                   <strong>{`${selectedMappingSuggestions.length} selected suggestion${
                     selectedMappingSuggestions.length === 1 ? "" : "s"
                   }`}</strong>
-                  <span>
-                    {selectedMappingSuggestions.length
-                      ? selectedMappingSuggestions.map((suggestion) => suggestion.target_path).join(", ")
-                      : "No suggestions selected for review."}
-                  </span>
+                  {selectedMappingSuggestions.length ? (
+                    <div className="integration-suggestion-review-rows">
+                      {selectedMappingSuggestions.map((suggestion) => (
+                        <div className="integration-suggestion-review-row" key={suggestion.id}>
+                          <span>{suggestion.source_path}</span>
+                          <span>{suggestion.target_path}</span>
+                          <span>{suggestion.transform_type}</span>
+                          <span>{suggestionConfidenceLabel(suggestion.confidence)}</span>
+                          <span>{suggestion.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span>No suggestions selected for review.</span>
+                  )}
                 </div>
               ) : null}
               {visibleMappingSuggestions.length ? (

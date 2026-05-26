@@ -808,6 +808,18 @@
   overflow-wrap: anywhere;
 }
 
+.integration-suggestion-review-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.integration-suggestion-review-row {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, 1fr) max-content max-content minmax(160px, 1fr);
+  min-width: 0;
+}
+
 .integration-workflow {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

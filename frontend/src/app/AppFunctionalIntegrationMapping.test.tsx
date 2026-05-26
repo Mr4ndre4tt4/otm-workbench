@@ -1185,7 +1185,11 @@ describe("Functional Integration Mapping Studio journey", () => {
         "Select suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
       )
     );
-    expect(screen.getByLabelText("Selected mapping suggestion review")).toHaveTextContent("1 selected suggestion");
+    const selectedSuggestionReview = screen.getByLabelText("Selected mapping suggestion review");
+    expect(selectedSuggestionReview).toHaveTextContent("1 selected suggestion");
+    expect(selectedSuggestionReview).toHaveTextContent("/Transmission/Shipment/ShipmentGid");
+    expect(selectedSuggestionReview).toHaveTextContent("$.header.shipmentId");
+    expect(selectedSuggestionReview).toHaveTextContent("90% confidence");
     await userEvent.selectOptions(screen.getByLabelText("Suggestion transform filter"), "DIRECT");
     expect(mappingSuggestionsPanel).not.toHaveTextContent("Date-like source and target names match.");
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
