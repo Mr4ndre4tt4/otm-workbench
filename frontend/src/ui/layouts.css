@@ -775,13 +775,34 @@
 
 .integration-suggestion-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) max-content max-content minmax(160px, 1fr);
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr) max-content max-content minmax(160px, 1fr);
   gap: 8px;
   align-items: center;
   min-width: 0;
 }
 
+.integration-suggestion-select {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  min-width: 0;
+}
+
 .integration-suggestion-row span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.integration-suggestion-review {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.integration-suggestion-review span {
   color: var(--muted);
   font-size: 12px;
   overflow-wrap: anywhere;

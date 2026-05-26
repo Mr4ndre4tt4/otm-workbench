@@ -472,6 +472,10 @@ function uniqueSuggestionTransformTypes(suggestions: IntegrationMappingSuggestio
   return Array.from(new Set(suggestions.map((suggestion) => suggestion.transform_type))).sort();
 }
 
+function suggestionSelectionLabel(suggestion: IntegrationMappingSuggestion) {
+  return `Select suggestion ${suggestion.source_path} to ${suggestion.target_path}`;
+}
+
 export function IntegrationMappingView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
@@ -504,6 +508,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [officialLoopSourcePathQuery, setOfficialLoopSourcePathQuery] = useState('');
   const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
   const [mappingSuggestionTransformFilter, setMappingSuggestionTransformFilter] = useState('');
+  const [selectedMappingSuggestionIds, setSelectedMappingSuggestionIds] = useState<string[]>([]);
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
@@ -626,20 +631,26 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const visibleMappingSuggestions = mappingSuggestionTransformFilter
     ? mappingSuggestionItems.filter((suggestion) => suggestion.transform_type === mappingSuggestionTransformFilter)
     : mappingSuggestionItems;
+  const selectedMappingSuggestions = mappingSuggestionItems.filter((suggestion) =>
+    selectedMappingSuggestionIds.includes(suggestion.id)
+  );
 
   const loadMappingSuggestionsForSchemas = async (nextSourceSchemaId: string, nextTargetSchemaId: string) => {
     if (!effectiveDefinitionId || !nextSourceSchemaId || !nextTargetSchemaId) {
       setMappingSuggestionItems([]);
       setMappingSuggestionTransformFilter('');
+      setSelectedMappingSuggestionIds([]);
       return;
     }
     try {
       const response = await listIntegrationMappingSuggestions(token, effectiveDefinitionId, nextSourceSchemaId, nextTargetSchemaId);
       setMappingSuggestionItems(response.items);
       setMappingSuggestionTransformFilter('');
+      setSelectedMappingSuggestionIds([]);
     } catch {
       setMappingSuggestionItems([]);
       setMappingSuggestionTransformFilter('');
+      setSelectedMappingSuggestionIds([]);
     }
   };
 
@@ -684,6 +695,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setMappingTargetNodeSearch('');
     setMappingSuggestionItems([]);
     setMappingSuggestionTransformFilter('');
+    setSelectedMappingSuggestionIds([]);
     setSourcePath('');
     setTargetPath('');
     setTransformType('DIRECT');
@@ -1886,9 +1898,35 @@ export function IntegrationMappingView({ token }: { token: string }) {
                   </select>
                 </label>
               ) : null}
+              {mappingSuggestionItems.length ? (
+                <div className="integration-suggestion-review" aria-label="Selected mapping suggestion review">
+                  <strong>{`${selectedMappingSuggestions.length} selected suggestion${
+                    selectedMappingSuggestions.length === 1 ? "" : "s"
+                  }`}</strong>
+                  <span>
+                    {selectedMappingSuggestions.length
+                      ? selectedMappingSuggestions.map((suggestion) => suggestion.target_path).join(", ")
+                      : "No suggestions selected for review."}
+                  </span>
+                </div>
+              ) : null}
               {visibleMappingSuggestions.length ? (
                 visibleMappingSuggestions.map((suggestion) => (
                   <div className="integration-suggestion-row" key={suggestion.id}>
+                    <label className="integration-suggestion-select">
+                      <input
+                        checked={selectedMappingSuggestionIds.includes(suggestion.id)}
+                        onChange={(event) => {
+                          setSelectedMappingSuggestionIds((currentIds) =>
+                            event.target.checked
+                              ? [...currentIds, suggestion.id]
+                              : currentIds.filter((id) => id !== suggestion.id)
+                          );
+                        }}
+                        type="checkbox"
+                      />
+                      {suggestionSelectionLabel(suggestion)}
+                    </label>
                     <Button
                       onClick={() => {
                         setSourcePath(suggestion.source_path);
