@@ -50,7 +50,7 @@ Module specs must preserve the project rules:
 | Evidence Hub | `GUI_EVIDENCE_HUB_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_EVIDENCE_HUB_ROADMAP_SPEC.md` before archive/audit drill-down becomes first-class. |
 | Assets Library | `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` | `GUI_ASSETS_LIBRARY_VIEW.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | Consolidated objective, MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Assets Library UI implementation changes. |
 | Order Release Generator | `GUI_ORDER_RELEASE_GENERATOR_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md` before expanding template authoring, XML preview, and governed OTM submit. |
-| Integration Mapping Studio | `GUI_INTEGRATION_MAPPING_VIEW.md` | `GUI_INTEGRATION_MAPPING_NDD_UI_QA.md`, `GUI_INTEGRATION_MAPPING_VISUAL_QA_OTM79.md`, `GUI_LOCAL_INTEGRATION_VALIDATION.md` | View/QA docs exist; NDD-like QA revealed acceleration and clarity needs. | Create `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md` with story-driven routes for systems, definitions, schemas, mappings, joins, suggestions, preview, spec generation, and artifacts. |
+| Integration Mapping Studio | `GUI_INTEGRATION_MAPPING_CONSOLIDATED_SPEC.md` | `GUI_INTEGRATION_MAPPING_VIEW.md`, `GUI_INTEGRATION_MAPPING_NDD_UI_QA.md`, `GUI_INTEGRATION_MAPPING_VISUAL_QA_OTM79.md`, `GUI_LOCAL_INTEGRATION_VALIDATION.md` | Consolidated objective, current MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Integration Mapping UI implementation changes. |
 | Admin Console / Jobs | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md` | Covered only by shared roadmap and API matrix. | Create `GUI_ADMIN_CONSOLE_ROADMAP_SPEC.md` if setup flags, jobs, audit, edit/delete, or role governance expand. |
 | Developer Tools | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_BROWSER_RUNTIME_DIAGNOSTIC.md`, `GUI_BROWSER_QA_ATTEMPT.md` | Covered only indirectly. | Create a module spec only if Developer Tools becomes user-facing beyond diagnostics. |
 | Backend-Owned Icon / Asset Registry | `GUI_BACKEND_OWNED_ICON_ASSET_REGISTRY.md` | `GUI_DESIGN_SYSTEM_HANDOFF.md`, `GUI_COMPONENT_GALLERY_PLAN.md` | Backend-facing contract exists. | Link each module spec to this registry when defining sidebar icons, labels, empty-state assets, and status visuals. |
@@ -93,11 +93,13 @@ Each screen section must answer:
 
 Use this queue after the Master Data redesign is reviewed:
 
-1. `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md`
-   Because the NDD-like scenario needs a clearer accelerator story and stronger
-   route separation.
-2. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
-   Because it shares generator/template/artifact patterns with Master Data.
+1. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
+   Because it shares generator/template/artifact patterns with Master Data and
+   now follows the Integration Mapping route-separation review.
+2. `GUI_CATALOG_CORE_ROADMAP_SPEC.md`
+   Because schema packs, official OTM paths, Data Dictionary references, and
+   macro-object search are now shared inputs for Master Data, Rates,
+   Integration Mapping, and Order Release Generator.
 
 ## 6. Maintenance Rule
 

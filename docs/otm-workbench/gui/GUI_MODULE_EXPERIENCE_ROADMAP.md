@@ -48,7 +48,7 @@ For each module:
 | Rates Studio | Functional journey done; list density first slice done; consolidated redesign spec drafted | Batch, validation, artifacts, approval ready | Object list/detail + operational surfaces, moving toward route-level lifecycle screens | `GUI_RATES_STUDIO_CONSOLIDATED_SPEC.md` captures the consolidated objective, current MVP evidence, browser review findings, and next UX direction: hub, batch library, batch detail, staging, issues, CSV preview/export, approval, artifacts, evidence, and Load Plan handoff as route-level journeys. `OTM-143` caps noisy recent batches at 12 visible rows with long-label truncation. |
 | Catalog Core | Functional journey done | Search/validation/macro APIs ready | Object list/detail | Good enough for current MVP0 slice; macro-object validation-result switch recovery is delivered. |
 | Admin Console | Functional journey done; jobs density first slice done | Setup, flags, jobs, audit ready | Tabbed detail + setup workflows | Keep advanced edit/delete for later; selected-job feedback recovery is delivered. `OTM-143` caps noisy job rows at 10 visible rows with long-id truncation. |
-| Integration Mapping Studio | Functional journey done; NDD-like executable positive, negative, required-target, backend-owned suggestion, first semantic suggestion, and next-action panel slices done | Authoring, validation, backend-owned mapping suggestions/scoring, all-or-nothing selected-suggestion bulk creation, Catalog-owned source/target path picking, mapping removal, required target checklist, spec/preview readiness, executable preview/spec artifacts ready | Staged workflow + next action | `OTM-152` proves mixed header + `Entregas[]` alias mappings and loop-scoped lookup through downloaded preview artifact content. `OTM-153` proves invalid alias/path blocker, blocked preview, backend-owned mapping removal, and correction without route reload. `OTM-154` proves backend-owned required target scenario-pack checklist. `OTM-159` moves mapping suggestions to backend contract with schema ownership validation and explicit UI load/apply. `OTM-160` adds exact, ambiguous, and first OTM-context scoring; the Rules UI now surfaces confidence/backend reason, can facet suggestions by backend-owned transform type, can pick official Catalog source and target paths, can select the currently visible suggestion subset into a local review set with source/target/transform/confidence/reason, create that selected review set through a backend-owned all-or-nothing bulk endpoint, clear it before apply, and clears selected suggestions after successful mapping creation. `OTM-161` extends the shared next-action panel to Integration Mapping from selected definition, payload/schema, mapping, validation, preview/spec, and artifact state. |
+| Integration Mapping Studio | Functional journey done; NDD-like executable positive, negative, required-target, backend-owned suggestion, first semantic suggestion, next-action panel slices, and consolidated redesign spec done | Authoring, validation, backend-owned mapping suggestions/scoring, all-or-nothing selected-suggestion bulk creation, Catalog-owned source/target path picking, mapping removal, required target checklist, spec/preview readiness, executable preview/spec artifacts ready | Route-level integration accelerator, moving beyond single staged workspace | `GUI_INTEGRATION_MAPPING_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: definition hub, create/edit/copy/retire definition routes, definition cockpit, systems/endpoints, schemas, mapping workspace, rule detail, rules, review, preview, spec, artifacts, and systems library as route-level journeys. `OTM-152` proves mixed header + `Entregas[]` alias mappings and loop-scoped lookup through downloaded preview artifact content. `OTM-153` proves invalid alias/path blocker, blocked preview, backend-owned mapping removal, and correction without route reload. `OTM-154` proves backend-owned required target scenario-pack checklist. `OTM-159` moves mapping suggestions to backend contract with schema ownership validation and explicit UI load/apply. `OTM-160` adds exact, ambiguous, and first OTM-context scoring; the current Rules UI is valid MVP evidence, but should not be treated as final UX because mapping, loops, joins, lookups, response handlers, review, preview, and spec generation need clearer route-level storytelling before further UI expansion. |
 | Load Plan / Cutover | First functional slice plus CSVUTIL, ZIP review, sequence, exports, guarded downloads, Evidence Hub archive convenience, Go/No-Go, guarded handoff commit UI, next-action panel, out-of-order chaos slice, and consolidated redesign spec done | Backend flows mostly ready | Review queue + staged workflow + next action, moving toward route-level package lifecycle screens | `GUI_LOAD_PLAN_CUTOVER_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: hub, package library, package detail, checklist, readiness, CSVUTIL, ZIP review, sequence, exports, Go/No-Go, and handoff as route-level journeys. `OTM-146` proves package-switch cleanup for checklist, readiness, CSVUTIL, evidence draft, and stale feedback. |
 | Master Data / Data Factory | OTM-115 completion acceptance met for MVP0; next-action panel first slice delivered; out-of-order chaos slice done | Backend flows ready for template authoring, backend-owned scenario packs, workbook editor contract/validation/batch creation, filtered/paginated batches, output/CSV preview, CSV/ZIP export, guarded direct OTM import readiness/submit refusal, durable artifacts, Load Plan package registration, cutover checklist creation/readiness with blocker display, Coordinate Quality preview/batches/results/export, date-column CSV alter-session parity, selected-template switch recovery, and hardening QA | Staged workflow + object detail + next action | Completion review captured in `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`. `OTM-146` now proves template-switch cleanup through workbook, output, CSV, export, direct import guard, Load Plan handoff, and cutover checklist state; active-batch fallback is scoped to the selected template. Real governed direct OTM submission, deeper Load Plan analytics, advanced Coordinate Quality diagnostics, larger scenario library, and richer audited spreadsheet editing remain future scope. |
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
@@ -384,30 +384,21 @@ module work should avoid adding frontend-owned module identity maps.
 
 ## 7. Immediate Recommendation
 
-Next implementation target after the current Integration Mapping hardening:
+Next documentation target after the current Integration Mapping redesign review:
 
 ```text
-Integration Mapping suggestion scoring and module review cleanup
+Order Release Generator route-level roadmap specification
 ```
 
 Reason:
 
 ```text
-- Integration Mapping now has backend-owned response handlers and guided
-  CONSTANT, DATE_FORMAT, FILTER_BY_QUALIFIER, and COUNT_DISTINCT transform
-  config authoring in addition to
-  systems, endpoints, definitions, payloads, schema trees, mappings, loops,
-  joins, join bindings, lookups, validation, required target packs, preview,
-  spec generation, artifacts, and browser QA.
-- The Rules stage now includes schema node search and deterministic first-pass
-  mapping suggestions with visible confidence/backend reason, the first
-  backend-owned `transform_type` facet, visible-subset selection plus clear
-  recovery for a review set that displays source, target, transform, confidence,
-  and reason, selected-suggestion cleanup after mapping creation, and governed
-  all-or-nothing creation of selected suggestion sets through the backend.
-  The next value gap is richer required-field semantics.
-- Any next UI slice must keep the staged storytelling pattern and grouped review
-  as the central workspace.
+- Master Data, Rates, Load Plan, Assets Library, and Integration Mapping now
+  have consolidated route-level specs.
+- Order Release Generator is the next module still relying mostly on the
+  delivered view contract.
+- It shares template, generator, XML preview, artifact, and guarded submit
+  patterns with Master Data and Integration Mapping.
 ```
 
 Order Release Generator first GUI functional slice remains implemented:

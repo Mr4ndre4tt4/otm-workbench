@@ -1,6 +1,6 @@
 # GUI Integration Mapping View
 
-**Status:** delivered  
+**Status:** delivered; superseded for future UX direction by `GUI_INTEGRATION_MAPPING_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/gui-integration-mapping-view`  
 **Scope:** staged, backend-backed Integration Mapping Studio workflow.
 
