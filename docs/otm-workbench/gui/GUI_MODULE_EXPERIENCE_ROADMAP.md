@@ -54,7 +54,7 @@ For each module:
 | Coordinate Quality | First functional slice done | Backend/API ready | Embedded Data Factory stage | Placement decision closed: keep inside `/master-data` as the Quality stage for Location coordinate preview, persisted batch, results, export, and return-state recovery. |
 | Assets Library | Functional journey done; out-of-order chaos, list density slices, and consolidated redesign spec done | Backend asset/version/link/filter/classification APIs ready | Object list/detail + staged lifecycle workflow, moving toward route-level asset lifecycle screens | `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: hub, library, asset detail, create, edit metadata, versions, upload, links, classifications, download/history, and archive as route-level journeys. Current backend coverage includes create/edit metadata, custom backend-owned classification authoring, system-protected classification guards, backend-owned available actions, structured metadata validation, Catalog/Data Dictionary metadata reference validation, selected-asset sync, selected-asset switch recovery, guided module/macro-object/table/artifact/evidence link targets, Evidence Hub target filters, archived mutation guards, invalid OTM table, macro object, unsafe artifact, and unsafe evidence link recovery. `OTM-146` proves dirty metadata drafts, selected file upload state, and link target drafts are cleared when switching assets out of order; `OTM-143` caps noisy asset rows at 12 visible rows while preserving the selected asset. |
 | Evidence Hub | Functional slice plus archive history and list density done | Evidence/artifact/archive APIs ready | Object list/detail + operational surfaces | Continue with archive detail/audit drill-down only if needed. `OTM-143` caps noisy evidence rows at 12 visible rows with long-label truncation. |
-| Order Release Generator | First functional slice plus row, invalid-batch recovery, template authoring, template versioning, and out-of-order chaos hardening done | Template list/create/version, batch, XML artifact/list/download APIs ready | Staged workflow | Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; the Templates stage can create reusable backend-owned custom templates and new versions; template switching resets row drafts to the selected template defaults and clears active batch, stale preview, artifact, and submit guard state; governed direct OTM submit remains a guarded follow-up outside MVP0. |
+| Order Release Generator | First functional slice plus row, invalid-batch recovery, template authoring, template versioning, out-of-order chaos hardening, and consolidated redesign spec done | Template list/create/version, batch, XML artifact/list/download APIs ready | Route-level generator workflow, moving beyond single staged workspace | `GUI_ORDER_RELEASE_GENERATOR_CONSOLIDATED_SPEC.md` captures the objective, current MVP evidence, browser review findings, and next UX direction: generator hub, template detail, template builder/versioning, batch creation, batch detail, row editor, XML preview, artifacts, submit readiness, and history as route-level journeys. Template-guided row editor replaced raw JSON input; invalid row issues now surface in the Batch stage and block Preview/Artifact actions until corrected; template switching resets row drafts to the selected template defaults and clears active batch, stale preview, artifact, and submit guard state; governed direct OTM submit remains a guarded follow-up outside MVP0. |
 
 ## 4. Recommended Next GUI Queue
 
@@ -261,25 +261,28 @@ Remaining GUI work:
 
 ### 4.4 Order Release Generator
 
-Recommended after Data Factory patterns are stable because it is another
-staged generator workflow.
+Consolidated route-level spec now exists in
+`GUI_ORDER_RELEASE_GENERATOR_CONSOLIDATED_SPEC.md`.
 
 ```text
 Primary object: order release generation batch
-Primary pattern: staged workflow
+Primary pattern: route-level generator workflow
 First story: select template -> create batch -> preview XML -> generate XML
 artifact -> show guarded OTM submit state.
 ```
 
-Required GUI work:
+Required GUI work before further expansion:
 
 ```text
-- Add batch authoring.
-- Add XML preview surface as a documented exception if raw preview is needed.
-- Add generated artifact list/download.
-- Guard generated artifact download through backend hash verification and audit
-  logging.
+- Split generator hub, template detail/builder/versioning, batch detail, row
+  editor, XML preview, artifacts, and submit readiness into route-level screens.
+- Keep XML preview as a documented exception with structured summary and
+  provenance, not only raw XML.
+- Keep generated artifact download guarded through backend hash verification and
+  audit logging.
 - Keep submit-to-OTM guarded by backend action contract.
+- Add schema-pack coverage links once Catalog Core exposes official Release
+  paths.
 ```
 
 ### 4.5 Assets Library
@@ -384,21 +387,19 @@ module work should avoid adding frontend-owned module identity maps.
 
 ## 7. Immediate Recommendation
 
-Next documentation target after the current Integration Mapping redesign review:
+Next documentation target after the current Order Release Generator redesign review:
 
 ```text
-Order Release Generator route-level roadmap specification
+Catalog Core route-level roadmap specification
 ```
 
 Reason:
 
 ```text
-- Master Data, Rates, Load Plan, Assets Library, and Integration Mapping now
-  have consolidated route-level specs.
-- Order Release Generator is the next module still relying mostly on the
-  delivered view contract.
-- It shares template, generator, XML preview, artifact, and guarded submit
-  patterns with Master Data and Integration Mapping.
+- Master Data, Rates, Load Plan, Assets Library, Integration Mapping, and Order
+  Release Generator now have consolidated route-level specs.
+- Catalog Core is increasingly the shared source for Data Dictionary,
+  macro-object, official schema path, and schema-pack references across modules.
 ```
 
 Order Release Generator first GUI functional slice remains implemented:

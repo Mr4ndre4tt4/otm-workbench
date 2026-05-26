@@ -1,6 +1,6 @@
 # GUI Order Release Generator View
 
-**Status:** first functional slice implemented; row, template authoring, template versioning, row reset recovery, and template-switch recovery hardening delivered
+**Status:** first functional slice implemented; row, template authoring, template versioning, row reset recovery, and template-switch recovery hardening delivered; superseded for future UX direction by `GUI_ORDER_RELEASE_GENERATOR_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/master-data-hardening-next`
 
 ## Objective
