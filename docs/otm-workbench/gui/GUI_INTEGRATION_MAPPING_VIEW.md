@@ -12,10 +12,10 @@ authoring panels.
 
 This slice keeps the frontend as a renderer of backend-owned mapping contracts:
 definitions, transform types, payload artifact metadata, parsed schema
-documents, mapping rows, validation/preview/spec actions, and generated
-artifact metadata. Validation readiness is rendered from the backend contract,
-separating definitions that are specification-ready from definitions that are
-executable in preview.
+documents, Catalog-owned source/target schema path options, mapping rows,
+validation/preview/spec actions, and generated artifact metadata. Validation
+readiness is rendered from the backend contract, separating definitions that are
+specification-ready from definitions that are executable in preview.
 
 ## Backend Contracts Consumed
 
@@ -28,6 +28,9 @@ GET /api/v1/modules/integration-mapping/definitions/{definition_id}/schema-docum
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/mappings
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/mappings/bulk
 GET /api/v1/modules/integration-mapping/schema-documents/{schema_document_id}/nodes
+GET /api/v1/catalog/schema-roots?schema_guidance_role=ENVELOPE_ONLY
+GET /api/v1/catalog/schema-roots?schema_guidance_role=MACRO_OBJECT
+GET /api/v1/catalog/schema-roots/{schema_root_id}/paths
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/validate
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/preview
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/generate-spec

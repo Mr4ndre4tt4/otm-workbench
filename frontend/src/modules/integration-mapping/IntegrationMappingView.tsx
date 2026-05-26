@@ -505,6 +505,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [mappingTargetNodeSearch, setMappingTargetNodeSearch] = useState('');
   const [officialSourceRootId, setOfficialSourceRootId] = useState('');
   const [officialSourcePathQuery, setOfficialSourcePathQuery] = useState('');
+  const [officialTargetRootId, setOfficialTargetRootId] = useState('');
+  const [officialTargetPathQuery, setOfficialTargetPathQuery] = useState('');
   const [officialLoopSourceRootId, setOfficialLoopSourceRootId] = useState('');
   const [officialLoopSourcePathQuery, setOfficialLoopSourcePathQuery] = useState('');
   const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
@@ -595,7 +597,9 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const sourceSchemaNodes = useIntegrationSchemaNodes(token, sourceSchemaId || null);
   const targetSchemaNodes = useIntegrationSchemaNodes(token, targetSchemaId || null);
   const officialSourceRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
+  const officialTargetRoots = useCatalogSchemaRootsByRole(token, "MACRO_OBJECT");
   const officialSourceRootPaths = useCatalogSchemaRootPaths(token, officialSourceRootId || null, officialSourcePathQuery);
+  const officialTargetRootPaths = useCatalogSchemaRootPaths(token, officialTargetRootId || null, officialTargetPathQuery);
   const officialLoopSourceRootPaths = useCatalogSchemaRootPaths(
     token,
     officialLoopSourceRootId || null,
@@ -1898,6 +1902,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
               roots={officialSourceRoots.data?.items ?? []}
               selectRootText="Select official source root"
               usePathLabel={(path) => `Use official source path ${path}`}
+            />
+            <OfficialSchemaPathPicker
+              emptyText="No official target paths found."
+              isLoading={officialTargetRootPaths.isLoading}
+              loadingText="Loading official target paths..."
+              onQueryChange={setOfficialTargetPathQuery}
+              onRootChange={setOfficialTargetRootId}
+              onUsePath={setTargetPath}
+              paths={officialTargetRootPaths.data?.items ?? []}
+              pathsLabel="Official target paths"
+              query={officialTargetPathQuery}
+              queryLabel="Official target path search"
+              rootId={officialTargetRootId}
+              rootLabel="Official target root"
+              roots={officialTargetRoots.data?.items ?? []}
+              selectRootText="Select official target root"
+              usePathLabel={(path) => `Use official target path ${path}`}
             />
             <SchemaNodeSelect
               label="Mapping source node"

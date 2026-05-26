@@ -85,6 +85,25 @@ function catalogSchemaRootsByRole(role: string) {
         recommended_modules: ["integration_mapping"],
         documentation: "Synthetic official OTM transmission root."
       }
+    ],
+    MACRO_OBJECT: [
+      {
+        id: "root_planned_shipment",
+        schema_pack_id: "pack_26a",
+        schema_file_id: "file_planned_shipment",
+        root_name: "PlannedShipment",
+        root_display_label: "PlannedShipment",
+        canonical_root_name: "PlannedShipment",
+        schema_root_aliases: ["PlannedShipment"],
+        data_dictionary_family: "SHIPMENT",
+        schema_guidance_role: "MACRO_OBJECT",
+        namespace: "http://xmlns.oracle.com/apps/otm/transmission",
+        domain_area: "SHIPMENT",
+        root_type: "BUSINESS_OBJECT",
+        envelope_role: "",
+        recommended_modules: ["integration_mapping"],
+        documentation: "Synthetic official planned shipment target root."
+      }
     ]
   };
   return {
@@ -142,6 +161,23 @@ function catalogSchemaRootPaths(schemaRootId: string, query = "") {
         documentation: "Synthetic official repeatable shipment stop collection.",
         source_file: "Shipment.xsd",
         sequence_index: 30
+      }
+    ],
+    root_planned_shipment: [
+      {
+        id: "catalog_path_target_status",
+        schema_root_id: "root_planned_shipment",
+        parent_path: "/PlannedShipment",
+        path: "/PlannedShipment/ShipmentStatus",
+        node_name: "ShipmentStatus",
+        data_type: "string",
+        min_occurs: "0",
+        max_occurs: "1",
+        is_required: false,
+        is_repeatable: false,
+        documentation: "Synthetic official target shipment status path.",
+        source_file: "PlannedShipment.xsd",
+        sequence_index: 10
       }
     ]
   };
@@ -401,6 +437,14 @@ describe("Functional Integration Mapping Studio journey", () => {
         catalogPathRequests.push(url);
         const parsedUrl = new NativeURL(url, "http://localhost");
         return Promise.resolve(jsonResponse(catalogSchemaRootPaths("root_transmission", parsedUrl.searchParams.get("query") ?? "")));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots/root_planned_shipment/paths")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        catalogPathRequests.push(url);
+        const parsedUrl = new NativeURL(url, "http://localhost");
+        return Promise.resolve(
+          jsonResponse(catalogSchemaRootPaths("root_planned_shipment", parsedUrl.searchParams.get("query") ?? ""))
+        );
       }
       if (url.includes("/api/v1/catalog/schema-roots")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -1198,6 +1242,19 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Use official source path /Transmission/Shipment/ShipmentGid" }));
     expect(screen.getByLabelText("Source path")).toHaveValue("/Transmission/Shipment/ShipmentGid");
     expect(catalogPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=ShipmentGid"))).toBe(true);
+    await waitFor(() =>
+      expect(catalogRootRequests.some((requestUrl) => requestUrl.includes("schema_guidance_role=MACRO_OBJECT"))).toBe(true)
+    );
+    await waitFor(() =>
+      expect(within(screen.getByLabelText("Official target root")).getByRole("option", { name: "PlannedShipment" })).toBeInTheDocument()
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Official target root"), "root_planned_shipment");
+    await userEvent.type(screen.getByLabelText("Official target path search"), "ShipmentStatus");
+    const officialTargetPaths = await screen.findByLabelText("Official target paths");
+    expect(officialTargetPaths).toHaveTextContent("Synthetic official target shipment status path.");
+    await userEvent.click(await screen.findByRole("button", { name: "Use official target path /PlannedShipment/ShipmentStatus" }));
+    expect(screen.getByLabelText("Target path")).toHaveValue("/PlannedShipment/ShipmentStatus");
+    fireEvent.change(screen.getByLabelText("Target path"), { target: { value: "" } });
     const mappingSuggestionsPanel = await screen.findByLabelText("Mapping suggestions");
     expect(mappingSuggestionsPanel).toHaveTextContent("90% confidence");
     expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
