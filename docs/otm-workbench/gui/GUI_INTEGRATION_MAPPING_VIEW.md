@@ -26,6 +26,7 @@ GET /api/v1/modules/integration-mapping/definitions/{definition_id}
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/payload-artifacts
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/schema-documents
 GET /api/v1/modules/integration-mapping/definitions/{definition_id}/mappings
+POST /api/v1/modules/integration-mapping/definitions/{definition_id}/mappings/bulk
 GET /api/v1/modules/integration-mapping/schema-documents/{schema_document_id}/nodes
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/validate
 POST /api/v1/modules/integration-mapping/definitions/{definition_id}/preview

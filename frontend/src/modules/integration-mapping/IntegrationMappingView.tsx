@@ -9,6 +9,7 @@ import {
   createIntegrationLookup,
   createIntegrationLoop,
   createIntegrationMapping,
+  createIntegrationMappingsBulk,
   createIntegrationPayloadArtifact,
   createIntegrationResponseHandler,
   createIntegrationSchemaDocument,
@@ -989,6 +990,41 @@ export function IntegrationMappingView({ token }: { token: string }) {
     }
   };
 
+  const handleCreateSelectedSuggestions = async () => {
+    if (!effectiveDefinitionId) {
+      setOperationError("Select a definition before creating selected suggestions.");
+      return;
+    }
+    if (!selectedMappingSuggestions.length) {
+      setOperationError("Select at least one mapping suggestion before creating mappings.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationMessage(null);
+    setOperationError(null);
+    try {
+      const result = await createIntegrationMappingsBulk(token, effectiveDefinitionId, {
+        items: selectedMappingSuggestions.map((suggestion, index) => ({
+          description: `Backend suggestion: ${suggestion.reason}`,
+          sequence_index: (index + 1) * 10,
+          source_path: suggestion.source_path,
+          source_schema_document_id: suggestion.source_schema_document_id,
+          target_path: suggestion.target_path,
+          target_schema_document_id: suggestion.target_schema_document_id,
+          transform_config: {},
+          transform_type: suggestion.transform_type
+        }))
+      });
+      setSelectedMappingSuggestionIds([]);
+      setOperationMessage(`Created ${result.created_count} mappings from selected suggestions.`);
+      await refreshDefinitionData(effectiveDefinitionId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create selected suggestions.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const handleDeleteMapping = async (mappingId: string, targetPath: string) => {
     if (!effectiveDefinitionId) {
       setOperationError("Select a definition before removing a mapping.");
@@ -1916,6 +1952,15 @@ export function IntegrationMappingView({ token }: { token: string }) {
                         type="button"
                       >
                         Select visible suggestions
+                      </Button>
+                      <Button
+                        disabled={!selectedMappingSuggestions.length || isMutating}
+                        onClick={() => {
+                          void handleCreateSelectedSuggestions();
+                        }}
+                        type="button"
+                      >
+                        Create selected suggestions
                       </Button>
                       <Button
                         disabled={!selectedMappingSuggestions.length}

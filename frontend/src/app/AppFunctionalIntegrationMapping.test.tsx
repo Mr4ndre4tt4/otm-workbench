@@ -162,6 +162,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     const payloadRequests: unknown[] = [];
     const schemaRequests: string[] = [];
     const mappingRequests: unknown[] = [];
+    const bulkMappingRequests: unknown[] = [];
     const mappingSuggestionRequests: string[] = [];
     const deletedMappingRequests: string[] = [];
     const loopRequests: unknown[] = [];
@@ -778,6 +779,27 @@ describe("Functional Integration Mapping Studio journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: mappings, total: mappings.length, page: 1, page_size: 50 }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/mappings/bulk")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        expect(init?.method).toBe("POST");
+        const body = JSON.parse(String(init.body));
+        bulkMappingRequests.push(body);
+        expect(body).toEqual({
+          items: [
+            {
+              source_schema_document_id: "schema_source",
+              target_schema_document_id: "schema_target",
+              source_path: "/Transmission/Shipment/ShipmentGid",
+              target_path: "$.header.shipmentId",
+              transform_type: "DIRECT",
+              transform_config: {},
+              description: "Backend suggestion: Normalized schema leaf names match: shipmentid",
+              sequence_index: 10
+            }
+          ]
+        });
+        return Promise.resolve(jsonResponse({ items: [], total: 1, created_count: 1 }));
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/mappings/mapping_2") && init?.method === "DELETE") {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         deletedMappingRequests.push(url);
@@ -1195,6 +1217,12 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
     await userEvent.selectOptions(screen.getByLabelText("Suggestion transform filter"), "DIRECT");
     expect(mappingSuggestionsPanel).not.toHaveTextContent("Date-like source and target names match.");
+    await userEvent.click(screen.getByRole("button", { name: "Select visible suggestions" }));
+    expect(selectedSuggestionReview).toHaveTextContent("1 selected suggestion");
+    await userEvent.click(screen.getByRole("button", { name: "Create selected suggestions" }));
+    await waitFor(() => expect(bulkMappingRequests).toHaveLength(1));
+    expect(await screen.findByText("Created 1 mappings from selected suggestions.")).toBeInTheDocument();
+    expect(selectedSuggestionReview).toHaveTextContent("0 selected suggestions");
     await userEvent.click(screen.getByRole("button", { name: "Select visible suggestions" }));
     expect(selectedSuggestionReview).toHaveTextContent("1 selected suggestion");
     await userEvent.click(screen.getByRole("button", { name: "Clear selected suggestions" }));

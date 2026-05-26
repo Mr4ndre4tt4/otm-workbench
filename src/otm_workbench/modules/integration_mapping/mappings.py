@@ -37,6 +37,7 @@ def create_integration_mapping(
     definition: IntegrationDefinition,
     payload: dict[str, object],
     user: User,
+    commit: bool = True,
 ) -> IntegrationMapping:
     source_schema_document_id = str(payload["source_schema_document_id"])
     target_schema_document_id = str(payload["target_schema_document_id"])
@@ -72,8 +73,11 @@ def create_integration_mapping(
         created_by=user.email,
     )
     db.add(mapping)
-    db.commit()
-    db.refresh(mapping)
+    if commit:
+        db.commit()
+        db.refresh(mapping)
+    else:
+        db.flush()
     return mapping
 
 

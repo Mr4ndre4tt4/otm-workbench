@@ -196,6 +196,10 @@ class IntegrationMappingCreateRequest(BaseModel):
     sequence_index: int = 0
 
 
+class IntegrationMappingsBulkCreateRequest(BaseModel):
+    items: list[IntegrationMappingCreateRequest] = Field(default_factory=list)
+
+
 class IntegrationLoopDefinitionCreateRequest(BaseModel):
     source_schema_document_id: str
     target_schema_document_id: str
@@ -783,6 +787,42 @@ def create_mapping(
             "Mapping source_path and target_path must exist in their schema documents.",
         ) from exc
     return serialize_integration_mapping(mapping)
+
+
+@router.post("/definitions/{definition_id}/mappings/bulk")
+def bulk_create_mappings(
+    definition_id: str,
+    payload: IntegrationMappingsBulkCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = db.get(IntegrationDefinition, definition_id)
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    created: list[IntegrationMapping] = []
+    try:
+        for item in payload.items:
+            created.append(
+                create_integration_mapping(
+                    db,
+                    definition=definition,
+                    payload=item.model_dump(),
+                    user=user,
+                    commit=False,
+                )
+            )
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise api_error(
+            400,
+            "INTEGRATION_MAPPING_BULK_INVALID",
+            "All selected mappings must pass schema path, schema ownership, and transform validation.",
+        ) from exc
+    for mapping in created:
+        db.refresh(mapping)
+    items = [serialize_integration_mapping(mapping) for mapping in created]
+    return {"items": items, "total": len(items), "created_count": len(items)}
 
 
 @router.get("/definitions/{definition_id}/mappings")

@@ -114,6 +114,55 @@ def test_create_integration_mapping_validates_schema_paths(client, admin_header,
     assert "SYNTHETIC" not in str(payload)
 
 
+def test_bulk_create_integration_mappings_creates_reviewed_suggestions(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings/bulk",
+        json={
+            "items": [
+                mapping_payload(source, target, target_path="$.header.shipmentId", sequence_index=10),
+                mapping_payload(
+                    source,
+                    target,
+                    source_path="/Transmission/Shipment/ShipmentStop/StopSequence",
+                    target_path="$.deliveries[].sequence",
+                    sequence_index=20,
+                ),
+            ]
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["created_count"] == 2
+    assert payload["total"] == 2
+    assert [item["target_path"] for item in payload["items"]] == ["$.header.shipmentId", "$.deliveries[].sequence"]
+    persisted = db_session.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition["id"]).all()
+    assert len(persisted) == 2
+
+
+def test_bulk_create_integration_mappings_rejects_invalid_batch_without_partial_create(client, admin_header, db_session):
+    definition, source, target = create_source_and_target_documents(client, admin_header)
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings/bulk",
+        json={
+            "items": [
+                mapping_payload(source, target, target_path="$.header.shipmentId", sequence_index=10),
+                mapping_payload(source, target, source_path="/Transmission/Shipment/Missing", sequence_index=20),
+            ]
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "INTEGRATION_MAPPING_BULK_INVALID"
+    persisted = db_session.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition["id"]).all()
+    assert persisted == []
+
+
 def test_create_integration_mapping_persists_controlled_transform_config(client, admin_header, db_session):
     definition, source, target = create_source_and_target_documents(client, admin_header)
 

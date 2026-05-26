@@ -279,6 +279,14 @@ export type IntegrationMappingCreatePayload = {
   sequence_index: number;
 };
 
+export type IntegrationMappingsBulkCreatePayload = {
+  items: IntegrationMappingCreatePayload[];
+};
+
+export type IntegrationMappingsBulkCreateResponse = PageResponse<IntegrationMapping> & {
+  created_count: number;
+};
+
 export type IntegrationLoopCreatePayload = {
   source_schema_document_id: string;
   target_schema_document_id: string;

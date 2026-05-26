@@ -22,6 +22,8 @@ import type {
   IntegrationLoopsResponse,
   IntegrationMapping,
   IntegrationMappingCreatePayload,
+  IntegrationMappingsBulkCreatePayload,
+  IntegrationMappingsBulkCreateResponse,
   IntegrationDefinitionsResponse,
   IntegrationMappingsResponse,
   IntegrationMappingSuggestionsResponse,
@@ -262,6 +264,18 @@ export function createIntegrationMapping(token: string, definitionId: string, pa
   return apiPost<IntegrationMapping>(`/api/v1/modules/integration-mapping/definitions/${definitionId}/mappings`, payload, {
     token
   });
+}
+
+export function createIntegrationMappingsBulk(
+  token: string,
+  definitionId: string,
+  payload: IntegrationMappingsBulkCreatePayload
+) {
+  return apiPost<IntegrationMappingsBulkCreateResponse>(
+    `/api/v1/modules/integration-mapping/definitions/${definitionId}/mappings/bulk`,
+    payload,
+    { token }
+  );
 }
 
 export function useIntegrationResponseHandlers(token: string | null, definitionId: string | null) {
