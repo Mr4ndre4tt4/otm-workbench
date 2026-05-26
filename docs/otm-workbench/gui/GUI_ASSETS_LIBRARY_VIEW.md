@@ -1,7 +1,14 @@
 # GUI Assets Library View
 
-**Status:** functional journey done; module-complete review still requires explicit acceptance pass
+**Status:** functional journey done; superseded for future UX direction by `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/master-data-hardening-next`
+
+> 2026-05-26 update: the current `/assets` screen remains valid as backend
+> contract evidence, but browser review found it combines library browsing,
+> classification authoring, asset creation, metadata update, version upload,
+> link creation, download, and archive in one stateful route. Use
+> `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` before implementing major Assets
+> Library UI changes.
 
 ## Objective
 

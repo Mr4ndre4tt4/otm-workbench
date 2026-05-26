@@ -48,7 +48,7 @@ Module specs must preserve the project rules:
 | Master Data / Data Factory | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md`, `GUI_MASTER_DATA_COMPLETION_REVIEW_OTM115.md`, `GUI_MASTER_DATA_MVP_WORKFLOW_REVIEW_OTM119.md` | Full click-by-click redesign spec exists and supersedes current view direction. | Use as the model for all new module roadmap specs. |
 | Coordinate Quality / Lat-Lon | `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` | `GUI_MASTER_DATA_VIEW.md` | Covered as `Quality Tools` under Master Data redesign. | Create a separate `GUI_COORDINATE_QUALITY_ROADMAP_SPEC.md` only if it becomes a standalone module. |
 | Evidence Hub | `GUI_EVIDENCE_HUB_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_EVIDENCE_HUB_ROADMAP_SPEC.md` before archive/audit drill-down becomes first-class. |
-| Assets Library | `GUI_ASSETS_LIBRARY_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists; UX concerns about stacked screens/storytelling remain relevant. | Create `GUI_ASSETS_LIBRARY_ROADMAP_SPEC.md` with route map for list, asset detail, edit, upload version, link, archive, and classification authoring. |
+| Assets Library | `GUI_ASSETS_LIBRARY_CONSOLIDATED_SPEC.md` | `GUI_ASSETS_LIBRARY_VIEW.md`, `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | Consolidated objective, MVP evidence, browser findings, and click-by-click redesign spec exists; current MVP view remains contract evidence. | Use the consolidated spec before major Assets Library UI implementation changes. |
 | Order Release Generator | `GUI_ORDER_RELEASE_GENERATOR_VIEW.md` | `GUI_GENERAL_SOLUTION_QA_2026_05_25.md` | View contract exists. | Create `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md` before expanding template authoring, XML preview, and governed OTM submit. |
 | Integration Mapping Studio | `GUI_INTEGRATION_MAPPING_VIEW.md` | `GUI_INTEGRATION_MAPPING_NDD_UI_QA.md`, `GUI_INTEGRATION_MAPPING_VISUAL_QA_OTM79.md`, `GUI_LOCAL_INTEGRATION_VALIDATION.md` | View/QA docs exist; NDD-like QA revealed acceleration and clarity needs. | Create `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md` with story-driven routes for systems, definitions, schemas, mappings, joins, suggestions, preview, spec generation, and artifacts. |
 | Admin Console / Jobs | `GUI_MODULE_EXPERIENCE_ROADMAP.md` | `GUI_MODULE_API_CONTRACT_MATRIX.md` | Covered only by shared roadmap and API matrix. | Create `GUI_ADMIN_CONSOLE_ROADMAP_SPEC.md` if setup flags, jobs, audit, edit/delete, or role governance expand. |
@@ -93,13 +93,10 @@ Each screen section must answer:
 
 Use this queue after the Master Data redesign is reviewed:
 
-1. `GUI_ASSETS_LIBRARY_ROADMAP_SPEC.md`
-   Because the current feedback about stacked screens/storytelling already
-   applies there.
-2. `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md`
+1. `GUI_INTEGRATION_MAPPING_ROADMAP_SPEC.md`
    Because the NDD-like scenario needs a clearer accelerator story and stronger
    route separation.
-3. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
+2. `GUI_ORDER_RELEASE_GENERATOR_ROADMAP_SPEC.md`
    Because it shares generator/template/artifact patterns with Master Data.
 
 ## 6. Maintenance Rule
