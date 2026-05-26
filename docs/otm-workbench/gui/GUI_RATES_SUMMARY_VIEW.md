@@ -1,7 +1,13 @@
 # GUI Rates Summary View
 
-**Status:** implemented
+**Status:** implemented MVP slice; superseded for future UX direction by `GUI_RATES_STUDIO_ROADMAP_SPEC.md`
 **Branch:** `codex/gui-rates-summary-view`
+
+> 2026-05-26 update: the current `/rates` screen remains valid as backend
+> contract evidence, but browser review found it combines overview, list,
+> selected batch detail, staging, blockers, artifacts, and evidence on one long
+> page. Use `GUI_RATES_STUDIO_ROADMAP_SPEC.md` before implementing major Rates
+> UI changes.
 
 ## Objective
 
