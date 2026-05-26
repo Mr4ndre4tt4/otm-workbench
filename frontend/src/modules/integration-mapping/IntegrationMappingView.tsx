@@ -978,6 +978,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
       setSourcePath('');
       setTargetPath('');
       setMappingSourceAlias('');
+      setSelectedMappingSuggestionIds([]);
       setConstantValue('');
       setMappingDescription('');
       await refreshDefinitionData(effectiveDefinitionId);

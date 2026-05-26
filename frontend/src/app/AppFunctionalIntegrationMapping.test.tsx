@@ -1195,6 +1195,12 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
     await userEvent.selectOptions(screen.getByLabelText("Suggestion transform filter"), "DIRECT");
     expect(mappingSuggestionsPanel).not.toHaveTextContent("Date-like source and target names match.");
+    await userEvent.click(
+      within(mappingSuggestionsPanel).getByLabelText(
+        "Select suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
+      )
+    );
+    expect(selectedSuggestionReview).toHaveTextContent("1 selected suggestion");
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
     await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
     await userEvent.selectOptions(await screen.findByLabelText("Mapping source node", { exact: true }), "/Transmission/Shipment/ShipmentGid");
@@ -1210,6 +1216,7 @@ describe("Functional Integration Mapping Studio journey", () => {
 
     await waitFor(() => expect(mappingRequests).toHaveLength(1));
     expect(await within(await screen.findByLabelText("Selected definition mappings")).findByText("$.header.shipmentId")).toBeInTheDocument();
+    expect(selectedSuggestionReview).toHaveTextContent("0 selected suggestions");
     expect(screen.getByLabelText("Integration Mapping next action")).toHaveTextContent("Validate definition");
     const reviewPanelAfterMapping = await screen.findByLabelText("Integration mapping grouped executable review");
     expect(reviewPanelAfterMapping).toHaveTextContent("Header");
