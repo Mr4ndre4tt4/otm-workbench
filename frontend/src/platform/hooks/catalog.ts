@@ -11,6 +11,8 @@ import type {
   CatalogSchemaGuidanceRole,
   CatalogSchemaPathsResponse,
   CatalogSchemaRootsResponse,
+  CatalogReferenceOptionsResponse,
+  CatalogTableSummary,
   CatalogTablesResponse,
   CatalogTableColumnsResponse,
   CatalogValidateColumnPayload,
@@ -108,11 +110,31 @@ export function useCatalogTables(token: string | null, query = "", limit = 50) {
   });
 }
 
+export function useCatalogTableDetail(token: string | null, tableName: string | null) {
+  return useQuery({
+    queryKey: ["catalog", "tables", tableName, "detail"],
+    queryFn: () => apiGet<CatalogTableSummary>(`/api/v1/catalog/tables/${tableName}`, { token }),
+    enabled: Boolean(token && tableName)
+  });
+}
+
 export function useCatalogTableColumns(token: string | null, tableName: string | null) {
   return useQuery({
     queryKey: ["catalog", "tables", tableName, "columns"],
     queryFn: () => apiGet<CatalogTableColumnsResponse>(`/api/v1/catalog/tables/${tableName}/columns`, { token }),
     enabled: Boolean(token && tableName)
+  });
+}
+
+export function useCatalogReferenceOptions(token: string | null, objectType: string, domainName: string) {
+  const params = new URLSearchParams();
+  params.set("object_type", objectType.trim() || "CURRENCY");
+  if (domainName.trim()) params.set("domain_name", domainName.trim());
+  const queryString = params.toString();
+  return useQuery({
+    queryKey: ["catalog", "reference-options", objectType.trim(), domainName.trim()],
+    queryFn: () => apiGet<CatalogReferenceOptionsResponse>(`/api/v1/catalog/reference/options?${queryString}`, { token }),
+    enabled: Boolean(token)
   });
 }
 

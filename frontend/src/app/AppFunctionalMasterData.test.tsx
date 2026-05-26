@@ -954,6 +954,12 @@ describe("Functional Master Data journey", () => {
     await waitFor(() =>
       expect(workbookEditorRequests).toContain("/api/v1/modules/master-data/templates/REGIONS_BASIC/workbook-editor")
     );
+    await userEvent.click(screen.getByRole("button", { name: "Validate template" }));
+    await screen.findByText("Template validation is VALID.");
+    expect(screen.getByLabelText("Template validation summary")).toHaveTextContent("VALID");
+    await userEvent.click(screen.getByRole("button", { name: "Build workbook" }));
+    await screen.findByText("Workbook regions_basic_v1.xlsx generated.");
+    expect(screen.getByLabelText("Workbook artifact")).toHaveTextContent("regions_basic_v1.xlsx");
     await userEvent.click(screen.getByRole("button", { name: "Validate edited rows" }));
     await screen.findByText("Edited rows validation is INVALID.");
     expect(screen.getByText("REQUIRED_FIELD_MISSING")).toBeInTheDocument();
@@ -963,16 +969,14 @@ describe("Functional Master Data journey", () => {
     await userEvent.type(screen.getByLabelText("REGION_DETAILS row 1 Location GID"), "SYN.LOCATION_UI");
     await userEvent.click(screen.getByRole("button", { name: "Create batch from edited rows" }));
     await screen.findByText("Workbook editor batch batch_editor created.");
-    expect(screen.getByLabelText("Selected Master Data template")).toHaveTextContent("batch_editor");
+    await screen.findByRole("heading", { name: "batch_editor" });
+    expect(screen.getByLabelText("Master Data batch execution workspace")).toHaveTextContent("batch_editor");
     expect(workbookEditorValidationRequests).toHaveLength(1);
     expect(workbookEditorBatchRequests).toHaveLength(1);
-    await userEvent.click(screen.getByRole("button", { name: "Validate template" }));
-    await screen.findByText("Template validation is VALID.");
-    expect(screen.getByLabelText("Template validation summary")).toHaveTextContent("VALID");
-    await userEvent.click(screen.getByRole("button", { name: "Build workbook" }));
-    await screen.findByText("Workbook regions_basic_v1.xlsx generated.");
-    expect(screen.getByLabelText("Workbook artifact")).toHaveTextContent("regions_basic_v1.xlsx");
 
+    await userEvent.click(screen.getByRole("link", { name: "Back to template" }));
+    await screen.findByRole("heading", { name: "REGIONS_BASIC" });
+    await userEvent.click(screen.getByRole("link", { name: "Back to Data Factory" }));
     await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
     await userEvent.click(screen.getByRole("button", { name: /LOCATIONS_RECOVERED/ }));
     await screen.findByRole("heading", { name: "LOCATIONS_RECOVERED" });
@@ -991,30 +995,34 @@ describe("Functional Master Data journey", () => {
     await userEvent.upload(screen.getByLabelText("Workbook file"), uploadFile);
     await userEvent.click(screen.getByRole("button", { name: "Upload workbook" }));
     await screen.findByText("Workbook uploaded as batch batch_1.");
-    expect(screen.getByLabelText("Active batch summary")).toHaveTextContent("PARSED");
+    await screen.findByRole("heading", { name: "batch_1" });
+    expect(await screen.findByLabelText("Batch input summary")).toHaveTextContent("batch_1");
 
-    await userEvent.click(screen.getByRole("button", { name: /5Validate/ }));
+    await userEvent.click(screen.getByRole("button", { name: /2Validate/ }));
     await userEvent.click(screen.getByRole("button", { name: "Validate relationships" }));
     await screen.findByText("Relationship validation is VALID.");
     expect(screen.getByLabelText("Relationship validation summary")).toHaveTextContent("VALID");
 
-    await userEvent.click(screen.getByRole("button", { name: /6Map/ }));
+    await userEvent.click(screen.getByRole("button", { name: /3Output/ }));
     await userEvent.click(screen.getByRole("button", { name: "Map records" }));
     await screen.findByText("Batch mapping is MAPPED.");
-    expect(screen.getByLabelText("Mapping summary")).toHaveTextContent("MAPPED");
+    expect(screen.getByLabelText("Batch output result summary")).toHaveTextContent("MAPPED");
 
-    await userEvent.click(screen.getByRole("button", { name: /7Output/ }));
-    const outputPanel = screen.getByLabelText("Output and export workflow");
+    const outputPanel = screen.getByLabelText("Batch output step");
     await userEvent.click(within(outputPanel).getByRole("button", { name: "Build output" }));
     await screen.findByText("Output build is OUTPUT_BUILT.");
     expect(screen.getByLabelText("Master Data output record preview")).toHaveTextContent("REGION");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Build CSV" }));
+    await userEvent.click(screen.getByRole("button", { name: /4CSV Package/ }));
+    const csvPanel = screen.getByLabelText("Batch CSV package step");
+    await userEvent.click(within(csvPanel).getByRole("button", { name: "Build CSV" }));
     await screen.findByText("CSV build is CSV_BUILT.");
     expect(screen.getByLabelText("Master Data CSV file preview")).toHaveTextContent("001_REGION.csv");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Export package" }));
+    await userEvent.click(within(csvPanel).getByRole("button", { name: "Export package" }));
     await screen.findByText("CSV package export is EXPORTED.");
     expect(screen.getByLabelText("Export package summary")).toHaveTextContent("artifact_csv_package");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Verify OTM import guard" }));
+    await userEvent.click(screen.getByRole("button", { name: /5Load Plan/ }));
+    const loadPlanPanel = screen.getByLabelText("Batch Load Plan step");
+    await userEvent.click(within(loadPlanPanel).getByRole("button", { name: "Verify OTM import guard" }));
     await screen.findByText("OTM import readiness is GUARDED.");
     expect(screen.getByLabelText("Master Data OTM import guard")).toHaveTextContent("master_data.submit_otm");
     expect(screen.getByLabelText("Master Data OTM import guard")).toHaveTextContent("CSVUTIL_UPLOAD_OR_INTEGRATION");
@@ -1023,22 +1031,25 @@ describe("Functional Master Data journey", () => {
     expect(screen.getByText("OTM_CREDENTIALS_NOT_CONFIGURED")).toBeInTheDocument();
     expect(screen.getByText("OTM_SUBMIT_CAPABILITY_DISABLED")).toBeInTheDocument();
     expect(screen.getByLabelText("Master Data OTM import guard")).not.toHaveTextContent("password");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Attempt guarded OTM import" }));
+    await userEvent.click(within(loadPlanPanel).getByRole("button", { name: "Attempt guarded OTM import" }));
     await screen.findByText(
       "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured."
     );
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Register for Load Plan" }));
+    await userEvent.click(within(loadPlanPanel).getByRole("button", { name: "Register in Load Plan" }));
     await screen.findByText("Load Plan package load_plan_master_data_package_1 registered.");
     expect(screen.getByLabelText("Load Plan package registration")).toHaveTextContent("master_data_csv_zip");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Create cutover checklist" }));
+    await userEvent.click(within(loadPlanPanel).getByRole("button", { name: "Create cutover checklist" }));
     await screen.findByText("Cutover checklist cutover_checklist_1 created.");
     expect(screen.getByLabelText("Cutover checklist handoff")).toHaveTextContent("DEFAULT_CUTOVER");
-    await userEvent.click(within(outputPanel).getByRole("button", { name: "Generate checklist readiness" }));
+    await userEvent.click(within(loadPlanPanel).getByRole("button", { name: "Generate checklist readiness" }));
     await screen.findByText("Cutover checklist readiness is REVIEW.");
     expect(screen.getByLabelText("Cutover checklist readiness handoff")).toHaveTextContent("1 blocker");
     expect(screen.getByText("Cutover checklist readiness blockers")).toBeInTheDocument();
     expect(screen.getByText("ITEM_PENDING, PACKAGE_REGISTERED")).toBeInTheDocument();
     expect(screen.getByText("Checklist item is still pending.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "Back to template" }));
+    await screen.findByRole("heading", { name: "REGIONS_BASIC" });
+    await userEvent.click(screen.getByRole("button", { name: /7Output/ }));
     await userEvent.selectOptions(screen.getByLabelText("Template filter"), "REGIONS_BASIC");
     await userEvent.selectOptions(screen.getByLabelText("Batch status filter"), "EXPORTED");
     await userEvent.type(screen.getByLabelText("Batch file name filter"), "regions");
@@ -1054,18 +1065,19 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(within(screen.getByLabelText("Master Data export artifacts")).getByRole("button", { name: "Download" }));
     await screen.findByText("Download started: master_data_regions_basic.zip.");
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
+    await screen.findByRole("heading", { name: "batch_history" });
     expect(screen.queryByLabelText("Master Data OTM import guard")).not.toBeInTheDocument();
-    const activeHistoryButton = screen.getByRole("button", { name: "Active batch batch_history" });
-    expect(activeHistoryButton).toBeDisabled();
-    expect(activeHistoryButton.closest(".table-list-item")).toHaveAttribute("aria-current", "true");
-    await screen.findByText("001_REGION_HISTORY.csv");
+    expect(screen.getByLabelText("Batch input summary")).toHaveTextContent("batch_history");
+    await userEvent.click(screen.getByRole("link", { name: "Back to template" }));
+    await screen.findByRole("heading", { name: "REGIONS_BASIC" });
+    await userEvent.click(screen.getByRole("button", { name: /7Output/ }));
     await userEvent.click(screen.getByRole("button", { name: "Use latest matching batch" }));
     const activeLatestButton = screen.getByRole("button", { name: "Active batch batch_1" });
     expect(activeLatestButton).toBeDisabled();
     expect(activeLatestButton.closest(".table-list-item")).toHaveAttribute("aria-current", "true");
     await screen.findByText("master_data_regions_basic.zip");
     await userEvent.click(screen.getByRole("button", { name: "Inspect batch batch_history" }));
-    expect(screen.getByRole("button", { name: "Active batch batch_history" })).toBeDisabled();
+    await screen.findByRole("heading", { name: "batch_history" });
 
     expect(templateValidationRequests).toEqual([{ method: "POST" }]);
     expect(workbookRequests).toEqual([{ method: "POST" }]);
@@ -1100,6 +1112,9 @@ describe("Functional Master Data journey", () => {
       status: "EXPORTED",
       template_code: "REGIONS_BASIC"
     });
+    await userEvent.click(screen.getByRole("link", { name: "Back to template" }));
+    await screen.findByRole("heading", { name: "REGIONS_BASIC" });
+    await userEvent.click(screen.getByRole("button", { name: /7Output/ }));
     await userEvent.click(screen.getByRole("button", { name: "Reset batch filters" }));
     expect(screen.getByRole("button", { name: "Active batch batch_1" })).toBeDisabled();
     expect(screen.getByLabelText("Template filter")).toHaveValue("");
@@ -1221,6 +1236,12 @@ describe("Functional Master Data journey", () => {
       if (url.endsWith("/api/v1/modules/master-data/batches/batch_recovered/artifacts")) {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
+      if (
+        url.endsWith("/api/v1/modules/master-data/batches/batch_recovered/output-records") ||
+        url.endsWith("/api/v1/modules/master-data/batches/batch_recovered/csv-files")
+      ) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -1250,7 +1271,8 @@ describe("Functional Master Data journey", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Upload workbook" }));
     await screen.findByText("Workbook uploaded as batch batch_recovered.");
-    expect(screen.getByLabelText("Active batch summary")).toHaveTextContent("PARSED");
+    await screen.findByRole("heading", { name: "batch_recovered" });
+    expect(await screen.findByLabelText("Batch input summary")).toHaveTextContent("PARSED");
     expect(uploadRequests).toEqual(["POST", "POST"]);
   }, 60000);
 
@@ -1466,7 +1488,7 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Template Builder" });
-    await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
+    await userEvent.click(screen.getByRole("link", { name: "Create template" }));
     await screen.findByLabelText("Catalog tables for LOCATION");
     await userEvent.click(screen.getByRole("checkbox", { name: "LOCATION_ADDRESS" }));
     await screen.findByLabelText("Catalog columns for LOCATION");
@@ -1665,7 +1687,7 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Template Builder" });
-    await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
+    await userEvent.click(screen.getByRole("link", { name: "Create template" }));
     await screen.findByLabelText("Master Data scenario pack");
     await userEvent.selectOptions(screen.getByLabelText("Master Data scenario pack"), "LOCATION_OPERATIONAL");
 
@@ -1795,17 +1817,25 @@ describe("Functional Master Data journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Template Builder" });
-    await userEvent.click(screen.getByRole("button", { name: /1Templates/ }));
-    await userEvent.click(screen.getByText("LOCATIONS_RECOVERED"));
-    await userEvent.click(screen.getByRole("button", { name: /2Author/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Load selected template" }));
+    await userEvent.click(screen.getByRole("link", { name: "View LOCATIONS_RECOVERED" }));
 
-    expect(screen.getByLabelText("Template code")).toHaveValue("LOCATIONS_RECOVERED");
-    expect(screen.getByLabelText("Template name")).toHaveValue("Locations Recovered");
-    expect(screen.getByRole("checkbox", { name: "LOCATION_ADDRESS" })).toBeChecked();
-    expect(screen.getByLabelText("Friendly label for LOCATION_ADDRESS.ADDRESS_LINE")).toHaveValue("Street line recovered");
-    expect(screen.getByLabelText("Source type for LOCATION.CITY")).toHaveValue("DEFAULT_VALUE");
-    expect(screen.getByLabelText("Default value for LOCATION.CITY")).toHaveValue("UNKNOWN_CITY");
-    expect(screen.getByRole("checkbox", { name: "Require LOCATION parent for LOCATION_ADDRESS" })).toBeChecked();
+    await screen.findByRole("heading", { name: "LOCATIONS_RECOVERED" });
+    expect(screen.getByRole("link", { name: "Back to Template Builder" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder"
+    );
+    expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/LOCATIONS_RECOVERED/edit"
+    );
+    expect(screen.getByRole("link", { name: "Copy" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/LOCATIONS_RECOVERED/copy"
+    );
+    expect(screen.getByRole("link", { name: "Retire" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/LOCATIONS_RECOVERED/delete"
+    );
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
   }, 60000);
 });

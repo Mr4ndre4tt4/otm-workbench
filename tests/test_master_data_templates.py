@@ -89,6 +89,45 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
     assert locations_template["target_tables"] == ["LOCATION", "LOCATION_ADDRESS"]
 
 
+def test_master_data_templates_support_backend_owned_header_search(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/master-data/templates",
+        params={
+            "template_code": "REG",
+            "template_code_operator": "begins_with",
+            "status": "PUBLISHED,DRAFT",
+            "status_operator": "one_of",
+            "macro_object": "ITEM",
+            "macro_object_operator": "not_one_of",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["code"] for item in payload["items"]] == ["REGIONS_BASIC"]
+    assert payload["normalized_filters"] == [
+        {
+            "field": "template_code",
+            "operator": "begins_with",
+            "value": "REG",
+        },
+        {
+            "field": "status",
+            "operator": "one_of",
+            "value": "PUBLISHED,DRAFT",
+        },
+        {
+            "field": "macro_object",
+            "operator": "not_one_of",
+            "value": "ITEM",
+        },
+    ]
+    assert payload["search_metadata"]["operators"] == ["begins_with", "contains", "one_of", "not_one_of"]
+    assert "template_name" in {field["key"] for field in payload["search_metadata"]["fields"]}
+
+
 def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_header):
     response = client.get("/api/v1/modules/master-data/templates/REGIONS_BASIC", headers=admin_header)
 

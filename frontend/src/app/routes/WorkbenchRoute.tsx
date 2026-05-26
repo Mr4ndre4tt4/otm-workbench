@@ -8,6 +8,12 @@ import {
   AssetsLibraryView,
   AdminConsoleView,
   CatalogCoreView,
+  DeveloperToolsDataDictionaryTableView,
+  DeveloperToolsDataDictionaryView,
+  DeveloperToolsEnvironmentReadinessView,
+  DeveloperToolsFkCatalogView,
+  DeveloperToolsSchemaPacksView,
+  DeveloperToolsView,
   EvidenceHubView,
   IntegrationMappingView,
   LoadPlanView,
@@ -187,6 +193,24 @@ export function WorkbenchRoute({ items, token }: { items: NavigationItem[]; toke
   }
   if (item?.id === "admin") {
     return <AdminConsoleView token={token} />;
+  }
+  if (item?.id === "dev_tools") {
+    if (currentPath.startsWith("/dev-tools/data-dictionary/tables/")) {
+      return <DeveloperToolsDataDictionaryTableView token={token} />;
+    }
+    if (currentPath === "/dev-tools/data-dictionary") {
+      return <DeveloperToolsDataDictionaryView token={token} />;
+    }
+    if (currentPath === "/dev-tools/fk-catalog") {
+      return <DeveloperToolsFkCatalogView token={token} />;
+    }
+    if (currentPath === "/dev-tools/schema-packs") {
+      return <DeveloperToolsSchemaPacksView token={token} />;
+    }
+    if (currentPath === "/dev-tools/environment-readiness") {
+      return <DeveloperToolsEnvironmentReadinessView token={token} />;
+    }
+    return <DeveloperToolsView item={item} token={token} />;
   }
   if (item?.id === "master_data") {
     return <MasterDataView token={token} />;

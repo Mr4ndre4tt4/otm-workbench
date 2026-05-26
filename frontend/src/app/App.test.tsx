@@ -160,6 +160,632 @@ describe("App shell", () => {
     expect(screen.getByText("Use the backend-owned navigation menu to open an available module.")).toBeInTheDocument();
   });
 
+  it("renders Developer Tools as a guarded technical hub instead of a generic module placeholder", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "DISABLED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { DISABLED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            title: "Technical Diagnostics Hub",
+            status: "guarded",
+            description: "Controlled technical diagnostics for authorized implementation support users.",
+            active_context: {
+              project_id: "project_1",
+              profile_id: "profile_1",
+              environment_id: "env_1",
+              domain_name: "OTM1",
+              allowed_domains: ["PUBLIC", "OTM1"],
+              can_view_all_domains: false
+            },
+            guards: [
+              {
+                key: "feature_flag",
+                label: "Feature flag",
+                status: "READY",
+                message: "dev_tools is enabled."
+              }
+            ],
+            counts: { available_tools: 1, disabled_tools: 1, recent_runs: 1 },
+            tools: [
+              {
+                key: "data_dictionary",
+                label: "Data Dictionary Explorer",
+                status: "AVAILABLE",
+                href: "/dev-tools/data-dictionary",
+                required_capability: "dev_tools.data_dictionary.view",
+                disabled_reason: null
+              },
+              {
+                key: "oracle_lab",
+                label: "Oracle Lab",
+                status: "DISABLED",
+                href: null,
+                required_capability: "dev_tools.oracle_lab.run",
+                disabled_reason: "Disabled until governance approves SQL lab execution."
+              }
+            ],
+            recent_runs: [
+              {
+                id: "job_1",
+                job_type: "DEMO_ECHO",
+                source_module: "dev_tools",
+                project_id: "project_1",
+                profile_id: "profile_1",
+                environment_id: "env_1",
+                domain_name: "OTM1",
+                status: "SUCCEEDED",
+                progress: 100,
+                message: "Job succeeded.",
+                input_present: true,
+                result_present: true,
+                created_at: null,
+                finished_at: null
+              }
+            ]
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Technical Diagnostics Hub" })).toBeInTheDocument();
+    expect(screen.getByText("Developer Tools is controlled by backend navigation, feature flags, and capabilities.")).toBeInTheDocument();
+    expect(await screen.findByText("Data Dictionary Explorer")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Data Dictionary Explorer" })).toHaveAttribute(
+      "href",
+      "/dev-tools/data-dictionary"
+    );
+    expect(screen.getByText("Oracle Lab")).toBeInTheDocument();
+    expect(screen.getByText("Disabled until governance approves SQL lab execution.")).toBeInTheDocument();
+    expect(screen.getByText("DEMO_ECHO")).toBeInTheDocument();
+    expect(screen.getByText("Summary returns backend-safe metadata only; raw diagnostic payloads remain hidden.")).toBeInTheDocument();
+    expect(screen.queryByText("Primary list or work queue")).not.toBeInTheDocument();
+  });
+
+  it("renders Developer Tools Data Dictionary as a dedicated technical explorer", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "PLANNED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { PLANNED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/data-dictionary?query=rate_geo&limit=25")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            tool_key: "data_dictionary",
+            title: "Data Dictionary Explorer",
+            status: "ready",
+            description: "Read-only technical table metadata from the backend Data Dictionary.",
+            query: "rate_geo",
+            limit: 25,
+            total: 2,
+            source_contract: "/api/v1/catalog/tables",
+            active_context: {},
+            items: [
+              {
+                table_name: "RATE_GEO",
+                schema_name: "GLOGOWNER",
+                description: "Synthetic rate geo header.",
+                column_count: 12,
+                data_category: "RATES_SETUP",
+                is_transactional: false,
+                allow_cutover: true,
+                allow_csvutil: true
+              },
+              {
+                table_name: "RATE_GEO_COST",
+                schema_name: "GLOGOWNER",
+                description: "Synthetic rate cost detail.",
+                column_count: 18,
+                data_category: "RATES_SETUP",
+                is_transactional: false,
+                allow_cutover: true,
+                allow_csvutil: true
+              }
+            ]
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools/data-dictionary?query=rate_geo");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Data Dictionary Explorer" })).toBeInTheDocument();
+    expect(screen.getByText("Read-only technical table metadata from the backend Data Dictionary.")).toBeInTheDocument();
+    expect(await screen.findByText("RATE_GEO_COST")).toBeInTheDocument();
+    expect(screen.getAllByText("RATES_SETUP").length).toBeGreaterThan(0);
+    const dataDictionaryRows = screen.getByLabelText("Developer Tools Data Dictionary tables");
+    expect(within(dataDictionaryRows).getAllByRole("link", { name: "Open table" })[1]).toHaveAttribute(
+      "href",
+      "/dev-tools/data-dictionary/tables/RATE_GEO_COST"
+    );
+    expect(screen.getByRole("link", { name: "Back to Developer Tools" })).toHaveAttribute("href", "/dev-tools");
+    expect(screen.queryByRole("heading", { name: "Technical Diagnostics Hub" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Primary list or work queue")).not.toBeInTheDocument();
+  });
+
+  it("renders Developer Tools Data Dictionary table detail as a dedicated route", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "PLANNED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { PLANNED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/data-dictionary/tables/RATE_GEO_COST")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            tool_key: "data_dictionary",
+            title: "Data Dictionary Table Detail",
+            status: "ready",
+            source_contract: "/api/v1/catalog/tables/{table_name}",
+            active_context: {},
+            table: {
+              table_name: "RATE_GEO_COST",
+              schema_name: "GLOGOWNER",
+              description: "Synthetic rate cost detail.",
+              column_count: 134,
+              data_category: "RATES_SETUP",
+              is_transactional: false,
+              allow_cutover: true,
+              allow_csvutil: true,
+              exists: true
+            },
+            columns: [
+              {
+                column_name: "RATE_GEO_COST_GROUP_GID",
+                data_type: "VARCHAR2",
+                nullable: false,
+                max_length: 101,
+                ordinal_position: 1
+              },
+              {
+                column_name: "COST",
+                data_type: "NUMBER",
+                nullable: true,
+                max_length: null,
+                ordinal_position: 2
+              }
+            ],
+            column_total: 2
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools/data-dictionary/tables/RATE_GEO_COST");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "RATE_GEO_COST" })).toBeInTheDocument();
+    expect(screen.getByText("Data Dictionary Table Detail")).toBeInTheDocument();
+    expect(await screen.findByText("RATE_GEO_COST_GROUP_GID")).toBeInTheDocument();
+    expect(screen.getByText("VARCHAR2")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Data Dictionary" })).toHaveAttribute(
+      "href",
+      "/dev-tools/data-dictionary?query=RATE_GEO_COST"
+    );
+  });
+
+  it("renders Developer Tools FK Catalog as a dedicated technical explorer", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "PLANNED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { PLANNED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/fk-catalog?source_table=RATE_GEO_COST&limit=50")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            tool_key: "fk_catalog",
+            title: "FK Catalog Explorer",
+            status: "ready",
+            description: "Read-only foreign-key relationships from the backend Data Dictionary.",
+            source_table: "RATE_GEO_COST",
+            limit: 50,
+            total: 2,
+            source_contract: "/api/v1/catalog/tables/RATE_GEO_COST",
+            active_context: {},
+            items: [
+              {
+                source_table_name: "RATE_GEO_COST",
+                column_name: "RATE_GEO_COST_GROUP_GID",
+                parent_table_name: "RATE_GEO_COST_GROUP",
+                parent_column_name: "RATE_GEO_COST_GROUP_GID",
+                relationship_type: "FOREIGN_KEY",
+                parent_table_href: "/dev-tools/data-dictionary/tables/RATE_GEO_COST_GROUP"
+              },
+              {
+                source_table_name: "RATE_GEO_COST",
+                column_name: "RATE_GEO_COST_OPERAND_SEQ",
+                parent_table_name: "RATE_GEO_COST_OPERAND",
+                parent_column_name: "RATE_GEO_COST_OPERAND_SEQ",
+                relationship_type: "FOREIGN_KEY",
+                parent_table_href: "/dev-tools/data-dictionary/tables/RATE_GEO_COST_OPERAND"
+              }
+            ]
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools/fk-catalog?source_table=RATE_GEO_COST");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "FK Catalog Explorer" })).toBeInTheDocument();
+    expect(await screen.findAllByText("RATE_GEO_COST_GROUP_GID")).toHaveLength(2);
+    expect(screen.getAllByText("RATE_GEO_COST_GROUP").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Open parent table RATE_GEO_COST_GROUP" })).toHaveAttribute(
+      "href",
+      "/dev-tools/data-dictionary/tables/RATE_GEO_COST_GROUP"
+    );
+    expect(screen.getByRole("link", { name: "Back to Developer Tools" })).toHaveAttribute("href", "/dev-tools");
+    expect(screen.queryByText("Primary list or work queue")).not.toBeInTheDocument();
+  });
+
+  it("renders Developer Tools Schema Pack Diagnostics as a dedicated technical explorer", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "PLANNED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { PLANNED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/schema-packs?otm_version=26A&limit=25")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            tool_key: "schema_packs",
+            title: "Schema Pack Diagnostics",
+            status: "ready",
+            description: "Read-only WSDL/XSD schema-pack diagnostics from Catalog Core.",
+            otm_version: "26A",
+            code: "",
+            filter_status: "",
+            limit: 25,
+            total: 1,
+            source_contract: "/api/v1/catalog/schema-packs",
+            root_contract: "/api/v1/catalog/schema-roots",
+            active_context: {},
+            items: [
+              {
+                id: "pack_1",
+                code: "OTM26A",
+                name: "Synthetic OTM 26A",
+                otm_version: "26A",
+                source_type: "LOCAL_FOLDER",
+                asset_id: null,
+                status: "INDEXED",
+                namespace_count: 2,
+                root_count: 1,
+                operation_count: 0,
+                content_hash: "synthetic-hash",
+                created_by: "synthetic.user@example.test",
+                created_at: null,
+                updated_at: null,
+                root_total: 1,
+                root_preview: [
+                  {
+                    id: "root_1",
+                    schema_pack_id: "pack_1",
+                    schema_file_id: "file_1",
+                    root_name: "Transmission",
+                    root_display_label: "Transmission",
+                    canonical_root_name: "Transmission",
+                    schema_root_aliases: ["Transmission"],
+                    data_dictionary_family: "",
+                    schema_guidance_role: "ENVELOPE_ONLY",
+                    namespace: "http://xmlns.oracle.com/apps/otm/transmission",
+                    domain_area: "INTEGRATION",
+                    root_type: "ENVELOPE",
+                    envelope_role: "TRANSMISSION",
+                    recommended_modules: ["integration_mapping", "order_release_generator"],
+                    documentation: "Synthetic transmission envelope."
+                  }
+                ]
+              }
+            ]
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools/schema-packs?otm_version=26A");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Schema Pack Diagnostics" })).toBeInTheDocument();
+    expect(await screen.findByText("Synthetic OTM 26A")).toBeInTheDocument();
+    expect(screen.getByText("Transmission")).toBeInTheDocument();
+    expect(screen.getByText("ENVELOPE_ONLY")).toBeInTheDocument();
+    expect(screen.getByText("Source contract: /api/v1/catalog/schema-packs")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Developer Tools" })).toHaveAttribute("href", "/dev-tools");
+    expect(screen.queryByText("Primary list or work queue")).not.toBeInTheDocument();
+  });
+
+  it("renders Developer Tools Environment Readiness as a dedicated technical explorer", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "dev_tools", label: "Developer Tools", path: "/dev-tools", status: "PLANNED" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "home",
+            title: "Project Cockpit",
+            status: "ready",
+            description: "Project-level operational overview.",
+            active_context: {},
+            setup_status: null,
+            counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+            module_summary: { total: 1, counts_by_status: { PLANNED: 1 }, items: [] },
+            recent_jobs: [],
+            recent_artifacts: [],
+            recent_evidence: [],
+            available_actions: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/dev-tools/environment-readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module_id: "dev_tools",
+            tool_key: "environment_readiness",
+            title: "Environment Readiness",
+            status: "ready",
+            description: "Read-only environment readiness checks for the active implementation context.",
+            active_context: {
+              user_id: "user_1",
+              project_id: "project_1",
+              profile_id: "profile_1",
+              environment_id: "environment_1",
+              domain_name: "OTM1",
+              allowed_domains: ["PUBLIC", "OTM1"],
+              can_view_all_domains: false
+            },
+            active_environment_id: "environment_1",
+            counts: { environments: 1, ready_checks: 4, blocked_checks: 0 },
+            environments: [
+              {
+                id: "environment_1",
+                name: "DEV",
+                environment_type: "DEV",
+                status: "ACTIVE",
+                is_active: true
+              }
+            ],
+            checks: [
+              { key: "active_project", label: "Active project", status: "READY", message: "Project context is selected." },
+              { key: "active_profile", label: "Active profile", status: "READY", message: "Profile context is selected." },
+              {
+                key: "active_environment",
+                label: "Active environment",
+                status: "READY",
+                message: "Environment context is selected."
+              },
+              { key: "domain_scope", label: "Domain scope", status: "READY", message: "Domain scope is set." }
+            ],
+            source_contract: "/api/v1/platform/active-context"
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/dev-tools/environment-readiness");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Environment Readiness" })).toBeInTheDocument();
+    expect(await screen.findByText("DEV")).toBeInTheDocument();
+    expect(screen.getByText("Active environment")).toBeInTheDocument();
+    expect(screen.getByText("Domain scope")).toBeInTheDocument();
+    expect(screen.getByText("Source contract: /api/v1/platform/active-context")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Developer Tools" })).toHaveAttribute("href", "/dev-tools");
+    expect(screen.queryByText("Primary list or work queue")).not.toBeInTheDocument();
+  });
+
   it("updates active project context with backend selector contracts", async () => {
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
@@ -1536,10 +2162,9 @@ describe("App shell", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "OTM Catalog Core" });
-    expect(await screen.findByText("RATE_RECORD")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("RATE_RECORD").length).toBeGreaterThan(0));
     expect(screen.getAllByText("Rate Record").length).toBeGreaterThan(0);
-    expect(screen.getByText("RATE_GEO")).toBeInTheDocument();
-    expect(screen.getByText("LOCATION")).toBeInTheDocument();
+    expect(screen.queryByText("RATE_GEO")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Validate table" })).toBeInTheDocument();
   });
 
@@ -1733,6 +2358,651 @@ describe("App shell", () => {
     expect(screen.getByLabelText("Template operational summary")).toHaveTextContent("REGION");
     expect(screen.getByLabelText("Template operational summary")).toHaveTextContent("Region GID");
     expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+  });
+
+  it("renders a route-level Master Data batch workspace with backend action blockers", async () => {
+    const template = {
+      id: "template_region",
+      code: "REGION_TEMPLATE",
+      name: "Region Template",
+      catalog_macro_object_code: "REGION",
+      data_category: "MASTER_DATA",
+      version: 1,
+      status: "PUBLISHED",
+      target_tables: ["REGION"],
+      available_actions: [],
+      sheets: [
+        {
+          code: "REGIONS",
+          name: "Regions",
+          target_table: "REGION",
+          fields: [
+            {
+              name: "region_gid",
+              label: "Region GID",
+              target_column: "REGION_GID",
+              required: true
+            }
+          ]
+        }
+      ],
+      description: "Synthetic master data template for region setup.",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const batch = {
+      batch_id: "batch_ready",
+      template_code: "REGION_TEMPLATE",
+      status: "PARSED",
+      file_name: "regions_ready.xlsx",
+      issue_count: 0,
+      row_count: 2,
+      sheet_count: 1,
+      csv_file_count: 0,
+      sheet_summaries: [{ row_count: 2, sheet_code: "REGIONS", target_table: "REGION" }],
+      available_actions: [
+        {
+          disabled: false,
+          disabled_reason: null,
+          href: "",
+          icon_key: "check-circle",
+          key: "validate_relationships",
+          label: "Validate relationships",
+          method: "POST",
+          recommended: true,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "primary"
+        },
+        {
+          disabled: true,
+          disabled_reason: "Run relationship validation before mapping records.",
+          href: "",
+          icon_key: "git-branch",
+          key: "map_records",
+          label: "Map records",
+          method: "POST",
+          recommended: false,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        },
+        {
+          disabled: true,
+          disabled_reason: "Build output before exporting a CSV package.",
+          href: "",
+          icon_key: "package",
+          key: "export_csv_package",
+          label: "Export package",
+          method: "POST",
+          recommended: false,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        }
+      ],
+      summary: { source: "workbook-editor" }
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [template], page: 1, page_size: 50, total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/REGION_TEMPLATE")) {
+        return Promise.resolve(jsonResponse(template));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_ready")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(batch));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_ready/artifacts")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_ready/output-records")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/batch_ready/csv-files")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        return Promise.resolve(jsonResponse({ items: [batch], page: 1, page_size: 50, total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            latest_batch_id: "batch_ready",
+            status_breakdown: [],
+            template_breakdown: [],
+            total_batches: 1,
+            total_issues: 0,
+            total_rows: 2
+          })
+        );
+      }
+      if (
+        url.endsWith("/api/v1/modules/master-data/scenario-packs") ||
+        url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches") ||
+        url.endsWith("/api/v1/catalog/macro-objects")
+      ) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data/factory/batches/batch_ready");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "batch_ready" });
+    expect(screen.getByRole("link", { name: "Back to template" })).toHaveAttribute(
+      "href",
+      "/master-data/factory/templates/REGION_TEMPLATE"
+    );
+    expect(screen.getByLabelText("Master Data batch execution workspace")).toHaveTextContent("regions_ready.xlsx");
+    expect(screen.getByLabelText("Batch execution steps")).toHaveTextContent("CSV Package");
+    await userEvent.click(screen.getByRole("button", { name: /3Output/ }));
+    expect(screen.getByRole("button", { name: "Map records" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Map records" })).toHaveAttribute(
+      "title",
+      "Run relationship validation before mapping records."
+    );
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+  });
+
+  it("renders Template Builder search and route-level template actions", async () => {
+    const templates = [
+      {
+        id: "template_region",
+        code: "REGION_TEMPLATE",
+        name: "Region Template",
+        catalog_macro_object_code: "REGION",
+        data_category: "MASTER_DATA",
+        version: 1,
+        status: "PUBLISHED",
+        target_tables: ["REGION"],
+        available_actions: [],
+        sheets: [],
+        description: "Synthetic region template.",
+        created_at: "2026-05-21T01:00:00",
+        updated_at: "2026-05-21T01:00:00"
+      },
+      {
+        id: "template_item",
+        code: "ITEM_TEMPLATE",
+        name: "Item Template",
+        catalog_macro_object_code: "ITEM",
+        data_category: "MASTER_DATA",
+        version: 1,
+        status: "DRAFT",
+        target_tables: ["ITEM"],
+        available_actions: [],
+        sheets: [],
+        description: "Synthetic item template.",
+        created_at: "2026-05-21T01:00:00",
+        updated_at: "2026-05-21T01:00:00"
+      }
+    ];
+    const templateResponse = {
+      items: templates,
+      normalized_filters: [],
+      page: 1,
+      page_size: 50,
+      search_metadata: {
+        fields: [
+          { key: "template_code", label: "Template code" },
+          { key: "template_name", label: "Template name" },
+          { key: "macro_object", label: "Macro object" },
+          { key: "status", label: "Status" }
+        ],
+        operators: ["begins_with", "contains", "one_of", "not_one_of"]
+      },
+      total: 2
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.includes("/api/v1/modules/master-data/templates?")) {
+        expect(url).toContain("template_code=REG");
+        expect(url).toContain("template_code_operator=begins_with");
+        return Promise.resolve(
+          jsonResponse({
+            ...templateResponse,
+            items: [templates[0]],
+            normalized_filters: [{ field: "template_code", operator: "begins_with", value: "REG" }],
+            total: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse(templateResponse));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/scenario-packs")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            latest_batch_id: null,
+            status_breakdown: [],
+            template_breakdown: [],
+            total_batches: 0,
+            total_issues: 0,
+            total_rows: 0
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data/template-builder");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Template Builder" });
+    expect(screen.getByRole("link", { name: "Create template" })).toHaveAttribute("href", "/master-data/template-builder/new");
+    await userEvent.selectOptions(screen.getByLabelText("Template code operator"), "begins_with");
+    await userEvent.type(screen.getByLabelText("Template code filter"), "REG");
+    await userEvent.click(screen.getByRole("button", { name: "Apply template search" }));
+
+    expect(await screen.findByText("template_code begins_with REG")).toBeInTheDocument();
+    expect(screen.getByLabelText("Template Builder templates")).toHaveTextContent("REGION_TEMPLATE");
+    expect(screen.getByRole("link", { name: "View REGION_TEMPLATE" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/REGION_TEMPLATE"
+    );
+    expect(screen.getByRole("link", { name: "Edit REGION_TEMPLATE" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/REGION_TEMPLATE/edit"
+    );
+    expect(screen.getByRole("link", { name: "Copy REGION_TEMPLATE" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/REGION_TEMPLATE/copy"
+    );
+    expect(screen.getByRole("link", { name: "Retire REGION_TEMPLATE" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/REGION_TEMPLATE/delete"
+    );
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+  });
+
+  it("renders focused Template Builder create and edit routes without the legacy workflow", async () => {
+    const draftTemplate = {
+      id: "template_edit",
+      code: "EDIT_TEMPLATE",
+      name: "Editable Template",
+      catalog_macro_object_code: "LOCATION",
+      data_category: "MASTER_DATA",
+      version: 1,
+      status: "DRAFT",
+      target_tables: ["LOCATION", "LOCATION_ADDRESS"],
+      available_actions: [
+        {
+          disabled: false,
+          disabled_reason: null,
+          href: "",
+          icon_key: "check-circle",
+          key: "validate_definition",
+          label: "Validate definition",
+          method: "POST",
+          recommended: true,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        },
+        {
+          disabled: false,
+          disabled_reason: null,
+          href: "",
+          icon_key: "upload-cloud",
+          key: "publish_template",
+          label: "Publish template",
+          method: "POST",
+          recommended: false,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        }
+      ],
+      sheets: [
+        {
+          code: "LOCATIONS",
+          name: "Locations",
+          target_table: "LOCATION",
+          fields: [
+            {
+              name: "location_gid",
+              label: "Location GID",
+              target_column: "LOCATION_GID",
+              required: true
+            }
+          ]
+        }
+      ],
+      definition: {
+        schema_version: "master-data-template-definition/v2",
+        template: {
+          code: "EDIT_TEMPLATE",
+          name: "Editable Template",
+          version: 1,
+          status: "DRAFT",
+          catalog_macro_object_code: "LOCATION",
+          data_category: "MASTER_DATA"
+        },
+        target_tables: [
+          { required: true, sequence: 10, table_name: "LOCATION" },
+          { required: false, sequence: 20, table_name: "LOCATION_ADDRESS" }
+        ],
+        sheets: [{ code: "LOCATIONS", field_keys: ["location_gid"], name: "Locations", sequence: 10 }],
+        fields: [
+          {
+            data_type: "string",
+            field_key: "location_gid",
+            label: "Location GID",
+            required: true,
+            sheet_code: "LOCATIONS"
+          }
+        ],
+        mappings: [
+          {
+            mapping_key: "location_gid_to_location_gid",
+            required: true,
+            source_field_key: "location_gid",
+            source_type: "USER_FIELD",
+            target_column: "LOCATION_GID",
+            target_table: "LOCATION"
+          }
+        ],
+        relationship_rules: [],
+        documentation_refs: [{ note: "Synthetic dictionary basis.", scope: "LOCATION", source_type: "DATA_DICTIONARY" }]
+      },
+      description: "Synthetic editable template.",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [draftTemplate], page: 1, page_size: 50, total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/EDIT_TEMPLATE")) {
+        return Promise.resolve(jsonResponse(draftTemplate));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/EDIT_TEMPLATE/draft")) {
+        expect(init?.method).toBe("PATCH");
+        const body = JSON.parse(String(init?.body));
+        expect(body.code).toBe("EDIT_TEMPLATE");
+        expect(body.target_tables.map((table: { table_name: string }) => table.table_name)).toEqual([
+          "LOCATION",
+          "LOCATION_ADDRESS"
+        ]);
+        return Promise.resolve(jsonResponse(draftTemplate));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/scenario-packs")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (
+        url.endsWith("/api/v1/catalog/macro-objects") ||
+        url.endsWith("/api/v1/modules/master-data/batches") ||
+        url.endsWith("/api/v1/modules/master-data/batches/summary") ||
+        url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches")
+      ) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data/template-builder/new");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "New template" });
+    expect(screen.getByLabelText("Template Builder new template workspace")).toHaveTextContent("Template basics");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+
+    renderApp("/master-data/template-builder/EDIT_TEMPLATE/edit");
+    await screen.findByRole("heading", { name: "EDIT_TEMPLATE" });
+    expect(screen.getByRole("link", { name: "Back to Template Detail" })).toHaveAttribute(
+      "href",
+      "/master-data/template-builder/EDIT_TEMPLATE"
+    );
+    expect(screen.getByLabelText("Template Builder target table editor")).toHaveTextContent("LOCATION_ADDRESS");
+    expect(screen.getByLabelText("Template Builder field editor")).toHaveTextContent("LOCATION_GID");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Selected Master Data template")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await screen.findByText("Draft EDIT_TEMPLATE saved.");
+  });
+
+  it("creates a Template Builder copy from a dedicated route and opens the copied draft for editing", async () => {
+    const sourceTemplate = {
+      id: "template_copy_source",
+      code: "COPY_SOURCE",
+      name: "Copy Source Template",
+      catalog_macro_object_code: "LOCATION",
+      data_category: "MASTER_DATA",
+      version: 1,
+      status: "PUBLISHED",
+      target_tables: ["LOCATION", "LOCATION_ADDRESS"],
+      available_actions: [
+        {
+          disabled: false,
+          disabled_reason: null,
+          href: "",
+          icon_key: "copy",
+          key: "create_version",
+          label: "Create next version",
+          method: "POST",
+          recommended: false,
+          requires_confirmation: false,
+          result_hint: "refresh_object",
+          variant: "secondary"
+        }
+      ],
+      sheets: [],
+      definition: {
+        schema_version: "master-data-template-definition/v2",
+        template: {
+          code: "COPY_SOURCE",
+          name: "Copy Source Template",
+          version: 1,
+          status: "PUBLISHED",
+          catalog_macro_object_code: "LOCATION",
+          data_category: "MASTER_DATA"
+        },
+        target_tables: [
+          { required: true, sequence: 10, table_name: "LOCATION" },
+          { required: false, sequence: 20, table_name: "LOCATION_ADDRESS" }
+        ],
+        sheets: [{ code: "LOCATIONS", field_keys: ["location_gid"], name: "Locations", sequence: 10 }],
+        fields: [
+          {
+            data_type: "string",
+            field_key: "location_gid",
+            label: "Location GID",
+            required: true,
+            sheet_code: "LOCATIONS"
+          }
+        ],
+        mappings: [
+          {
+            mapping_key: "location_gid_to_location_gid",
+            required: true,
+            source_field_key: "location_gid",
+            source_type: "USER_FIELD",
+            target_column: "LOCATION_GID",
+            target_table: "LOCATION"
+          }
+        ],
+        relationship_rules: [
+          {
+            rule_key: "location_address_parent",
+            severity: "ERROR"
+          }
+        ],
+        documentation_refs: [{ note: "Synthetic dictionary basis.", scope: "LOCATION", source_type: "DATA_DICTIONARY" }]
+      },
+      description: "Synthetic template to copy.",
+      created_at: "2026-05-21T01:00:00",
+      updated_at: "2026-05-21T01:00:00"
+    };
+    const copiedTemplate = {
+      ...sourceTemplate,
+      id: "template_copy_created",
+      code: "COPY_SOURCE_CUSTOM",
+      name: "Copy Source Template",
+      version: 2,
+      status: "DRAFT",
+      definition: {
+        ...sourceTemplate.definition,
+        template: {
+          ...sourceTemplate.definition.template,
+          code: "COPY_SOURCE_CUSTOM",
+          status: "DRAFT",
+          version: 2
+        }
+      }
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }],
+            page: 1,
+            page_size: 50,
+            total: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [sourceTemplate, copiedTemplate], page: 1, page_size: 50, total: 2 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/COPY_SOURCE")) {
+        return Promise.resolve(jsonResponse(sourceTemplate));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/COPY_SOURCE_CUSTOM")) {
+        return Promise.resolve(jsonResponse(copiedTemplate));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates/COPY_SOURCE/versions")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ new_code: "COPY_SOURCE_CUSTOM" });
+        return Promise.resolve(jsonResponse(copiedTemplate));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/scenario-packs")) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      if (
+        url.endsWith("/api/v1/catalog/macro-objects") ||
+        url.endsWith("/api/v1/modules/master-data/batches") ||
+        url.endsWith("/api/v1/modules/master-data/batches/summary") ||
+        url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches")
+      ) {
+        return Promise.resolve(jsonResponse({ items: [], page: 1, page_size: 50, total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/master-data/template-builder/COPY_SOURCE/copy");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "COPY_SOURCE" });
+    expect(screen.getByLabelText("Template Builder copy route")).toHaveTextContent("New template header");
+    expect(screen.getByLabelText("Copy tables")).toBeChecked();
+    expect(screen.getByLabelText("Copy fields")).toBeChecked();
+    expect(screen.getByLabelText("Copy relationship rules")).toBeChecked();
+    expect(screen.getByLabelText("Template copy scope preview")).toHaveTextContent("2 target table(s)");
+
+    await userEvent.clear(screen.getByLabelText("New template code"));
+    await userEvent.type(screen.getByLabelText("New template code"), "copy_source_custom");
+    await userEvent.click(screen.getByRole("button", { name: "Create copy" }));
+
+    await screen.findByText("Copy COPY_SOURCE_CUSTOM created.");
+    expect(await screen.findByRole("heading", { name: "COPY_SOURCE_CUSTOM" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Template Builder edit route")).toHaveTextContent("Header and definition controls");
   });
 
   it("renders Master Data as a focused hub before entering factory workflows", async () => {

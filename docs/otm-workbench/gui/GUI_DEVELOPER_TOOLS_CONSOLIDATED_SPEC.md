@@ -477,6 +477,139 @@ Slice 6: Optional guarded OTM Explorer / Oracle Lab
   - Implement only after security review and explicit governance approval.
 ```
 
+2026-05-26 Slice 1A delivered:
+
+```text
+/dev-tools no longer renders the generic module placeholder.
+The route opens a dedicated Technical Diagnostics Hub with a backend-gated
+status summary, clear contract-pending state, backend gate checklist, and no
+diagnostic tool panels before backend-owned summary contracts exist.
+Browser QA enables the backend `dev_tools` feature flag, opens the route,
+verifies the guarded state, rejects the old generic placeholder, and captures
+output/gui-qa/developer-tools/01-developer-tools-guarded-hub.png.
+```
+
+2026-05-26 Slice 2A delivered:
+
+```text
+GET /api/v1/platform/dev-tools/summary now returns the backend-owned hub
+contract for authorized admin/technical users when the dev_tools feature flag is
+enabled.
+The contract includes active context, guard reasons, available and disabled
+tools, disabled reasons, counts, and recent diagnostic runs without raw input or
+result payloads.
+/dev-tools consumes that summary and renders a compact hub: metrics, backend
+gate rows, available/disabled tool rows, and recent run metadata. It still does
+not render real tool panels or SQL/OTM explorer actions before dedicated route
+contracts exist.
+Browser QA seeds synthetic context and a safe dev_tools DEMO_ECHO run, opens the
+route, verifies backend summary rows, rejects the old generic placeholder, and
+captures output/gui-qa/developer-tools/01-developer-tools-guarded-hub.png.
+```
+
+2026-05-26 Slice 3A delivered:
+
+```text
+GET /api/v1/platform/dev-tools/data-dictionary now returns a read-only,
+client-safe Data Dictionary table list guarded by admin access and the
+dev_tools feature flag.
+GET /api/v1/platform/dev-tools/data-dictionary/tables/{table_name} returns
+backend-owned table detail plus columns without exposing local file paths.
+/dev-tools renders backend-owned tool rows as explicit route links. The Data
+Dictionary Explorer opens at /dev-tools/data-dictionary, supports URL-owned
+query state such as ?query=rate_geo, shows compact table metadata, and includes
+a visible Back to Developer Tools route.
+The list view intentionally stays compact: descriptions and deeper column
+inspection remain backend-owned detail scope rather than crowding the first
+explorer screen.
+Browser QA now clicks from the hub into the explorer, verifies filtered
+RATE_GEO_COST metadata, checks console/HTTP health, and captures desktop plus
+mobile evidence:
+output/gui-qa/developer-tools/01-developer-tools-guarded-hub.png
+output/gui-qa/developer-tools/02-data-dictionary-explorer.png
+output/gui-qa/developer-tools/03-data-dictionary-explorer-mobile.png.
+```
+
+2026-05-26 Slice 3B delivered:
+
+```text
+/dev-tools/data-dictionary now renders each table row with an explicit Open
+table action.
+/dev-tools/data-dictionary/tables/{table_name} is now a route-level table
+detail UI consuming the existing backend table-detail contract. It shows table
+description, column count, foreign-key count, data category, CSVUTIL readiness,
+compact column metadata, source contract, backend-owned guardrails, and a
+visible Back to Data Dictionary route.
+The column list is intentionally capped to the first 40 visible rows with a
+showing-count summary so wide Data Dictionary tables do not overload the first
+detail screen. Backend still returns the full column contract; richer filtering
+or pagination remains a follow-up scope.
+Browser QA now opens RATE_GEO_COST from the explorer, verifies loaded column
+metadata, checks console/HTTP health, and captures desktop plus mobile evidence:
+output/gui-qa/developer-tools/03-data-dictionary-table-detail.png
+output/gui-qa/developer-tools/04-data-dictionary-table-detail-mobile.png.
+```
+
+2026-05-26 Slice 3C delivered:
+
+```text
+GET /api/v1/platform/dev-tools/fk-catalog?source_table=... now returns a
+client-safe foreign-key relationship list for a source table, guarded by admin
+access and the dev_tools feature flag. Missing source tables return a
+Developer Tools-specific not-found error, and the payload exposes no local Data
+Dictionary file paths.
+/dev-tools/fk-catalog is now a dedicated route-level FK Catalog Explorer. It
+defaults to RATE_GEO_COST when no source_table query parameter is supplied,
+shows relationship totals, caps the visible list to 12 rows with a showing-count
+summary, links each parent table to the Data Dictionary table detail route, and
+keeps a visible Back to Developer Tools route.
+Browser QA verifies the hub FK Catalog link, direct FK Catalog route recovery,
+relationship metadata, parent-table links, console/HTTP health, and captures
+desktop plus mobile evidence:
+output/gui-qa/developer-tools/05-fk-catalog-explorer.png
+output/gui-qa/developer-tools/06-fk-catalog-explorer-mobile.png.
+```
+
+2026-05-26 Slice 3D delivered:
+
+```text
+GET /api/v1/platform/dev-tools/schema-packs now returns client-safe
+schema-pack diagnostics from Catalog Core, guarded by admin access and the
+dev_tools feature flag. The route supports otm_version, code, status, and limit
+filters so browser QA can isolate a synthetic pack without exposing local source
+folders or schema paths.
+/dev-tools/schema-packs is now a dedicated route-level Schema Pack Diagnostics
+screen. It shows pack/root counts, OTM version, governed schema roots, source
+contract, backend-owned guardrails, and a visible Back to Developer Tools route.
+The UI intentionally stays read-only and compact; deep path browsing remains in
+Catalog Core schema guidance and product-facing authoring remains in Integration
+Mapping or Order Release.
+Browser QA seeds a synthetic schema pack through Catalog Core APIs, indexes it,
+opens the Developer Tools route, verifies the schema root metadata, checks
+console/HTTP health, and captures desktop plus mobile evidence:
+output/gui-qa/developer-tools/07-schema-pack-diagnostics.png
+output/gui-qa/developer-tools/08-schema-pack-diagnostics-mobile.png.
+```
+
+2026-05-26 Slice 3E delivered:
+
+```text
+GET /api/v1/platform/dev-tools/environment-readiness now returns a
+client-safe readiness view for the active implementation context, guarded by
+admin access and the dev_tools feature flag. The payload exposes active-context
+checks, active environment id, safe environment names/types/statuses, counts,
+and the source contract without OTM connection details or credentials.
+/dev-tools/environment-readiness is now a dedicated route-level Environment
+Readiness screen. It shows environment, ready-check, and blocked-check metrics,
+readiness checks, active environment scope, domain scope, source contract, and
+a visible Back to Developer Tools route.
+Browser QA opens the route from the seeded active context, verifies active
+environment/domain readiness, checks console/HTTP health, and captures desktop
+plus mobile evidence:
+output/gui-qa/developer-tools/09-environment-readiness.png
+output/gui-qa/developer-tools/10-environment-readiness-mobile.png.
+```
+
 ## 13. Acceptance Criteria
 
 Developer Tools can be considered accepted when:

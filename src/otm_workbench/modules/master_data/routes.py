@@ -381,6 +381,53 @@ def master_data_submit_guard_error(batch_id: str, readiness: dict[str, object]):
     )
 
 
+MASTER_DATA_TEMPLATE_SEARCH_OPERATORS = ["begins_with", "contains", "one_of", "not_one_of"]
+
+
+def normalize_master_data_template_search_operator(operator: str) -> str:
+    normalized = operator.strip().lower().replace(" ", "_").replace("-", "_")
+    if normalized not in MASTER_DATA_TEMPLATE_SEARCH_OPERATORS:
+        return "contains"
+    return normalized
+
+
+def master_data_template_search_metadata() -> dict[str, object]:
+    return {
+        "fields": [
+            {"key": "template_code", "label": "Template code"},
+            {"key": "template_name", "label": "Template name"},
+            {"key": "macro_object", "label": "Macro object"},
+            {"key": "status", "label": "Status"},
+        ],
+        "operators": MASTER_DATA_TEMPLATE_SEARCH_OPERATORS,
+    }
+
+
+def master_data_template_search_value(template: MasterDataTemplate, field: str) -> str:
+    if field == "template_code":
+        return template.code
+    if field == "template_name":
+        return template.name
+    if field == "macro_object":
+        return template.catalog_macro_object_code
+    if field == "status":
+        return template.status
+    return ""
+
+
+def master_data_template_matches_filter(template: MasterDataTemplate, field: str, operator: str, value: str) -> bool:
+    candidate = master_data_template_search_value(template, field).lower()
+    normalized_value = value.lower()
+    values = [item.strip().lower() for item in normalized_value.split(",") if item.strip()]
+    if operator == "begins_with":
+        return candidate.startswith(normalized_value)
+    if operator == "one_of":
+        return candidate in values
+    if operator == "not_one_of":
+        return candidate not in values
+    return normalized_value in candidate
+
+
 @router.get("/health")
 def master_data_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "master_data", "catalog_macro_object_code": "REGION"}
@@ -388,13 +435,47 @@ def master_data_health(user: User = Depends(require_user)):
 
 @router.get("/templates")
 def list_master_data_templates(
+    template_code: str | None = None,
+    template_code_operator: str = "contains",
+    template_name: str | None = None,
+    template_name_operator: str = "contains",
+    macro_object: str | None = None,
+    macro_object_operator: str = "contains",
+    status: str | None = None,
+    status_operator: str = "contains",
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     seed_master_data_templates(db)
     templates = db.query(MasterDataTemplate).order_by(MasterDataTemplate.code).all()
+    filters = [
+        ("template_code", template_code_operator, template_code),
+        ("template_name", template_name_operator, template_name),
+        ("status", status_operator, status),
+        ("macro_object", macro_object_operator, macro_object),
+    ]
+    normalized_filters = [
+        {"field": field, "operator": normalize_master_data_template_search_operator(operator), "value": value.strip()}
+        for field, operator, value in filters
+        if value and value.strip()
+    ]
+    for normalized_filter in normalized_filters:
+        templates = [
+            template
+            for template in templates
+            if master_data_template_matches_filter(
+                template,
+                normalized_filter["field"],
+                normalized_filter["operator"],
+                normalized_filter["value"],
+            )
+        ]
     items = [serialize_master_data_template(template) for template in templates]
-    return PageResponse(items=items, total=len(items))
+    return {
+        **PageResponse(items=items, total=len(items)).model_dump(),
+        "normalized_filters": normalized_filters,
+        "search_metadata": master_data_template_search_metadata(),
+    }
 
 
 @router.get("/scenario-packs")

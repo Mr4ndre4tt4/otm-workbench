@@ -205,7 +205,76 @@ async function run() {
     });
     await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-entry.png` });
 
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Author" }).click();
+    await page.getByLabel("Template code operator").selectOption("begins_with");
+    await page.getByLabel("Template code filter").fill("REG");
+    await page.getByRole("button", { name: "Apply template search" }).click();
+    await waitForVisibleOrThrow(
+      page,
+      page.getByLabel("Template Builder applied filters").getByText("template_code begins_with REG"),
+      "Template Builder applied search filter",
+      { consoleErrors, failedResponses }
+    );
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-search.png` });
+    await page.getByRole("link", { name: "View REGIONS_BASIC", exact: true }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }), "Template Builder detail route", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-detail.png` });
+    await page.getByRole("link", { name: "Copy" }).click();
+    await waitForVisibleOrThrow(page, page.getByLabel("Template Builder copy route"), "Template Builder copy route", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByLabel("New template code").fill(`REGIONS_BASIC_COPY_${runId}`);
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-copy.png` });
+    await page.getByRole("button", { name: "Create copy" }).click();
+    await waitForVisibleOrThrow(
+      page,
+      page.getByRole("heading", { name: `REGIONS_BASIC_COPY_${runId}`, exact: true }),
+      "Template Builder copied draft edit route",
+      { consoleErrors, failedResponses }
+    );
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-copy-created.png` });
+    await page.goto(`${baseUrl}/master-data/template-builder/REGIONS_BASIC`, { waitUntil: "domcontentloaded" });
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }), "Template Builder original detail recovery", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByRole("link", { name: "Edit" }).click();
+    await waitForVisibleOrThrow(page, page.getByLabel("Template Builder edit route"), "Template Builder edit route", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-edit.png` });
+    await page.getByRole("link", { name: "Back to Template Detail" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }), "Template Builder detail route recovery", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByRole("link", { name: "Retire" }).click();
+    await waitForVisibleOrThrow(page, page.getByLabel("Template Builder retire route"), "Template Builder retire route", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-retire.png` });
+    await page.getByRole("link", { name: "Back to Template Detail" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }), "Template Builder detail route after retire", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByRole("link", { name: "Back to Template Builder" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "Template Builder", exact: true }), "Template Builder list recovery", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.getByRole("button", { name: "Clear template search" }).click();
+    await page.getByRole("link", { name: "Create template" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "New template", exact: true }), "Template Builder new template route", {
+      consoleErrors,
+      failedResponses
+    });
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/02-template-builder-new.png` });
     await page.getByLabel("Master Data scenario pack").selectOption("LOCATION_OPERATIONAL");
     await waitForVisibleOrThrow(
       page,
@@ -319,11 +388,7 @@ async function run() {
     });
     await page.screenshot({ fullPage: true, path: `${screenshotDir}/03-data-factory-entry.png` });
     await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
-    await page
-      .getByLabel("Master Data templates")
-      .locator(".module-row")
-      .filter({ hasText: "REGIONS_BASIC" })
-      .click();
+    await page.getByLabel("Master Data templates").getByRole("button", { name: /^REGIONS_BASIC\s/ }).click();
     await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
     await page.screenshot({ fullPage: true, path: `${screenshotDir}/04-template-detail-regions-basic.png` });
 
@@ -349,11 +414,7 @@ async function run() {
     await page.getByRole("link", { name: "Back to Data Factory" }).click();
     await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Templates" }).click();
-    await page
-      .getByLabel("Master Data templates")
-      .locator(".module-row")
-      .filter({ hasText: "REGIONS_BASIC" })
-      .click();
+    await page.getByLabel("Master Data templates").getByRole("button", { name: /^REGIONS_BASIC\s/ }).click();
     await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
 
     await page.getByRole("button", { name: "Validate edited rows" }).click();
@@ -366,49 +427,61 @@ async function run() {
     await page.getByLabel("REGION_DETAILS row 1 Location GID").fill("SYN.LOCATION_EDITOR");
     await page.getByRole("button", { name: "Create batch from edited rows" }).click();
     await page.getByText(/^Workbook editor batch .+ created\.$/).waitFor();
+    await page.waitForURL(/\/master-data\/factory\/batches\/.+/);
+    await page.getByLabel("Master Data batch execution workspace").waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/05-batch-detail-input.png` });
 
     await page.locator(".master-data-workflow-step").filter({ hasText: "Validate" }).click();
     await page.getByRole("button", { name: "Validate relationships" }).click();
     await page.getByText(/^Relationship validation is (VALID|RELATIONSHIP_VALIDATED)\.$/).waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/06-batch-detail-validated.png` });
 
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Map" }).click();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
     await page.getByRole("button", { name: "Map records" }).click();
     await page.getByText("Batch mapping is MAPPED.").waitFor();
 
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
-    const outputPanel = page.getByLabel("Output and export workflow");
+    const outputPanel = page.getByLabel("Batch output step");
     await outputPanel.getByRole("button", { name: "Build output" }).click();
     await page.getByText("Output build is OUTPUT_BUILT.").waitFor();
     await page.getByLabel("Master Data output record preview").getByText("REGION").first().waitFor();
-    await outputPanel.getByRole("button", { name: "Build CSV" }).click();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "CSV Package" }).click();
+    const csvPanel = page.getByLabel("Batch CSV package step");
+    await csvPanel.getByRole("button", { name: "Build CSV" }).click();
     await page.getByText("CSV build is CSV_BUILT.").waitFor();
     await page.getByLabel("Master Data CSV file preview").getByText("001_REGION.csv").waitFor();
-    await outputPanel.getByRole("button", { name: "Export package" }).click();
+    await csvPanel.getByRole("button", { name: "Export package" }).click();
     await page.getByText("CSV package export is EXPORTED.").waitFor();
     await page.getByLabel("Export package summary").waitFor();
-    await outputPanel.getByRole("button", { name: "Verify OTM import guard" }).click();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/07-batch-detail-csv-package.png` });
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Load Plan" }).click();
+    const loadPlanPanel = page.getByLabel("Batch Load Plan step");
+    await loadPlanPanel.getByRole("button", { name: "Verify OTM import guard" }).click();
     await page.getByText("OTM import readiness is GUARDED.").waitFor();
     await page.getByLabel("Master Data OTM import guard").getByText("master_data.submit_otm").waitFor();
     await page.getByLabel("Master Data OTM import guard").getByText("CSVUTIL_UPLOAD_OR_INTEGRATION").waitFor();
     await page.getByText("OTM_CONNECTION_NOT_CONFIGURED").waitFor();
     await page.getByText("OTM_CREDENTIALS_NOT_CONFIGURED").waitFor();
     await page.getByText("OTM_SUBMIT_CAPABILITY_DISABLED").waitFor();
-    await outputPanel.getByRole("button", { name: "Attempt guarded OTM import" }).click();
+    await loadPlanPanel.getByRole("button", { name: "Attempt guarded OTM import" }).click();
     await page
       .getByText(
         "Direct Master Data OTM import is disabled until governed connection, credential, environment, and capability controls are configured."
       )
       .waitFor();
-    await outputPanel.getByRole("button", { name: "Register for Load Plan" }).click();
+    await loadPlanPanel.getByRole("button", { name: "Register in Load Plan" }).click();
     await page.getByText(/^Load Plan package .+ registered\.$/).waitFor();
     await page.getByLabel("Load Plan package registration").getByText("master_data_csv_zip").waitFor();
-    await outputPanel.getByRole("button", { name: "Create cutover checklist" }).click();
+    await loadPlanPanel.getByRole("button", { name: "Create cutover checklist" }).click();
     await page.getByText(/^Cutover checklist .+ created\.$/).waitFor();
     await page.getByLabel("Cutover checklist handoff").getByText(/item\(s\)/).waitFor();
-    await outputPanel.getByRole("button", { name: "Generate checklist readiness" }).click();
+    await loadPlanPanel.getByRole("button", { name: "Generate checklist readiness" }).click();
     await page.getByText(/^Cutover checklist readiness is .+\.$/).waitFor();
     await page.getByLabel("Cutover checklist readiness handoff").waitFor();
     await page.getByText("Cutover checklist readiness blockers").waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/08-batch-detail-load-plan.png` });
+    await page.getByRole("link", { name: "Back to template" }).click();
+    await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
+    await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
     await page.getByLabel("Template filter").selectOption("REGIONS_BASIC");
     await page.getByLabel("Batch status filter").selectOption("EXPORTED");
     await page.getByLabel("Batch file name filter").fill("regions");
@@ -431,11 +504,7 @@ async function run() {
     await page.getByRole("heading", { name: "Master Data", exact: true }).waitFor();
     await page.getByRole("link", { name: "Open Data Factory" }).click();
     await page.getByRole("heading", { name: "Data Factory", exact: true }).waitFor();
-    await page
-      .getByLabel("Master Data templates")
-      .locator(".module-row")
-      .filter({ hasText: "REGIONS_BASIC" })
-      .click();
+    await page.getByLabel("Master Data templates").getByRole("button", { name: /^REGIONS_BASIC\s/ }).click();
     await page.getByRole("heading", { name: "REGIONS_BASIC", exact: true }).waitFor();
     await page.locator(".master-data-workflow-step").filter({ hasText: "Output" }).click();
     await page.getByLabel("Durable Master Data batches").getByText("REGIONS_BASIC", { exact: true }).first().waitFor();

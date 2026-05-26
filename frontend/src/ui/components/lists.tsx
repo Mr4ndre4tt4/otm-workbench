@@ -81,6 +81,7 @@ export function ModuleObjectList({
 }
 
 export type DetailListItem = {
+  action?: ReactNode;
   id: string;
   meta: Array<number | string>;
   status?: string;
@@ -91,16 +92,18 @@ type DetailListProps = {
   ariaLabel: string;
   emptyText?: string;
   items: DetailListItem[];
+  maxVisibleItems?: number;
 };
 
-export function DetailList({ ariaLabel, emptyText = "No detail rows available.", items }: DetailListProps) {
+export function DetailList({ ariaLabel, emptyText = "No detail rows available.", items, maxVisibleItems }: DetailListProps) {
   if (!items.length) {
     return <p className="empty-text">{emptyText}</p>;
   }
+  const visible = limitedItems(items, maxVisibleItems);
 
   return (
     <div className="table-list" aria-label={ariaLabel}>
-      {items.map((item) => (
+      {visible.items.map((item) => (
         <div className="table-list-item" key={item.id}>
           <strong className="table-list-main">{item.title}</strong>
           <div className="table-list-meta">
@@ -108,9 +111,16 @@ export function DetailList({ ariaLabel, emptyText = "No detail rows available.",
               <span key={`${item.id}-${index}`}>{value}</span>
             ))}
           </div>
-          <div className="table-list-status">{item.status ? <StatusChip status={item.status} /> : null}</div>
+          <div className="table-list-status">
+            {item.action ?? (item.status ? <StatusChip status={item.status} /> : null)}
+          </div>
         </div>
       ))}
+      {visible.items.length < items.length ? (
+        <p className="list-density-summary">
+          Showing {visible.items.length} of {items.length}
+        </p>
+      ) : null}
     </div>
   );
 }

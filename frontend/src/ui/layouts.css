@@ -100,7 +100,8 @@
 .metric strong {
   display: block;
   margin-top: 8px;
-  font-size: 28px;
+  font-size: 24px;
+  line-height: 1.15;
 }
 
 .activity-layout {

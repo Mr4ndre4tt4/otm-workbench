@@ -10,11 +10,15 @@
 }
 
 .button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   min-height: 38px;
   min-width: 92px;
   padding: 0 14px;
   line-height: 1.2;
   overflow-wrap: normal;
+  text-decoration: none;
   word-break: normal;
 }
 

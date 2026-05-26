@@ -1,9 +1,21 @@
+from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
+from otm_workbench.catalog.services import (
+    list_dictionary_tables,
+    list_schema_packs,
+    list_schema_roots,
+    safe_load_table,
+    serialize_columns,
+    serialize_schema_pack,
+    serialize_schema_root,
+    serialize_table_definition,
+)
+from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.models import (
@@ -36,10 +48,14 @@ from otm_workbench.platform.jobs import (
     serialize_job,
     serialize_job_event,
 )
-from otm_workbench.platform.navigation import navigation_items, registered_modules
+from otm_workbench.platform.navigation import flag_enabled, navigation_items, registered_modules
 from otm_workbench.platform.services import authenticate, create_session, file_sha256, resolve_artifact_storage_path
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
+
+
+def dictionary_root() -> Path:
+    return Path(get_settings().otm_data_dictionary_root)
 
 
 class LoginRequest(BaseModel):
@@ -266,6 +282,25 @@ def serialize_cockpit_job(job: Job) -> dict[str, object]:
     }
 
 
+def serialize_dev_tools_run(job: Job) -> dict[str, object]:
+    return {
+        "id": job.id,
+        "job_type": job.job_type,
+        "source_module": job.source_module,
+        "project_id": job.project_id,
+        "profile_id": job.profile_id,
+        "environment_id": job.environment_id,
+        "domain_name": job.domain_name,
+        "status": job.status,
+        "progress": job.progress,
+        "message": job.message,
+        "input_present": bool(parse_json_object(job.input_json)),
+        "result_present": bool(parse_json_object(job.result_json)),
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+    }
+
+
 def serialize_cockpit_artifact(artifact: Artifact) -> dict[str, object]:
     return {
         "id": artifact.id,
@@ -387,6 +422,308 @@ def project_cockpit_summary_payload(db: Session, user: User) -> dict[str, object
                 icon_key="evidence",
             ),
         ],
+    }
+
+
+def dev_tools_summary_payload(db: Session, user: User) -> dict[str, object]:
+    if not flag_enabled(db, "dev_tools"):
+        raise api_error(403, "DEV_TOOLS_DISABLED", "Developer Tools is disabled by feature flag.")
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    active_context_payload = serialize_active_context(active_context, user)
+    project_id = active_context.project_id if active_context else None
+    recent_runs_query = db.query(Job).filter(Job.source_module == "dev_tools")
+    if project_id:
+        recent_runs_query = recent_runs_query.filter(Job.project_id == project_id)
+    recent_runs = recent_runs_query.order_by(Job.created_at.desc()).limit(5).all()
+    tools = [
+        {
+            "key": "data_dictionary",
+            "label": "Data Dictionary Explorer",
+            "status": "AVAILABLE",
+            "href": "/dev-tools/data-dictionary",
+            "required_capability": "dev_tools.data_dictionary.view",
+            "disabled_reason": None,
+        },
+        {
+            "key": "fk_catalog",
+            "label": "FK Catalog Explorer",
+            "status": "AVAILABLE",
+            "href": "/dev-tools/fk-catalog",
+            "required_capability": "dev_tools.fk_catalog.view",
+            "disabled_reason": None,
+        },
+        {
+            "key": "schema_packs",
+            "label": "Schema Pack Diagnostics",
+            "status": "AVAILABLE",
+            "href": "/dev-tools/schema-packs",
+            "required_capability": "dev_tools.schema_packs.view",
+            "disabled_reason": None,
+        },
+        {
+            "key": "environment_readiness",
+            "label": "Environment Readiness",
+            "status": "AVAILABLE",
+            "href": "/dev-tools/environment-readiness",
+            "required_capability": "dev_tools.environment_readiness.view",
+            "disabled_reason": None,
+        },
+        {
+            "key": "otm_explorer",
+            "label": "Guarded OTM Explorer",
+            "status": "DISABLED",
+            "href": None,
+            "required_capability": "dev_tools.otm_explorer.view",
+            "disabled_reason": "Requires approved governed OTM connection and masking contract.",
+        },
+        {
+            "key": "oracle_lab",
+            "label": "Oracle Lab",
+            "status": "DISABLED",
+            "href": None,
+            "required_capability": "dev_tools.oracle_lab.run",
+            "disabled_reason": "Disabled until governance approves SQL lab execution.",
+        },
+    ]
+    available_tools = [tool for tool in tools if tool["status"] == "AVAILABLE"]
+    disabled_tools = [tool for tool in tools if tool["status"] == "DISABLED"]
+    return {
+        "module_id": "dev_tools",
+        "title": "Technical Diagnostics Hub",
+        "status": "guarded",
+        "description": "Controlled technical diagnostics for authorized implementation support users.",
+        "active_context": active_context_payload,
+        "guards": [
+            {
+                "key": "feature_flag",
+                "label": "Feature flag",
+                "status": "READY",
+                "message": "dev_tools is enabled.",
+            },
+            {
+                "key": "capability",
+                "label": "Capability",
+                "status": "READY",
+                "message": "Admin access authorizes technical diagnostics.",
+            },
+            {
+                "key": "safe_output",
+                "label": "Safe output",
+                "status": "READY",
+                "message": "Summary returns metadata only; raw inputs and results stay hidden.",
+            },
+        ],
+        "counts": {
+            "available_tools": len(available_tools),
+            "disabled_tools": len(disabled_tools),
+            "recent_runs": len(recent_runs),
+        },
+        "tools": tools,
+        "recent_runs": [serialize_dev_tools_run(job) for job in recent_runs],
+    }
+
+
+def require_dev_tools_enabled(db: Session) -> None:
+    if not flag_enabled(db, "dev_tools"):
+        raise api_error(403, "DEV_TOOLS_DISABLED", "Developer Tools is disabled by feature flag.")
+
+
+def dev_tools_data_dictionary_payload(
+    db: Session,
+    user: User,
+    *,
+    query: str | None,
+    limit: int,
+) -> dict[str, object]:
+    require_dev_tools_enabled(db)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    items, total = list_dictionary_tables(dictionary_root(), query=query, limit=limit)
+    return {
+        "module_id": "dev_tools",
+        "tool_key": "data_dictionary",
+        "title": "Data Dictionary Explorer",
+        "status": "ready",
+        "description": "Read-only technical table metadata from the backend Data Dictionary.",
+        "query": query or "",
+        "limit": limit,
+        "total": total,
+        "source_contract": "/api/v1/catalog/tables",
+        "active_context": serialize_active_context(active_context, user),
+        "items": items,
+    }
+
+
+def dev_tools_data_dictionary_table_payload(db: Session, user: User, table_name: str) -> dict[str, object]:
+    require_dev_tools_enabled(db)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    definition = safe_load_table(dictionary_root(), table_name)
+    if definition is None:
+        raise api_error(404, "DEV_TOOLS_DATA_DICTIONARY_TABLE_NOT_FOUND", "Data Dictionary table not found.")
+    columns = serialize_columns(definition)
+    return {
+        "module_id": "dev_tools",
+        "tool_key": "data_dictionary",
+        "title": "Data Dictionary Table Detail",
+        "status": "ready",
+        "source_contract": "/api/v1/catalog/tables/{table_name}",
+        "active_context": serialize_active_context(active_context, user),
+        "table": serialize_table_definition(definition),
+        "columns": columns,
+        "column_total": len(columns),
+    }
+
+
+def dev_tools_fk_catalog_payload(
+    db: Session,
+    user: User,
+    *,
+    source_table: str,
+    limit: int,
+) -> dict[str, object]:
+    require_dev_tools_enabled(db)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    normalized_table = source_table.strip().upper()
+    definition = safe_load_table(dictionary_root(), normalized_table)
+    if definition is None:
+        raise api_error(404, "DEV_TOOLS_FK_SOURCE_TABLE_NOT_FOUND", "FK Catalog source table not found.")
+    max_items = max(1, min(limit, 200))
+    items = [
+        {
+            "source_table_name": definition.table_name,
+            "column_name": foreign_key.column_name,
+            "parent_table_name": foreign_key.parent_table_name,
+            "parent_column_name": foreign_key.parent_column_name,
+            "relationship_type": "FOREIGN_KEY",
+            "parent_table_href": f"/dev-tools/data-dictionary/tables/{foreign_key.parent_table_name}",
+        }
+        for foreign_key in definition.foreign_keys[:max_items]
+    ]
+    return {
+        "module_id": "dev_tools",
+        "tool_key": "fk_catalog",
+        "title": "FK Catalog Explorer",
+        "status": "ready",
+        "description": "Read-only foreign-key relationships from the backend Data Dictionary.",
+        "source_table": definition.table_name,
+        "limit": limit,
+        "total": len(definition.foreign_keys),
+        "source_contract": f"/api/v1/catalog/tables/{definition.table_name}",
+        "active_context": serialize_active_context(active_context, user),
+        "items": items,
+    }
+
+
+def dev_tools_schema_packs_payload(
+    db: Session,
+    user: User,
+    *,
+    otm_version: str | None,
+    code: str | None,
+    status: str | None,
+    limit: int,
+) -> dict[str, object]:
+    require_dev_tools_enabled(db)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    max_items = max(1, min(limit, 100))
+    packs = list_schema_packs(db, otm_version=otm_version, status=status)
+    if code:
+        normalized_code = code.upper()
+        packs = [pack for pack in packs if pack.code == normalized_code]
+    items = []
+    for pack in packs[:max_items]:
+        roots = list_schema_roots(db, schema_pack_id=pack.id)
+        pack_payload = serialize_schema_pack(pack)
+        pack_payload["root_preview"] = [serialize_schema_root(root) for root in roots[:5]]
+        pack_payload["root_total"] = len(roots)
+        items.append(pack_payload)
+    return {
+        "module_id": "dev_tools",
+        "tool_key": "schema_packs",
+        "title": "Schema Pack Diagnostics",
+        "status": "ready",
+        "description": "Read-only WSDL/XSD schema-pack diagnostics from Catalog Core.",
+        "otm_version": otm_version.upper() if otm_version else "",
+        "code": code.upper() if code else "",
+        "filter_status": status.upper() if status else "",
+        "limit": max_items,
+        "total": len(packs),
+        "source_contract": "/api/v1/catalog/schema-packs",
+        "root_contract": "/api/v1/catalog/schema-roots",
+        "active_context": serialize_active_context(active_context, user),
+        "items": items,
+    }
+
+
+def dev_tools_environment_readiness_payload(db: Session, user: User) -> dict[str, object]:
+    require_dev_tools_enabled(db)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    active_context_payload = serialize_active_context(active_context, user)
+    project_id = active_context.project_id if active_context else None
+    active_environment_id = active_context.environment_id if active_context else None
+    environments = []
+    if project_id:
+        environment_rows = db.query(Environment).filter(Environment.project_id == project_id).order_by(Environment.name).all()
+        environments = [
+            {
+                "id": environment.id,
+                "name": environment.name,
+                "environment_type": environment.environment_type,
+                "status": "ACTIVE" if environment.id == active_environment_id else "AVAILABLE",
+                "is_active": environment.id == active_environment_id,
+            }
+            for environment in environment_rows
+        ]
+
+    checks = [
+        {
+            "key": "active_project",
+            "label": "Active project",
+            "status": "READY" if project_id else "BLOCKED",
+            "message": "Project context is selected." if project_id else "Select a project before running environment diagnostics.",
+        },
+        {
+            "key": "active_profile",
+            "label": "Active profile",
+            "status": "READY" if active_context and active_context.profile_id else "BLOCKED",
+            "message": "Profile context is selected."
+            if active_context and active_context.profile_id
+            else "Select a profile before running environment diagnostics.",
+        },
+        {
+            "key": "active_environment",
+            "label": "Active environment",
+            "status": "READY" if active_environment_id else "BLOCKED",
+            "message": "Environment context is selected."
+            if active_environment_id
+            else "Select an environment before running environment diagnostics.",
+        },
+        {
+            "key": "domain_scope",
+            "label": "Domain scope",
+            "status": "READY" if active_context and active_context.domain_name else "BLOCKED",
+            "message": "Domain scope is set."
+            if active_context and active_context.domain_name
+            else "Set a domain scope before running environment diagnostics.",
+        },
+    ]
+    ready_checks = len([check for check in checks if check["status"] == "READY"])
+    blocked_checks = len(checks) - ready_checks
+    return {
+        "module_id": "dev_tools",
+        "tool_key": "environment_readiness",
+        "title": "Environment Readiness",
+        "status": "ready" if blocked_checks == 0 else "needs_context",
+        "description": "Read-only environment readiness checks for the active implementation context.",
+        "active_context": active_context_payload,
+        "active_environment_id": active_environment_id,
+        "counts": {
+            "environments": len(environments),
+            "ready_checks": ready_checks,
+            "blocked_checks": blocked_checks,
+        },
+        "environments": environments,
+        "checks": checks,
+        "source_contract": "/api/v1/platform/active-context",
     }
 
 
@@ -707,6 +1044,63 @@ def get_project_cockpit_summary(
     user: User = Depends(require_user),
 ):
     return project_cockpit_summary_payload(db, user)
+
+
+@router.get("/dev-tools/summary")
+def get_dev_tools_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_summary_payload(db, user)
+
+
+@router.get("/dev-tools/data-dictionary")
+def get_dev_tools_data_dictionary(
+    query: str | None = None,
+    limit: int = 25,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_data_dictionary_payload(db, user, query=query, limit=limit)
+
+
+@router.get("/dev-tools/data-dictionary/tables/{table_name}")
+def get_dev_tools_data_dictionary_table(
+    table_name: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_data_dictionary_table_payload(db, user, table_name)
+
+
+@router.get("/dev-tools/fk-catalog")
+def get_dev_tools_fk_catalog(
+    source_table: str,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_fk_catalog_payload(db, user, source_table=source_table, limit=limit)
+
+
+@router.get("/dev-tools/schema-packs")
+def get_dev_tools_schema_packs(
+    otm_version: str | None = None,
+    code: str | None = None,
+    status: str | None = None,
+    limit: int = 25,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_schema_packs_payload(db, user, otm_version=otm_version, code=code, status=status, limit=limit)
+
+
+@router.get("/dev-tools/environment-readiness")
+def get_dev_tools_environment_readiness(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    return dev_tools_environment_readiness_payload(db, user)
 
 
 @router.get("/modules", response_model=PageResponse[ModuleResponse])

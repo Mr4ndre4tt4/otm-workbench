@@ -1,9 +1,12 @@
 /* global console, fetch, process */
 
+import { mkdir } from "node:fs/promises";
+
 const baseUrl = process.env.OTM_WORKBENCH_BASE_URL ?? "http://127.0.0.1:5173";
 const apiBaseUrl = process.env.OTM_WORKBENCH_API_BASE_URL ?? "http://127.0.0.1:8000";
 const email = process.env.OTM_WORKBENCH_QA_EMAIL ?? "demo@example.test";
 const password = process.env.OTM_WORKBENCH_QA_PASSWORD ?? "DemoPass123!";
+const screenshotDir = "../output/gui-qa/master-data";
 
 async function loadPlaywright() {
   try {
@@ -102,6 +105,7 @@ async function run() {
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1360, height: 980 } });
+  await mkdir(screenshotDir, { recursive: true });
   const consoleErrors = [];
   const failedResponses = [];
   page.on("console", (message) => {
@@ -135,9 +139,15 @@ async function run() {
       consoleErrors,
       failedResponses
     });
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/09-quality-tools-hub.png` });
 
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Quality" }).click();
+    await page.getByRole("link", { name: "Open Lat/Lon Validator" }).click();
+    await waitForVisibleOrThrow(page, page.getByRole("heading", { name: "Lat/Lon Validator", exact: true }), "Lat/Lon Validator", {
+      consoleErrors,
+      failedResponses
+    });
     await page.getByLabel("Coordinate Quality workflow").waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/10-lat-lon-validator.png` });
 
     await page.getByRole("button", { name: "Preview coordinates" }).click();
     await waitForSuccessOrThrow(page, "Coordinate Quality preview processed 2 location(s).");
@@ -145,11 +155,14 @@ async function run() {
 
     await page.getByRole("button", { name: "Create quality batch" }).click();
     await page.getByText(/^Coordinate Quality batch .+ created\.$/).waitFor();
+    await page.waitForURL(/\/master-data\/quality\/lat-lon\/batches\/.+/);
     await page.getByLabel("Coordinate Quality batches").getByText("PROCESSED").first().waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/11-lat-lon-batch-detail.png` });
 
     await page.getByRole("button", { name: "Export quality package" }).click();
     await page.getByText(/^Coordinate Quality package .+\.zip exported\.$/).waitFor();
     await page.getByLabel("Coordinate Quality export package").waitFor();
+    await page.screenshot({ fullPage: true, path: `${screenshotDir}/12-lat-lon-export.png` });
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
@@ -157,7 +170,8 @@ async function run() {
     await page.getByRole("heading", { name: "Master Data", exact: true }).waitFor();
     await page.getByRole("link", { name: "Open Quality Tools" }).click();
     await page.getByRole("heading", { name: "Quality Tools", exact: true }).waitFor();
-    await page.locator(".master-data-workflow-step").filter({ hasText: "Quality" }).click();
+    await page.getByRole("link", { name: "Open Lat/Lon Validator" }).click();
+    await page.getByRole("heading", { name: "Lat/Lon Validator", exact: true }).waitFor();
     await page.getByLabel("Coordinate Quality batches").getByText("PROCESSED").first().waitFor();
 
     if (consoleErrors.length || failedResponses.length) {
