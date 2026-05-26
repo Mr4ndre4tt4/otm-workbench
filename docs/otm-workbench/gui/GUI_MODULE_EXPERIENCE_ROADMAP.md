@@ -151,8 +151,11 @@ Remaining GUI work:
 
 ### 4.2 Master Data / Data Factory
 
-First GUI slice delivered after Load Plan. Data Factory now proves the staged
-template/batch workflow pattern.
+First GUI slice delivered after Load Plan. Data Factory proved backend coverage,
+but product review found the single staged route confusing because it mixes
+operational template consumption, template authoring, and Coordinate Quality.
+The next implementation cycle should follow
+`GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md`.
 
 OTM-115 owns template factory completion governance. The original backend-first
 dynamic template design remains in
@@ -160,10 +163,14 @@ dynamic template design remains in
 
 ```text
 Primary object: master data batch
-Primary pattern: staged workflow + object detail
-Delivered story: select template -> validate template -> build workbook or edit
-backend-owned starter rows -> create/upload batch -> validate relationships ->
-map -> build output -> build CSV/export package.
+Primary pattern for next cycle:
+Master Data hub -> operational Data Factory -> template detail -> batch detail,
+with Template Builder and Quality Tools as separate route families.
+
+Deprecated delivered story:
+select template -> validate template -> build workbook or edit backend-owned
+starter rows -> create/upload batch -> validate relationships -> map -> build
+output -> build CSV/export package.
 ```
 
 Delivered after OTM-119 and OTM-127:
@@ -190,6 +197,20 @@ Delivered after OTM-119 and OTM-127:
 - Guarded direct OTM import readiness and submit refusal after export, with
   backend-owned blockers for connection, credentials, and capability.
 - Keep OTM table/dependency validation backend-owned through Catalog Core.
+```
+
+Required UX correction before further hardening:
+
+```text
+- Split `/master-data` into a hub with Data Factory, Template Builder, and
+  Quality Tools entry points.
+- Move template detail and batch execution into route-level detail pages with
+  visible Back actions.
+- Remove `Author`, `Map`, and `Quality` from the operational Data Factory
+  workflow.
+- Move authoring/mapping/version/publish actions into Template Builder.
+- Move Lat/Lon Validator into Quality Tools.
+- Stop relying on the heavy selected-object side panel for core actions.
 ```
 
 Remaining GUI work before `Module complete`:

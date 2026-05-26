@@ -1,9 +1,15 @@
 # GUI Master Data View
 
-**Status:** OTM-115 completion acceptance met for MVP0; future enhancements remain explicit new scope
+**Status:** superseded by UX redesign draft for next implementation cycle
 **Linear:** OTM-114, OTM-115, OTM-117, OTM-118, OTM-91
 **QA Linear:** OTM-119
 **Scope:** `/master-data` Data Factory staged workflow.
+
+> 2026-05-26 update: the delivered staged workflow proved backend coverage, but
+> product review found the screen operationally confusing because it mixes Data
+> Factory execution, Template Builder authoring, and Coordinate Quality in one
+> route. Use `GUI_MASTER_DATA_DATA_FACTORY_REDESIGN_SPEC.md` as the next UX
+> source of truth before implementing further Master Data GUI changes.
 
 ## Objective
 
