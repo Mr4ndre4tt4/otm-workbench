@@ -39,6 +39,8 @@ import {
 } from '../../platform/hooks';
 import { ApiError } from '../../platform/api';
 import type {
+  CatalogSchemaPath,
+  CatalogSchemaRoot,
   IntegrationDefinition,
   IntegrationMappingSuggestion,
   IntegrationResponseHandler,
@@ -384,6 +386,80 @@ function SchemaNodeSelect({
   );
 }
 
+function OfficialSchemaPathPicker({
+  emptyText,
+  isLoading,
+  loadingText,
+  onQueryChange,
+  onRootChange,
+  onUsePath,
+  paths,
+  pathsLabel,
+  query,
+  queryLabel,
+  rootId,
+  rootLabel,
+  roots,
+  selectRootText,
+  usePathLabel
+}: {
+  emptyText: string;
+  isLoading: boolean;
+  loadingText: string;
+  onQueryChange: (query: string) => void;
+  onRootChange: (rootId: string) => void;
+  onUsePath: (path: string) => void;
+  paths: CatalogSchemaPath[];
+  pathsLabel: string;
+  query: string;
+  queryLabel: string;
+  rootId: string;
+  rootLabel: string;
+  roots: CatalogSchemaRoot[];
+  selectRootText: string;
+  usePathLabel: (path: string) => string;
+}) {
+  return (
+    <>
+      <label>
+        {rootLabel}
+        <select
+          onChange={(event) => {
+            onRootChange(event.target.value);
+            onQueryChange('');
+          }}
+          value={rootId}
+        >
+          <option value="">{selectRootText}</option>
+          {roots.map((root) => (
+            <option key={root.id} value={root.id}>
+              {root.root_display_label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {queryLabel}
+        <input disabled={!rootId} onChange={(event) => onQueryChange(event.target.value)} value={query} />
+      </label>
+      <div className="integration-action-bar" aria-label={pathsLabel}>
+        {rootId && isLoading ? <span className="empty-text">{loadingText}</span> : null}
+        {rootId && !isLoading && !paths.length ? <span className="empty-text">{emptyText}</span> : null}
+        {paths.map((path) => (
+          <div className="integration-official-path-row" key={path.id}>
+            <Button onClick={() => onUsePath(path.path)} type="button">
+              {usePathLabel(path.path)}
+            </Button>
+            <span>{path.is_required ? "Required" : "Optional"}</span>
+            <span>{path.is_repeatable ? "Repeatable" : "Single"}</span>
+            <span>{path.documentation || path.source_file}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function collectionNodes(nodes: IntegrationSchemaNode[]) {
   return nodes.filter((node) => ["array", "object"].includes(node.node_type.toLowerCase()));
 }
@@ -416,6 +492,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [mappingTargetNodeSearch, setMappingTargetNodeSearch] = useState('');
   const [officialSourceRootId, setOfficialSourceRootId] = useState('');
   const [officialSourcePathQuery, setOfficialSourcePathQuery] = useState('');
+  const [officialLoopSourceRootId, setOfficialLoopSourceRootId] = useState('');
+  const [officialLoopSourcePathQuery, setOfficialLoopSourcePathQuery] = useState('');
   const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
@@ -503,6 +581,11 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const targetSchemaNodes = useIntegrationSchemaNodes(token, targetSchemaId || null);
   const officialSourceRoots = useCatalogSchemaRootsByRole(token, "ENVELOPE_ONLY");
   const officialSourceRootPaths = useCatalogSchemaRootPaths(token, officialSourceRootId || null, officialSourcePathQuery);
+  const officialLoopSourceRootPaths = useCatalogSchemaRootPaths(
+    token,
+    officialLoopSourceRootId || null,
+    officialLoopSourcePathQuery
+  );
   const loopSourceSchemaNodes = useIntegrationSchemaNodes(token, loopSourceSchemaId || null);
   const loopTargetSchemaNodes = useIntegrationSchemaNodes(token, loopTargetSchemaId || null);
   const joinSourceSchemaNodes = useIntegrationSchemaNodes(token, joinSourceSchemaId || null);
@@ -1733,49 +1816,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
               Mapping target node search
               <input onChange={(event) => setMappingTargetNodeSearch(event.target.value)} value={mappingTargetNodeSearch} />
             </label>
-            <label>
-              Official source root
-              <select
-                onChange={(event) => {
-                  setOfficialSourceRootId(event.target.value);
-                  setOfficialSourcePathQuery('');
-                }}
-                value={officialSourceRootId}
-              >
-                <option value="">Select official source root</option>
-                {(officialSourceRoots.data?.items ?? []).map((root) => (
-                  <option key={root.id} value={root.id}>
-                    {root.root_display_label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Official source path search
-              <input
-                disabled={!officialSourceRootId}
-                onChange={(event) => setOfficialSourcePathQuery(event.target.value)}
-                value={officialSourcePathQuery}
-              />
-            </label>
-            <div className="integration-action-bar" aria-label="Official source paths">
-              {officialSourceRootId && officialSourceRootPaths.isLoading ? (
-                <span className="empty-text">Loading official source paths...</span>
-              ) : null}
-              {officialSourceRootId && !officialSourceRootPaths.isLoading && !(officialSourceRootPaths.data?.items ?? []).length ? (
-                <span className="empty-text">No official source paths found.</span>
-              ) : null}
-              {(officialSourceRootPaths.data?.items ?? []).map((path) => (
-                <div className="integration-official-path-row" key={path.id}>
-                  <Button onClick={() => setSourcePath(path.path)} type="button">
-                    {`Use official source path ${path.path}`}
-                  </Button>
-                  <span>{path.is_required ? "Required" : "Optional"}</span>
-                  <span>{path.is_repeatable ? "Repeatable" : "Single"}</span>
-                  <span>{path.documentation || path.source_file}</span>
-                </div>
-              ))}
-            </div>
+            <OfficialSchemaPathPicker
+              emptyText="No official source paths found."
+              isLoading={officialSourceRootPaths.isLoading}
+              loadingText="Loading official source paths..."
+              onQueryChange={setOfficialSourcePathQuery}
+              onRootChange={setOfficialSourceRootId}
+              onUsePath={setSourcePath}
+              paths={officialSourceRootPaths.data?.items ?? []}
+              pathsLabel="Official source paths"
+              query={officialSourcePathQuery}
+              queryLabel="Official source path search"
+              rootId={officialSourceRootId}
+              rootLabel="Official source root"
+              roots={officialSourceRoots.data?.items ?? []}
+              selectRootText="Select official source root"
+              usePathLabel={(path) => `Use official source path ${path}`}
+            />
             <SchemaNodeSelect
               label="Mapping source node"
               nodes={sourceSchemaNodes.data?.items ?? []}
@@ -1969,6 +2026,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
               Loop name
               <input onChange={(event) => setLoopName(event.target.value)} value={loopName} />
             </label>
+            <OfficialSchemaPathPicker
+              emptyText="No official loop source paths found."
+              isLoading={officialLoopSourceRootPaths.isLoading}
+              loadingText="Loading official loop source paths..."
+              onQueryChange={setOfficialLoopSourcePathQuery}
+              onRootChange={setOfficialLoopSourceRootId}
+              onUsePath={setLoopSourceCollectionPath}
+              paths={officialLoopSourceRootPaths.data?.items ?? []}
+              pathsLabel="Official loop source paths"
+              query={officialLoopSourcePathQuery}
+              queryLabel="Official loop source path search"
+              rootId={officialLoopSourceRootId}
+              rootLabel="Official loop source root"
+              roots={officialSourceRoots.data?.items ?? []}
+              selectRootText="Select official loop source root"
+              usePathLabel={(path) => `Use official loop source path ${path}`}
+            />
             <SchemaNodeSelect
               label="Loop source node"
               nodes={loopSourceSchemaNodes.data?.items ?? []}

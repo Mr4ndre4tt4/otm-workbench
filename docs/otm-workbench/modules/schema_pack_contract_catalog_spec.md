@@ -507,9 +507,9 @@ Current Catalog Core GUI slice delivered:
   root;
 - schema path search sends the user query back to the Catalog API instead of
   applying hidden frontend filtering;
-- Integration Mapping Rules-stage authoring can reuse the same Catalog Core
-  source root/path browser to apply an official OTM source path into a mapping
-  draft;
+- Integration Mapping Rules-stage authoring reuses the same Catalog Core source
+  root/path browser to apply official OTM source paths into direct mapping
+  drafts and loop source collection drafts;
 - Integration Mapping shows Catalog-owned path metadata such as required,
   repeatable, and documentation beside the apply action;
 - selected macro-object schema links from Data Dictionary cross-check;

@@ -127,6 +127,21 @@ function catalogSchemaRootPaths(schemaRootId: string, query = "") {
         documentation: "Synthetic official planned time path.",
         source_file: "Shipment.xsd",
         sequence_index: 20
+      },
+      {
+        id: "catalog_path_shipment_stop",
+        schema_root_id: "root_transmission",
+        parent_path: "/Transmission/Shipment",
+        path: "/Transmission/Shipment/ShipmentStop",
+        node_name: "ShipmentStop",
+        data_type: "complexType",
+        min_occurs: "1",
+        max_occurs: "unbounded",
+        is_required: true,
+        is_repeatable: true,
+        documentation: "Synthetic official repeatable shipment stop collection.",
+        source_file: "Shipment.xsd",
+        sequence_index: 30
       }
     ]
   };
@@ -1174,7 +1189,11 @@ describe("Functional Integration Mapping Studio journey", () => {
     await userEvent.selectOptions(screen.getByLabelText("Loop source schema"), "schema_source");
     await userEvent.selectOptions(screen.getByLabelText("Loop target schema"), "schema_target");
     await userEvent.type(screen.getByLabelText("Loop name"), "Synthetic delivery loop");
-    await userEvent.selectOptions(await screen.findByLabelText("Loop source node"), "/Transmission/Shipment/ShipmentStop");
+    await userEvent.selectOptions(screen.getByLabelText("Official loop source root"), "root_transmission");
+    await userEvent.type(screen.getByLabelText("Official loop source path search"), "ShipmentStop");
+    const officialLoopSourcePaths = await screen.findByLabelText("Official loop source paths");
+    expect(officialLoopSourcePaths).toHaveTextContent("Repeatable");
+    await userEvent.click(await screen.findByRole("button", { name: "Use official loop source path /Transmission/Shipment/ShipmentStop" }));
     await userEvent.selectOptions(await screen.findByLabelText("Loop target node"), "$.deliveries[]");
     expect(screen.getByLabelText("Loop source collection path")).toHaveValue("/Transmission/Shipment/ShipmentStop");
     expect(screen.getByLabelText("Loop target collection path")).toHaveValue("$.deliveries[]");
