@@ -1,6 +1,6 @@
 # GUI Project Cockpit Summary Contract
 
-**Status:** backend contract delivered  
+**Status:** backend contract delivered; UX direction consolidated in `GUI_PROJECT_COCKPIT_CONSOLIDATED_SPEC.md`
 **Branch:** `codex/project-cockpit-summary`  
 **Endpoint:** `GET /api/v1/platform/project-cockpit/summary`
 
