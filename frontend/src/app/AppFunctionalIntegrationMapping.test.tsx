@@ -661,9 +661,20 @@ describe("Functional Integration Mapping Studio journey", () => {
                 transform_type: "DIRECT",
                 confidence: 0.9,
                 reason: "Normalized schema leaf names match: shipmentid"
+              },
+              {
+                id: "schema_source:/Transmission/Shipment/StartDt/PlannedTime->schema_target:$.header.issueDate",
+                definition_id: "definition_1",
+                source_schema_document_id: "schema_source",
+                target_schema_document_id: "schema_target",
+                source_path: "/Transmission/Shipment/StartDt/PlannedTime",
+                target_path: "$.header.issueDate",
+                transform_type: "DATE_FORMAT",
+                confidence: 0.72,
+                reason: "Date-like source and target names match."
               }
             ],
-            total: 1,
+            total: 2,
             page: 1,
             page_size: 50
           })
@@ -1168,6 +1179,9 @@ describe("Functional Integration Mapping Studio journey", () => {
     const mappingSuggestionsPanel = await screen.findByLabelText("Mapping suggestions");
     expect(mappingSuggestionsPanel).toHaveTextContent("90% confidence");
     expect(mappingSuggestionsPanel).toHaveTextContent("Normalized schema leaf names match: shipmentid");
+    expect(mappingSuggestionsPanel).toHaveTextContent("DATE_FORMAT");
+    await userEvent.selectOptions(screen.getByLabelText("Suggestion transform filter"), "DIRECT");
+    expect(mappingSuggestionsPanel).not.toHaveTextContent("Date-like source and target names match.");
     await userEvent.type(await screen.findByLabelText("Mapping source node search"), "shipment");
     await userEvent.type(await screen.findByLabelText("Mapping target node search"), "shipment");
     await userEvent.selectOptions(await screen.findByLabelText("Mapping source node", { exact: true }), "/Transmission/Shipment/ShipmentGid");

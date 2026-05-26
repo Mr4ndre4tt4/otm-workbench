@@ -468,6 +468,10 @@ function suggestionConfidenceLabel(confidence: number) {
   return `${Math.round(confidence * 100)}% confidence`;
 }
 
+function uniqueSuggestionTransformTypes(suggestions: IntegrationMappingSuggestion[]) {
+  return Array.from(new Set(suggestions.map((suggestion) => suggestion.transform_type))).sort();
+}
+
 export function IntegrationMappingView({ token }: { token: string }) {
   const queryClient = useQueryClient();
   const definitions = useIntegrationDefinitions(token);
@@ -499,6 +503,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const [officialLoopSourceRootId, setOfficialLoopSourceRootId] = useState('');
   const [officialLoopSourcePathQuery, setOfficialLoopSourcePathQuery] = useState('');
   const [mappingSuggestionItems, setMappingSuggestionItems] = useState<IntegrationMappingSuggestion[]>([]);
+  const [mappingSuggestionTransformFilter, setMappingSuggestionTransformFilter] = useState('');
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('');
   const [transformType, setTransformType] = useState('DIRECT');
@@ -617,17 +622,24 @@ export function IntegrationMappingView({ token }: { token: string }) {
   });
   const activeIntegrationStageTitle =
     integrationWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
+  const mappingSuggestionTransformTypes = uniqueSuggestionTransformTypes(mappingSuggestionItems);
+  const visibleMappingSuggestions = mappingSuggestionTransformFilter
+    ? mappingSuggestionItems.filter((suggestion) => suggestion.transform_type === mappingSuggestionTransformFilter)
+    : mappingSuggestionItems;
 
   const loadMappingSuggestionsForSchemas = async (nextSourceSchemaId: string, nextTargetSchemaId: string) => {
     if (!effectiveDefinitionId || !nextSourceSchemaId || !nextTargetSchemaId) {
       setMappingSuggestionItems([]);
+      setMappingSuggestionTransformFilter('');
       return;
     }
     try {
       const response = await listIntegrationMappingSuggestions(token, effectiveDefinitionId, nextSourceSchemaId, nextTargetSchemaId);
       setMappingSuggestionItems(response.items);
+      setMappingSuggestionTransformFilter('');
     } catch {
       setMappingSuggestionItems([]);
+      setMappingSuggestionTransformFilter('');
     }
   };
 
@@ -671,6 +683,7 @@ export function IntegrationMappingView({ token }: { token: string }) {
     setMappingSourceNodeSearch('');
     setMappingTargetNodeSearch('');
     setMappingSuggestionItems([]);
+    setMappingSuggestionTransformFilter('');
     setSourcePath('');
     setTargetPath('');
     setTransformType('DIRECT');
@@ -1858,7 +1871,23 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 Load backend suggestions
               </Button>
               {mappingSuggestionItems.length ? (
-                mappingSuggestionItems.map((suggestion) => (
+                <label>
+                  Suggestion transform filter
+                  <select
+                    onChange={(event) => setMappingSuggestionTransformFilter(event.target.value)}
+                    value={mappingSuggestionTransformFilter}
+                  >
+                    <option value="">All transform types</option>
+                    {mappingSuggestionTransformTypes.map((transformType) => (
+                      <option key={transformType} value={transformType}>
+                        {transformType}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {visibleMappingSuggestions.length ? (
+                visibleMappingSuggestions.map((suggestion) => (
                   <div className="integration-suggestion-row" key={suggestion.id}>
                     <Button
                       onClick={() => {
@@ -1878,7 +1907,11 @@ export function IntegrationMappingView({ token }: { token: string }) {
                   </div>
                 ))
               ) : (
-                <span className="empty-text">No mapping suggestions for the selected schemas.</span>
+                <span className="empty-text">
+                  {mappingSuggestionItems.length
+                    ? "No mapping suggestions for the selected transform type."
+                    : "No mapping suggestions for the selected schemas."}
+                </span>
               )}
             </div>
             <label>
