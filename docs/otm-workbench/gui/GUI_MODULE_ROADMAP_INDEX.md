@@ -14,6 +14,9 @@ keeps each module discoverable and points to the most specific module document
 available. When a module needs a deeper click-by-click redesign like Master
 Data, the new module-specific spec should be added here.
 
+Engineering harness rules for all module work live in
+`../engineering/HARNESS_ENGINEERING_PLAN.md`.
+
 ## 2. Index Rules
 
 Every module should have, in order of preference:
@@ -36,6 +39,8 @@ Module specs must preserve the project rules:
   screens;
 - functional QA must test happy path, negative path, out-of-order path, and
   route leave/return recovery.
+- the module can only advance when docs, Linear, GitHub, backend tests,
+  frontend tests, browser QA, and evidence are aligned.
 
 ## 3. Module Roadmap Matrix
 

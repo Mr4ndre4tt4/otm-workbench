@@ -6,6 +6,7 @@ Este diretório contém a documentação base do `otm-workbench`.
 
 - `foundation/`: documentos de arquitetura, contratos, governança, QA, segurança, roadmap e convenções recebidos como fundação do projeto.
 - `governance/`: regras leves de visibilidade, Linear, delivery board e cadência de acompanhamento.
+- `engineering/`: regras operacionais para agentes, harness engineering, entrega, QA e integração Linear/GitHub.
 - `../superpowers/specs/`: specs consolidadas para execução assistida por Codex.
 
 ## Ordem Recomendada
@@ -27,6 +28,7 @@ Para iniciar o desenvolvimento:
 5. [Plano MVP e roadmap de execução](foundation/plano_mvp_roadmap_execucao_otm_workbench.md)
 6. [Linear delivery governance](governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md)
 7. [Artifact trust boundary review](governance/ARTIFACT_TRUST_BOUNDARY_REVIEW_OTM98.md)
+8. [Harness Engineering Plan](engineering/HARNESS_ENGINEERING_PLAN.md)
 
 Para frontend e experiência do usuário:
 
@@ -37,6 +39,7 @@ Para frontend e experiência do usuário:
 5. [GUI MVP1 Plan](gui/GUI_MVP1_PLAN.md)
 6. [GUI Functional QA Journeys](gui/GUI_FUNCTIONAL_QA_JOURNEYS.md)
 7. [GUI Module Completion Acceptance Contract](gui/GUI_MODULE_COMPLETION_ACCEPTANCE_CONTRACT.md)
+8. [Harness Engineering Plan](engineering/HARNESS_ENGINEERING_PLAN.md)
 
 ## Decisões Base
 
