@@ -30,6 +30,11 @@ def test_cutover_go_no_go_returns_no_go_without_export_package(client, admin_hea
     assert payload["blockers"][0]["code"] == "CUTOVER_PACKAGE_EXPORT_MISSING"
     assert evidence.client_safe is True
     assert evidence.evidence_type == "cutover_go_no_go_decision"
+    assert evidence.project_id == "project_load_plan"
+    assert evidence.profile_id == "profile_load_plan"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert json.loads(evidence.summary_json)["decision"] == "NO_GO"
 
 
@@ -64,6 +69,11 @@ def test_cutover_go_no_go_returns_go_after_export_package(client, admin_header, 
     assert payload["cutover_package_evidence_id"] == export["evidence_id"]
     assert payload["blockers"] == []
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_load_plan"
+    assert evidence.profile_id == "profile_load_plan"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert json.loads(evidence.summary_json)["decision"] == "GO"
     assert json.loads(audit.metadata_json)["cutover_package_evidence_id"] == export["evidence_id"]
     assert json.loads(event.payload_json)["decision"] == "GO"

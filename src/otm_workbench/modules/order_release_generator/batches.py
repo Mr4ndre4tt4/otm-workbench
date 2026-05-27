@@ -31,6 +31,7 @@ def create_order_release_batch(
     file_name: str,
     rows: list[dict[str, object]],
     created_by: str,
+    scope: dict[str, object] | None = None,
 ) -> OrderReleaseBatch:
     required_columns = parse_json_list(template.required_columns_json)
     normalized_rows = [normalize_row(row) for row in rows]
@@ -38,6 +39,10 @@ def create_order_release_batch(
     issue_count = sum(len(issues) for issues in row_results)
     release_gids = {row.get("release_gid", "") for row, issues in zip(normalized_rows, row_results, strict=True) if not issues and row.get("release_gid")}
     batch = OrderReleaseBatch(
+        project_id=str(scope.get("project_id") or "").strip() or None if scope else None,
+        environment_id=str(scope.get("environment_id") or "").strip() or None if scope else None,
+        profile_id=str(scope.get("profile_id") or "").strip() or None if scope else None,
+        domain_name=str(scope.get("domain_name") or "").strip().upper() or None if scope else None,
         template_id=template.id,
         status="INVALID" if issue_count else "VALID",
         file_name=file_name.strip(),
@@ -95,6 +100,10 @@ def parse_json_array(value: str) -> list[dict[str, object]]:
 def serialize_order_release_batch(batch: OrderReleaseBatch, rows: list[OrderReleaseBatchRow] | None = None) -> dict[str, object]:
     payload = {
         "id": batch.id,
+        "project_id": batch.project_id,
+        "environment_id": batch.environment_id,
+        "profile_id": batch.profile_id,
+        "domain_name": batch.domain_name,
         "template_id": batch.template_id,
         "status": batch.status,
         "file_name": batch.file_name,

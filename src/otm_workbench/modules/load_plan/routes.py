@@ -8,6 +8,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import get_db, require_user
 from otm_workbench.models import (
+    ActiveContext,
     CsvutilBuild,
     CutoverChecklist,
     CutoverChecklistItem,
@@ -22,6 +23,7 @@ from otm_workbench.models import (
     RateBatch,
     User,
 )
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 from otm_workbench.modules.load_plan.csvutil import (
     generate_csvutil_build,
     generate_csvutil_build_from_checklist,
@@ -154,15 +156,96 @@ class CutoverGoNoGoRequest(BaseModel):
     decision_note: str = ""
 
 
+def scoped_model_query(db: Session, user: User, model: type):
+    query = db.query(model)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(model.id.is_(None))
+        return query
+    return apply_operational_scope(query, model, operational_scope_from_context(active_context))
+
+
+def scoped_load_plan_package_query(db: Session, user: User):
+    return scoped_model_query(db, user, LoadPlanPackage)
+
+
+def get_scoped_load_plan_package_or_404(db: Session, user: User, package_id: str) -> LoadPlanPackage:
+    package = scoped_load_plan_package_query(db, user).filter(LoadPlanPackage.id == package_id).first()
+    if package is None:
+        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    return package
+
+
+def get_scoped_rate_batch_or_404(db: Session, user: User, batch_id: str) -> RateBatch:
+    batch = scoped_model_query(db, user, RateBatch).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    return batch
+
+
+def get_scoped_master_data_batch_or_404(db: Session, user: User, batch_id: str) -> MasterDataBatch:
+    batch = scoped_model_query(db, user, MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Master Data batch not found.")
+    return batch
+
+
+def scoped_load_plan_package_ids(db: Session, user: User) -> list[str]:
+    return [row[0] for row in scoped_load_plan_package_query(db, user).with_entities(LoadPlanPackage.id).all()]
+
+
+def filter_by_scoped_load_plan_packages(query, model: type, db: Session, user: User):
+    return query.filter(model.package_id.in_(scoped_load_plan_package_ids(db, user)))
+
+
+def ensure_package_child_in_scope(db: Session, user: User, package_id: str) -> None:
+    get_scoped_load_plan_package_or_404(db, user, package_id)
+
+
+def get_scoped_cutover_checklist_or_404(db: Session, user: User, checklist_id: str) -> CutoverChecklist:
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    ensure_package_child_in_scope(db, user, checklist.package_id)
+    return checklist
+
+
+def get_scoped_cutover_checklist_item_or_404(
+    db: Session,
+    user: User,
+    item_id: str,
+) -> CutoverChecklistItem:
+    item = db.query(CutoverChecklistItem).filter(CutoverChecklistItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Cutover checklist item not found.")
+    ensure_package_child_in_scope(db, user, item.package_id)
+    return item
+
+
+def get_scoped_zip_analysis_or_404(db: Session, user: User, analysis_id: str) -> LoadPlanZipAnalysis:
+    analysis = db.query(LoadPlanZipAnalysis).filter(LoadPlanZipAnalysis.id == analysis_id).first()
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="ZIP analysis not found.")
+    ensure_package_child_in_scope(db, user, analysis.package_id)
+    return analysis
+
+
+def get_scoped_review_item_or_404(db: Session, user: User, item_id: str) -> LoadPlanReviewItem:
+    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    ensure_package_child_in_scope(db, user, item.package_id)
+    return item
+
+
 @router.post("/packages/from-rates/{batch_id}")
 def register_load_plan_package_from_rates(
     batch_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     try:
         package = register_rates_package(db, batch=batch, created_by=user.email)
     except ValueError as exc:
@@ -176,9 +259,7 @@ def register_load_plan_package_from_master_data(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Master Data batch not found.")
+    batch = get_scoped_master_data_batch_or_404(db, user, batch_id)
     try:
         package = register_master_data_package(db, batch=batch, created_by=user.email)
     except ValueError as exc:
@@ -192,7 +273,7 @@ def list_load_plan_packages(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at.desc()).all()
+    packages = scoped_load_plan_package_query(db, user).order_by(LoadPlanPackage.created_at.desc()).all()
     items = [serialize_load_plan_package(package) for package in packages]
     return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
@@ -203,9 +284,7 @@ def get_load_plan_package(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, package_id)
     return serialize_load_plan_package(package)
 
 
@@ -214,7 +293,8 @@ def get_load_plan_summary(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    return load_plan_package_summary(db)
+    packages = scoped_load_plan_package_query(db, user).all()
+    return load_plan_package_summary(db, packages)
 
 
 @router.get("/cutover-checklists/templates")
@@ -232,9 +312,7 @@ def create_cutover_checklist_from_package(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, package_id)
     checklist = create_checklist_from_package(db, package=package, created_by=user.email)
     return serialize_checklist(db, checklist)
 
@@ -245,9 +323,7 @@ def get_cutover_checklist(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
-    if checklist is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    checklist = get_scoped_cutover_checklist_or_404(db, user, checklist_id)
     return serialize_checklist(db, checklist)
 
 
@@ -258,9 +334,7 @@ def patch_cutover_checklist_item(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    item = db.query(CutoverChecklistItem).filter(CutoverChecklistItem.id == item_id).first()
-    if item is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist item not found.")
+    item = get_scoped_cutover_checklist_item_or_404(db, user, item_id)
     try:
         checklist = update_checklist_item(
             db,
@@ -283,9 +357,7 @@ def generate_cutover_checklist_readiness(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
-    if checklist is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
+    checklist = get_scoped_cutover_checklist_or_404(db, user, checklist_id)
     return generate_checklist_readiness(db, checklist=checklist, generated_by=user.email)
 
 
@@ -295,12 +367,8 @@ def export_cutover_checklist_package(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
-    if checklist is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    checklist = get_scoped_cutover_checklist_or_404(db, user, checklist_id)
+    package = get_scoped_load_plan_package_or_404(db, user, checklist.package_id)
     try:
         return generate_cutover_package_export(
             db,
@@ -321,12 +389,8 @@ def decide_cutover_checklist_go_no_go(
     user: User = Depends(require_user),
 ):
     _ = payload
-    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
-    if checklist is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    checklist = get_scoped_cutover_checklist_or_404(db, user, checklist_id)
+    package = get_scoped_load_plan_package_or_404(db, user, checklist.package_id)
     return decide_cutover_go_no_go(db, checklist=checklist, package=package, decided_by=user.email)
 
 
@@ -336,9 +400,7 @@ def create_sequence_snapshot(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, payload.package_id)
     try:
         snapshot = generate_sequence_snapshot(
             db,
@@ -359,8 +421,14 @@ def list_sequence_snapshots(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(LoadPlanSequenceSnapshot)
+    query = filter_by_scoped_load_plan_packages(
+        db.query(LoadPlanSequenceSnapshot),
+        LoadPlanSequenceSnapshot,
+        db,
+        user,
+    )
     if package_id:
+        get_scoped_load_plan_package_or_404(db, user, package_id)
         query = query.filter(LoadPlanSequenceSnapshot.package_id == package_id)
     if status:
         query = query.filter(LoadPlanSequenceSnapshot.status == status)
@@ -378,6 +446,7 @@ def get_sequence_snapshot(
     snapshot = db.query(LoadPlanSequenceSnapshot).filter(LoadPlanSequenceSnapshot.id == snapshot_id).first()
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found.")
+    ensure_package_child_in_scope(db, user, snapshot.package_id)
     return serialize_sequence_snapshot(snapshot)
 
 
@@ -387,6 +456,7 @@ def get_latest_sequence_snapshot(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    get_scoped_load_plan_package_or_404(db, user, package_id)
     snapshot = latest_sequence_snapshot(db, package_id)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Load Plan sequence snapshot not found. Generate a snapshot first.")
@@ -400,12 +470,10 @@ def generate_load_plan_cutover_readiness(
     user: User = Depends(require_user),
 ):
     if payload.package_id:
-        package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
-        if package is None:
-            raise HTTPException(status_code=404, detail="Load Plan package not found.")
+        package = get_scoped_load_plan_package_or_404(db, user, payload.package_id)
         packages = [package]
     else:
-        packages = db.query(LoadPlanPackage).order_by(LoadPlanPackage.created_at).all()
+        packages = scoped_load_plan_package_query(db, user).order_by(LoadPlanPackage.created_at).all()
     try:
         return generate_cutover_readiness(db, packages=packages, generated_by=user.email)
     except ValueError as exc:
@@ -420,8 +488,14 @@ def list_cutover_readiness(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(LoadPlanCutoverReadiness)
+    query = filter_by_scoped_load_plan_packages(
+        db.query(LoadPlanCutoverReadiness),
+        LoadPlanCutoverReadiness,
+        db,
+        user,
+    )
     if package_id:
+        get_scoped_load_plan_package_or_404(db, user, package_id)
         query = query.filter(LoadPlanCutoverReadiness.package_id == package_id)
     if status:
         query = query.filter(LoadPlanCutoverReadiness.status == status)
@@ -436,6 +510,7 @@ def get_latest_cutover_readiness(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    get_scoped_load_plan_package_or_404(db, user, package_id)
     readiness = latest_cutover_readiness(db, package_id)
     if readiness is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
@@ -448,9 +523,7 @@ def get_cutover_handoff_eligibility(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, package_id)
     return cutover_handoff_eligibility(db, package)
 
 
@@ -460,9 +533,7 @@ def create_cutover_handoff(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, payload.package_id)
     try:
         handoff = commit_cutover_handoff(db, package=package, committed_by=user.email)
     except ValueError as exc:
@@ -478,8 +549,14 @@ def list_cutover_handoffs(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(LoadPlanCutoverHandoff)
+    query = filter_by_scoped_load_plan_packages(
+        db.query(LoadPlanCutoverHandoff),
+        LoadPlanCutoverHandoff,
+        db,
+        user,
+    )
     if package_id:
+        get_scoped_load_plan_package_or_404(db, user, package_id)
         query = query.filter(LoadPlanCutoverHandoff.package_id == package_id)
     if status:
         query = query.filter(LoadPlanCutoverHandoff.status == status)
@@ -497,6 +574,7 @@ def get_cutover_handoff(
     handoff = db.query(LoadPlanCutoverHandoff).filter(LoadPlanCutoverHandoff.id == handoff_id).first()
     if handoff is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover handoff not found.")
+    ensure_package_child_in_scope(db, user, handoff.package_id)
     return serialize_cutover_handoff(handoff)
 
 
@@ -509,8 +587,14 @@ def list_readiness_exports(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(LoadPlanReadinessExport)
+    query = filter_by_scoped_load_plan_packages(
+        db.query(LoadPlanReadinessExport),
+        LoadPlanReadinessExport,
+        db,
+        user,
+    )
     if package_id:
+        get_scoped_load_plan_package_or_404(db, user, package_id)
         query = query.filter(LoadPlanReadinessExport.package_id == package_id)
     if readiness_id:
         query = query.filter(LoadPlanReadinessExport.readiness_id == readiness_id)
@@ -530,6 +614,7 @@ def get_readiness_export(
     export = db.query(LoadPlanReadinessExport).filter(LoadPlanReadinessExport.id == export_id).first()
     if export is None:
         raise HTTPException(status_code=404, detail="Load Plan readiness export not found.")
+    ensure_package_child_in_scope(db, user, export.package_id)
     return serialize_readiness_export(export)
 
 
@@ -542,6 +627,7 @@ def export_cutover_readiness(
     readiness = db.query(LoadPlanCutoverReadiness).filter(LoadPlanCutoverReadiness.id == readiness_id).first()
     if readiness is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
+    ensure_package_child_in_scope(db, user, readiness.package_id)
     export = generate_readiness_export(
         db,
         readiness=readiness,
@@ -560,6 +646,7 @@ def get_cutover_readiness(
     readiness = db.query(LoadPlanCutoverReadiness).filter(LoadPlanCutoverReadiness.id == readiness_id).first()
     if readiness is None:
         raise HTTPException(status_code=404, detail="Load Plan cutover readiness not found.")
+    ensure_package_child_in_scope(db, user, readiness.package_id)
     return serialize_cutover_readiness(readiness)
 
 
@@ -569,9 +656,7 @@ def build_csvutil_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, payload.package_id)
     try:
         build = generate_csvutil_build(
             db,
@@ -593,12 +678,8 @@ def build_csvutil_artifacts_from_cutover_checklist(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
-    if checklist is None:
-        raise HTTPException(status_code=404, detail="Cutover checklist not found.")
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    checklist = get_scoped_cutover_checklist_or_404(db, user, checklist_id)
+    package = get_scoped_load_plan_package_or_404(db, user, checklist.package_id)
     try:
         build = generate_csvutil_build_from_checklist(
             db,
@@ -620,7 +701,11 @@ def list_csvutil_builds(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    builds = db.query(CsvutilBuild).order_by(CsvutilBuild.created_at.desc()).all()
+    builds = (
+        filter_by_scoped_load_plan_packages(db.query(CsvutilBuild), CsvutilBuild, db, user)
+        .order_by(CsvutilBuild.created_at.desc())
+        .all()
+    )
     items = [serialize_csvutil_build(build) for build in builds]
     return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
@@ -634,6 +719,7 @@ def get_csvutil_build(
     build = db.query(CsvutilBuild).filter(CsvutilBuild.id == build_id).first()
     if build is None:
         raise HTTPException(status_code=404, detail="CSVUTIL build not found.")
+    ensure_package_child_in_scope(db, user, build.package_id)
     return serialize_csvutil_build(build)
 
 
@@ -643,9 +729,7 @@ def run_zip_analysis(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == payload.package_id).first()
-    if package is None:
-        raise HTTPException(status_code=404, detail="Load Plan package not found.")
+    package = get_scoped_load_plan_package_or_404(db, user, payload.package_id)
     try:
         analysis = generate_zip_analysis(
             db,
@@ -664,7 +748,11 @@ def list_zip_analyses(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    analyses = db.query(LoadPlanZipAnalysis).order_by(LoadPlanZipAnalysis.created_at.desc()).all()
+    analyses = (
+        filter_by_scoped_load_plan_packages(db.query(LoadPlanZipAnalysis), LoadPlanZipAnalysis, db, user)
+        .order_by(LoadPlanZipAnalysis.created_at.desc())
+        .all()
+    )
     items = [serialize_zip_analysis(analysis) for analysis in analyses]
     return filter_items_by_catalog_macro_object(items, catalog_macro_object_code)
 
@@ -678,6 +766,7 @@ def get_zip_analysis(
     analysis = db.query(LoadPlanZipAnalysis).filter(LoadPlanZipAnalysis.id == analysis_id).first()
     if analysis is None:
         raise HTTPException(status_code=404, detail="ZIP analysis not found.")
+    ensure_package_child_in_scope(db, user, analysis.package_id)
     return serialize_zip_analysis(analysis)
 
 
@@ -687,9 +776,7 @@ def generate_review_queue_from_analysis(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    analysis = db.query(LoadPlanZipAnalysis).filter(LoadPlanZipAnalysis.id == analysis_id).first()
-    if analysis is None:
-        raise HTTPException(status_code=404, detail="ZIP analysis not found.")
+    analysis = get_scoped_zip_analysis_or_404(db, user, analysis_id)
     try:
         return generate_review_queue_from_zip_analysis(
             db,
@@ -710,14 +797,21 @@ def list_review_queue_items(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(LoadPlanReviewItem)
+    query = filter_by_scoped_load_plan_packages(
+        db.query(LoadPlanReviewItem),
+        LoadPlanReviewItem,
+        db,
+        user,
+    )
     if status:
         query = query.filter(LoadPlanReviewItem.status == status)
     if severity:
         query = query.filter(LoadPlanReviewItem.severity == severity)
     if package_id:
+        get_scoped_load_plan_package_or_404(db, user, package_id)
         query = query.filter(LoadPlanReviewItem.package_id == package_id)
     if zip_analysis_id:
+        get_scoped_zip_analysis_or_404(db, user, zip_analysis_id)
         query = query.filter(LoadPlanReviewItem.zip_analysis_id == zip_analysis_id)
     items = query.order_by(LoadPlanReviewItem.created_at.desc()).all()
     if catalog_macro_object_code:
@@ -737,9 +831,7 @@ def decide_review_queue_item(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
-    if item is None:
-        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    item = get_scoped_review_item_or_404(db, user, item_id)
     try:
         decision = decide_review_item(
             db,
@@ -759,7 +851,5 @@ def get_review_queue_item(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    item = db.query(LoadPlanReviewItem).filter(LoadPlanReviewItem.id == item_id).first()
-    if item is None:
-        raise HTTPException(status_code=404, detail="Review queue item not found.")
+    item = get_scoped_review_item_or_404(db, user, item_id)
     return serialize_review_item_with_latest_decision(db, item)

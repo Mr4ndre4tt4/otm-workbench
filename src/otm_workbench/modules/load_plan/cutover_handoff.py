@@ -35,6 +35,12 @@ def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
     }
 
 
+def domain_name_for_package(package: LoadPlanPackage) -> str | None:
+    summary = parse_json_object(package.summary_json)
+    domain_name = summary.get("domain_name")
+    return str(domain_name).strip().upper() if domain_name else None
+
+
 def serialize_cutover_handoff(handoff: LoadPlanCutoverHandoff) -> dict[str, object]:
     return {
         "id": handoff.id,
@@ -251,6 +257,10 @@ def commit_cutover_handoff(
     }
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_cutover_handoff",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -270,6 +280,10 @@ def commit_cutover_handoff(
             metadata_json=json.dumps(
                 {
                     "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
                     "readiness_id": handoff.readiness_id,
                     "readiness_export_id": handoff.readiness_export_id,
                     "archive_evidence_id": handoff.archive_evidence_id,
@@ -294,6 +308,10 @@ def commit_cutover_handoff(
             payload_json=json.dumps(
                 {
                     "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
                     "status": READY_FOR_CUTOVER_STATUS,
                     "checklist_id": eligibility["checklist_id"],
                     "checklist_readiness_status": eligibility["checklist_readiness_status"],

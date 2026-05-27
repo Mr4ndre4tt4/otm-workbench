@@ -102,6 +102,12 @@ def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
     }
 
 
+def domain_name_for_package(package: LoadPlanPackage) -> str | None:
+    summary = parse_json_object(package.summary_json)
+    domain_name = summary.get("domain_name")
+    return str(domain_name).strip().upper() if domain_name else None
+
+
 def serialize_cutover_readiness(readiness: LoadPlanCutoverReadiness) -> dict[str, object]:
     return {
         "id": readiness.id,
@@ -213,6 +219,9 @@ def generate_readiness_for_package(
     }
     summary = summarize_readiness_stub(status, blockers)
     summary.update(catalog_context)
+    domain_name = domain_name_for_package(package)
+    if domain_name:
+        summary["domain_name"] = domain_name
     generated_at = utcnow()
     readiness = LoadPlanCutoverReadiness(
         project_id=package.project_id,
@@ -243,6 +252,10 @@ def generate_readiness_for_package(
     }
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_cutover_readiness",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -262,6 +275,10 @@ def generate_readiness_for_package(
             metadata_json=json.dumps(
                 {
                     "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
                     "sequence_snapshot_id": readiness.sequence_snapshot_id,
                     "status": status,
                     "evidence_id": evidence.id,
@@ -279,7 +296,18 @@ def generate_readiness_for_package(
             project_id=package.project_id,
             aggregate_type="load_plan_cutover_readiness",
             aggregate_id=readiness.id,
-            payload_json=json.dumps({"package_id": package.id, "status": status, **catalog_context}, sort_keys=True),
+            payload_json=json.dumps(
+                {
+                    "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
+                    "status": status,
+                    **catalog_context,
+                },
+                sort_keys=True,
+            ),
             status="PENDING",
         )
     )

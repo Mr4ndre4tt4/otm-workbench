@@ -144,6 +144,11 @@ def create_spec_artifact(
     file_path.write_text(markdown, encoding="utf-8")
     digest, size = file_sha256(file_path)
     artifact = Artifact(
+        project_id=definition.project_id,
+        profile_id=definition.profile_id,
+        environment_id=definition.environment_id,
+        domain_name=definition.domain_name,
+        visibility="PROJECT",
         source_module=SOURCE_MODULE,
         artifact_type="integration_markdown_spec",
         file_path=str(file_path),

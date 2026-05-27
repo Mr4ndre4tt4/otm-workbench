@@ -40,6 +40,11 @@ def import_payload_artifact(
     payload_path.write_text(content, encoding="utf-8")
     digest, size = file_sha256(payload_path)
     artifact = Artifact(
+        project_id=definition.project_id,
+        profile_id=definition.profile_id,
+        environment_id=definition.environment_id,
+        domain_name=definition.domain_name,
+        visibility="PROJECT",
         source_module="integration_mapping",
         artifact_type="integration_payload_sample",
         file_path=str(payload_path),

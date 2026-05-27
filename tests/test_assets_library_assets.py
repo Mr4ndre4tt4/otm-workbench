@@ -14,6 +14,11 @@ def draft_asset_payload(**overrides):
         "visibility": "PROJECT",
         "scope_type": "PROJECT",
         "sensitivity": "INTERNAL",
+        "project_id": "project_demo",
+        "profile_id": "profile_demo",
+        "environment_id": "env_demo",
+        "domain_name": "otm1",
+        "access_policy_id": "policy_assets_demo",
         "module_id": "assets",
         "macro_object_code": "RATE_RECORD",
         "otm_table_name": "RATE_GEO_COST",
@@ -21,6 +26,48 @@ def draft_asset_payload(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def create_project_environment(client, admin_header, *, name_suffix=""):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": f"Synthetic Assets Workspace{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": f"Synthetic Assets Project{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "UAT", "environment_type": "UAT"},
+        headers=admin_header,
+    ).json()
+    return project["id"], environment["id"]
+
+
+def set_active_context(
+    client,
+    admin_header,
+    *,
+    project_id,
+    environment_id,
+    domain_name,
+    can_view_all_domains=False,
+):
+    response = client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": project_id,
+            "environment_id": environment_id,
+            "domain_name": domain_name,
+            "can_view_all_domains": can_view_all_domains,
+        },
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+    return response.json()
 
 
 def test_assets_table_exists_after_metadata_reset(db_session):
@@ -47,6 +94,11 @@ def test_create_draft_asset_records_metadata_audit_and_event(client, admin_heade
     assert asset["visibility"] == "PROJECT"
     assert asset["scope_type"] == "PROJECT"
     assert asset["sensitivity"] == "INTERNAL"
+    assert asset["project_id"] == "project_demo"
+    assert asset["profile_id"] == "profile_demo"
+    assert asset["environment_id"] == "env_demo"
+    assert asset["domain_name"] == "OTM1"
+    assert asset["access_policy_id"] == "policy_assets_demo"
     assert asset["tags"] == ["SYNTHETIC", "MVP0"]
     actions = {action["key"]: action for action in asset["available_actions"]}
     assert actions["asset.update"]["disabled"] is False
@@ -146,6 +198,194 @@ def test_list_and_detail_assets_with_filters(client, admin_header):
     assert listed.json()["items"][0]["id"] == created["id"]
     assert detail.status_code == 200
     assert detail.json()["id"] == created["id"]
+
+
+def test_asset_routes_follow_active_context_scope(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header)
+    other_project_id, other_environment_id = create_project_environment(client, admin_header, name_suffix=" Other")
+    visible = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    hidden_domain = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Domain Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM2",
+        ),
+        headers=admin_header,
+    ).json()
+    hidden_project = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Project Asset",
+            project_id=other_project_id,
+            environment_id=other_environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Environment Asset",
+            project_id=project_id,
+            environment_id="env_dev",
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=admin_header)
+    visible_detail = client.get(f"/api/v1/modules/assets/assets/{visible['id']}", headers=admin_header)
+    hidden_detail = client.get(f"/api/v1/modules/assets/assets/{hidden_domain['id']}", headers=admin_header)
+    hidden_update = client.patch(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}",
+        json={"name": "Synthetic Hidden Domain Asset Updated"},
+        headers=admin_header,
+    )
+    hidden_archive = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/archive",
+        headers=admin_header,
+    )
+    hidden_link_create = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/links",
+        json={"link_type": "OTM_TABLE", "target_id": "RATE_GEO_COST", "target_label": "Rate Geo Cost"},
+        headers=admin_header,
+    )
+    hidden_link_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/links",
+        headers=admin_header,
+    )
+    hidden_version_upload = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/versions",
+        files={"file": ("hidden.md", b"# hidden synthetic asset\n", "text/markdown")},
+        headers=admin_header,
+    )
+    hidden_version_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/versions",
+        headers=admin_header,
+    )
+    hidden_download = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/download",
+        headers=admin_header,
+    )
+    hidden_project_detail = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}",
+        headers=admin_header,
+    )
+    hidden_project_link_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}/links",
+        headers=admin_header,
+    )
+    hidden_project_version_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}/versions",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["items"]] == [visible["id"]]
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["id"] == visible["id"]
+    assert hidden_detail.status_code == 404
+    assert hidden_update.status_code == 404
+    assert hidden_archive.status_code == 404
+    assert hidden_link_create.status_code == 404
+    assert hidden_link_list.status_code == 404
+    assert hidden_version_upload.status_code == 404
+    assert hidden_version_list.status_code == 404
+    assert hidden_download.status_code == 404
+    assert hidden_project_detail.status_code == 404
+    assert hidden_project_link_list.status_code == 404
+    assert hidden_project_version_list.status_code == 404
+
+
+def test_asset_routes_hide_operational_assets_for_non_admin_without_active_context(
+    client,
+    admin_header,
+    auth_header,
+):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=auth_header)
+    detail = client.get(f"/api/v1/modules/assets/assets/{created['id']}", headers=auth_header)
+    links = client.get(f"/api/v1/modules/assets/assets/{created['id']}/links", headers=auth_header)
+    versions = client.get(f"/api/v1/modules/assets/assets/{created['id']}/versions", headers=auth_header)
+    download = client.get(f"/api/v1/modules/assets/assets/{created['id']}/download", headers=auth_header)
+
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+    assert listed.json()["total"] == 0
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "ASSET_NOT_FOUND"
+    assert links.status_code == 404
+    assert versions.status_code == 404
+    assert download.status_code == 404
+
+
+def test_asset_dba_context_can_see_all_domains_in_active_environment(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header)
+    otm1 = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic OTM1 Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    otm2 = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic OTM2 Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM2",
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Other Environment Asset",
+            project_id=project_id,
+            environment_id="env_dev",
+            domain_name="OTM3",
+        ),
+        headers=admin_header,
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {otm1["id"], otm2["id"]}
 
 
 def test_list_assets_filters_by_scope_tag_and_module(client, admin_header):

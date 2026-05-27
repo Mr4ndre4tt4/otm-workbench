@@ -1144,6 +1144,8 @@ def build_master_data_template_workbook(
 
     digest, size = file_sha256(str(output_path))
     artifact = Artifact(
+        domain_name="PUBLIC",
+        visibility="PUBLIC",
         source_module="master_data",
         artifact_type="master_data_template_workbook",
         file_path=str(output_path),
@@ -1176,6 +1178,7 @@ def parse_master_data_template_workbook(
     file_obj: BinaryIO,
     file_name: str,
     content_type: str,
+    scope: dict[str, object] | None = None,
 ) -> dict[str, object]:
     sheets = json.loads(template.sheets_json)
     workbook = load_workbook(file_obj, data_only=True)
@@ -1247,6 +1250,10 @@ def parse_master_data_template_workbook(
         )
 
     batch = MasterDataBatch(
+        project_id=str(scope.get("project_id") or "").strip() or None if scope else None,
+        environment_id=str(scope.get("environment_id") or "").strip() or None if scope else None,
+        profile_id=str(scope.get("profile_id") or "").strip() or None if scope else None,
+        domain_name=str(scope.get("domain_name") or "").strip().upper() or None if scope else None,
         template_id=template.id,
         template_code=template.code,
         status="PARSED",
@@ -1673,6 +1680,11 @@ def export_master_data_csv_package(
 
     zip_hash, zip_size = file_sha256(str(zip_path))
     artifact = Artifact(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="master_data",
         artifact_type="master_data_csv_zip",
         file_path=str(zip_path),
@@ -1686,6 +1698,11 @@ def export_master_data_csv_package(
     db.flush()
 
     manifest = Manifest(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="master_data",
         status="CREATED",
         manifest_json=manifest_text,
@@ -1702,6 +1719,11 @@ def export_master_data_csv_package(
         "artifact_type": "master_data_csv_zip",
     }
     evidence = Evidence(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="master_data",
         evidence_type="master_data_csv_export",
         summary_json=json.dumps(evidence_summary, sort_keys=True),

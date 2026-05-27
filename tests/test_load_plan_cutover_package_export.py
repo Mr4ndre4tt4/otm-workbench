@@ -78,8 +78,23 @@ def test_cutover_package_export_creates_client_safe_zip(client, admin_header, db
     assert payload["csvutil_build_count"] == 1
     assert artifact.artifact_type == "cutover_package_zip"
     assert artifact.content_type == "application/zip"
+    assert artifact.project_id == "project_load_plan"
+    assert artifact.profile_id == "profile_load_plan"
+    assert artifact.environment_id == "env_cutover"
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
+    assert manifest.project_id == "project_load_plan"
+    assert manifest.profile_id == "profile_load_plan"
+    assert manifest.environment_id == "env_cutover"
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     assert evidence.client_safe is True
     assert evidence.evidence_type == "cutover_package_export"
+    assert evidence.project_id == "project_load_plan"
+    assert evidence.profile_id == "profile_load_plan"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert json.loads(evidence.summary_json)["checklist_id"] == checklist["id"]
     assert json.loads(audit.metadata_json)["checklist_id"] == checklist["id"]
     assert json.loads(event.payload_json)["checklist_id"] == checklist["id"]

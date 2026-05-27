@@ -161,6 +161,11 @@ def generate_rates_csv_export(
 
     zip_hash, zip_size = file_sha256(zip_path)
     artifact = Artifact(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="rates",
         artifact_type="rates_csv_zip",
         file_path=str(zip_path),
@@ -174,6 +179,11 @@ def generate_rates_csv_export(
     db.flush()
 
     manifest = Manifest(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="rates",
         status="CREATED",
         manifest_json=manifest_text,
@@ -194,6 +204,11 @@ def generate_rates_csv_export(
         "artifact_type": "rates_csv_zip",
     }
     evidence = Evidence(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="rates",
         evidence_type="rates_csv_export",
         summary_json=json.dumps(summary_payload, sort_keys=True),
@@ -215,6 +230,10 @@ def generate_rates_csv_export(
                 "artifact_id": artifact.id,
                 "manifest_id": manifest.id,
                 "evidence_id": evidence.id,
+                "project_id": batch.project_id,
+                "profile_id": batch.profile_id,
+                "environment_id": batch.environment_id,
+                "domain_name": batch.domain_name,
                 "table_count": len(batch_tables),
             },
             sort_keys=True,

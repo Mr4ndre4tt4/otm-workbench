@@ -2,7 +2,17 @@ import json
 from pathlib import Path
 import zipfile
 
-from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence
+from otm_workbench.models import (
+    Artifact,
+    AuditLog,
+    Capability,
+    DomainEvent,
+    Evidence,
+    Role,
+    RoleCapability,
+    SessionToken,
+    UserProjectRole,
+)
 from otm_workbench.config import get_settings
 
 
@@ -70,6 +80,86 @@ def create_platform_evidence(client, admin_header):
     return evidence.json()["id"], artifact.json()["id"], manifest.json()["id"]
 
 
+def create_scoped_platform_evidence(client, admin_header, *, prefix: str, domain_name: str = "otm1"):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": f"{prefix} Workspace"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": f"{prefix} Project"},
+        headers=admin_header,
+    ).json()
+    profile = client.post(
+        "/api/v1/platform/profiles",
+        json={"project_id": project["id"], "name": "Default"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+    artifact_dir = get_settings().artifact_root / "test-artifacts" / "evidence-hub"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_file = artifact_dir / f"{prefix.lower().replace(' ', '-')}.txt"
+    artifact_file.write_text(f"{prefix} scoped artifact", encoding="utf-8")
+    artifact = client.post(
+        "/api/v1/platform/artifacts",
+        json={
+            "source_module": "rates",
+            "artifact_type": "rates_csv_zip",
+            "file_path": str(artifact_file),
+            "file_name": f"{prefix.lower().replace(' ', '-')}.zip",
+            "content_type": "application/zip",
+            "sensitivity_level": "internal",
+            "project_id": project["id"],
+            "profile_id": profile["id"],
+            "environment_id": environment["id"],
+            "domain_name": domain_name,
+            "visibility": "PROJECT",
+        },
+        headers=admin_header,
+    )
+    manifest = client.post(
+        "/api/v1/platform/manifests",
+        json={
+            "source_module": "rates",
+            "status": "CREATED",
+            "manifest_json": json.dumps({"schema_version": "test/v1", "manifest_type": "rates_csv_export"}),
+            "project_id": project["id"],
+            "profile_id": profile["id"],
+            "environment_id": environment["id"],
+            "domain_name": domain_name,
+            "visibility": "PROJECT",
+        },
+        headers=admin_header,
+    )
+    evidence = client.post(
+        "/api/v1/platform/evidence",
+        json={
+            "source_module": "rates",
+            "evidence_type": "rates_csv_export",
+            "summary_json": json.dumps({"status": "ok", "prefix": prefix}, sort_keys=True),
+            "artifact_id": artifact.json()["id"],
+            "manifest_id": manifest.json()["id"],
+        },
+        headers=admin_header,
+    )
+    assert artifact.status_code == 200
+    assert manifest.status_code == 200
+    assert evidence.status_code == 200
+    return {
+        "project": project,
+        "profile": profile,
+        "environment": environment,
+        "artifact_id": artifact.json()["id"],
+        "manifest_id": manifest.json()["id"],
+        "evidence_id": evidence.json()["id"],
+    }
+
+
 def test_evidence_hub_detail_returns_linked_summaries_without_sensitive_fields(client, admin_header):
     evidence_id, artifact_id, manifest_id = create_platform_evidence(client, admin_header)
 
@@ -114,6 +204,60 @@ def test_evidence_hub_list_filters_by_metadata(client, admin_header):
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["items"][0]["id"] == evidence_id
+
+
+def test_evidence_hub_records_are_limited_to_active_context_for_non_admin(
+    client,
+    admin_header,
+    auth_header,
+    db_session,
+):
+    visible = create_scoped_platform_evidence(client, admin_header, prefix="Visible Evidence")
+    hidden = create_scoped_platform_evidence(client, admin_header, prefix="Hidden Evidence")
+    user_token = auth_header["Authorization"].split(" ", 1)[1]
+    user_id = db_session.get(SessionToken, user_token).user_id
+    role = Role(name="Evidence Viewer")
+    capability = Capability(name="evidence.view")
+    db_session.add_all([role, capability])
+    db_session.flush()
+    db_session.add(RoleCapability(role_id=role.id, capability_id=capability.id))
+    db_session.add(
+        UserProjectRole(
+            user_id=user_id,
+            project_id=visible["project"]["id"],
+            environment_id=visible["environment"]["id"],
+            domain_name="OTM1",
+            role_id=role.id,
+        )
+    )
+    db_session.commit()
+    client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": visible["project"]["id"],
+            "profile_id": visible["profile"]["id"],
+            "environment_id": visible["environment"]["id"],
+            "domain_name": "otm1",
+        },
+        headers=auth_header,
+    )
+
+    listed = client.get("/api/v1/evidence-hub/evidence", headers=auth_header)
+    visible_detail = client.get(f"/api/v1/evidence-hub/evidence/{visible['evidence_id']}", headers=auth_header)
+    hidden_detail = client.get(f"/api/v1/evidence-hub/evidence/{hidden['evidence_id']}", headers=auth_header)
+    visible_download = client.get(f"/api/v1/evidence-hub/artifacts/{visible['artifact_id']}/download", headers=auth_header)
+    hidden_download = client.get(f"/api/v1/evidence-hub/artifacts/{hidden['artifact_id']}/download", headers=auth_header)
+
+    assert listed.status_code == 200
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["id"] == visible["evidence_id"]
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["id"] == visible["evidence_id"]
+    assert hidden_detail.status_code == 403
+    assert hidden_detail.json()["code"] == "EVIDENCE_FORBIDDEN"
+    assert visible_download.status_code == 200
+    assert hidden_download.status_code == 403
+    assert hidden_download.json()["code"] == "ARTIFACT_FORBIDDEN"
 
 
 def test_evidence_hub_list_defaults_to_client_safe_only(client, admin_header, db_session):
@@ -324,12 +468,9 @@ def test_evidence_hub_archive_package_rejects_no_matching_evidence(client, admin
     assert response.status_code == 400
 
 
-def test_evidence_hub_archive_package_creates_metadata_zip_and_records(
-    client,
-    admin_header,
-    db_session,
-):
-    evidence_id, artifact_id, manifest_id = create_platform_evidence(client, admin_header)
+def test_evidence_hub_archive_package_rejects_mixed_project_scope(client, admin_header):
+    create_scoped_platform_evidence(client, admin_header, prefix="Archive Scope One")
+    create_scoped_platform_evidence(client, admin_header, prefix="Archive Scope Two")
 
     response = client.post(
         "/api/v1/evidence-hub/archive-packages",
@@ -337,6 +478,32 @@ def test_evidence_hub_archive_package_creates_metadata_zip_and_records(
             "source_module": "rates",
             "evidence_type": "rates_csv_export",
             "status": "CREATED",
+            "sensitivity_level": "client_safe",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "EVIDENCE_ARCHIVE_SCOPE_MISMATCH"
+
+
+def test_evidence_hub_archive_package_creates_metadata_zip_and_records(
+    client,
+    admin_header,
+    db_session,
+):
+    scoped = create_scoped_platform_evidence(client, admin_header, prefix="Archive Evidence")
+    evidence_id = scoped["evidence_id"]
+    artifact_id = scoped["artifact_id"]
+    manifest_id = scoped["manifest_id"]
+
+    response = client.post(
+        "/api/v1/evidence-hub/archive-packages",
+        json={
+            "source_module": "rates",
+            "evidence_type": "rates_csv_export",
+            "status": "CREATED",
+            "project_id": scoped["project"]["id"],
             "sensitivity_level": "client_safe",
         },
         headers=admin_header,
@@ -360,8 +527,19 @@ def test_evidence_hub_archive_package_creates_metadata_zip_and_records(
     assert archive_artifact.artifact_type == "evidence_hub_archive_zip"
     assert archive_evidence.evidence_type == "evidence_hub_archive"
     assert archive_evidence.client_safe is True
+    assert archive_artifact.project_id == scoped["project"]["id"]
+    assert archive_artifact.profile_id == scoped["profile"]["id"]
+    assert archive_artifact.environment_id == scoped["environment"]["id"]
+    assert archive_artifact.domain_name == "OTM1"
+    assert archive_artifact.visibility == "PROJECT"
+    assert archive_evidence.project_id == scoped["project"]["id"]
+    assert archive_evidence.profile_id == scoped["profile"]["id"]
+    assert archive_evidence.environment_id == scoped["environment"]["id"]
+    assert archive_evidence.domain_name == "OTM1"
+    assert archive_evidence.visibility == "PROJECT"
     assert audit.target_id == archive_artifact.id
     assert event.aggregate_id == archive_artifact.id
+    assert event.project_id == scoped["project"]["id"]
 
     with zipfile.ZipFile(archive_artifact.file_path) as archive:
         assert sorted(archive.namelist()) == [

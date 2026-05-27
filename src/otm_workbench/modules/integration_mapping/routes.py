@@ -11,6 +11,7 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.config import get_settings
 from otm_workbench.models import (
+    ActiveContext,
     Artifact,
     AuditLog,
     IntegrationDefinition,
@@ -87,6 +88,7 @@ from otm_workbench.modules.integration_mapping.transform_types import (
     serialize_transform_type,
 )
 from otm_workbench.modules.integration_mapping.validation import validate_integration_definition
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 
 
 router = APIRouter(prefix="/api/v1/modules/integration-mapping", tags=["integration-mapping"])
@@ -138,6 +140,69 @@ def list_definition_generated_artifacts(db: Session, definition_id: str) -> list
         if artifact is not None and artifact.source_module == "integration_mapping":
             artifacts.append(artifact)
     return artifacts
+
+
+def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
+    return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
+def active_context_scope_payload(db: Session, user: User) -> dict[str, object] | None:
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        return None
+    return {
+        "project_id": active_context.project_id,
+        "environment_id": active_context.environment_id,
+        "profile_id": active_context.profile_id,
+        "domain_name": active_context.domain_name,
+    }
+
+
+def require_integration_create_scope(db: Session, user: User) -> dict[str, object] | None:
+    scope = active_context_scope_payload(db, user)
+    if user.is_admin:
+        return scope
+    if scope is None or not scope.get("project_id") or not scope.get("environment_id"):
+        raise api_error(
+            403,
+            "ACTIVE_CONTEXT_REQUIRED",
+            "Integration records require an active project and environment context.",
+        )
+    return scope
+
+
+def scoped_definition_query(db: Session, user: User):
+    query = db.query(IntegrationDefinition)
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(IntegrationDefinition.id.is_(None))
+        return query
+    return apply_operational_scope(query, IntegrationDefinition, operational_scope_from_context(active_context))
+
+
+def get_scoped_definition_or_404(db: Session, user: User, definition_id: str) -> IntegrationDefinition:
+    definition = scoped_definition_query(db, user).filter(IntegrationDefinition.id == definition_id).first()
+    if definition is None:
+        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    return definition
+
+
+def scoped_system_query(db: Session, user: User):
+    query = db.query(IntegrationSystem)
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(IntegrationSystem.id.is_(None))
+        return query
+    return apply_operational_scope(query, IntegrationSystem, operational_scope_from_context(active_context))
+
+
+def get_scoped_system_or_404(db: Session, user: User, system_id: str) -> IntegrationSystem:
+    system = scoped_system_query(db, user).filter(IntegrationSystem.id == system_id).first()
+    if system is None:
+        raise api_error(404, "INTEGRATION_SYSTEM_NOT_FOUND", "Integration system not found.")
+    return system
 
 
 class IntegrationDefinitionCreateRequest(BaseModel):
@@ -289,7 +354,12 @@ def create_definition(
     user: User = Depends(require_user),
 ):
     try:
-        definition = create_integration_definition(db, payload=payload.model_dump(), user=user)
+        definition = create_integration_definition(
+            db,
+            payload=payload.model_dump(),
+            user=user,
+            scope=require_integration_create_scope(db, user),
+        )
     except UnknownIntegrationSchemaRoot as exc:
         raise api_error(
             400,
@@ -320,7 +390,7 @@ def list_definitions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definitions = db.query(IntegrationDefinition).order_by(IntegrationDefinition.created_at.desc()).all()
+    definitions = scoped_definition_query(db, user).order_by(IntegrationDefinition.created_at.desc()).all()
     items = [serialize_integration_definition(definition) for definition in definitions]
     return PageResponse(items=items, total=len(items))
 
@@ -331,9 +401,7 @@ def get_definition(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     return serialize_integration_definition(definition)
 
 
@@ -343,9 +411,7 @@ def validate_definition(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     validation = validate_integration_definition(db, definition)
     record_definition_audit_event(
         db,
@@ -368,9 +434,7 @@ def preview_definition(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     validation = validate_integration_definition(db, definition)
     if not validation["is_valid"]:
         raise api_error(
@@ -412,9 +476,7 @@ def generate_definition_spec(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     validation = validate_integration_definition(db, definition)
     readiness = validation["readiness"]
     if not readiness["specification_ready"]:
@@ -457,9 +519,7 @@ def list_definition_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     artifacts = list_definition_generated_artifacts(db, definition.id)
     return {
         "definition_id": definition.id,
@@ -475,9 +535,7 @@ def download_definition_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     artifact = next(
         (item for item in list_definition_generated_artifacts(db, definition.id) if item.id == artifact_id),
         None,
@@ -528,7 +586,12 @@ def create_system(
     user: User = Depends(require_user),
 ):
     try:
-        system = create_integration_system(db, payload=payload.model_dump(), user=user)
+        system = create_integration_system(
+            db,
+            payload=payload.model_dump(),
+            user=user,
+            scope=require_integration_create_scope(db, user),
+        )
     except IntegrityError as exc:
         db.rollback()
         raise api_error(409, "INTEGRATION_SYSTEM_CODE_EXISTS", "Integration system code already exists.") from exc
@@ -542,7 +605,7 @@ def list_systems(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    systems = db.query(IntegrationSystem).order_by(IntegrationSystem.created_at.desc()).all()
+    systems = scoped_system_query(db, user).order_by(IntegrationSystem.created_at.desc()).all()
     items = [serialize_integration_system(system) for system in systems]
     return PageResponse(items=items, total=len(items))
 
@@ -554,9 +617,7 @@ def create_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    system = db.get(IntegrationSystem, system_id)
-    if system is None:
-        raise api_error(404, "INTEGRATION_SYSTEM_NOT_FOUND", "Integration system not found.")
+    system = get_scoped_system_or_404(db, user, system_id)
     try:
         endpoint = create_integration_endpoint(db, system=system, payload=payload.model_dump(), user=user)
     except ValueError as exc:
@@ -570,9 +631,7 @@ def list_endpoints(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    system = db.get(IntegrationSystem, system_id)
-    if system is None:
-        raise api_error(404, "INTEGRATION_SYSTEM_NOT_FOUND", "Integration system not found.")
+    system = get_scoped_system_or_404(db, user, system_id)
     endpoints = (
         db.query(IntegrationEndpoint)
         .filter(IntegrationEndpoint.system_id == system.id)
@@ -590,9 +649,7 @@ def create_payload_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         payload_artifact = import_payload_artifact(
             db,
@@ -619,9 +676,7 @@ def list_payload_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     rows = (
         db.query(IntegrationPayloadArtifact, Artifact)
         .join(Artifact, Artifact.id == IntegrationPayloadArtifact.artifact_id)
@@ -646,6 +701,7 @@ def parse_payload_artifact_schema(
             "INTEGRATION_PAYLOAD_ARTIFACT_NOT_FOUND",
             "Integration payload artifact not found.",
         )
+    get_scoped_definition_or_404(db, user, payload_artifact.definition_id)
     artifact = db.get(Artifact, payload_artifact.artifact_id)
     if artifact is None:
         raise api_error(404, "ARTIFACT_NOT_FOUND", "Artifact not found.")
@@ -678,6 +734,7 @@ def create_payload_schema_document(
             "INTEGRATION_PAYLOAD_ARTIFACT_NOT_FOUND",
             "Integration payload artifact not found.",
         )
+    get_scoped_definition_or_404(db, user, payload_artifact.definition_id)
     artifact = db.get(Artifact, payload_artifact.artifact_id)
     if artifact is None:
         raise api_error(404, "ARTIFACT_NOT_FOUND", "Artifact not found.")
@@ -691,9 +748,7 @@ def list_schema_documents(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     documents = (
         db.query(IntegrationSchemaDocument)
         .filter(IntegrationSchemaDocument.definition_id == definition.id)
@@ -713,6 +768,7 @@ def list_schema_nodes(
     document = db.get(IntegrationSchemaDocument, schema_document_id)
     if document is None:
         raise api_error(404, "INTEGRATION_SCHEMA_DOCUMENT_NOT_FOUND", "Integration schema document not found.")
+    get_scoped_definition_or_404(db, user, document.definition_id)
     nodes = (
         db.query(IntegrationSchemaNode)
         .filter(IntegrationSchemaNode.schema_document_id == document.id)
@@ -731,9 +787,7 @@ def list_mapping_suggestions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         items = suggest_integration_mappings(
             db,
@@ -757,9 +811,7 @@ def create_mapping(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         mapping = create_integration_mapping(db, definition=definition, payload=payload.model_dump(), user=user)
     except ValueError as exc:
@@ -796,9 +848,7 @@ def bulk_create_mappings(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     created: list[IntegrationMapping] = []
     try:
         for item in payload.items:
@@ -831,9 +881,7 @@ def list_mappings(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     mappings = (
         db.query(IntegrationMapping)
         .filter(IntegrationMapping.definition_id == definition.id)
@@ -853,6 +901,7 @@ def get_mapping(
     mapping = db.get(IntegrationMapping, mapping_id)
     if mapping is None:
         raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
+    get_scoped_definition_or_404(db, user, mapping.definition_id)
     return serialize_integration_mapping(mapping)
 
 
@@ -865,9 +914,7 @@ def delete_mapping(
     mapping = db.get(IntegrationMapping, mapping_id)
     if mapping is None:
         raise api_error(404, "INTEGRATION_MAPPING_NOT_FOUND", "Integration mapping not found.")
-    definition = db.get(IntegrationDefinition, mapping.definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, mapping.definition_id)
     deleted_payload = serialize_integration_mapping(mapping)
     record_definition_audit_event(
         db,
@@ -896,9 +943,7 @@ def create_loop_definition(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         loop = create_integration_loop_definition(db, definition=definition, payload=payload.model_dump(), user=user)
     except ValueError as exc:
@@ -922,9 +967,7 @@ def list_loop_definitions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     loops = (
         db.query(IntegrationLoopDefinition)
         .filter(IntegrationLoopDefinition.definition_id == definition.id)
@@ -944,6 +987,7 @@ def get_loop_definition(
     loop = db.get(IntegrationLoopDefinition, loop_id)
     if loop is None:
         raise api_error(404, "INTEGRATION_LOOP_NOT_FOUND", "Integration loop definition not found.")
+    get_scoped_definition_or_404(db, user, loop.definition_id)
     return serialize_integration_loop_definition(loop)
 
 
@@ -954,9 +998,7 @@ def create_join_rule(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         join_rule = create_integration_join_rule(db, definition=definition, payload=payload.model_dump(), user=user)
     except ValueError as exc:
@@ -992,9 +1034,7 @@ def list_join_rules(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     join_rules = (
         db.query(IntegrationJoinRule)
         .filter(IntegrationJoinRule.definition_id == definition.id)
@@ -1014,6 +1054,7 @@ def get_join_rule(
     join_rule = db.get(IntegrationJoinRule, join_rule_id)
     if join_rule is None:
         raise api_error(404, "INTEGRATION_JOIN_NOT_FOUND", "Integration join rule not found.")
+    get_scoped_definition_or_404(db, user, join_rule.definition_id)
     return serialize_integration_join_rule(join_rule)
 
 
@@ -1024,9 +1065,7 @@ def create_join_binding(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         binding = create_integration_join_binding(db, definition=definition, payload=payload.model_dump(), user=user)
     except ValueError as exc:
@@ -1080,9 +1119,7 @@ def list_join_bindings(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     bindings = (
         db.query(IntegrationJoinBinding)
         .filter(IntegrationJoinBinding.definition_id == definition.id)
@@ -1102,6 +1139,7 @@ def get_join_binding(
     binding = db.get(IntegrationJoinBinding, binding_id)
     if binding is None:
         raise api_error(404, "INTEGRATION_JOIN_BINDING_NOT_FOUND", "Integration join binding not found.")
+    get_scoped_definition_or_404(db, user, binding.definition_id)
     return serialize_integration_join_binding(db, binding)
 
 
@@ -1112,9 +1150,7 @@ def create_lookup_definition(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         lookup = create_integration_lookup_definition(
             db,
@@ -1151,9 +1187,7 @@ def list_lookup_definitions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     lookups = (
         db.query(IntegrationLookupDefinition)
         .filter(IntegrationLookupDefinition.definition_id == definition.id)
@@ -1173,6 +1207,7 @@ def get_lookup_definition(
     lookup = db.get(IntegrationLookupDefinition, lookup_id)
     if lookup is None:
         raise api_error(404, "INTEGRATION_LOOKUP_NOT_FOUND", "Integration lookup definition not found.")
+    get_scoped_definition_or_404(db, user, lookup.definition_id)
     return serialize_integration_lookup_definition(lookup)
 
 
@@ -1183,9 +1218,7 @@ def create_response_handler(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     try:
         handler = create_integration_response_handler(
             db,
@@ -1232,9 +1265,7 @@ def list_response_handlers(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    definition = db.get(IntegrationDefinition, definition_id)
-    if definition is None:
-        raise api_error(404, "INTEGRATION_DEFINITION_NOT_FOUND", "Integration definition not found.")
+    definition = get_scoped_definition_or_404(db, user, definition_id)
     handlers = (
         db.query(IntegrationResponseHandler)
         .filter(IntegrationResponseHandler.definition_id == definition.id)

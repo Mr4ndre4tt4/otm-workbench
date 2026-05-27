@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
+from tests.test_integration_mapping_definitions import create_project_with_environments, set_active_context
 from tests.test_integration_mapping_loops import loop_payload
 from tests.test_integration_mapping_lookups import lookup_payload
 from tests.test_integration_mapping_joins import join_payload
@@ -14,6 +15,14 @@ from tests.test_integration_mapping_validation import create_full_valid_definiti
 
 
 def test_preview_integration_definition_creates_job_and_artifact(client, admin_header, db_session):
+    project_id, environment_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
     definition, _source, _target = create_full_valid_definition(client, admin_header)
 
     response = client.post(
@@ -47,6 +56,10 @@ def test_preview_integration_definition_creates_job_and_artifact(client, admin_h
     assert artifact.source_module == "integration_mapping"
     assert artifact.artifact_type == "integration_preview"
     assert artifact.content_type == "application/json"
+    assert artifact.project_id == project_id
+    assert artifact.environment_id == environment_id
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
 
     artifact_payload = json.loads(Path(artifact.file_path).read_text(encoding="utf-8"))
     assert artifact_payload["definition_id"] == definition["id"]

@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
-from otm_workbench.dependencies import get_db, require_user
-from otm_workbench.models import Artifact, AuditLog, DomainEvent, Evidence, Manifest, User, utcnow
+from otm_workbench.dependencies import api_error, get_db, require_user
+from otm_workbench.models import ActiveContext, Artifact, AuditLog, DomainEvent, Evidence, Manifest, User, utcnow
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 from otm_workbench.platform.services import file_sha256, resolve_artifact_storage_path
 
 
@@ -39,6 +40,24 @@ def json_bytes(payload: dict[str, object] | list[dict[str, object]]) -> bytes:
     return json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
 
 
+def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
+    return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
+def apply_evidence_visibility(query, db: Session, user: User):
+    if user.is_admin:
+        return query
+    return apply_operational_scope(query, Evidence, operational_scope_from_context(active_context_for_user(db, user)))
+
+
+def require_evidence_visible(db: Session, user: User, evidence: Evidence, *, code: str, message: str) -> None:
+    if user.is_admin:
+        return
+    visible = apply_evidence_visibility(db.query(Evidence).filter(Evidence.id == evidence.id), db, user).first()
+    if visible is None:
+        raise api_error(403, code, message)
+
+
 def entry_metadata(path: str, content: bytes) -> dict[str, object]:
     return {
         "path": path,
@@ -52,6 +71,12 @@ def serialize_artifact_summary(artifact: Artifact | None) -> dict[str, object] |
         return None
     return {
         "id": artifact.id,
+        "project_id": artifact.project_id,
+        "profile_id": artifact.profile_id,
+        "environment_id": artifact.environment_id,
+        "domain_name": artifact.domain_name,
+        "visibility": artifact.visibility,
+        "access_policy_id": artifact.access_policy_id,
         "source_module": artifact.source_module,
         "artifact_type": artifact.artifact_type,
         "file_name": artifact.file_name,
@@ -69,6 +94,12 @@ def serialize_manifest_summary(manifest: Manifest | None) -> dict[str, object] |
     manifest_payload = parse_json_object(manifest.manifest_json)
     return {
         "id": manifest.id,
+        "project_id": manifest.project_id,
+        "profile_id": manifest.profile_id,
+        "environment_id": manifest.environment_id,
+        "domain_name": manifest.domain_name,
+        "visibility": manifest.visibility,
+        "access_policy_id": manifest.access_policy_id,
         "source_module": manifest.source_module,
         "status": manifest.status,
         "manifest_type": manifest_payload.get("manifest_type"),
@@ -83,6 +114,11 @@ def serialize_evidence_index_item(db: Session, evidence: Evidence) -> dict[str, 
     return {
         "id": evidence.id,
         "project_id": evidence.project_id,
+        "profile_id": evidence.profile_id,
+        "environment_id": evidence.environment_id,
+        "domain_name": evidence.domain_name,
+        "visibility": evidence.visibility,
+        "access_policy_id": evidence.access_policy_id,
         "source_module": evidence.source_module,
         "evidence_type": evidence.evidence_type,
         "status": evidence.status,
@@ -124,7 +160,7 @@ def archive_filters(payload: ArchivePackageRequest) -> dict[str, object]:
     }
 
 
-def query_archive_evidence(db: Session, payload: ArchivePackageRequest) -> list[Evidence]:
+def query_archive_evidence(db: Session, payload: ArchivePackageRequest, user: User) -> list[Evidence]:
     query = db.query(Evidence).filter(Evidence.client_safe.is_(True))
     if payload.source_module:
         query = query.filter(Evidence.source_module == payload.source_module)
@@ -136,6 +172,7 @@ def query_archive_evidence(db: Session, payload: ArchivePackageRequest) -> list[
         query = query.filter(Evidence.project_id == payload.project_id)
     if payload.sensitivity_level:
         query = query.filter(Evidence.sensitivity_level == payload.sensitivity_level)
+    query = apply_evidence_visibility(query, db, user)
     return query.order_by(Evidence.created_at.desc()).all()
 
 
@@ -151,6 +188,36 @@ def unique_by_id(items: list[dict[str, object] | None]) -> list[dict[str, object
         seen.add(item_id)
         result.append(item)
     return result
+
+
+def common_evidence_scope(evidence_items: list[Evidence]) -> dict[str, str | None]:
+    if not evidence_items:
+        return {
+            "project_id": None,
+            "profile_id": None,
+            "environment_id": None,
+            "domain_name": "PUBLIC",
+            "visibility": "PUBLIC",
+            "access_policy_id": None,
+        }
+    first = evidence_items[0]
+    fields = {
+        "project_id": first.project_id,
+        "profile_id": first.profile_id,
+        "environment_id": first.environment_id,
+        "domain_name": first.domain_name,
+        "visibility": first.visibility,
+        "access_policy_id": first.access_policy_id,
+    }
+    for evidence in evidence_items[1:]:
+        for key in ("project_id", "profile_id", "environment_id", "domain_name", "visibility", "access_policy_id"):
+            if getattr(evidence, key) != fields[key]:
+                raise api_error(
+                    400,
+                    "EVIDENCE_ARCHIVE_SCOPE_MISMATCH",
+                    "Archive packages require all selected evidence to share the same operational scope.",
+                )
+    return fields
 
 
 @router.get("/evidence")
@@ -181,6 +248,7 @@ def list_evidence(
         query = query.filter(Evidence.artifact_id == artifact_id)
     if manifest_id:
         query = query.filter(Evidence.manifest_id == manifest_id)
+    query = apply_evidence_visibility(query, db, user)
     items = query.order_by(Evidence.created_at.desc()).all()
     return PageResponse(items=[serialize_evidence_index_item(db, item) for item in items], total=len(items))
 
@@ -194,6 +262,13 @@ def get_evidence_detail(
     evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
     if evidence is None:
         raise HTTPException(status_code=404, detail="Evidence not found.")
+    require_evidence_visible(
+        db,
+        user,
+        evidence,
+        code="EVIDENCE_FORBIDDEN",
+        message="Evidence is not visible in the active context.",
+    )
     return serialize_evidence_index_item(db, evidence)
 
 
@@ -203,10 +278,11 @@ def create_archive_package(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    evidence_items = query_archive_evidence(db, payload)
+    evidence_items = query_archive_evidence(db, payload, user)
     if not evidence_items:
         raise HTTPException(status_code=400, detail="No client-safe evidence matched the archive filters.")
 
+    archive_scope = common_evidence_scope(evidence_items)
     evidence_index = [serialize_evidence_index_item(db, evidence) for evidence in evidence_items]
     artifact_index = unique_by_id([item["artifact"] for item in evidence_index])
     manifest_index = unique_by_id([item["manifest"] for item in evidence_index])
@@ -246,6 +322,12 @@ def create_archive_package(
 
     sha256, size_bytes = file_sha256(str(archive_path))
     artifact = Artifact(
+        project_id=archive_scope["project_id"],
+        profile_id=archive_scope["profile_id"],
+        environment_id=archive_scope["environment_id"],
+        domain_name=archive_scope["domain_name"],
+        visibility=archive_scope["visibility"] or "PRIVATE",
+        access_policy_id=archive_scope["access_policy_id"],
         source_module="evidence_hub",
         artifact_type="evidence_hub_archive_zip",
         file_path=str(archive_path),
@@ -259,6 +341,12 @@ def create_archive_package(
     db.flush()
 
     manifest = Manifest(
+        project_id=archive_scope["project_id"],
+        profile_id=archive_scope["profile_id"],
+        environment_id=archive_scope["environment_id"],
+        domain_name=archive_scope["domain_name"],
+        visibility=archive_scope["visibility"] or "PRIVATE",
+        access_policy_id=archive_scope["access_policy_id"],
         source_module="evidence_hub",
         status="CREATED",
         manifest_json=archive_manifest_content.decode("utf-8"),
@@ -277,6 +365,12 @@ def create_archive_package(
         "artifact_type": "evidence_hub_archive_zip",
     }
     evidence = Evidence(
+        project_id=archive_scope["project_id"],
+        profile_id=archive_scope["profile_id"],
+        environment_id=archive_scope["environment_id"],
+        domain_name=archive_scope["domain_name"],
+        visibility=archive_scope["visibility"] or "PRIVATE",
+        access_policy_id=archive_scope["access_policy_id"],
         source_module="evidence_hub",
         evidence_type="evidence_hub_archive",
         summary_json=json.dumps(summary, sort_keys=True),
@@ -303,6 +397,11 @@ def create_archive_package(
                     "artifact_ref_count": len(artifact_index),
                     "manifest_ref_count": len(manifest_index),
                     "filters": filters,
+                    "project_id": archive_scope["project_id"],
+                    "profile_id": archive_scope["profile_id"],
+                    "environment_id": archive_scope["environment_id"],
+                    "domain_name": archive_scope["domain_name"],
+                    "visibility": archive_scope["visibility"],
                 },
                 sort_keys=True,
             ),
@@ -312,7 +411,7 @@ def create_archive_package(
         DomainEvent(
             event_type="evidence_hub.archive_package.created",
             source_module="evidence_hub",
-            project_id=payload.project_id,
+            project_id=archive_scope["project_id"],
             aggregate_type="artifact",
             aggregate_id=artifact.id,
             payload_json=json.dumps(
@@ -347,6 +446,13 @@ def download_artifact(
     user: User = Depends(require_user),
 ):
     artifact, evidence = downloadable_artifact(db, artifact_id)
+    require_evidence_visible(
+        db,
+        user,
+        evidence,
+        code="ARTIFACT_FORBIDDEN",
+        message="Artifact is not visible in the active context.",
+    )
     try:
         path = resolve_artifact_storage_path(artifact.file_path)
     except ValueError as exc:

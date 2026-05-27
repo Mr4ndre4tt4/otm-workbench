@@ -114,6 +114,8 @@ class UserProjectRole(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    environment_id: Mapped[str | None] = mapped_column(ForeignKey("environments.id"), nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), index=True)
 
 
@@ -122,6 +124,19 @@ class RoleCapability(Base):
 
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), primary_key=True)
     capability_id: Mapped[str] = mapped_column(ForeignKey("capabilities.id"), primary_key=True)
+
+
+class AccessPolicy(Base, TimestampMixin):
+    __tablename__ = "access_policies"
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_access_policy_project_name"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    rule_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
 
 class Module(Base, TimestampMixin):
@@ -214,6 +229,11 @@ class Artifact(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     artifact_type: Mapped[str] = mapped_column(String)
     file_path: Mapped[str] = mapped_column(String)
@@ -229,6 +249,11 @@ class Manifest(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, default="CREATED")
     manifest_json: Mapped[str] = mapped_column(Text, default="{}")
@@ -239,6 +264,11 @@ class Evidence(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     evidence_type: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, default="CREATED")
@@ -269,6 +299,8 @@ class Asset(Base, TimestampMixin):
     project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
     asset_type: Mapped[str] = mapped_column(String, index=True)
@@ -316,6 +348,10 @@ class OrderReleaseTemplate(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("code", "version", name="uq_order_release_templates_code_version"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String)
     version: Mapped[int] = mapped_column(Integer, default=1, index=True)
@@ -342,6 +378,10 @@ class OrderReleaseBatch(Base, TimestampMixin):
     __tablename__ = "order_release_batches"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(ForeignKey("order_release_templates.id"), index=True)
     status: Mapped[str] = mapped_column(String, default="PARSED", index=True)
     file_name: Mapped[str] = mapped_column(String)
@@ -368,6 +408,10 @@ class IntegrationDefinition(Base, TimestampMixin):
     __tablename__ = "integration_definitions"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, unique=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -393,6 +437,10 @@ class IntegrationSystem(Base, TimestampMixin):
     __tablename__ = "integration_systems"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, unique=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -606,6 +654,10 @@ class MasterDataBatch(Base, TimestampMixin):
     __tablename__ = "master_data_batches"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(ForeignKey("master_data_templates.id"), index=True)
     template_code: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="PARSED")
@@ -1063,6 +1115,7 @@ class LoadPlanPackage(Base, TimestampMixin):
     project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String, index=True)
     source_entity_type: Mapped[str] = mapped_column(String, index=True)
     source_entity_id: Mapped[str] = mapped_column(String, index=True)

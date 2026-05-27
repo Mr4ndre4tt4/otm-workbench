@@ -22,6 +22,11 @@ def generate_order_release_xml_artifact(
     xml_path.write_text(str(preview["xml"]), encoding="utf-8")
     digest, size = file_sha256(xml_path)
     artifact = Artifact(
+        project_id=batch.project_id,
+        environment_id=batch.environment_id,
+        profile_id=batch.profile_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="order_release_generator",
         artifact_type="order_release_xml",
         file_path=str(xml_path),
@@ -34,6 +39,11 @@ def generate_order_release_xml_artifact(
     db.add(artifact)
     db.flush()
     evidence = Evidence(
+        project_id=batch.project_id,
+        environment_id=batch.environment_id,
+        profile_id=batch.profile_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="order_release_generator",
         evidence_type="order_release_xml_generated",
         summary_json=json.dumps(

@@ -85,6 +85,10 @@ def decide_cutover_go_no_go(
     }
     evidence = Evidence(
         project_id=checklist.project_id,
+        profile_id=checklist.profile_id,
+        environment_id=checklist.environment_id,
+        domain_name=package.domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="cutover_go_no_go_decision",
         summary_json=json.dumps(summary, sort_keys=True),

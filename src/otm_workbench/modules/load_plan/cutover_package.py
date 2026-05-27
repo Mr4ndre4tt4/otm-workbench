@@ -92,6 +92,12 @@ def catalog_context_for_checklist(checklist: CutoverChecklist) -> dict[str, obje
     return context
 
 
+def domain_name_for_checklist(checklist: CutoverChecklist, package: LoadPlanPackage | None = None) -> str | None:
+    if package is not None and package.domain_name:
+        return package.domain_name
+    return None
+
+
 def generate_cutover_package_export(
     db: Session,
     *,
@@ -161,6 +167,10 @@ def generate_cutover_package_export(
     zip_hash, zip_size = file_sha256(zip_path)
     artifact = Artifact(
         project_id=checklist.project_id,
+        profile_id=checklist.profile_id,
+        environment_id=checklist.environment_id,
+        domain_name=domain_name_for_checklist(checklist, package),
+        visibility="PROJECT",
         source_module="load_plan",
         artifact_type="cutover_package_zip",
         file_path=str(zip_path),
@@ -175,6 +185,10 @@ def generate_cutover_package_export(
 
     manifest = Manifest(
         project_id=checklist.project_id,
+        profile_id=checklist.profile_id,
+        environment_id=checklist.environment_id,
+        domain_name=domain_name_for_checklist(checklist, package),
+        visibility="PROJECT",
         source_module="load_plan",
         status="CREATED",
         manifest_json=manifest_content.decode("utf-8"),
@@ -198,6 +212,10 @@ def generate_cutover_package_export(
     }
     evidence = Evidence(
         project_id=checklist.project_id,
+        profile_id=checklist.profile_id,
+        environment_id=checklist.environment_id,
+        domain_name=domain_name_for_checklist(checklist, package),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="cutover_package_export",
         summary_json=json.dumps(evidence_summary, sort_keys=True),

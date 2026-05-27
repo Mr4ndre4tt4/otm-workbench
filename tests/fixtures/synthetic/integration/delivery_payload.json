@@ -1,0 +1,10 @@
+{
+  "environment": "UAT",
+  "domainName": "OTM1",
+  "delivery": {
+    "deliveryId": "OTM1.SHIP_SYN_001",
+    "transportMode": "TL",
+    "origin": "OTM1.LOC_ORIGIN",
+    "destination": "OTM1.LOC_DEST"
+  }
+}

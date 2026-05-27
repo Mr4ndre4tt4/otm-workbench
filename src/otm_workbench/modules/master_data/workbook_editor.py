@@ -171,6 +171,7 @@ def create_master_data_batch_from_editor_rows(
     db: Session,
     template: MasterDataTemplate,
     payload: dict[str, object],
+    scope: dict[str, object] | None = None,
 ) -> dict[str, object]:
     validation = validate_master_data_workbook_rows(template, payload)
     if not validation["valid"]:
@@ -213,6 +214,7 @@ def create_master_data_batch_from_editor_rows(
         workbook_bytes,
         str(payload.get("file_name") or f"{template.code.lower()}_editor.xlsx"),
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        scope,
     )
 
 

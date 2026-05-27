@@ -19,7 +19,14 @@ from otm_workbench.models import (
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     response = client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": "Synthetic readiness batch", "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": "Synthetic readiness batch",
+            "domain_name": "OTM1",
+            "project_id": "project_ready",
+            "profile_id": "profile_ready",
+            "environment_id": "env_ready",
+        },
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -264,6 +271,11 @@ def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(clien
     event_payload = json.loads(event.payload_json)
     assert evidence.evidence_type == "load_plan_cutover_readiness"
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_ready"
+    assert evidence.profile_id == "profile_ready"
+    assert evidence.environment_id == "env_ready"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert readiness_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert evidence_summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert (
@@ -271,7 +283,13 @@ def test_cutover_readiness_creates_evidence_audit_event_without_raw_values(clien
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert audit_metadata["project_id"] == "project_ready"
+    assert audit_metadata["environment_id"] == "env_ready"
+    assert audit_metadata["domain_name"] == "OTM1"
     assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["project_id"] == "project_ready"
+    assert event_payload["environment_id"] == "env_ready"
+    assert event_payload["domain_name"] == "OTM1"
     assert (
         event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"

@@ -149,6 +149,12 @@ def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
     }
 
 
+def domain_name_for_package(package: LoadPlanPackage) -> str | None:
+    summary = parse_json_object(package.summary_json)
+    domain_name = summary.get("domain_name")
+    return str(domain_name).strip().upper() if domain_name else None
+
+
 def read_csv_header(lines: list[str]) -> list[str]:
     if len(lines) < 2:
         return []
@@ -451,6 +457,10 @@ def generate_zip_analysis(
     }
     manifest = Manifest(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         status="CREATED",
         manifest_json=json.dumps(manifest_payload, indent=2, sort_keys=True),
@@ -493,6 +503,10 @@ def generate_zip_analysis(
     }
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_zip_analysis",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -514,6 +528,10 @@ def generate_zip_analysis(
             metadata_json=json.dumps(
                 {
                     "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
                     "source_artifact_id": artifact.id,
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
@@ -532,7 +550,15 @@ def generate_zip_analysis(
             aggregate_type="load_plan_zip_analysis",
             aggregate_id=analysis.id,
             payload_json=json.dumps(
-                {"package_id": package.id, "status": "ANALYZED", **catalog_context},
+                {
+                    "package_id": package.id,
+                    "project_id": package.project_id,
+                    "profile_id": package.profile_id,
+                    "environment_id": package.environment_id,
+                    "domain_name": domain_name_for_package(package),
+                    "status": "ANALYZED",
+                    **catalog_context,
+                },
                 sort_keys=True,
             ),
             status="PENDING",

@@ -1,6 +1,8 @@
 from sqlalchemy import inspect
 
 from otm_workbench.models import SchemaFile, SchemaPack, SchemaRoot
+from tests.test_integration_mapping_definitions import create_project_with_environments, set_active_context
+from tests.test_order_release_generator_batches import valid_rows
 
 
 def create_order_release_schema_root(db_session, *, root_name: str):
@@ -199,6 +201,262 @@ def test_create_order_release_template_version_preserves_template_history(client
 
     assert batch_response.status_code == 200
     assert batch_response.json()["status"] == "VALID"
+
+
+def test_order_release_templates_follow_active_context_scope(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    other_project_id, other_uat_id, _ = create_project_with_environments(client, admin_header, name_suffix=" OR Template Other")
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    visible = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SCOPE_VISIBLE",
+            "name": "Visible scoped TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden_domain = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SCOPE_HIDDEN_DOMAIN",
+            "name": "Hidden domain TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SCOPE_HIDDEN_ENV",
+            "name": "Hidden environment TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=other_project_id,
+        environment_id=other_uat_id,
+        domain_name="OTM1",
+    )
+    hidden_project = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SCOPE_HIDDEN_PROJECT",
+            "name": "Hidden project TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header)
+    hidden_version = client.post(
+        f"/api/v1/modules/order-release-generator/templates/{hidden_domain['id']}/versions",
+        headers=admin_header,
+        json={
+            "name": "Hidden domain TL Order Release v2",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    )
+    hidden_batch = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        headers=admin_header,
+        json={"template_id": hidden_domain["id"], "file_name": "hidden_template_or.xlsx", "rows": valid_rows()},
+    )
+    hidden_project_version = client.post(
+        f"/api/v1/modules/order-release-generator/templates/{hidden_project['id']}/versions",
+        headers=admin_header,
+        json={
+            "name": "Hidden project TL Order Release v2",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    )
+    hidden_project_batch = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        headers=admin_header,
+        json={"template_id": hidden_project["id"], "file_name": "hidden_project_template_or.xlsx", "rows": valid_rows()},
+    )
+
+    assert listed.status_code == 200
+    codes = [item["code"] for item in listed.json()["items"]]
+    assert "TL_ORDER_RELEASE_MVP0" in codes
+    assert "TL_OR_SCOPE_VISIBLE" in codes
+    assert "TL_OR_SCOPE_HIDDEN_DOMAIN" not in codes
+    assert "TL_OR_SCOPE_HIDDEN_ENV" not in codes
+    assert "TL_OR_SCOPE_HIDDEN_PROJECT" not in codes
+    visible_payload = next(item for item in listed.json()["items"] if item["id"] == visible["id"])
+    assert visible_payload["project_id"] == project_id
+    assert visible_payload["environment_id"] == uat_id
+    assert visible_payload["domain_name"] == "OTM1"
+    seed_payload = next(item for item in listed.json()["items"] if item["code"] == "TL_ORDER_RELEASE_MVP0")
+    assert seed_payload["domain_name"] == "PUBLIC"
+    assert hidden_version.status_code == 404
+    assert hidden_batch.status_code == 404
+    assert hidden_project_version.status_code == 404
+    assert hidden_project_batch.status_code == 404
+
+
+def test_order_release_templates_keep_public_seed_but_hide_private_without_active_context_for_non_admin(
+    client,
+    admin_header,
+    auth_header,
+):
+    created = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_NO_CONTEXT_PRIVATE",
+            "name": "Private TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+
+    listed = client.get("/api/v1/modules/order-release-generator/templates", headers=auth_header)
+    version = client.post(
+        f"/api/v1/modules/order-release-generator/templates/{created['id']}/versions",
+        headers=auth_header,
+        json={
+            "name": "Private TL Order Release v2",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    )
+    create = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=auth_header,
+        json={
+            "code": "TL_OR_NO_CONTEXT_USER",
+            "name": "User TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    )
+
+    assert listed.status_code == 200
+    codes = [item["code"] for item in listed.json()["items"]]
+    assert "TL_ORDER_RELEASE_MVP0" in codes
+    assert "TL_OR_NO_CONTEXT_PRIVATE" not in codes
+    assert version.status_code == 404
+    assert version.json()["code"] == "ORDER_RELEASE_TEMPLATE_NOT_FOUND"
+    assert create.status_code == 403
+    assert create.json()["code"] == "ACTIVE_CONTEXT_REQUIRED"
+
+
+def test_order_release_template_dba_context_can_see_all_domains_in_active_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    otm1 = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_OTM1",
+            "name": "DBA OTM1 TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    otm2 = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_OTM2",
+            "name": "DBA OTM2 TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_OTHER_ENV",
+            "name": "DBA other environment TL Order Release",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header)
+
+    assert listed.status_code == 200
+    scoped_ids = {item["id"] for item in listed.json()["items"] if item["code"].startswith("TL_OR_DBA_")}
+    assert scoped_ids == {otm1["id"], otm2["id"]}
 
 
 def test_create_order_release_template_can_reference_schema_roots(client, admin_header, db_session):

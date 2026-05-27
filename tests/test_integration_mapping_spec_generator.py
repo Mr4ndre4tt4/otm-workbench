@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
+from tests.test_integration_mapping_definitions import create_project_with_environments, set_active_context
 from tests.test_integration_mapping_mappings import create_source_and_target_documents, mapping_payload
 from tests.test_integration_mapping_response_handlers import (
     create_documents_with_response_status,
@@ -10,6 +11,14 @@ from tests.test_integration_mapping_validation import create_full_valid_definiti
 
 
 def test_generate_integration_spec_creates_markdown_artifact_and_job(client, admin_header, db_session):
+    project_id, environment_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
     definition, _source, _target = create_full_valid_definition(client, admin_header)
 
     response = client.post(
@@ -43,6 +52,10 @@ def test_generate_integration_spec_creates_markdown_artifact_and_job(client, adm
     assert artifact is not None
     assert artifact.artifact_type == "integration_markdown_spec"
     assert artifact.content_type == "text/markdown"
+    assert artifact.project_id == project_id
+    assert artifact.environment_id == environment_id
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
 
     markdown = Path(artifact.file_path).read_text(encoding="utf-8")
     assert "# Integration Mapping Spec" in markdown

@@ -36,12 +36,17 @@ def create_integration_definition(
     *,
     payload: dict[str, object],
     user: User,
+    scope: dict[str, object] | None = None,
 ) -> IntegrationDefinition:
     source_schema_root_id = schema_root_id_from_payload(payload, "source_schema_root_id")
     target_schema_root_id = schema_root_id_from_payload(payload, "target_schema_root_id")
     require_schema_root(db, schema_root_id=source_schema_root_id, field="source_schema_root_id")
     require_schema_root(db, schema_root_id=target_schema_root_id, field="target_schema_root_id")
     definition = IntegrationDefinition(
+        project_id=str(scope.get("project_id") or "").strip() or None if scope else None,
+        environment_id=str(scope.get("environment_id") or "").strip() or None if scope else None,
+        profile_id=str(scope.get("profile_id") or "").strip() or None if scope else None,
+        domain_name=str(scope.get("domain_name") or "").strip().upper() or None if scope else None,
         code=normalize_code(str(payload["code"])),
         name=str(payload["name"]).strip(),
         description=str(payload.get("description") or "").strip(),
@@ -63,6 +68,10 @@ def create_integration_definition(
 def serialize_integration_definition(definition: IntegrationDefinition) -> dict[str, object]:
     return {
         "id": definition.id,
+        "project_id": definition.project_id,
+        "environment_id": definition.environment_id,
+        "profile_id": definition.profile_id,
+        "domain_name": definition.domain_name,
         "code": definition.code,
         "name": definition.name,
         "description": definition.description,

@@ -25,7 +25,14 @@ def test_load_plan_zip_analyses_table_exists_after_metadata_reset():
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     response = client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": "Synthetic ZIP analysis batch", "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": "Synthetic ZIP analysis batch",
+            "domain_name": "OTM1",
+            "project_id": "project_zip",
+            "profile_id": "profile_zip",
+            "environment_id": "env_zip",
+        },
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -121,8 +128,18 @@ def test_zip_analysis_creates_manifest_evidence_audit_and_event(client, admin_he
     assert manifest_json["package"]["id"] == package["id"]
     assert manifest_json["package"]["catalog_macro_object_code"] == "RATE_RECORD"
     assert manifest_json["files"][0]["table_name"] == "ACCESSORIAL_COST"
+    assert manifest.project_id == "project_zip"
+    assert manifest.profile_id == "profile_zip"
+    assert manifest.environment_id == "env_zip"
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     assert evidence.client_safe is True
     assert evidence.evidence_type == "load_plan_zip_analysis"
+    assert evidence.project_id == "project_zip"
+    assert evidence.profile_id == "profile_zip"
+    assert evidence.environment_id == "env_zip"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert evidence.artifact_id == export["artifact_id"]
     evidence_summary = json.loads(evidence.summary_json)
     audit_metadata = json.loads(audit.metadata_json)
@@ -133,7 +150,13 @@ def test_zip_analysis_creates_manifest_evidence_audit_and_event(client, admin_he
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert audit_metadata["project_id"] == "project_zip"
+    assert audit_metadata["environment_id"] == "env_zip"
+    assert audit_metadata["domain_name"] == "OTM1"
     assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["project_id"] == "project_zip"
+    assert event_payload["environment_id"] == "env_zip"
+    assert event_payload["domain_name"] == "OTM1"
     assert event_payload["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
     assert "OTM1.ACC_COST_001" not in manifest.manifest_json

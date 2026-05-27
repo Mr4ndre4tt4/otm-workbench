@@ -4,12 +4,13 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
-from otm_workbench.models import Artifact, AuditLog, Job, OrderReleaseBatch, OrderReleaseBatchRow, OrderReleaseTemplate, User
+from otm_workbench.models import ActiveContext, Artifact, AuditLog, Job, OrderReleaseBatch, OrderReleaseBatchRow, OrderReleaseTemplate, User
 from otm_workbench.modules.order_release_generator.batches import (
     create_order_release_batch,
     serialize_order_release_batch,
@@ -25,9 +26,79 @@ from otm_workbench.modules.order_release_generator.templates import (
 from otm_workbench.modules.order_release_generator.xml_artifacts import generate_order_release_xml_artifact
 from otm_workbench.modules.order_release_generator.xml_preview import build_order_release_xml
 from otm_workbench.modules.rates.exports import file_sha256
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 
 
 router = APIRouter(prefix="/api/v1/modules/order-release-generator", tags=["order-release-generator"])
+
+
+def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
+    return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
+def active_context_scope_payload(db: Session, user: User) -> dict[str, object] | None:
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        return None
+    return {
+        "project_id": active_context.project_id,
+        "environment_id": active_context.environment_id,
+        "profile_id": active_context.profile_id,
+        "domain_name": active_context.domain_name,
+    }
+
+
+def require_order_release_create_scope(db: Session, user: User) -> dict[str, object] | None:
+    scope = active_context_scope_payload(db, user)
+    if user.is_admin:
+        return scope
+    if scope is None or not scope.get("project_id") or not scope.get("environment_id"):
+        raise api_error(
+            403,
+            "ACTIVE_CONTEXT_REQUIRED",
+            "Order Release records require an active project and environment context.",
+        )
+    return scope
+
+
+def scoped_batch_query(db: Session, user: User):
+    query = db.query(OrderReleaseBatch)
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(OrderReleaseBatch.id.is_(None))
+        return query
+    return apply_operational_scope(query, OrderReleaseBatch, operational_scope_from_context(active_context))
+
+
+def get_scoped_batch_or_404(db: Session, user: User, batch_id: str) -> OrderReleaseBatch:
+    batch = scoped_batch_query(db, user).filter(OrderReleaseBatch.id == batch_id).first()
+    if batch is None:
+        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    return batch
+
+
+def scoped_template_query(db: Session, user: User):
+    query = db.query(OrderReleaseTemplate)
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(
+                and_(
+                    OrderReleaseTemplate.project_id.is_(None),
+                    OrderReleaseTemplate.environment_id.is_(None),
+                    OrderReleaseTemplate.domain_name == "PUBLIC",
+                )
+            )
+        return query
+    return apply_operational_scope(query, OrderReleaseTemplate, operational_scope_from_context(active_context))
+
+
+def get_scoped_template_or_404(db: Session, user: User, template_id: str) -> OrderReleaseTemplate:
+    template = scoped_template_query(db, user).filter(OrderReleaseTemplate.id == template_id).first()
+    if template is None:
+        raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
+    return template
 
 
 def artifact_ids_for_batch_jobs(db: Session, batch_id: str) -> list[str]:
@@ -120,7 +191,7 @@ def list_order_release_templates(
 ):
     seed_order_release_templates(db)
     templates = (
-        db.query(OrderReleaseTemplate)
+        scoped_template_query(db, user)
         .order_by(OrderReleaseTemplate.code, OrderReleaseTemplate.version.desc())
         .all()
     )
@@ -147,6 +218,7 @@ def create_template(
             created_by=user.email,
             transmission_schema_root_id=payload.transmission_schema_root_id,
             release_schema_root_id=payload.release_schema_root_id,
+            scope=require_order_release_create_scope(db, user),
         )
     except UnknownOrderReleaseSchemaRoot as exc:
         raise api_error(
@@ -171,9 +243,7 @@ def create_template_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    source_template = db.get(OrderReleaseTemplate, template_id)
-    if source_template is None:
-        raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
+    source_template = get_scoped_template_or_404(db, user, template_id)
     try:
         template, issues = create_order_release_template_version(
             db,
@@ -209,7 +279,7 @@ def list_batches(
     user: User = Depends(require_user),
 ):
     batches = (
-        db.query(OrderReleaseBatch)
+        scoped_batch_query(db, user)
         .order_by(OrderReleaseBatch.created_at.desc(), OrderReleaseBatch.id.desc())
         .limit(25)
         .all()
@@ -224,15 +294,14 @@ def create_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    template = db.get(OrderReleaseTemplate, payload.template_id)
-    if template is None:
-        raise api_error(404, "ORDER_RELEASE_TEMPLATE_NOT_FOUND", "Order Release template not found.")
+    template = get_scoped_template_or_404(db, user, payload.template_id)
     batch = create_order_release_batch(
         db,
         template=template,
         file_name=payload.file_name,
         rows=payload.rows,
         created_by=user.email,
+        scope=require_order_release_create_scope(db, user),
     )
     rows = (
         db.query(OrderReleaseBatchRow)
@@ -249,9 +318,7 @@ def get_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     rows = (
         db.query(OrderReleaseBatchRow)
         .filter(OrderReleaseBatchRow.batch_id == batch.id)
@@ -267,9 +334,7 @@ def preview_batch_xml(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     if batch.status != "VALID":
         raise api_error(409, "ORDER_RELEASE_BATCH_INVALID", "Order Release batch must be valid before XML preview.")
     rows = (
@@ -301,9 +366,7 @@ def generate_batch_xml_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     if batch.status != "VALID":
         raise api_error(409, "ORDER_RELEASE_BATCH_INVALID", "Order Release batch must be valid before XML generation.")
     rows = (
@@ -347,9 +410,7 @@ def list_batch_xml_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     artifacts = list_batch_artifacts(db, batch.id)
     return {
         "batch_id": batch.id,
@@ -365,9 +426,7 @@ def download_batch_xml_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     artifact = next((item for item in list_batch_artifacts(db, batch.id) if item.id == artifact_id), None)
     if artifact is None:
         raise api_error(404, "ORDER_RELEASE_ARTIFACT_NOT_FOUND", "Order Release artifact not found.")
@@ -411,9 +470,7 @@ def submit_batch_to_otm(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.get(OrderReleaseBatch, batch_id)
-    if batch is None:
-        raise api_error(404, "ORDER_RELEASE_BATCH_NOT_FOUND", "Order Release batch not found.")
+    batch = get_scoped_batch_or_404(db, user, batch_id)
     raise api_error(
         409,
         "ORDER_RELEASE_OTM_SUBMIT_DISABLED",

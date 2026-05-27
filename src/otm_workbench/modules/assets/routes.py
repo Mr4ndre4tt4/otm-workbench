@@ -9,7 +9,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.catalog.services import get_macro_object
-from otm_workbench.models import Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
+from otm_workbench.models import ActiveContext, Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
 from otm_workbench.modules.assets.assets import (
     AssetValidationError,
     archive_asset,
@@ -29,6 +29,7 @@ from otm_workbench.modules.assets.classifications import (
     update_asset_classification,
 )
 from otm_workbench.modules.rates.dictionary import load_table_definition
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 
 
 router = APIRouter(prefix="/api/v1/modules/assets", tags=["assets"])
@@ -42,6 +43,11 @@ class AssetCreateRequest(BaseModel):
     visibility: str
     scope_type: str
     sensitivity: str
+    project_id: str | None = None
+    profile_id: str | None = None
+    environment_id: str | None = None
+    domain_name: str | None = None
+    access_policy_id: str | None = None
     module_id: str | None = None
     macro_object_code: str | None = None
     otm_table_name: str | None = None
@@ -85,6 +91,23 @@ class AssetClassificationUpdateRequest(BaseModel):
 def reject_archived_asset(asset: Asset) -> None:
     if asset.status == "ARCHIVED":
         raise api_error(409, "ASSET_ARCHIVED", "Archived assets cannot be changed.")
+
+
+def scoped_asset_query(db: Session, user: User):
+    query = db.query(Asset)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(Asset.id.is_(None))
+        return query
+    return apply_operational_scope(query, Asset, operational_scope_from_context(active_context))
+
+
+def get_scoped_asset_or_404(db: Session, user: User, asset_id: str) -> Asset:
+    asset = scoped_asset_query(db, user).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    return asset
 
 
 def validate_asset_otm_references(db: Session, payload: dict[str, object]) -> None:
@@ -210,7 +233,7 @@ def list_assets(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(Asset)
+    query = scoped_asset_query(db, user)
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type.strip().upper())
     if category:
@@ -238,9 +261,7 @@ def get_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     return serialize_asset(asset)
 
 
@@ -251,9 +272,7 @@ def patch_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     request_payload = payload.model_dump(exclude_unset=True)
     validate_asset_otm_references(db, request_payload)
@@ -279,9 +298,7 @@ def archive_asset_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     return serialize_asset(archive_asset(db, asset=asset, archived_by=user.email))
 
 
@@ -292,9 +309,7 @@ def create_asset_link_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     link_type = payload.link_type.strip().upper()
     target_id = payload.target_id.strip()
@@ -339,9 +354,7 @@ def list_asset_links(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     links = (
         db.query(AssetLink)
         .filter(AssetLink.asset_id == asset_id)
@@ -358,9 +371,7 @@ def download_current_asset_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     if not asset.current_version_id:
         raise api_error(409, "ASSET_VERSION_MISSING", "Asset has no current version to download.")
     version = db.query(AssetVersion).filter(AssetVersion.id == asset.current_version_id).first()
@@ -384,9 +395,7 @@ def upload_asset_file_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     content = file.file.read()
     try:
@@ -412,9 +421,7 @@ def list_asset_versions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     versions = (
         db.query(AssetVersion)
         .filter(AssetVersion.asset_id == asset_id)
