@@ -1,0 +1,64 @@
+{
+  "module": "Shell / Project Cockpit v3",
+  "status": "created in Penpot on 2026-05-26; old generated boards removed",
+  "date": "2026-05-26",
+  "targetPageName": "01C Shell Context Selector Cockpit v3",
+  "targetPageId": "575775e8-ca97-8021-8008-14ec4ed580d8",
+  "revisionMarker": "v3-single-cockpit",
+  "supersedes": [
+    "docs/agent/penpot-wireframes/PROJECT_COCKPIT_WIREFRAME_BLUEPRINT.json",
+    "docs/agent/penpot-wireframes/PROJECT_COCKPIT_V2_WIREFRAME_BLUEPRINT.json"
+  ],
+  "deletedFromPenpot": [
+    "project-cockpit-shell v1 boards",
+    "project-cockpit-shell-v2 v2.1 boards"
+  ],
+  "canvas": {
+    "frameWidth": 1440,
+    "frameHeight": 1024,
+    "gapX": 120,
+    "gapY": 120,
+    "columns": 2
+  },
+  "frames": [
+    {
+      "id": "SHELLV3-00",
+      "name": "SHELLV3-00 Navigation map",
+      "route": "wireframe map",
+      "state": "navigation-map",
+      "purpose": "Show the reduced shell model: Login -> Cockpit -> Logout/session ended.",
+      "acceptance": "No Client Overview, Public View, or Project Info route appears as a separate shell destination."
+    },
+    {
+      "id": "SHELLV3-01",
+      "name": "SHELLV3-01 Login",
+      "route": "/login",
+      "state": "unauthenticated",
+      "purpose": "Authenticate before any scoped data is visible.",
+      "acceptance": "No authenticated sidebar or scoped data appears before login."
+    },
+    {
+      "id": "SHELLV3-02",
+      "name": "SHELLV3-02 Logout or session ended",
+      "route": "/logout",
+      "state": "signed-out",
+      "purpose": "Clear scoped data and return the user to login.",
+      "acceptance": "No sidebar, context, accelerator action, or secret reveal is available after logout."
+    },
+    {
+      "id": "SHELLV3-03",
+      "name": "SHELLV3-03 Project Cockpit",
+      "route": "/home",
+      "state": "active-context",
+      "purpose": "Single authenticated cockpit with Context Selector, Project Info, and Accelerators.",
+      "regions": [
+        "persistent sidebar with Cockpit, accelerators, Admin, and Dev Tools only",
+        "top bar with active context, Light/Dark, user menu, and Logout",
+        "Context Selector macro group defining Public vs Client/domain and environment",
+        "Project Info macro group inside Cockpit",
+        "Accelerators macro group"
+      ],
+      "acceptance": "Sidebar contains no Client Overview, Public View, or Project Info route; these are handled inside the Cockpit."
+    }
+  ]
+}

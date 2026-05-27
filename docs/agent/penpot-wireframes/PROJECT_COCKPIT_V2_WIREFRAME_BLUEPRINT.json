@@ -1,0 +1,91 @@
+{
+  "module": "Shell / Project Cockpit v2.1",
+  "status": "superseded by Project Cockpit v3; generated boards removed from Penpot",
+  "date": "2026-05-26",
+  "targetPageName": "01B Shell Context and Accelerator Cockpit v2",
+  "targetPageId": "d972a188-a187-8096-8008-14ddc8df1b2f",
+  "revisionMarker": "v2.1-navigation-shell",
+  "supersedes": [
+    "docs/agent/penpot-wireframes/PROJECT_COCKPIT_WIREFRAME_BLUEPRINT.json",
+    "docs/agent/penpot-wireframes/PROJECT_COCKPIT_PENPOT_CREATION_REPORT.md"
+  ],
+  "canvas": {
+    "frameWidth": 1440,
+    "frameHeight": 1024,
+    "gapX": 120,
+    "gapY": 120,
+    "columns": 2
+  },
+  "sharedShellRequirements": [
+    "Authenticated boards show a persistent sidebar.",
+    "Authenticated top bar shows active context, Light/Dark toggle, user menu, and Logout.",
+    "Each route-level board shows an entry path.",
+    "The navigation map uses arrows to explain how each shell/state is reached.",
+    "Login and logout/session-ended screens hide authenticated navigation."
+  ],
+  "frames": [
+    {
+      "id": "SHELLV2-00",
+      "name": "SHELLV2-00 Navigation map",
+      "route": "wireframe map",
+      "state": "navigation-map",
+      "purpose": "Explain how users reach each shell/state before reviewing individual boards.",
+      "regions": ["Route cards", "Arrow connectors", "Top-control note", "Clarification that 04/05/06 are optional child routes"],
+      "acceptance": "A reviewer can understand how to reach login, cockpit, client overview, Public View, Project Info Hub, and logout/session-ended states."
+    },
+    {
+      "id": "SHELLV2-01",
+      "name": "SHELLV2-01 Login",
+      "route": "/login",
+      "state": "unauthenticated",
+      "purpose": "Authenticate before any client/domain, environment, or public asset access.",
+      "regions": ["Theme toggle", "Sign-in panel", "Access help", "Entry path", "No client data visible"],
+      "acceptance": "No module, project, environment, or shared asset data is visible before authentication; success routes to the Cockpit."
+    },
+    {
+      "id": "SHELLV2-02",
+      "name": "SHELLV2-02 Logout or session ended",
+      "route": "/logout",
+      "state": "signed-out",
+      "purpose": "Confirm session end and remove all scoped data from view.",
+      "regions": ["Theme toggle", "Session-ended message", "Return to login", "Entry path", "No authenticated navigation"],
+      "acceptance": "After logout or timeout, no client/domain, environment, module, or secret action appears available."
+    },
+    {
+      "id": "SHELLV2-03",
+      "name": "SHELLV2-03 Context and accelerator cockpit",
+      "route": "/home",
+      "state": "active-context",
+      "purpose": "Select client/domain, environment, or Public View, then launch an accelerator.",
+      "regions": ["Persistent sidebar", "Top context bar", "Light/Dark toggle", "User menu", "Logout", "Client/domain selector", "Environment selector", "Public View switch", "Accelerator cards", "Route arrows to 04/05/06"],
+      "acceptance": "Module cards launch accelerators without project phase gates; client overview, Public View, Project Info Hub, and logout have visible entry paths."
+    },
+    {
+      "id": "SHELLV2-04",
+      "name": "SHELLV2-04 Client environment overview",
+      "route": "/home/client-overview",
+      "state": "client-overview",
+      "purpose": "Show the selected client/domain across DEV, QAS, PROD, and all-environment view.",
+      "regions": ["Persistent sidebar", "Top context bar", "Entry path", "DEV summary", "QAS summary", "PROD summary", "All environments view", "Return to Cockpit"],
+      "acceptance": "The overview clarifies environment separation without becoming a project-control dashboard."
+    },
+    {
+      "id": "SHELLV2-05",
+      "name": "SHELLV2-05 Public View and shared assets",
+      "route": "/home/public",
+      "state": "public-view",
+      "purpose": "Browse shared reusable assets without exposing private client data.",
+      "regions": ["Persistent sidebar", "Top public-scope bar", "Entry path", "Public boundary banner", "Shared asset cards", "Copy/import to context action", "Return to Cockpit"],
+      "acceptance": "Public View is clearly separate from private client/domain data and offers copy/import into an allowed context."
+    },
+    {
+      "id": "SHELLV2-06",
+      "name": "SHELLV2-06 Project Info Hub",
+      "route": "/home/project-info",
+      "state": "project-info",
+      "purpose": "Collect useful project references for the active client/domain and environment.",
+      "regions": ["Persistent sidebar", "Top context bar", "Entry path", "Useful URLs", "Documentation links", "Contacts", "Secure vault placeholder", "Return to Cockpit"],
+      "acceptance": "Project info is useful and scoped; secret values are never displayed in the wireframe."
+    }
+  ]
+}
