@@ -30,7 +30,6 @@ jobs:
           tests/test_operational_context.py
           tests/test_project_cockpit_summary.py
           tests/test_rates_batches.py
-          tests/test_assets_library_assets.py
           -q
 
   frontend:

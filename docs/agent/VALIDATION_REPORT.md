@@ -25,7 +25,8 @@ historical suites. Backend full suite expects protected local OTM_RESOURCES and
 paused/historical surfaces; frontend full suite includes legacy/current-scope
 contract mismatches.
 Workflow correction: `.github/workflows/ci.yml` now runs the representative
-current governance/UI phase suite.
+current governance/UI phase suite that does not require protected local
+`OTM_RESOURCES/`.
 ```
 
 Validation commands:
@@ -39,10 +40,19 @@ npm run build
 Validation results:
 
 ```text
-Backend representative suite: 67 passed in 196.31s.
+Backend representative suite with local Assets/Data Dictionary coverage:
+67 passed in 196.31s.
 Frontend functional suite: 3 files passed, 7 tests passed.
 Frontend build: passed.
 ```
+
+CI note:
+
+The first corrected backend CI run still failed because
+`tests/test_assets_library_assets.py` indirectly depends on local protected Data
+Dictionary resources. The CI backend gate was narrowed to tests that can run in
+a clean GitHub runner. Assets backend coverage should return to CI after a
+committed synthetic Data Dictionary fixture or fixture shim exists.
 
 Build note:
 
