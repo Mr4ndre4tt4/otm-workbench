@@ -50,7 +50,7 @@ Covered in this Phase 2B slice:
 - Route removal.
 - UI implementation.
 - Backend/API changes.
-- Linear/GitHub updates.
+- GitHub delivery updates.
 - Archiving docs.
 
 ## Allowed Files Or Areas

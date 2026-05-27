@@ -3,6 +3,31 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 GitHub Governance Migration
+
+Status:
+Applied in docs and repository controls.
+
+Scope:
+GitHub Issues, Pull Requests, and Actions are now the active delivery
+visibility layer. Linear is historical/paused unless the user explicitly
+reactivates it.
+
+What changed:
+
+- added GitHub delivery governance under
+  `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`;
+- added PR and Issue templates under `.github/`;
+- added GitHub Actions CI for backend tests, frontend tests, and frontend
+  build;
+- updated active Solon controls to stop requiring Linear updates for new
+  slices;
+- kept historical Linear docs and issue references as supporting evidence.
+
+Next agent rule:
+For new delivery slices, create/update a GitHub Issue and PR. Do not update
+Linear unless the user explicitly reactivates it.
+
 ## 2026-05-27 GitHub Recovery Checkpoint
 
 Status:
@@ -171,8 +196,8 @@ New chat intake must rebuild context from:
 10. relevant diffs for files the new task may touch.
 
 Previous chat exit must leave a concise handoff capsule whenever behavior,
-docs, tests, QA evidence, Linear, GitHub, or design artifacts changed. Silent
-partial work is now considered invalid handoff.
+docs, tests, QA evidence, GitHub, or design artifacts changed. Silent partial
+work is now considered invalid handoff.
 
 ## Prototype Adaptation
 
@@ -438,7 +463,7 @@ Earlier Penpot work remains historical/supporting evidence:
 - Project Info secure vault behavior needs a separate security design before
   implementation.
 - Cleanup targets are not approved for source deletion yet.
-- Linear/GitHub delivery updates are deferred until the next implementation or
+- GitHub delivery updates are deferred until the next implementation or
   approved tracking slice.
 
 ## Recommended Next Step
@@ -451,8 +476,8 @@ Continue the To-Be adaptation sequence from module completion work:
 2. create the slice-specific task contract, fixtures, and acceptance tests;
 3. validate the module against its Figma deep-flow board and capture browser QA
    evidence;
-4. update docs, tests, QA evidence, and Linear/GitHub tracking together when
-   the product behavior changes.
+4. update docs, tests, QA evidence, and GitHub tracking together when the
+   product behavior changes.
 
 ## 2026-05-27 Cockpit Deep Flow Runtime Slice
 

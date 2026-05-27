@@ -25,7 +25,7 @@ The user asked to continue the next step after Settings setup recovery.
 
 - New product implementation.
 - Route deletion or Admin Console route-family creation.
-- Linear/GitHub updates.
+- GitHub delivery updates.
 - Figma edits.
 
 ## Allowed Files Or Areas

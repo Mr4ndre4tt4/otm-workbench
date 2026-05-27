@@ -18,7 +18,7 @@ intake
   -> implementation plan
   -> development slice
   -> tests and browser QA
-  -> docs, evidence, Linear, GitHub
+  -> docs, evidence, GitHub issue/PR/Actions checkpoint
 ```
 
 ## Stage 1: Intake
@@ -210,6 +210,7 @@ Required per slice:
   module;
 - Data Dictionary and Oracle documentation notes when OTM behavior is uncertain;
 - docs update;
+- GitHub Issue/PR update when a slice changes delivery state;
 - decision/risk/handoff update when direction changes.
 - if the slice may continue in another chat, a handoff capsule following
   `docs/agent/CHAT_CONTINUITY_WORKFLOW.md`.
@@ -233,6 +234,16 @@ live backend/frontend pair used by the browser. The gate is:
 Evidence records must name the backend URL, frontend URL, user context, and
 the navigation result or the command used to verify it. A screenshot from a
 stale runtime is not valid evidence, even when source tests pass.
+
+GitHub delivery gate:
+
+GitHub is the active delivery visibility layer. For each reviewable slice:
+
+1. create or update a GitHub Issue using the delivery or governance template;
+2. link the issue from the branch, PR body, or PR comments;
+3. let GitHub Actions run backend tests, frontend tests, and frontend build;
+4. record validation commands and evidence in the PR;
+5. keep Linear paused/historical unless the user explicitly reactivates it.
 
 ## Stage 7: Completion Review
 

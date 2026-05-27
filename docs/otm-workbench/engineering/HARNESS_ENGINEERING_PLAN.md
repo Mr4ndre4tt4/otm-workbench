@@ -3,8 +3,8 @@
 **Status:** active operating model  
 **Date:** 2026-05-26  
 **Scope:** how OTM Workbench should apply harness engineering practices to keep
-Codex, future agents, tests, UI QA, Linear, GitHub, and documentation working
-as one system.
+Codex, future agents, tests, UI QA, GitHub, and documentation working as one
+system.
 
 ## 1. Purpose
 
@@ -17,15 +17,16 @@ repository easy for agents and humans to operate safely:
 - every module should expose testable backend, frontend, route, and QA
   contracts;
 - evidence should be saved in predictable places;
-- Linear should show the delivery state without becoming the source of truth;
-- GitHub should preserve every meaningful delivery step.
+- GitHub Issues and PRs should show delivery state without replacing docs;
+- GitHub Actions should preserve repeatable validation for meaningful delivery
+  steps.
 
 Reference: [OpenAI Harness Engineering](https://openai.com/index/harness-engineering/).
 
 ## 2. Project Rule
 
-The repository is the source of truth. Linear is the visibility board. Browser
-screenshots and test outputs are evidence. Chat is discussion.
+The repository is the source of truth. GitHub is the active delivery visibility
+layer. Browser screenshots and test outputs are evidence. Chat is discussion.
 
 That means every important decision should land in one of these places:
 
@@ -34,7 +35,7 @@ That means every important decision should land in one of these places:
 | Module objective and UX flow | `docs/otm-workbench/gui/*_CONSOLIDATED_SPEC.md` or module redesign spec |
 | Engineering standard | `docs/otm-workbench/engineering/` or `docs/otm-workbench/foundation/` |
 | Agent orientation | `AGENTS.md` |
-| Delivery task | Linear issue |
+| Delivery task | GitHub Issue |
 | Implemented change | Git commit on `main` or feature branch |
 | QA evidence | tests, browser scripts, screenshots under ignored `output/`, and linked docs |
 
@@ -129,19 +130,20 @@ exception:
 8. Status chips must describe lifecycle or readiness, not project planning terms
    such as `planned` when that does not help the operator.
 
-## 6. Linear And GitHub Loop
+## 6. GitHub Delivery Loop
 
-Linear issues should be small enough to match a delivery slice. For each slice:
+GitHub Issues should be small enough to match a delivery slice. For each slice:
 
-1. create or update the Linear issue before implementation;
+1. create or update the GitHub Issue before implementation;
 2. keep the issue title outcome-based;
 3. link or name the module spec section;
 4. commit implementation and docs together when they are inseparable;
-5. push to GitHub after validation;
-6. close or update Linear with QA evidence and remaining risk.
+5. open or update the Pull Request after validation;
+6. let GitHub Actions run backend tests, frontend tests, and frontend build;
+7. close or update the GitHub Issue with QA evidence and remaining risk.
 
-Linear must not replace docs. If an issue contains durable product decisions,
-move them to docs and keep the Linear issue as delivery tracking.
+GitHub Issues must not replace docs. If an issue contains durable product
+decisions, move them to docs and keep the issue as delivery tracking.
 
 ## 7. Documentation Garbage Collection
 
@@ -186,8 +188,8 @@ Apply the same pattern in order:
 8. Admin Console
 9. Developer Tools
 
-Each module only advances when backend, frontend, browser QA, docs, Linear, and
-GitHub are aligned.
+Each module only advances when backend, frontend, browser QA, docs, GitHub
+Issues/PRs, and GitHub Actions are aligned.
 
 ### Phase 4: Harness Hardening
 
@@ -204,7 +206,7 @@ This harness plan is working when:
 - a new agent can understand the active task in under five minutes from
   `AGENTS.md`;
 - each module has one active UX/product spec;
-- Linear mirrors the real delivery state;
+- GitHub Issues and PRs mirror the real delivery state;
 - commits include docs/test evidence for meaningful product changes;
 - browser QA catches confusing workflows before the user does;
 - no module is marked complete only because APIs and tests pass.

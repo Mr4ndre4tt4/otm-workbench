@@ -33,7 +33,7 @@ archive documents.
 - Code cleanup or route removal.
 - Source code refactors.
 - Penpot wireframe creation.
-- Linear or GitHub updates.
+- GitHub delivery updates.
 - Archiving or deleting files.
 - Changing module implementation order after this baseline without a recorded
   decision.

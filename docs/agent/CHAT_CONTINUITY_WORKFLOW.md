@@ -19,7 +19,8 @@ Known context-loss possibilities:
 - the next chat sees only part of the dirty worktree and assumes all changes
   are intentional;
 - plugin/tool state is not carried over, including browser sessions, Figma
-  selections, Linear/GitHub context, or local server processes;
+  selections, GitHub context, historical Linear context, or local server
+  processes;
 - the prior chat updated code but not `HANDOFF.md`, `VALIDATION_REPORT.md`,
   `DECISION_LOG.md`, or `RISK_REGISTER.md`;
 - a temporary implementation attempt remains in the worktree without being
@@ -42,8 +43,8 @@ The handoff must include:
   QA was used;
 - open risks, assumptions, and unresolved user decisions;
 - recommended next step and the first docs/files the next chat should read;
-- any local server, browser, plugin, Figma, Linear, or GitHub state that matters
-  for continuation.
+- any local server, browser, plugin, Figma, GitHub, or reactivated Linear state
+  that matters for continuation.
 
 If code was changed but the exit gate cannot be completed, the agent must mark
 the session as incomplete in `docs/agent/HANDOFF.md` and explain the missing
@@ -90,7 +91,7 @@ Stop and ask for clarification or first repair the docs when:
 
 ## Required Handoff Capsule
 
-Every session that changes behavior, docs, tests, QA evidence, Linear, GitHub,
+Every session that changes behavior, docs, tests, QA evidence, GitHub,
 or design artifacts must leave this capsule in `docs/agent/HANDOFF.md`:
 
 ```text

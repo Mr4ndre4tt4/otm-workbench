@@ -45,7 +45,7 @@ accelerator launch, Public View, and useful project information.
 - Source-code cleanup.
 - Route removal.
 - UI implementation.
-- Linear or GitHub delivery updates.
+- product implementation outside the approved GitHub governance migration.
 - Deleting or archiving files.
 - Top-level UI for Catalog Core, Evidence Hub, separate Admin Console / Jobs,
   Developer Tools, Coordinate Quality, generic dashboards, readiness boards,
@@ -138,7 +138,8 @@ Priority is not more code. Priority is:
 6. finish Cockpit;
 7. proceed through Rates, Assets, Master Data, Integration, and Order Release;
 8. revalidate each module before delivery against its desired outcome,
-   generated artifacts, tests, docs, Linear, GitHub, and QA evidence.
+   generated artifacts, tests, docs, GitHub issue/PR/Actions state, and QA
+   evidence.
 
 The complete module documentation index is:
 

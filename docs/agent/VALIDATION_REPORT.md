@@ -3,6 +3,40 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 GitHub Governance Migration
+
+Validation intent:
+
+- make GitHub the active delivery visibility layer;
+- keep durable decisions in repo docs;
+- add lightweight PR/Issue templates and CI;
+- mark Linear as historical/paused without deleting historical evidence.
+
+Validation performed:
+
+```powershell
+git status --short --branch
+rg -n "Linear|GitHub|DELIVERY_PIPELINE|visibility board|board" AGENTS.md docs .github -S
+python -m pytest tests/test_modules_navigation.py -q
+npm test -- src/app/AppFunctionalShell.test.tsx
+npm run build
+```
+
+Result:
+
+Docs and GitHub repository controls were updated.
+
+```text
+Backend navigation guard: 9 passed.
+Frontend shell functional smoke: 1 file passed, 1 test passed.
+Frontend build: passed.
+```
+
+Build note:
+
+Vite reported the existing large chunk warning after successful build. This is
+not a governance migration blocker.
+
 ## 2026-05-27 GitHub Recovery Checkpoint
 
 Validation intent:
@@ -841,7 +875,7 @@ tests, migrations, or frontend implementation files were changed.
   implementation.
 - `DOCUMENT_INVENTORY.md` remains category-level and still needs a file-by-file
   pass.
-- Linear/GitHub updates are deferred until product behavior or delivery slices
+- GitHub updates are deferred until product behavior or delivery slices
   change.
 
 ## 2026-05-27 Cockpit Deep Flow Completion

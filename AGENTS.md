@@ -9,7 +9,9 @@ this repository.
   Transportation Management implementation, data preparation, validation,
   evidence, integrations, and cutover support.
 - Architecture: backend-first modular monolith with React/Vite frontend.
-- Source of truth: repository docs and code. Linear is the visibility board.
+- Source of truth: repository docs and code. GitHub Issues, Pull Requests, and
+  Actions are the active delivery visibility layer. Linear is historical/paused
+  unless the user explicitly reactivates it.
 - Current delivery mode: governance reset, module scope recovery, Complete
   Solution Mockup To-Be consolidation from validated specs and the supplied
   PDF, approved frontend cleanup, client/domain and environment segregation,
@@ -43,8 +45,8 @@ this repository.
 - For OTM CSVs, first line is table name, second line is columns, then values;
   if dates are present, emit the `exec alter session ...` date format line
   before values.
-- Update docs, Linear, GitHub, tests, and QA evidence together when a delivery
-  slice changes product behavior.
+- Update docs, GitHub Issues/PRs, tests, and QA evidence together when a
+  delivery slice changes product behavior.
 - Before capturing browser QA evidence, verify that the live backend used by
   the browser exposes the current UI phase navigation. Query
   `/api/v1/platform/navigation` on the same base URL/session, compare the
@@ -59,7 +61,7 @@ this repository.
   `CURRENT_SCOPE.md`, and `DELIVERY_PIPELINE.md`, then check
   `git status --short` before acting.
 - Before ending a session that changed behavior, docs, tests, QA evidence,
-  Linear, GitHub, or design artifacts, leave a handoff capsule in
+  GitHub, or design artifacts, leave a handoff capsule in
   `docs/agent/HANDOFF.md` following
   `docs/agent/CHAT_CONTINUITY_WORKFLOW.md`. Do not leave silent partial work.
 
@@ -109,5 +111,5 @@ when it solves the real user problem clearly:
 - actions execute the expected backend behavior;
 - browser QA covers happy, negative, out-of-order, and route recovery paths;
 - screenshots/evidence are captured for meaningful states;
-- module docs and Linear are current;
+- module docs and GitHub tracking are current;
 - changes are committed and pushed.

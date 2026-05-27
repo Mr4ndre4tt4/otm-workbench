@@ -190,9 +190,10 @@ Before each module implementation slice begins, revalidate:
 - positive, negative, out-of-order, permission, route-recovery, and generated
   artifact test scenarios.
 
-## GitHub And Linear Visibility
+## GitHub Visibility
 
-GitHub and Linear should be updated when a delivery slice changes product
-behavior or creates an approved implementation plan. This planning slice records
-the direction in repo docs first. The next execution slice should create or
-update Linear issues and GitHub PR/issue records with links to this plan.
+GitHub Issues, PRs, and Actions should be updated when a delivery slice changes
+product behavior or creates an approved implementation plan. This planning slice
+records the direction in repo docs first. The next execution slice should
+create or update GitHub issue/PR records with links to this plan. Linear is
+historical/paused unless explicitly reactivated.

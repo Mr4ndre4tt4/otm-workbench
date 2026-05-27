@@ -32,7 +32,7 @@ This slice creates documentation only:
 - Route removal.
 - UI implementation.
 - Backend/API changes.
-- Linear/GitHub updates.
+- GitHub delivery updates.
 - Archiving docs.
 
 ## Allowed Files Or Areas

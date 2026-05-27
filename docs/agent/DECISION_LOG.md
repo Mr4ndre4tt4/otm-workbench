@@ -3,6 +3,54 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27: Move Active Delivery Visibility From Linear To GitHub
+
+Status:
+accepted governance direction
+
+Change type:
+
+```text
+delivery pipeline change
+documentation change
+validation strategy change
+```
+
+Decision:
+GitHub Issues, Pull Requests, and Actions are now the active delivery visibility
+layer for OTM Workbench. Repository docs and code remain the durable source of
+truth. Linear is historical/paused unless the user explicitly reactivates it.
+
+Reason:
+The project needs tighter coupling between scope, code, validation, PR review,
+and future chat continuity. Linear has not been used recently, and maintaining
+both GitHub and Linear would add synchronization work without enough current
+benefit.
+
+Rules:
+
+- use GitHub Issues for delivery slices and governance tasks;
+- use PRs for reviewable checkpoints with validation evidence;
+- use GitHub Actions for backend tests, frontend tests, and frontend build;
+- keep durable product decisions in repo docs, not only in GitHub comments;
+- do not require Linear updates for new slices.
+
+Impacted files:
+
+- `AGENTS.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/ISSUE_TEMPLATE/delivery_slice.md`
+- `.github/ISSUE_TEMPLATE/governance_task.md`
+- `.github/workflows/ci.yml`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/CURRENT_SCOPE.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/DOCUMENT_INVENTORY.md`
+- `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`
+- `docs/otm-workbench/governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md`
+- `docs/otm-workbench/engineering/HARNESS_ENGINEERING_PLAN.md`
+- `docs/otm-workbench/README.md`
+
 ## 2026-05-27: Require Chat Continuity Intake And Handoff Capsules
 
 Status:

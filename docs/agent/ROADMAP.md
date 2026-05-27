@@ -191,7 +191,7 @@ Each module requires:
   backend/frontend pair before screenshots are accepted;
 - screenshots/evidence;
 - docs update;
-- Linear/GitHub update.
+- GitHub Issue/PR update and Actions validation.
 
 Current development order:
 

@@ -103,5 +103,5 @@ replacement coverage, and explicit approval.
 ## Decision
 
 Proceed with documentation consolidation and To-Be planning. Defer code changes,
-fixture generation, Linear/GitHub delivery records, and cleanup execution to
+fixture generation, GitHub delivery records, and cleanup execution to
 subsequent approved implementation slices.

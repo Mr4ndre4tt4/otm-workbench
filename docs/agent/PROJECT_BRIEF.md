@@ -14,9 +14,10 @@ artifact, evidence, and governance layer around OTM implementation work.
 
 ## Source Of Truth
 
-The repository docs and code are the source of truth. Linear is the visibility
-board. GitHub preserves delivery history. Browser screenshots, tests, and
-generated evidence prove behavior.
+The repository docs and code are the source of truth. GitHub Issues, Pull
+Requests, and Actions are the active delivery visibility and review layer.
+Linear is historical/paused unless explicitly reactivated. Browser screenshots,
+tests, and generated evidence prove behavior.
 
 ## Current Delivery Mode
 

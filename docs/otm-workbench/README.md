@@ -9,8 +9,8 @@ Este diretório contém a documentação base do `otm-workbench`.
   decisoes, riscos e handoff.
 
 - `foundation/`: documentos de arquitetura, contratos, governança, QA, segurança, roadmap e convenções recebidos como fundação do projeto.
-- `governance/`: regras leves de visibilidade, Linear, delivery board e cadência de acompanhamento.
-- `engineering/`: regras operacionais para agentes, harness engineering, entrega, QA e integração Linear/GitHub.
+- `governance/`: regras leves de visibilidade, GitHub Issues/PRs/Actions e cadência de acompanhamento.
+- `engineering/`: regras operacionais para agentes, harness engineering, entrega, QA e integração GitHub.
 - `../superpowers/specs/`: specs consolidadas para execução assistida por Codex.
 
 ## Ordem Recomendada
@@ -43,7 +43,7 @@ Para iniciar o desenvolvimento:
 3. [Segurança, permissões e governança](foundation/seguranca_permissoes_governanca_otm_workbench.md)
 4. [Guia de desenvolvimento modular](foundation/guia_desenvolvimento_modular_otm_workbench.md)
 5. [Plano MVP e roadmap de execução](foundation/plano_mvp_roadmap_execucao_otm_workbench.md)
-6. [Linear delivery governance](governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md)
+6. [GitHub delivery governance](governance/GITHUB_DELIVERY_GOVERNANCE.md)
 7. [Artifact trust boundary review](governance/ARTIFACT_TRUST_BOUNDARY_REVIEW_OTM98.md)
 8. [Harness Engineering Plan](engineering/HARNESS_ENGINEERING_PLAN.md)
 
@@ -89,7 +89,7 @@ Complete Solution Mockup:
 7. finalizar Cockpit;
 8. seguir com Rates, Assets, Master Data, Integration e Order Release;
 9. em cada modulo, revalidar resultado desejado, fixtures, Data Dictionary,
-   documentacao oficial Oracle, testes, QA, evidencias, Linear e GitHub.
+   documentacao oficial Oracle, testes, QA, evidencias e GitHub.
 
 A spec historica do MVP 0 continua disponivel como referencia:
 
