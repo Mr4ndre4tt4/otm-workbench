@@ -3,6 +3,47 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 CodeRabbit Governance Update
+
+Validation intent:
+
+- add CodeRabbit to the governance model without making it a premature merge
+  gate;
+- add repository-level CodeRabbit configuration;
+- keep protected local resources and generated evidence out of review scope.
+
+Validation performed:
+
+```powershell
+rg -n "CodeRabbit|GitHub CLI|branch protection|delivery visibility|GITHUB_DELIVERY|coderabbit" AGENTS.md docs\agent docs\otm-workbench .github -S
+python -m pytest tests/test_modules_navigation.py -q
+npm test -- src/app/AppFunctionalShell.test.tsx
+```
+
+External documentation checked:
+
+- CodeRabbit documents that `.coderabbit.yaml` belongs in the repository root.
+- CodeRabbit supports `path_filters` and `path_instructions` for scoped review.
+- CodeRabbit distinguishes path instructions from general code guidelines.
+
+Validation not performed:
+
+- CodeRabbit CLI review was not run because `coderabbit` is not installed in
+  the current terminal.
+
+Result:
+
+CodeRabbit is documented as optional assistive review. `.coderabbit.yaml` was
+added with draft PR auto-review disabled, local/protected artifacts excluded,
+and path-specific review guidance.
+
+Smoke validation:
+
+```text
+Backend navigation guard: 9 passed.
+Frontend shell functional smoke: 1 file passed, 1 test passed.
+```
+
 ## 2026-05-27 GitHub Operating Setup Follow-Up
 
 Validation intent:

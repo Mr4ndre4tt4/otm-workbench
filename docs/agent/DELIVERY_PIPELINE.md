@@ -242,8 +242,10 @@ GitHub is the active delivery visibility layer. For each reviewable slice:
 1. create or update a GitHub Issue using the delivery or governance template;
 2. link the issue from the branch, PR body, or PR comments;
 3. let GitHub Actions run backend tests, frontend tests, and frontend build;
-4. record validation commands and evidence in the PR;
-5. keep Linear paused/historical unless the user explicitly reactivates it.
+4. for broad, risky, security-sensitive, CI, or governance changes, request or
+   run CodeRabbit review and triage only actionable findings;
+5. record validation commands, evidence, and review status in the PR;
+6. keep Linear paused/historical unless the user explicitly reactivates it.
 
 ## Stage 7: Completion Review
 

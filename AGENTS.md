@@ -47,6 +47,9 @@ this repository.
   before values.
 - Update docs, GitHub Issues/PRs, tests, and QA evidence together when a
   delivery slice changes product behavior.
+- Use CodeRabbit as an assistive PR reviewer for broad, risky, or
+  security/governance-sensitive changes. Do not treat it as a required merge
+  gate until the user explicitly promotes it.
 - Before capturing browser QA evidence, verify that the live backend used by
   the browser exposes the current UI phase navigation. Query
   `/api/v1/platform/navigation` on the same base URL/session, compare the

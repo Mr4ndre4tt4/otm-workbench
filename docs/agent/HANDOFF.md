@@ -3,6 +3,56 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 CodeRabbit Governance Update
+
+Status:
+Applied.
+
+Scope:
+Governance now recognizes CodeRabbit as an optional assistive PR reviewer.
+GitHub Actions remains the default CI gate. Solon docs and repository docs
+remain the durable source of truth.
+
+Files intentionally changed:
+
+- `.coderabbit.yaml`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `AGENTS.md`
+- `docs/otm-workbench/governance/CODERABBIT_REVIEW_GOVERNANCE.md`
+- `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`
+- `docs/otm-workbench/README.md`
+- `docs/otm-workbench/engineering/HARNESS_ENGINEERING_PLAN.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/DOCUMENT_INVENTORY.md`
+- `docs/agent/PROJECT_BRIEF.md`
+- `docs/agent/PROJECT_NORTH_STAR.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/ROADMAP.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- GitHub PR checks for #182 were green before this governance update.
+- CodeRabbit official docs were checked for root `.coderabbit.yaml`,
+  path filters, and path instructions.
+
+Validation not run:
+
+- CodeRabbit CLI review was not run because the local `coderabbit` command is
+  not installed/authenticated in this terminal.
+
+Open risks:
+
+- CodeRabbit can be noisy if made mandatory too early.
+- Draft PR review is intentionally disabled in `.coderabbit.yaml`; request a
+  manual review or mark a PR ready when a CodeRabbit pass is desired.
+
+Recommended next step:
+
+Install/authenticate CodeRabbit CLI or request CodeRabbit review on PR #182,
+then decide whether its findings are useful enough to keep the config as-is.
+
 ## 2026-05-27 GitHub Operating Setup Follow-Up
 
 Status:

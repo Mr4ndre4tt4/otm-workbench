@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!OTM_RESOURCES/**"
+    - "!output/**"
+    - "!var/**"
+    - "!frontend/dist/**"
+    - "!frontend/node_modules/**"
+    - "!**/*.db"
+    - "!**/*.zip"
+    - "!**/*.pdf"
+    - "!**/*.docx"
+    - "!**/*.xlsx"
+  path_instructions:
+    - path: "src/**"
+      instructions: |
+        Focus on backend behavior regressions, data isolation, authorization,
+        persistence safety, API contract compatibility, and synthetic-only test
+        data. Flag any path that could leak across client/domain, environment,
+        or Public View boundaries.
+    - path: "frontend/src/**"
+      instructions: |
+        Focus on user-visible regressions, stale navigation, excluded top-level
+        modules reappearing, unclear route recovery, inaccessible controls, and
+        divergence from backend-owned labels, actions, status, and permissions.
+    - path: "tests/**"
+      instructions: |
+        Check that tests cover meaningful behavior and do not depend on real
+        client data. Flag tests that require protected local resources unless
+        they are clearly excluded from clean-runner CI.
+    - path: ".github/**"
+      instructions: |
+        Review CI and GitHub workflow changes for clean-runner behavior. Flag
+        checks that depend on local-only resources such as OTM_RESOURCES.
+    - path: "docs/agent/**"
+      instructions: |
+        Check whether governance docs remain consistent with AGENTS.md,
+        CURRENT_SCOPE.md, DELIVERY_PIPELINE.md, DECISION_LOG.md, and
+        RISK_REGISTER.md. Flag drift between GitHub, Solon, validation, and
+        handoff rules.
+    - path: "docs/otm-workbench/governance/**"
+      instructions: |
+        Review governance changes for process bloat. Prefer lightweight,
+        enforceable controls over duplicate planning systems.

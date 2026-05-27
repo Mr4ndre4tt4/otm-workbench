@@ -8,7 +8,8 @@
 
 GitHub is the active operational delivery layer for OTM Workbench. Repository
 docs and code remain the durable source of truth. GitHub Issues, Pull Requests,
-Actions, labels, and milestones provide delivery visibility close to the code.
+Actions, labels, milestones, and optional CodeRabbit review provide delivery
+visibility close to the code.
 
 Linear is historical/paused unless the user explicitly reactivates it.
 
@@ -23,6 +24,7 @@ Each delivery slice should have:
 - source docs linked in the issue;
 - a PR linked to the issue;
 - CI results from GitHub Actions;
+- CodeRabbit review status when the slice is broad, risky, or review-heavy;
 - validation evidence in the PR body or comments;
 - docs, risk, and handoff updates when behavior or direction changes.
 
@@ -85,6 +87,26 @@ CI is the default confidence gate. The initial workflow runs:
 
 Browser QA remains local/manual until the runtime and fixture story is stable
 enough to automate reliably.
+
+## CodeRabbit Review
+
+CodeRabbit is available as an assistive reviewer. Use it for broad PRs,
+security-sensitive work, CI/workflow changes, governance changes, and module
+implementation slices where a second review pass is valuable.
+
+Current policy:
+
+- CodeRabbit is recommended, not mandatory.
+- Do not make it branch-protection-required yet.
+- Do not implement findings blindly.
+- Valid findings should become commits, GitHub comments, issues, or documented
+  deferrals.
+- Draft PR auto-review is disabled in `.coderabbit.yaml` to avoid noisy early
+  feedback.
+
+Detailed policy:
+
+- `docs/otm-workbench/governance/CODERABBIT_REVIEW_GOVERNANCE.md`
 
 ## Linear Pause Rule
 

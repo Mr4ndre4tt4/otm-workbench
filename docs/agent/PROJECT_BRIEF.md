@@ -17,7 +17,8 @@ artifact, evidence, and governance layer around OTM implementation work.
 The repository docs and code are the source of truth. GitHub Issues, Pull
 Requests, and Actions are the active delivery visibility and review layer.
 Linear is historical/paused unless explicitly reactivated. Browser screenshots,
-tests, and generated evidence prove behavior.
+tests, and generated evidence prove behavior. CodeRabbit is an optional
+assistive reviewer for broad or risky PRs, not a required gate.
 
 ## Current Delivery Mode
 

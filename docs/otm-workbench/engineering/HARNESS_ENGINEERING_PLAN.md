@@ -20,6 +20,8 @@ repository easy for agents and humans to operate safely:
 - GitHub Issues and PRs should show delivery state without replacing docs;
 - GitHub Actions should preserve repeatable validation for meaningful delivery
   steps.
+- CodeRabbit may provide assistive PR review for broad or risky changes, but it
+  should not replace tests, Solon controls, or human judgment.
 
 Reference: [OpenAI Harness Engineering](https://openai.com/index/harness-engineering/).
 
@@ -140,7 +142,9 @@ GitHub Issues should be small enough to match a delivery slice. For each slice:
 4. commit implementation and docs together when they are inseparable;
 5. open or update the Pull Request after validation;
 6. let GitHub Actions run backend tests, frontend tests, and frontend build;
-7. close or update the GitHub Issue with QA evidence and remaining risk.
+7. request or run CodeRabbit review for broad, risky, governance-heavy, or
+   security-sensitive slices;
+8. close or update the GitHub Issue with QA evidence and remaining risk.
 
 GitHub Issues must not replace docs. If an issue contains durable product
 decisions, move them to docs and keep the issue as delivery tracking.

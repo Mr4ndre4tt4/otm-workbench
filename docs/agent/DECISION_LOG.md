@@ -3,6 +3,54 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27: Add CodeRabbit As Assistive PR Review
+
+Status:
+accepted governance refinement
+
+Change type:
+
+```text
+validation strategy change
+delivery pipeline change
+documentation change
+```
+
+Decision:
+CodeRabbit is available as an optional assistive PR reviewer for broad, risky,
+governance-heavy, CI, or security-sensitive changes. It is not a required merge
+gate in the current phase.
+
+Reason:
+GitHub Actions now provides the clean-runner validation gate, while CodeRabbit
+can reduce review blind spots on large or risky diffs. Making it mandatory too
+early could add noise and slow delivery before we know whether its feedback is
+consistently useful for this repository.
+
+Rules:
+
+- keep `.coderabbit.yaml` versioned in the repo root;
+- exclude protected local artifacts such as `OTM_RESOURCES/`;
+- disable draft PR auto-review by default;
+- triage findings against `AGENTS.md`, current scope, and module specs;
+- convert valid findings into commits, issues, comments, or documented
+  deferrals;
+- do not promote CodeRabbit to branch-protection-required until the user
+  explicitly decides it has earned that role.
+
+Impacted files:
+
+- `.coderabbit.yaml`
+- `AGENTS.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `docs/otm-workbench/governance/CODERABBIT_REVIEW_GOVERNANCE.md`
+- `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/ROADMAP.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
 ## 2026-05-27: Move Active Delivery Visibility From Linear To GitHub
 
 Status:

@@ -192,6 +192,8 @@ Each module requires:
 - screenshots/evidence;
 - docs update;
 - GitHub Issue/PR update and Actions validation.
+- CodeRabbit review when the slice is broad, risky, governance-heavy, or
+  security-sensitive.
 
 Current development order:
 

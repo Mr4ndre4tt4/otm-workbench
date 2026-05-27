@@ -44,7 +44,8 @@ A module is complete only when:
 - actions execute expected backend behavior;
 - browser QA covers happy, negative, out-of-order, and route recovery paths;
 - evidence and screenshots exist for meaningful states;
-- docs, GitHub Issues/PRs/Actions, tests, and QA evidence agree.
+- docs, GitHub Issues/PRs/Actions, tests, QA evidence, and any accepted
+  CodeRabbit review findings agree.
 
 ## What To Avoid
 

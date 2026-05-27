@@ -24,6 +24,7 @@
 - Frontend:
 - Browser QA:
 - Docs/evidence:
+- CodeRabbit:
 
 # Risks And Follow-Up
 

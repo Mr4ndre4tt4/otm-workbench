@@ -44,8 +44,9 @@ Para iniciar o desenvolvimento:
 4. [Guia de desenvolvimento modular](foundation/guia_desenvolvimento_modular_otm_workbench.md)
 5. [Plano MVP e roadmap de execução](foundation/plano_mvp_roadmap_execucao_otm_workbench.md)
 6. [GitHub delivery governance](governance/GITHUB_DELIVERY_GOVERNANCE.md)
-7. [Artifact trust boundary review](governance/ARTIFACT_TRUST_BOUNDARY_REVIEW_OTM98.md)
-8. [Harness Engineering Plan](engineering/HARNESS_ENGINEERING_PLAN.md)
+7. [CodeRabbit review governance](governance/CODERABBIT_REVIEW_GOVERNANCE.md)
+8. [Artifact trust boundary review](governance/ARTIFACT_TRUST_BOUNDARY_REVIEW_OTM98.md)
+9. [Harness Engineering Plan](engineering/HARNESS_ENGINEERING_PLAN.md)
 
 Para frontend e experiência do usuário:
 
