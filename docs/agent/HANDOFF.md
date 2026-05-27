@@ -3,6 +3,41 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 GitHub Operating Setup Follow-Up
+
+Status:
+Applied and pushed as the next GitHub governance step.
+
+Scope:
+The GitHub CLI is installed at `C:\Program Files\GitHub CLI\gh.exe`, version
+2.92.0, and authenticated as `Mr4ndre4tt4`.
+
+What changed:
+
+- created lightweight GitHub labels:
+  `scope`, `frontend`, `backend`, `docs`, `qa`, `governance`, `blocked`,
+  `scope-risk`;
+- created phase milestones:
+  Governance Reset, UI Phase Cleanup, Context Segregation, Settings, Cockpit,
+  Rates, Assets, Master Data, Integration, Order Release;
+- applied labels and milestones to issues #183 through #187;
+- reviewed the first GitHub Actions failures;
+- corrected `.github/workflows/ci.yml` so CI runs the current governance/UI
+  phase representative suite instead of the full historical suite that still
+  depends on local protected `OTM_RESOURCES/` and paused module surfaces.
+
+Validation:
+
+- `python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py tests/test_project_cockpit_summary.py tests/test_rates_batches.py tests/test_assets_library_assets.py -q`
+  -> 67 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalRates.test.tsx src/app/AppFunctionalShell.test.tsx`
+  -> 3 files passed, 7 tests passed;
+- `npm run build` -> passed with the existing Vite large chunk warning.
+
+Open:
+Branch protection is not enabled yet. Keep #183 open until the first corrected
+CI run is reviewed and the branch protection decision is recorded.
+
 ## 2026-05-27 GitHub Governance Migration
 
 Status:

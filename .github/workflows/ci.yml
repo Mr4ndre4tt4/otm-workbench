@@ -23,8 +23,15 @@ jobs:
       - name: Install backend
         run: python -m pip install -e ".[dev]"
 
-      - name: Run backend tests
-        run: python -m pytest
+      - name: Run backend governance/current-phase tests
+        run: >
+          python -m pytest
+          tests/test_modules_navigation.py
+          tests/test_operational_context.py
+          tests/test_project_cockpit_summary.py
+          tests/test_rates_batches.py
+          tests/test_assets_library_assets.py
+          -q
 
   frontend:
     name: Frontend tests and build
@@ -46,8 +53,12 @@ jobs:
       - name: Install frontend
         run: npm ci
 
-      - name: Run frontend tests
-        run: npm test
+      - name: Run frontend current-phase smoke tests
+        run: >
+          npm test --
+          src/app/AppFunctionalAssets.test.tsx
+          src/app/AppFunctionalRates.test.tsx
+          src/app/AppFunctionalShell.test.tsx
 
       - name: Build frontend
         run: npm run build

@@ -3,6 +3,51 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 GitHub Operating Setup Follow-Up
+
+Validation intent:
+
+- complete the practical GitHub setup after installing GitHub CLI;
+- configure labels and milestones for the new workflow;
+- inspect the first CI failures;
+- adjust CI to the current representative suite instead of the full historical
+  test suite.
+
+Result:
+
+```text
+GitHub CLI: gh version 2.92.0, authenticated as Mr4ndre4tt4.
+Labels: created/confirmed.
+Milestones: created/confirmed.
+Issues #183-#187: labeled and assigned to phase milestones.
+Initial CI runs: failed because the first workflow used full backend/frontend
+historical suites. Backend full suite expects protected local OTM_RESOURCES and
+paused/historical surfaces; frontend full suite includes legacy/current-scope
+contract mismatches.
+Workflow correction: `.github/workflows/ci.yml` now runs the representative
+current governance/UI phase suite.
+```
+
+Validation commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py tests/test_project_cockpit_summary.py tests/test_rates_batches.py tests/test_assets_library_assets.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalRates.test.tsx src/app/AppFunctionalShell.test.tsx
+npm run build
+```
+
+Validation results:
+
+```text
+Backend representative suite: 67 passed in 196.31s.
+Frontend functional suite: 3 files passed, 7 tests passed.
+Frontend build: passed.
+```
+
+Build note:
+
+Vite reported the existing large chunk warning after successful build.
+
 ## 2026-05-27 GitHub Governance Migration
 
 Validation intent:
