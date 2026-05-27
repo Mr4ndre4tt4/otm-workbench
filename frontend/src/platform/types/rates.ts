@@ -1,5 +1,5 @@
 import type { CockpitArtifact, CockpitJob } from "./cockpit";
-import type { AvailableAction, ModuleBlocker, ModuleCount } from "./shared";
+import type { AvailableAction, ModuleBlocker, ModuleCount, PageResponse } from "./shared";
 
 export type RatesSummaryItem = {
   id: string;
@@ -84,6 +84,35 @@ export type RateBatchApprovalResponse = {
   manifest_id: string;
 };
 
+export type RateBatchIssue = {
+  id: string;
+  batch_id: string;
+  batch_table_id: string | null;
+  batch_row_id: string | null;
+  severity: string;
+  issue_code: string;
+  table_name: string | null;
+  column_name: string | null;
+  message: string;
+  details_json: string;
+};
+
+export type RateBatchTableRow = {
+  row_index: number;
+  status: string;
+  payload: Record<string, string | number | null>;
+};
+
+export type RateBatchTableDetailResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  table: RateBatchTable;
+  rows: RateBatchTableRow[];
+  issues: RateBatchIssue[];
+  total: number;
+};
+
 export type RateBatchDetail = {
   id: string;
   project_id: string | null;
@@ -102,6 +131,13 @@ export type RateBatchDetail = {
   tables: RateBatchTable[];
   available_actions: AvailableAction[];
 };
+
+export type RateBatchListItem = Omit<RateBatchDetail, "available_actions" | "tables"> & {
+  available_actions?: AvailableAction[];
+  tables?: RateBatchTable[];
+};
+
+export type RateBatchesResponse = PageResponse<RateBatchListItem>;
 
 export type CreateRateBatchPayload = {
   scenario_code: string;
@@ -149,6 +185,14 @@ export type RateBatchEvidenceResponse = {
   catalog_macro_object_code: string;
   catalog_load_plan_path: string;
   items: RateEvidence[];
+  total: number;
+};
+
+export type RateBatchIssuesResponse = {
+  batch_id: string;
+  catalog_macro_object_code: string;
+  catalog_load_plan_path: string;
+  items: RateBatchIssue[];
   total: number;
 };
 

@@ -10,8 +10,11 @@ import type {
   RateBatchArtifactsResponse,
   RateBatchCsvExportResponse,
   RateBatchCsvPreviewResponse,
+  RateBatchesResponse,
   RateBatchDetail,
   RateBatchEvidenceResponse,
+  RateBatchIssuesResponse,
+  RateBatchTableDetailResponse,
   RatesSummary
 } from "../types";
 
@@ -31,6 +34,14 @@ export function useRateBatchDetail(token: string | null, batchId: string | null)
   });
 }
 
+export function useRateBatches(token: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "batches"],
+    queryFn: () => apiGet<RateBatchesResponse>("/api/v1/modules/rates/batches", { token }),
+    enabled: Boolean(token)
+  });
+}
+
 export function useRateBatchArtifacts(token: string | null, batchId: string | null) {
   return useQuery({
     queryKey: ["modules", "rates", "batches", batchId, "artifacts"],
@@ -44,6 +55,23 @@ export function useRateBatchEvidence(token: string | null, batchId: string | nul
     queryKey: ["modules", "rates", "batches", batchId, "evidence"],
     queryFn: () => apiGet<RateBatchEvidenceResponse>(`/api/v1/modules/rates/batches/${batchId}/evidence`, { token }),
     enabled: Boolean(token && batchId)
+  });
+}
+
+export function useRateBatchIssues(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "batches", batchId, "issues"],
+    queryFn: () => apiGet<RateBatchIssuesResponse>(`/api/v1/modules/rates/batches/${batchId}/issues`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
+export function useRateBatchTableDetail(token: string | null, batchId: string | null, tableName: string | null) {
+  return useQuery({
+    queryKey: ["modules", "rates", "batches", batchId, "tables", tableName],
+    queryFn: () =>
+      apiGet<RateBatchTableDetailResponse>(`/api/v1/modules/rates/batches/${batchId}/tables/${tableName}`, { token }),
+    enabled: Boolean(token && batchId && tableName)
   });
 }
 

@@ -4,7 +4,8 @@
 .gallery-state-badge-preview,
 .readiness,
 .metrics-grid,
-.activity-layout {
+.activity-layout,
+.cockpit-deep-flow {
   margin-top: 16px;
 }
 
@@ -110,6 +111,154 @@
   gap: 12px;
 }
 
+.cockpit-deep-flow {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+}
+
+.cockpit-context-panel,
+.cockpit-accelerators-panel {
+  grid-column: 1 / -1;
+}
+
+.cockpit-info-grid,
+.cockpit-accelerator-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.cockpit-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cockpit-accelerator-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.cockpit-accelerator {
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 8px;
+  min-height: 144px;
+  padding: 16px;
+  text-decoration: none;
+}
+
+.cockpit-accelerator:hover {
+  border-color: var(--accent);
+}
+
+.cockpit-accelerator-disabled {
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.cockpit-accelerator-icon {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.module-route-recovery-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.module-route-recovery-actions,
+.module-route-destination-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.module-route-destination-grid a {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  padding: 5px 9px;
+  text-decoration: none;
+}
+
+.module-route-destination-grid a:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.rate-review-gate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rate-review-gate > span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 4px 8px;
+}
+
+.rate-review-gate .rate-batch-form-actions {
+  flex-basis: 100%;
+}
+
+.rates-batch-library-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.rates-batch-library-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(120px, 180px));
+  gap: 8px;
+}
+
+.rates-batch-library-filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rates-batch-library-filters input,
+.rates-batch-library-filters select {
+  min-height: 38px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+}
+
 .admin-console-actions {
   display: flex;
   align-items: center;
@@ -153,6 +302,38 @@
   font-size: 13px;
 }
 
+.admin-scope-authority {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-scope-authority-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-scope-authority-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.admin-scope-authority-list strong {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.admin-scope-authority-list span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .admin-setup-authoring {
   display: grid;
   gap: 12px;
@@ -163,6 +344,20 @@
   gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 10px;
+}
+
+.admin-setup-recovery {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.admin-setup-hint {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .admin-setup-form label {
@@ -199,6 +394,49 @@
   font-weight: 700;
   max-width: 100%;
   overflow-wrap: anywhere;
+  padding: 4px 8px;
+}
+
+.admin-policy-binding-review {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.admin-policy-binding-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.admin-policy-binding-card strong,
+.admin-policy-binding-card span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-policy-binding-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-policy-binding-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.admin-policy-binding-rules span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
   padding: 4px 8px;
 }
 
@@ -1041,6 +1279,7 @@
 }
 
 @media (max-width: 760px) {
+  .admin-scope-authority-grid,
   .integration-review-row,
   .load-plan-workflow {
     grid-template-columns: 1fr;

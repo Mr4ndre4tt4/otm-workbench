@@ -164,10 +164,11 @@ async function run() {
     await contextControls.locator("select").nth(2).selectOption(context.environment.id);
     await contextControls.locator("input").fill("otm1");
     await page.getByRole("button", { name: "Apply context" }).click();
-    await page.getByText("Project context ready").waitFor();
+    await page.getByText("Context updated.").waitFor();
 
-    await page.locator('a[href="/assets"]').click();
+    await page.locator('a[href="/assets"]').first().click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
+    await page.getByRole("link", { name: "Open library" }).click();
     await page.getByLabel("Assets Library workflow").waitFor();
     await page.getByLabel("Asset type filter").selectOption("SPEC");
     await page.getByLabel("Asset category filter").selectOption("INTEGRATION");
@@ -318,8 +319,9 @@ async function run() {
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
-    await page.locator('a[href="/assets"]').click();
+    await page.locator('a[href="/assets"]').first().click();
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
+    await page.getByRole("link", { name: "Open library" }).click();
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
     await page.getByRole("button", { name: /Synthetic Rate Table Notes Updated/ }).first().waitFor();
 

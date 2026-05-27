@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import {
   archiveAsset,
@@ -178,6 +179,7 @@ function actionDisabled(asset: AssetItem | undefined, actionKey: string, fallbac
 }
 
 export function AssetsLibraryView({ token }: { token: string }) {
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
@@ -491,6 +493,112 @@ export function AssetsLibraryView({ token }: { token: string }) {
 
   if (assets.isError || !assets.data) {
     return <StatePanel tone="error">Assets Library is unavailable.</StatePanel>;
+  }
+
+  if (location.pathname === "/assets") {
+    const missingVersionCount = assetItems.filter((asset) => !asset.current_version_id).length;
+    const archivedCount = assetItems.filter((asset) => asset.status === "ARCHIVED").length;
+    const recentAssets = assetItems.slice(0, 5);
+    const assetsNeedingAttention = assetItems.filter((asset) => !asset.current_version_id || asset.status === "ARCHIVED").slice(0, 5);
+
+    return (
+      <>
+        <PageHeader
+          description="Governed reusable implementation files for templates, payload samples, specifications, diagrams, XML files, schema packs, and project playbooks."
+          label="Module hub"
+          title="Assets Library"
+        />
+
+        <MetricGrid
+          ariaLabel="Assets Library hub metrics"
+          items={[
+            { key: "total", label: "Assets", status: booleanStatus(assets.data.total), value: assets.data.total },
+            { key: "versioned", label: "Versioned", status: booleanStatus(versionedCount), value: versionedCount },
+            {
+              key: "missing-version",
+              label: "Missing version",
+              status: missingVersionCount ? "PENDING" : "READY",
+              value: missingVersionCount
+            },
+            { key: "archived", label: "Archived", status: archivedCount ? "BLOCKED" : "READY", value: archivedCount },
+            { key: "visible", label: "Visible rows", status: booleanStatus(assetItems.length), value: assetItems.length }
+          ]}
+        />
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Assets Library hub"
+          side={
+            <OperationalPanel
+              ariaLabel="Recommended next actions"
+              emptyText="Use route-level entry points before changing asset lifecycle data."
+              hasItems
+              status="READY"
+              title="Recommended next actions"
+            >
+              <div className="master-data-action-bar">
+                <Link className="button button-primary" to="/assets/library">
+                  Open library
+                </Link>
+                <Link className="button button-secondary" to="/assets/new">
+                  Create asset
+                </Link>
+                <Link className="button button-secondary" to="/assets/classifications">
+                  Manage classifications
+                </Link>
+              </div>
+            </OperationalPanel>
+          }
+          status="READY"
+          title="Library health"
+        >
+          <OperationalPanel
+            ariaLabel="Recent assets"
+            emptyText="No assets are available for the current context."
+            hasItems={recentAssets.length > 0}
+            status={recentAssets.length ? "READY" : "EMPTY"}
+            title="Recent assets"
+          >
+            {recentAssets.length ? (
+              <DetailList
+                ariaLabel="Recent asset rows"
+                emptyText="No assets are available for the current context."
+                items={recentAssets.map((asset) => ({
+                  id: asset.id,
+                  meta: [asset.asset_type, asset.category, asset.scope_type],
+                  status: asset.status,
+                  title: asset.name
+                }))}
+              />
+            ) : null}
+          </OperationalPanel>
+
+          <OperationalPanel
+            ariaLabel="Assets needing attention"
+            emptyText="No visible assets need version or lifecycle attention."
+            hasItems={assetsNeedingAttention.length > 0}
+            status={assetsNeedingAttention.length ? "PENDING" : "READY"}
+            title="Assets needing attention"
+          >
+            {assetsNeedingAttention.length ? (
+              <DetailList
+                ariaLabel="Asset attention rows"
+                emptyText="No visible assets need version or lifecycle attention."
+                items={assetsNeedingAttention.map((asset) => ({
+                  id: asset.id,
+                  meta: [
+                    asset.asset_type,
+                    asset.category,
+                    asset.current_version_id ? "Archived" : "Missing version"
+                  ],
+                  status: asset.status,
+                  title: asset.name
+                }))}
+              />
+            ) : null}
+          </OperationalPanel>
+        </ModuleWorkspaceLayout>
+      </>
+    );
   }
 
   return (

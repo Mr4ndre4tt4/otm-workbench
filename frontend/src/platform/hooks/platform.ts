@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiDownload, apiGet, apiPost, apiPut } from "../api";
 import type {
+  AccessPolicyCreate,
   ActiveContextResponse,
   ActiveContextUpdate,
   AuditLogItem,
@@ -17,6 +18,7 @@ import type {
   EnvironmentCreate,
   FeatureFlag,
   FeatureFlagUpdate,
+  GrantCreate,
   IdName,
   IdNameResponse,
   LoginResponse,
@@ -28,6 +30,14 @@ import type {
   ProjectCreate,
   PlatformJobEvent,
   ProjectSetupStatus,
+  RoleCreate,
+  SettingsAccessModel,
+  SettingsAccessPolicy,
+  SettingsGrant,
+  SettingsRole,
+  SettingsScopeAuthority,
+  SettingsUser,
+  UserCreate,
   WorkspaceCreate,
   UserPreferences
 } from "../types";
@@ -90,6 +100,38 @@ export function useProjectSetupStatus(token: string | null, projectId: string | 
     queryFn: () => apiGet<ProjectSetupStatus>(`/api/v1/platform/projects/${projectId}/setup-status`, { token }),
     enabled: Boolean(token && projectId)
   });
+}
+
+export function useSettingsScopeAuthority(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "settings", "scope-authority"],
+    queryFn: () => apiGet<SettingsScopeAuthority>("/api/v1/platform/settings/scope-authority", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useSettingsAccessModel(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "settings", "access-model"],
+    queryFn: () => apiGet<SettingsAccessModel>("/api/v1/platform/settings/access-model", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function createRole(token: string, payload: RoleCreate) {
+  return apiPost<SettingsRole>("/api/v1/platform/roles", payload, { token });
+}
+
+export function createUser(token: string, payload: UserCreate) {
+  return apiPost<SettingsUser>("/api/v1/platform/users", payload, { token });
+}
+
+export function createGrant(token: string, payload: GrantCreate) {
+  return apiPost<SettingsGrant>("/api/v1/platform/grants", payload, { token });
+}
+
+export function createAccessPolicy(token: string, payload: AccessPolicyCreate) {
+  return apiPost<SettingsAccessPolicy>("/api/v1/platform/access-policies", payload, { token });
 }
 
 export function useActiveContextCapabilities(token: string | null) {

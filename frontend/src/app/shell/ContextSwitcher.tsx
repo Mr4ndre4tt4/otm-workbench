@@ -1,11 +1,12 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "../../platform/api";
 import { updateActiveContext, useEnvironments, useProfiles, useProjects } from "../../platform/hooks";
+import type { ActiveContextResponse } from "../../platform/types";
 import { Button, FeedbackMessage } from "../../ui/components";
 
-export function ContextSwitcher({ token }: { token: string }) {
+export function ContextSwitcher({ activeContext, token }: { activeContext?: Partial<ActiveContextResponse>; token: string }) {
   const queryClient = useQueryClient();
   const projects = useProjects(token);
   const [projectId, setProjectId] = useState<string>("");
@@ -17,6 +18,19 @@ export function ContextSwitcher({ token }: { token: string }) {
   const [isSubmitting, setSubmitting] = useState(false);
   const profiles = useProfiles(token, projectId || null);
   const environments = useEnvironments(token, projectId || null);
+
+  useEffect(() => {
+    setProjectId(activeContext?.project_id ?? "");
+    setProfileId(activeContext?.profile_id ?? "");
+    setEnvironmentId(activeContext?.environment_id ?? "");
+    setDomainName(activeContext?.domain_name ?? "");
+    clearDraftFeedback();
+  }, [
+    activeContext?.domain_name,
+    activeContext?.environment_id,
+    activeContext?.profile_id,
+    activeContext?.project_id
+  ]);
 
   function clearDraftFeedback() {
     setMessage(null);

@@ -8,5 +8,6 @@ export const MODULE_DESCRIPTIONS: Record<string, string> = {
   load_plan: "Load package intake, CSVUtil planning, review queues, cutover readiness, and handoff controls.",
   master_data: "Template factory and master data batch preparation for backend-first OTM implementation flows.",
   order_release_generator: "Order release template, batch, XML preview, artifact, and job orchestration workspace.",
-  rates: "Rate batch preparation, validation, approval, CSV preview, export artifacts, and load package handoff."
+  rates: "Rate batch preparation, validation, approval, CSV preview, export artifacts, and load package handoff.",
+  settings: "Project, client/domain, environment, user, role, grant, and access-policy setup."
 };

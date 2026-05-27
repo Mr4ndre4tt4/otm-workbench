@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { AuthProvider } from "../platform/auth";
 
-function renderFunctionalApp(initialPath = "/assets") {
+function renderFunctionalApp(initialPath = "/assets/library") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false }
@@ -41,9 +41,37 @@ function platformPreferences() {
 }
 
 function cockpitSummary() {
+  const activeContext = {
+    allowed_domains: ["PUBLIC", "OTM1"],
+    can_view_all_domains: false,
+    domain_name: "OTM1",
+    environment_id: "environment_1",
+    profile_id: "profile_1",
+    project_id: "project_1"
+  };
   return {
-    active_context: {},
+    active_context: activeContext,
+    accelerators: [
+      {
+        key: "assets",
+        label: "Assets Library",
+        description: "Governed reusable implementation files.",
+        href: "/assets",
+        status: "ACTIVE",
+        icon_key: "assets",
+        requires_private_context: true,
+        disabled: false,
+        disabled_reason: null
+      }
+    ],
     available_actions: [],
+    context_selector: {
+      active_context: activeContext,
+      mode: "PRIVATE",
+      public_view_available: true,
+      requires_private_context: false,
+      set_context_action_key: "set_active_context"
+    },
     counts: { recent_artifacts: 0, recent_evidence: 0, recent_jobs: 0 },
     description: "Project-level operational overview.",
     module_id: "home",
@@ -51,6 +79,23 @@ function cockpitSummary() {
     recent_artifacts: [],
     recent_evidence: [],
     recent_jobs: [],
+    route_recovery: {
+      blocked_route_message: "Return to Project Cockpit and select an available context or accelerator.",
+      default_path: "/home",
+      return_action_key: "return_to_cockpit"
+    },
+    project_info: {
+      contacts: [],
+      documents: [],
+      links: [],
+      secure_vault: {
+        metadata_only: true,
+        secret_values_available: false,
+        status: "NOT_CONFIGURED"
+      },
+      status: "AVAILABLE",
+      title: "Project information"
+    },
     setup_status: {
       active_context_selected: true,
       environment_count: 1,
@@ -59,7 +104,13 @@ function cockpitSummary() {
       status: "READY"
     },
     status: "ready",
-    title: "Project Cockpit"
+    title: "Project Cockpit",
+    user_scope: {
+      allowed_domains: ["PUBLIC", "OTM1"],
+      can_view_all_domains: false,
+      is_dba: false,
+      role_mode: "SCOPED"
+    }
   };
 }
 
@@ -264,6 +315,84 @@ describe("Functional Assets Library journey", () => {
   afterEach(() => {
     sessionStorage.clear();
     vi.unstubAllGlobals();
+  });
+
+  it("renders an Assets hub with route-level entry points before opening the library", async () => {
+    const fetchMock = vi.fn((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null), referenceAssetFixture()], total: 2 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        return Promise.resolve(jsonResponse(assetFixture("DRAFT", null)));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Assets Library" });
+    expect(screen.getByText("Recommended next actions")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open library" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.getByRole("link", { name: "Create asset" })).toHaveAttribute("href", "/assets/new");
+    expect(screen.getByRole("link", { name: "Manage classifications" })).toHaveAttribute(
+      "href",
+      "/assets/classifications"
+    );
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: "Open library" }));
+    expect(await screen.findByLabelText("Assets Library workflow")).toHaveTextContent("1Library");
   });
 
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
@@ -767,8 +896,13 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByRole("button", { name: "Create link" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
-    await userEvent.click(screen.getByRole("link", { name: /Assets Library/ }));
+    await userEvent.click(
+      within(screen.getByRole("navigation", { name: "Workbench modules" })).getByRole("link", {
+        name: /Assets Library/
+      })
+    );
     await screen.findByRole("heading", { name: "Assets Library" });
+    await userEvent.click(screen.getByRole("link", { name: "Open library" }));
     expect(await screen.findByLabelText("Assets")).toHaveTextContent("Synthetic Rate Table Notes Updated");
 
     expect(createRequests).toEqual([

@@ -125,6 +125,134 @@ describe("App shell", () => {
     expect(sessionStorage.getItem("otm_workbench.session_token")).toBe("session_token");
   });
 
+  it("renders the Cockpit v3 macro groups without dashboard activity panels", async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return jsonResponse({ access_token: "session_token", token_type: "bearer" });
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return jsonResponse({
+          items: [
+            { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+            { id: "rates", label: "Rates", path: "/rates", status: "ACTIVE" },
+            { id: "settings", label: "Settings", path: "/settings", status: "ACTIVE" }
+          ],
+          total: 3,
+          page: 1,
+          page_size: 50
+        });
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return jsonResponse(platformPreferences());
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return jsonResponse({ items: [], total: 0, page: 1, page_size: 50 });
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return jsonResponse({
+          module_id: "home",
+          title: "Project Cockpit",
+          status: "needs_context",
+          description: "Project context, project information, and module accelerators.",
+          active_context: {
+            project_id: null,
+            profile_id: null,
+            environment_id: null,
+            domain_name: null,
+            allowed_domains: ["PUBLIC"],
+            can_view_all_domains: false
+          },
+          setup_status: null,
+          counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+          context_selector: {
+            mode: "PUBLIC",
+            active_context: {
+              project_id: null,
+              profile_id: null,
+              environment_id: null,
+              domain_name: null,
+              allowed_domains: ["PUBLIC"],
+              can_view_all_domains: false
+            },
+            public_view_available: true,
+            requires_private_context: false,
+            set_context_action_key: "set_active_context"
+          },
+          project_info: {
+            title: "Project information",
+            status: "NEEDS_CONTEXT",
+            links: [],
+            documents: [],
+            contacts: [],
+            secure_vault: {
+              status: "NOT_CONFIGURED",
+              metadata_only: true,
+              secret_values_available: false
+            }
+          },
+          accelerators: [
+            {
+              key: "rates",
+              label: "Rates",
+              description: "Rate batch preparation and approval.",
+              href: "/rates",
+              status: "ACTIVE",
+              icon_key: "rates",
+              requires_private_context: true,
+              disabled: true,
+              disabled_reason: "ACTIVE_CONTEXT_REQUIRED"
+            },
+            {
+              key: "settings",
+              label: "Settings",
+              description: "Scope and access setup.",
+              href: "/settings",
+              status: "ACTIVE",
+              icon_key: "settings",
+              requires_private_context: false,
+              disabled: false,
+              disabled_reason: null
+            }
+          ],
+          user_scope: {
+            role_mode: "DBA",
+            is_dba: true,
+            allowed_domains: ["PUBLIC"],
+            can_view_all_domains: false
+          },
+          route_recovery: {
+            default_path: "/home",
+            return_action_key: "return_to_cockpit",
+            blocked_route_message: "Return to Project Cockpit and select an available context or accelerator."
+          },
+          module_summary: { total: 3, counts_by_status: { ACTIVE: 3 }, items: [] },
+          recent_jobs: [],
+          recent_artifacts: [],
+          recent_evidence: [],
+          available_actions: []
+        });
+      }
+      return jsonResponse({ detail: "Unexpected request" }, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp();
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Project Cockpit" });
+    expect(screen.getByRole("heading", { name: "Context Selector" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Project information" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Accelerators" })).toBeInTheDocument();
+    expect(screen.getByText("Public View")).toBeInTheDocument();
+    expect(screen.getByText("Rates / ACTIVE_CONTEXT_REQUIRED")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Project activity")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent jobs")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent evidence")).not.toBeInTheDocument();
+  });
+
   it("keeps unknown backend routes behind the module unavailable state", async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
@@ -158,6 +286,414 @@ describe("App shell", () => {
 
     expect(await screen.findByRole("heading", { name: "Module unavailable" })).toBeInTheDocument();
     expect(screen.getByText("Use the backend-owned navigation menu to open an available module.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to Cockpit" })).toHaveAttribute("href", "/home");
+  });
+
+  it("routes backend-owned Settings navigation to the setup surface", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "settings", label: "Settings", path: "/settings", status: "ACTIVE" }
+            ],
+            total: 2,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ id: "user_1", email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/workspaces")) {
+        return Promise.resolve(jsonResponse([{ id: "workspace_1", name: "Synthetic Workspace" }]));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "project_1", name: "Synthetic Rollout" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/profiles?project_id=project_1")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "profile_1", name: "Default" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/environments?project_id=project_1")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "environment_1", name: "DEV" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/projects/project_1/setup-status")) {
+        return Promise.resolve(
+          jsonResponse({
+            project_id: "project_1",
+            project_name: "Synthetic Rollout",
+            status: "READY",
+            profile_count: 1,
+            environment_count: 1,
+            active_context_selected: true,
+            missing_requirements: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/settings/scope-authority")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            module: "settings",
+            label: "Settings",
+            label_key: "module.settings.label",
+            status: "INCOMPLETE",
+            active_context: {
+              user_id: "user_1",
+              project_id: "project_1",
+              profile_id: "profile_1",
+              environment_id: "environment_1",
+              domain_name: "OTM1",
+              allowed_domains: ["PUBLIC", "OTM1"],
+              can_view_all_domains: false
+            },
+            setup_counts: {
+              workspaces: 1,
+              projects: 1,
+              profiles: 1,
+              environments: 1
+            },
+            setup_visibility: {
+              level: "PROJECT",
+              can_manage_users: true,
+              can_manage_workspaces: false,
+              can_manage_projects: false,
+              can_manage_profiles: true,
+              can_manage_environments: true,
+              can_manage_roles: true,
+              can_manage_grants: true,
+              can_manage_access_policies: true
+            },
+            blocked_reasons: ["DOMAIN_GRANTS"],
+            available_actions: [
+              {
+                key: "create_workspace",
+                label: "Create workspace",
+                method: "POST",
+                href: "/api/v1/platform/workspaces",
+                variant: "primary",
+                icon_key: "settings.workspace",
+                disabled: false,
+                disabled_reason: null,
+                requires_confirmation: false
+              },
+              {
+                key: "set_active_context",
+                label: "Set active context",
+                method: "POST",
+                href: "/api/v1/platform/active-context",
+                variant: "secondary",
+                icon_key: "settings.context",
+                disabled: true,
+                disabled_reason: "DOMAIN_GRANTS_REQUIRED",
+                requires_confirmation: false
+              }
+            ]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/settings/access-model")) {
+        return Promise.resolve(
+          jsonResponse({
+            setup_visibility: {
+              level: "PROJECT",
+              can_manage_users: true,
+              can_manage_workspaces: false,
+              can_manage_projects: false,
+              can_manage_profiles: true,
+              can_manage_environments: true,
+              can_manage_roles: true,
+              can_manage_grants: true,
+              can_manage_access_policies: true
+            },
+            active_project_id: "project_1",
+            users: [
+              {
+                id: "user_2",
+                email: "operator@example.test",
+                is_active: true,
+                is_admin: false
+              }
+            ],
+            roles: [
+              {
+                id: "role_1",
+                name: "Rates Operator",
+                capability_names: ["rates.batch.view"]
+              }
+            ],
+            capability_names: ["rates.batch.view"],
+            grants: [
+              {
+                id: "grant_1",
+                project_id: "project_1",
+                project_name: "Synthetic Rollout",
+                environment_id: "environment_1",
+                domain_name: "OTM1",
+                user_id: "user_2",
+                user_email: "operator@example.test",
+                role_id: "role_1",
+                role_name: "Rates Operator",
+                binding_scope_label: "Synthetic Rollout / DEV / OTM1",
+                binding_requirements: [
+                  "User: operator@example.test",
+                  "Role: Rates Operator",
+                  "Project: Synthetic Rollout",
+                  "Environment: DEV",
+                  "Domain: OTM1"
+                ],
+                active_context_match: true,
+                active_context_disabled_reason: null
+              }
+            ],
+            access_policies: [
+              {
+                id: "policy_1",
+                project_id: "project_1",
+                project_name: "Synthetic Rollout",
+                name: "OTM1 private policy",
+                visibility: "PRIVATE",
+                domain_name: "OTM1",
+                rule_json: "{\"mode\":\"domain_role\"}",
+                created_by: "user_1",
+                binding_scope_label: "Synthetic Rollout / PRIVATE / OTM1",
+                binding_requirements: ["Project: Synthetic Rollout", "Visibility: PRIVATE", "Domain: OTM1"],
+                active_context_match: true,
+                active_context_disabled_reason: null
+              }
+            ]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/active-context/capabilities")) {
+        return Promise.resolve(
+          jsonResponse({
+            user_id: "user_1",
+            project_id: "project_1",
+            is_admin: true,
+            roles: ["DBA"],
+            capabilities: ["*"]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/jobs")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/audit-logs")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/feature-flags")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/settings");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Settings metrics")).toBeInTheDocument();
+    const scopeAuthority = await screen.findByLabelText("Settings scope authority");
+    expect(scopeAuthority).toHaveTextContent("DOMAIN_GRANTS");
+    expect(screen.getByLabelText("Settings setup visibility")).toHaveTextContent("PROJECT");
+    expect(screen.getByLabelText("Settings setup visibility")).toHaveTextContent("Grants: Manage");
+    expect(screen.getByLabelText("Role authoring")).toHaveTextContent("Rates Operator");
+    expect(screen.getByLabelText("User authoring")).toHaveTextContent("operator@example.test");
+    expect(screen.getByLabelText("Grant authoring")).toHaveTextContent(
+      "operator@example.test / Rates Operator / Synthetic Rollout / DEV / OTM1"
+    );
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("operator@example.test");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("Synthetic Rollout / DEV / OTM1");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("User: operator@example.test");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("Role: Rates Operator");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("READY");
+    expect(screen.getByLabelText("Access policy authoring")).toHaveTextContent("OTM1 private policy / Synthetic Rollout / PRIVATE / OTM1");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("READY");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("Project: Synthetic Rollout");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("Visibility: PRIVATE");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("Domain: OTM1");
+    expect(within(scopeAuthority).getByText("Create workspace")).toBeInTheDocument();
+    expect(within(scopeAuthority).getByText("Set active context / DOMAIN_GRANTS_REQUIRED")).toBeInTheDocument();
+  });
+
+  it("shows Settings setup recovery when scoped selectors are empty", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "settings", label: "Settings", path: "/settings", status: "ACTIVE" }
+            ],
+            total: 2,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ id: "user_1", email: "operator@example.test", is_admin: false }));
+      }
+      if (url.endsWith("/api/v1/platform/workspaces")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/settings/scope-authority")) {
+        return Promise.resolve(
+          jsonResponse({
+            module: "settings",
+            label: "Settings",
+            label_key: "module.settings.label",
+            status: "BLOCKED",
+            active_context: {
+              user_id: "user_1",
+              project_id: null,
+              profile_id: null,
+              environment_id: null,
+              domain_name: null,
+              allowed_domains: ["PUBLIC"],
+              can_view_all_domains: false
+            },
+            setup_counts: {
+              workspaces: 0,
+              projects: 0,
+              profiles: 0,
+              environments: 0
+            },
+            setup_visibility: {
+              level: "SELF",
+              can_manage_users: false,
+              can_manage_workspaces: false,
+              can_manage_projects: false,
+              can_manage_profiles: false,
+              can_manage_environments: false,
+              can_manage_roles: false,
+              can_manage_grants: false,
+              can_manage_access_policies: false
+            },
+            blocked_reasons: ["PROJECT", "PROFILE", "ENVIRONMENT", "ACTIVE_CONTEXT"],
+            available_actions: [
+              {
+                key: "set_active_context",
+                label: "Set active context",
+                method: "POST",
+                href: "/api/v1/platform/active-context",
+                variant: "secondary",
+                icon_key: "settings.context",
+                disabled: true,
+                disabled_reason: "PROJECT_REQUIRED",
+                requires_confirmation: false
+              }
+            ]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/settings/access-model")) {
+        return Promise.resolve(
+          jsonResponse({
+            setup_visibility: {
+              level: "SELF",
+              can_manage_users: false,
+              can_manage_workspaces: false,
+              can_manage_projects: false,
+              can_manage_profiles: false,
+              can_manage_environments: false,
+              can_manage_roles: false,
+              can_manage_grants: false,
+              can_manage_access_policies: false
+            },
+            active_project_id: null,
+            users: [],
+            roles: [],
+            capability_names: [],
+            grants: [],
+            access_policies: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/active-context/capabilities")) {
+        return Promise.resolve(
+          jsonResponse({
+            user_id: "user_1",
+            project_id: null,
+            is_admin: false,
+            roles: [],
+            capabilities: []
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/jobs")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/audit-logs")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/feature-flags")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderApp("/settings");
+    await userEvent.type(screen.getByLabelText("Email"), "operator@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Setup action recovery")).toHaveTextContent("PROJECT");
+    expect(screen.getByLabelText("Setup action recovery")).toHaveTextContent("Set active context / PROJECT_REQUIRED");
+    expect(screen.getByRole("link", { name: "Return to Cockpit" })).toHaveAttribute("href", "/home");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("Workspace required");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("Project required");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("Role required");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("User required");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("No grants to review.");
+    expect(screen.getByLabelText("Setup authoring")).toHaveTextContent("No access policies to review.");
   });
 
   it("renders Developer Tools as a guarded technical hub instead of a generic module placeholder", async () => {

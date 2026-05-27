@@ -4,10 +4,14 @@ import { useState } from "react";
 import { PageHeader } from "../../app/shell";
 import {
   cancelPlatformJob,
+  createAccessPolicy,
   createEnvironment,
+  createGrant,
   createPlatformJob,
   createProfile,
   createProject,
+  createRole,
+  createUser,
   createWorkspace,
   runPlatformJob,
   useActiveContextCapabilities,
@@ -20,6 +24,8 @@ import {
   useProfiles,
   useProjectSetupStatus,
   useProjects,
+  useSettingsAccessModel,
+  useSettingsScopeAuthority,
   useWorkspaces,
   upsertFeatureFlag
 } from "../../platform/hooks";
@@ -61,6 +67,20 @@ export function AdminConsoleView({ token }: { token: string }) {
   const [environmentProjectId, setEnvironmentProjectId] = useState("");
   const [environmentType, setEnvironmentType] = useState("DEV");
   const [environmentName, setEnvironmentName] = useState("");
+  const [roleName, setRoleName] = useState("");
+  const [roleCapabilityNames, setRoleCapabilityNames] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userPassword, setUserPassword] = useState("SyntheticPass123!");
+  const [grantProjectId, setGrantProjectId] = useState("");
+  const [grantEnvironmentId, setGrantEnvironmentId] = useState("");
+  const [grantDomainName, setGrantDomainName] = useState("");
+  const [grantUserId, setGrantUserId] = useState("");
+  const [grantRoleId, setGrantRoleId] = useState("");
+  const [accessPolicyProjectId, setAccessPolicyProjectId] = useState("");
+  const [accessPolicyName, setAccessPolicyName] = useState("");
+  const [accessPolicyVisibility, setAccessPolicyVisibility] = useState("PRIVATE");
+  const [accessPolicyDomainName, setAccessPolicyDomainName] = useState("");
+  const [accessPolicyRuleJson, setAccessPolicyRuleJson] = useState("{\"mode\":\"domain_role\"}");
   const currentUser = useCurrentUser(token);
   const workspaces = useWorkspaces(token);
   const projects = useProjects(token);
@@ -70,6 +90,8 @@ export function AdminConsoleView({ token }: { token: string }) {
   const profileId = firstOrNull(profiles.data?.items);
   const environmentId = firstOrNull(environments.data?.items);
   const setupStatus = useProjectSetupStatus(token, projectId);
+  const scopeAuthority = useSettingsScopeAuthority(token);
+  const accessModel = useSettingsAccessModel(token);
   const capabilities = useActiveContextCapabilities(token);
   const jobs = usePlatformJobs(token);
   const auditLogs = useAuditLogs(token);
@@ -84,6 +106,7 @@ export function AdminConsoleView({ token }: { token: string }) {
   const selectedProjectWorkspaceId = projectWorkspaceId || workspaceItems[0]?.id || "";
   const selectedProjectProfiles = useProfiles(token, selectedProfileProjectId || null);
   const selectedProjectEnvironments = useEnvironments(token, selectedEnvironmentProjectId || null);
+  const selectedGrantProjectEnvironments = useEnvironments(token, grantProjectId || projectId);
 
   const refreshOperationalData = async () => {
     await Promise.all([
@@ -101,6 +124,8 @@ export function AdminConsoleView({ token }: { token: string }) {
       queryClient.invalidateQueries({ queryKey: ["platform", "projects"] }),
       queryClient.invalidateQueries({ queryKey: ["platform", "profiles"] }),
       queryClient.invalidateQueries({ queryKey: ["platform", "environments"] }),
+      queryClient.invalidateQueries({ queryKey: ["platform", "settings", "scope-authority"] }),
+      queryClient.invalidateQueries({ queryKey: ["platform", "settings", "access-model"] }),
       queryClient.invalidateQueries({ queryKey: ["platform", "projects", setupProjectId, "setup-status"] }),
       queryClient.invalidateQueries({ queryKey: ["platform", "project-cockpit", "summary"] })
     ]);
@@ -115,6 +140,20 @@ export function AdminConsoleView({ token }: { token: string }) {
     setEnvironmentProjectId("");
     setEnvironmentType("DEV");
     setEnvironmentName("");
+    setRoleName("");
+    setRoleCapabilityNames("");
+    setUserEmail("");
+    setUserPassword("SyntheticPass123!");
+    setGrantProjectId("");
+    setGrantEnvironmentId("");
+    setGrantDomainName("");
+    setGrantUserId("");
+    setGrantRoleId("");
+    setAccessPolicyProjectId("");
+    setAccessPolicyName("");
+    setAccessPolicyVisibility("PRIVATE");
+    setAccessPolicyDomainName("");
+    setAccessPolicyRuleJson("{\"mode\":\"domain_role\"}");
     setOperationMessage(null);
     setOperationError(null);
   };
@@ -217,6 +256,117 @@ export function AdminConsoleView({ token }: { token: string }) {
     }
   };
 
+  const handleCreateRole = async () => {
+    const name = roleName.trim();
+    const capability_names = roleCapabilityNames
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (!name) {
+      setOperationError("Role name is required.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationError(null);
+    setOperationMessage(null);
+    try {
+      const role = await createRole(token, { capability_names, name });
+      setRoleName("");
+      setRoleCapabilityNames("");
+      setGrantRoleId(role.id);
+      setOperationMessage(`Created role ${role.name}.`);
+      await refreshSetupData(selectedProfileProjectId || projectId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create role.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    const email = userEmail.trim();
+    if (!email || !userPassword) {
+      setOperationError("User email and password are required.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationError(null);
+    setOperationMessage(null);
+    try {
+      const created = await createUser(token, { email, is_active: true, password: userPassword });
+      setUserEmail("");
+      setGrantUserId(created.id);
+      setOperationMessage(`Created user ${created.email}.`);
+      await refreshSetupData(projectId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create user.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateGrant = async () => {
+    const selectedGrantProjectId = grantProjectId || accessModel.data?.active_project_id || projectItems[0]?.id || "";
+    const selectedGrantEnvironmentId = grantEnvironmentId || selectedGrantProjectEnvironments.data?.items[0]?.id || null;
+    const selectedGrantRoleId = grantRoleId || accessModel.data?.roles[0]?.id || "";
+    const userId = grantUserId || accessModel.data?.users.find((item) => !item.is_admin)?.id || "";
+    if (!selectedGrantProjectId || !selectedGrantRoleId || !userId) {
+      setOperationError("Grant project, role, and user ID are required.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationError(null);
+    setOperationMessage(null);
+    try {
+      const grant = await createGrant(token, {
+        domain_name: grantDomainName.trim() || null,
+        environment_id: selectedGrantEnvironmentId,
+        project_id: selectedGrantProjectId,
+        role_id: selectedGrantRoleId,
+        user_id: userId
+      });
+      setGrantUserId("");
+      setOperationMessage(`Assigned ${grant.role_name ?? "role"} to ${grant.user_email ?? grant.user_id}.`);
+      await Promise.all([
+        refreshSetupData(selectedGrantProjectId),
+        queryClient.invalidateQueries({ queryKey: ["platform", "active-context", "capabilities"] })
+      ]);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not assign grant.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateAccessPolicy = async () => {
+    const selectedPolicyProjectId = accessPolicyProjectId || accessModel.data?.active_project_id || projectItems[0]?.id || null;
+    const name = accessPolicyName.trim();
+    const domainName = accessPolicyDomainName.trim();
+    if (!name) {
+      setOperationError("Access policy name is required.");
+      return;
+    }
+    setIsMutating(true);
+    setOperationError(null);
+    setOperationMessage(null);
+    try {
+      const policy = await createAccessPolicy(token, {
+        domain_name: domainName || null,
+        name,
+        project_id: selectedPolicyProjectId,
+        rule_json: accessPolicyRuleJson || "{}",
+        visibility: accessPolicyVisibility
+      });
+      setAccessPolicyName("");
+      setOperationMessage(`Created access policy ${policy.name}.`);
+      await refreshSetupData(selectedPolicyProjectId);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Could not create access policy.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const handleCreateDemoJob = async () => {
     setIsMutating(true);
     setOperationError(null);
@@ -301,14 +451,25 @@ export function AdminConsoleView({ token }: { token: string }) {
     jobs.isLoading ||
     auditLogs.isLoading ||
     featureFlags.isLoading ||
+    scopeAuthority.isLoading ||
+    accessModel.isLoading ||
     (Boolean(projectId) && setupStatus.isLoading);
 
   if (isLoading) {
-    return <StatePanel>Loading Admin Console...</StatePanel>;
+    return <StatePanel>Loading Settings...</StatePanel>;
   }
 
-  if (currentUser.isError || workspaces.isError || projects.isError || capabilities.isError || jobs.isError || auditLogs.isError) {
-    return <StatePanel tone="error">Admin Console is unavailable.</StatePanel>;
+  if (
+    currentUser.isError ||
+    workspaces.isError ||
+    projects.isError ||
+    capabilities.isError ||
+    jobs.isError ||
+    auditLogs.isError ||
+    scopeAuthority.isError ||
+    accessModel.isError
+  ) {
+    return <StatePanel tone="error">Settings is unavailable.</StatePanel>;
   }
 
   const auditItems = auditLogs.data?.items ?? [];
@@ -317,20 +478,33 @@ export function AdminConsoleView({ token }: { token: string }) {
   const capabilityItems = capabilities.data?.capabilities ?? [];
   const roleItems = capabilities.data?.roles ?? [];
   const setup = setupStatus.data;
+  const authority = scopeAuthority.data;
+  const access = accessModel.data;
+  const setupVisibility = access?.setup_visibility;
   const canCreateDemoJob = Boolean(projectId && profileId && environmentId) && !isMutating;
   const profileAuthoringItems = selectedProjectProfiles.data?.items ?? [];
   const environmentAuthoringItems = selectedProjectEnvironments.data?.items ?? [];
+  const roleAuthoringItems = access?.roles ?? [];
+  const userAuthoringItems = access?.users ?? [];
+  const grantAuthoringItems = access?.grants ?? [];
+  const accessPolicyItems = access?.access_policies ?? [];
+  const selectedGrantProjectId = grantProjectId || access?.active_project_id || projectItems[0]?.id || "";
+  const grantEnvironmentItems = selectedGrantProjectEnvironments.data?.items ?? [];
+  const selectedGrantEnvironmentId = grantEnvironmentId || grantEnvironmentItems[0]?.id || "";
+  const selectedGrantRoleId = grantRoleId || roleAuthoringItems[0]?.id || "";
+  const selectedGrantUserId = grantUserId || userAuthoringItems.find((item) => !item.is_admin)?.id || "";
+  const selectedAccessPolicyProjectId = accessPolicyProjectId || access?.active_project_id || projectItems[0]?.id || "";
 
   return (
     <>
       <PageHeader
-        description="Platform setup, capabilities, jobs, and audit visibility for backend-owned operational contracts."
-        label="Platform administration"
-        title="Admin Console"
+        description="Project, client/domain, environment, users, roles, grants, policies, jobs, and audit visibility for backend-owned setup contracts."
+        label="Configuration"
+        title="Settings"
       />
 
       <MetricGrid
-        ariaLabel="Admin Console metrics"
+        ariaLabel="Settings metrics"
         items={[
           { key: "projects", label: "Projects", status: booleanStatus(projectItems.length), value: projectItems.length },
           {
@@ -347,6 +521,80 @@ export function AdminConsoleView({ token }: { token: string }) {
       {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
       {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
 
+      <OperationalPanel
+        ariaLabel="Settings scope authority"
+        emptyText="Settings scope authority is unavailable."
+        hasItems={Boolean(authority)}
+        status={authority?.status ?? "UNKNOWN"}
+        title="Scope authority"
+      >
+        {authority ? (
+          <div className="admin-scope-authority">
+            <MetricGrid
+              ariaLabel="Settings scope setup counts"
+              items={[
+                {
+                  key: "workspaces",
+                  label: "Workspaces",
+                  status: booleanStatus(authority.setup_counts.workspaces),
+                  value: authority.setup_counts.workspaces
+                },
+                {
+                  key: "projects",
+                  label: "Projects",
+                  status: booleanStatus(authority.setup_counts.projects),
+                  value: authority.setup_counts.projects
+                },
+                {
+                  key: "profiles",
+                  label: "Profiles",
+                  status: booleanStatus(authority.setup_counts.profiles),
+                  value: authority.setup_counts.profiles
+                },
+                {
+                  key: "environments",
+                  label: "Environments",
+                  status: booleanStatus(authority.setup_counts.environments),
+                  value: authority.setup_counts.environments
+                }
+              ]}
+            />
+            <div className="admin-scope-authority-grid">
+              <div aria-label="Settings scope blockers" className="admin-scope-authority-list">
+                <strong>Blocked reasons</strong>
+                {authority.blocked_reasons.length ? (
+                  authority.blocked_reasons.map((reason) => <span key={reason}>{reason}</span>)
+                ) : (
+                  <span>READY</span>
+                )}
+              </div>
+              <div aria-label="Settings scope active context" className="admin-scope-authority-list">
+                <strong>Active context</strong>
+                <span>{contextValue(authority.active_context.project_id)}</span>
+                <span>{contextValue(authority.active_context.environment_id)}</span>
+                <span>{contextValue(authority.active_context.domain_name)}</span>
+              </div>
+              <div aria-label="Settings setup visibility" className="admin-scope-authority-list">
+                <strong>Setup visibility</strong>
+                <span>{authority.setup_visibility.level}</span>
+                <span>Profiles: {authority.setup_visibility.can_manage_profiles ? "Manage" : "Read"}</span>
+                <span>Grants: {authority.setup_visibility.can_manage_grants ? "Manage" : "Read"}</span>
+                <span>Policies: {authority.setup_visibility.can_manage_access_policies ? "Manage" : "Read"}</span>
+              </div>
+              <div aria-label="Settings scope actions" className="admin-scope-authority-list">
+                <strong>Available actions</strong>
+                {authority.available_actions.map((action) => (
+                  <span key={action.key}>
+                    {action.label}
+                    {action.disabled_reason ? ` / ${action.disabled_reason}` : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </OperationalPanel>
+
       <ModuleWorkspaceLayout
         ariaLabel="Platform jobs"
         side={
@@ -354,7 +602,7 @@ export function AdminConsoleView({ token }: { token: string }) {
             <OperationalPanel
               ariaLabel="Setup authoring"
               emptyText="No setup entities available."
-              hasItems={workspaceItems.length > 0 || projectItems.length > 0}
+              hasItems={Boolean(authority) || workspaceItems.length > 0 || projectItems.length > 0}
               status={projectItems.length ? "ACTIVE" : "EMPTY"}
               title="Setup authoring"
             >
@@ -362,6 +610,26 @@ export function AdminConsoleView({ token }: { token: string }) {
                 <Button disabled={isMutating} onClick={resetSetupDrafts} type="button">
                   Reset setup drafts
                 </Button>
+                <a className="button button-secondary" href="/home">
+                  Return to Cockpit
+                </a>
+              </div>
+              <div aria-label="Setup action recovery" className="admin-setup-recovery">
+                <div className="admin-setup-list">
+                  {authority?.blocked_reasons.length ? (
+                    authority.blocked_reasons.map((reason) => <span key={reason}>{reason}</span>)
+                  ) : (
+                    <span>READY</span>
+                  )}
+                </div>
+                <div className="admin-setup-list">
+                  {authority?.available_actions.map((action) => (
+                    <span key={action.key}>
+                      {action.label}
+                      {action.disabled_reason ? ` / ${action.disabled_reason}` : ""}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="admin-setup-authoring">
                 <form
@@ -379,7 +647,7 @@ export function AdminConsoleView({ token }: { token: string }) {
                       value={workspaceName}
                     />
                   </label>
-                  <Button disabled={isMutating} type="submit" variant="primary">
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_workspaces} type="submit" variant="primary">
                     Create workspace
                   </Button>
                   <div className="admin-setup-list">
@@ -399,6 +667,7 @@ export function AdminConsoleView({ token }: { token: string }) {
                   <label>
                     Project workspace
                     <select onChange={(event) => setProjectWorkspaceId(event.target.value)} value={selectedProjectWorkspaceId}>
+                      {!workspaceItems.length ? <option value="">Workspace required</option> : null}
                       {workspaceItems.map((workspace) => (
                         <option key={workspace.id} value={workspace.id}>
                           {workspace.name}
@@ -410,9 +679,10 @@ export function AdminConsoleView({ token }: { token: string }) {
                     Project name
                     <input onChange={(event) => setProjectName(event.target.value)} placeholder="Synthetic project" value={projectName} />
                   </label>
-                  <Button disabled={isMutating || !workspaceItems.length} type="submit" variant="primary">
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_projects || !workspaceItems.length} type="submit" variant="primary">
                     Create project
                   </Button>
+                  {!workspaceItems.length ? <span className="admin-setup-hint">Workspace required</span> : null}
                   <div className="admin-setup-list">
                     {projectItems.slice(-3).map((project) => (
                       <span key={project.id}>{project.name}</span>
@@ -430,6 +700,7 @@ export function AdminConsoleView({ token }: { token: string }) {
                   <label>
                     Profile project
                     <select onChange={(event) => setProfileProjectId(event.target.value)} value={selectedProfileProjectId}>
+                      {!projectItems.length ? <option value="">Project required</option> : null}
                       {projectItems.map((project) => (
                         <option key={project.id} value={project.id}>
                           {project.name}
@@ -441,9 +712,10 @@ export function AdminConsoleView({ token }: { token: string }) {
                     Profile name
                     <input onChange={(event) => setProfileName(event.target.value)} placeholder="Default profile" value={profileName} />
                   </label>
-                  <Button disabled={isMutating || !projectItems.length} type="submit" variant="primary">
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_profiles || !projectItems.length} type="submit" variant="primary">
                     Create profile
                   </Button>
+                  {!projectItems.length ? <span className="admin-setup-hint">Project required</span> : null}
                   <div className="admin-setup-list">
                     {profileAuthoringItems.slice(-3).map((profile) => (
                       <span key={profile.id}>{profile.name}</span>
@@ -461,6 +733,7 @@ export function AdminConsoleView({ token }: { token: string }) {
                   <label>
                     Environment project
                     <select onChange={(event) => setEnvironmentProjectId(event.target.value)} value={selectedEnvironmentProjectId}>
+                      {!projectItems.length ? <option value="">Project required</option> : null}
                       {projectItems.map((project) => (
                         <option key={project.id} value={project.id}>
                           {project.name}
@@ -485,15 +758,251 @@ export function AdminConsoleView({ token }: { token: string }) {
                       value={environmentName}
                     />
                   </label>
-                  <Button disabled={isMutating || !projectItems.length} type="submit" variant="primary">
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_environments || !projectItems.length} type="submit" variant="primary">
                     Create environment
                   </Button>
+                  {!projectItems.length ? <span className="admin-setup-hint">Project required</span> : null}
                   <div className="admin-setup-list">
                     {environmentAuthoringItems.slice(-3).map((environment) => (
                       <span key={environment.id}>{environment.name}</span>
                     ))}
                   </div>
                 </form>
+
+                <form
+                  aria-label="Role authoring"
+                  className="admin-setup-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleCreateRole();
+                  }}
+                >
+                  <label>
+                    Role name
+                    <input onChange={(event) => setRoleName(event.target.value)} placeholder="Rates operator" value={roleName} />
+                  </label>
+                  <label>
+                    Capabilities
+                    <input
+                      onChange={(event) => setRoleCapabilityNames(event.target.value)}
+                      placeholder="rates.batch.view, rates.batch.export"
+                      value={roleCapabilityNames}
+                    />
+                  </label>
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_roles} type="submit" variant="primary">
+                    Create role
+                  </Button>
+                  <div className="admin-setup-list">
+                    {roleAuthoringItems.slice(-3).map((role) => (
+                      <span key={role.id}>{role.name}</span>
+                    ))}
+                  </div>
+                </form>
+
+                <form
+                  aria-label="User authoring"
+                  className="admin-setup-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleCreateUser();
+                  }}
+                >
+                  <label>
+                    User email
+                    <input onChange={(event) => setUserEmail(event.target.value)} placeholder="operator@example.test" value={userEmail} />
+                  </label>
+                  <label>
+                    Temporary password
+                    <input onChange={(event) => setUserPassword(event.target.value)} type="password" value={userPassword} />
+                  </label>
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_users} type="submit" variant="primary">
+                    Create user
+                  </Button>
+                  <div className="admin-setup-list">
+                    {userAuthoringItems.slice(-3).map((item) => (
+                      <span key={item.id}>{item.email}</span>
+                    ))}
+                  </div>
+                </form>
+
+                <form
+                  aria-label="Grant authoring"
+                  className="admin-setup-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleCreateGrant();
+                  }}
+                >
+                  <label>
+                    Grant project
+                    <select onChange={(event) => setGrantProjectId(event.target.value)} value={selectedGrantProjectId}>
+                      {!projectItems.length ? <option value="">Project required</option> : null}
+                      {projectItems.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Grant role
+                    <select onChange={(event) => setGrantRoleId(event.target.value)} value={selectedGrantRoleId}>
+                      {!roleAuthoringItems.length ? <option value="">Role required</option> : null}
+                      {roleAuthoringItems.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Grant environment
+                    <select onChange={(event) => setGrantEnvironmentId(event.target.value)} value={selectedGrantEnvironmentId}>
+                      {!grantEnvironmentItems.length ? <option value="">Environment required</option> : null}
+                      {grantEnvironmentItems.map((environment) => (
+                        <option key={environment.id} value={environment.id}>
+                          {environment.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Grant domain
+                    <input onChange={(event) => setGrantDomainName(event.target.value)} placeholder="OTM1" value={grantDomainName} />
+                  </label>
+                  <label>
+                    Grant user
+                    <select onChange={(event) => setGrantUserId(event.target.value)} value={selectedGrantUserId}>
+                      {!userAuthoringItems.length ? <option value="">User required</option> : null}
+                      {userAuthoringItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button
+                    disabled={isMutating || !setupVisibility?.can_manage_grants || !roleAuthoringItems.length || !userAuthoringItems.length}
+                    type="submit"
+                    variant="primary"
+                  >
+                    Assign grant
+                  </Button>
+                  {!projectItems.length ? <span className="admin-setup-hint">Project required</span> : null}
+                  {!roleAuthoringItems.length ? <span className="admin-setup-hint">Role required</span> : null}
+                  {!userAuthoringItems.length ? <span className="admin-setup-hint">User required</span> : null}
+                  <div className="admin-setup-list">
+                    {grantAuthoringItems.slice(-3).map((grant) => (
+                      <span key={grant.id}>
+                        {grant.user_email ?? grant.user_id} / {grant.role_name ?? grant.role_id} / {grant.binding_scope_label}
+                      </span>
+                    ))}
+                  </div>
+                </form>
+
+                <div aria-label="Grant binding review" className="admin-policy-binding-review">
+                  {grantAuthoringItems.length ? (
+                    grantAuthoringItems.map((grant) => (
+                      <article className="admin-policy-binding-card" key={grant.id}>
+                        <div>
+                          <strong>{grant.user_email ?? grant.user_id}</strong>
+                          <span>
+                            {grant.role_name ?? grant.role_id} / {grant.binding_scope_label}
+                          </span>
+                        </div>
+                        <StatusChip status={grant.active_context_match ? "READY" : grant.active_context_disabled_reason ?? "BLOCKED"} />
+                        <div className="admin-policy-binding-rules">
+                          {grant.binding_requirements.map((requirement) => (
+                            <span key={requirement}>{requirement}</span>
+                          ))}
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <span className="empty-text">No grants to review.</span>
+                  )}
+                </div>
+
+                <form
+                  aria-label="Access policy authoring"
+                  className="admin-setup-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleCreateAccessPolicy();
+                  }}
+                >
+                  <label>
+                    Policy project
+                    <select onChange={(event) => setAccessPolicyProjectId(event.target.value)} value={selectedAccessPolicyProjectId}>
+                      {!projectItems.length ? <option value="">Project required</option> : null}
+                      {projectItems.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Policy name
+                    <input
+                      onChange={(event) => setAccessPolicyName(event.target.value)}
+                      placeholder="Domain role policy"
+                      value={accessPolicyName}
+                    />
+                  </label>
+                  <label>
+                    Visibility
+                    <select onChange={(event) => setAccessPolicyVisibility(event.target.value)} value={accessPolicyVisibility}>
+                      <option value="PRIVATE">PRIVATE</option>
+                      <option value="PROJECT">PROJECT</option>
+                      <option value="PUBLIC">PUBLIC</option>
+                    </select>
+                  </label>
+                  <label>
+                    Domain
+                    <input
+                      onChange={(event) => setAccessPolicyDomainName(event.target.value)}
+                      placeholder="OTM1"
+                      value={accessPolicyDomainName}
+                    />
+                  </label>
+                  <label>
+                    Rule JSON
+                    <input onChange={(event) => setAccessPolicyRuleJson(event.target.value)} value={accessPolicyRuleJson} />
+                  </label>
+                  <Button disabled={isMutating || !setupVisibility?.can_manage_access_policies} type="submit" variant="primary">
+                    Create access policy
+                  </Button>
+                  {!projectItems.length ? <span className="admin-setup-hint">Project required</span> : null}
+                  <div className="admin-setup-list">
+                    {accessPolicyItems.slice(-3).map((policy) => (
+                      <span key={policy.id}>
+                        {policy.name} / {policy.binding_scope_label}
+                      </span>
+                    ))}
+                  </div>
+                </form>
+
+                <div aria-label="Access policy binding review" className="admin-policy-binding-review">
+                  {accessPolicyItems.length ? (
+                    accessPolicyItems.map((policy) => (
+                      <article className="admin-policy-binding-card" key={policy.id}>
+                        <div>
+                          <strong>{policy.name}</strong>
+                          <span>{policy.binding_scope_label}</span>
+                        </div>
+                        <StatusChip status={policy.active_context_match ? "READY" : policy.active_context_disabled_reason ?? "BLOCKED"} />
+                        <div className="admin-policy-binding-rules">
+                          {policy.binding_requirements.map((requirement) => (
+                            <span key={requirement}>{requirement}</span>
+                          ))}
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <span className="empty-text">No access policies to review.</span>
+                  )}
+                </div>
               </div>
             </OperationalPanel>
 

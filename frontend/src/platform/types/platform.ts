@@ -79,6 +79,128 @@ export type ProjectSetupStatus = {
   missing_requirements: string[];
 };
 
+export type BackendAction = {
+  key: string;
+  label: string;
+  method: string;
+  href: string;
+  variant: string;
+  icon_key: string;
+  disabled: boolean;
+  disabled_reason: string | null;
+  requires_confirmation: boolean;
+};
+
+export type SettingsSetupVisibility = {
+  level: string;
+  can_manage_users: boolean;
+  can_manage_workspaces: boolean;
+  can_manage_projects: boolean;
+  can_manage_profiles: boolean;
+  can_manage_environments: boolean;
+  can_manage_roles: boolean;
+  can_manage_grants: boolean;
+  can_manage_access_policies: boolean;
+};
+
+export type SettingsScopeAuthority = {
+  module: "settings";
+  label: string;
+  label_key: string;
+  status: string;
+  active_context: ActiveContextResponse;
+  setup_counts: {
+    workspaces: number;
+    projects: number;
+    profiles: number;
+    environments: number;
+  };
+  setup_visibility: SettingsSetupVisibility;
+  blocked_reasons: string[];
+  available_actions: BackendAction[];
+};
+
+export type SettingsRole = {
+  id: string;
+  name: string;
+  capability_names: string[];
+};
+
+export type SettingsUser = {
+  id: string;
+  email: string;
+  is_active: boolean;
+  is_admin: boolean;
+};
+
+export type SettingsGrant = {
+  id: string;
+  project_id: string;
+  project_name: string | null;
+  environment_id: string | null;
+  domain_name: string | null;
+  user_id: string;
+  user_email: string | null;
+  role_id: string;
+  role_name: string | null;
+  binding_scope_label: string;
+  binding_requirements: string[];
+  active_context_match: boolean;
+  active_context_disabled_reason: string | null;
+};
+
+export type SettingsAccessPolicy = {
+  id: string;
+  project_id: string | null;
+  project_name: string | null;
+  name: string;
+  visibility: string;
+  domain_name: string | null;
+  rule_json: string;
+  created_by: string | null;
+  binding_scope_label: string;
+  binding_requirements: string[];
+  active_context_match: boolean;
+  active_context_disabled_reason: string | null;
+};
+
+export type SettingsAccessModel = {
+  setup_visibility: SettingsSetupVisibility;
+  active_project_id: string | null;
+  users: SettingsUser[];
+  roles: SettingsRole[];
+  capability_names: string[];
+  grants: SettingsGrant[];
+  access_policies: SettingsAccessPolicy[];
+};
+
+export type RoleCreate = {
+  name: string;
+  capability_names: string[];
+};
+
+export type UserCreate = {
+  email: string;
+  password: string;
+  is_active: boolean;
+};
+
+export type GrantCreate = {
+  project_id: string;
+  environment_id?: string | null;
+  domain_name?: string | null;
+  user_id: string;
+  role_id: string;
+};
+
+export type AccessPolicyCreate = {
+  project_id: string | null;
+  name: string;
+  visibility: string;
+  domain_name: string | null;
+  rule_json: string;
+};
+
 export type EffectiveCapabilities = {
   user_id: string;
   project_id: string | null;

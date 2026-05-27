@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -32,19 +32,29 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function cockpitSummary(contextReady: boolean) {
+  const activeContext = contextReady
+    ? {
+        project_id: "project_1",
+        profile_id: "profile_1",
+        environment_id: "environment_1",
+        domain_name: "OTM1",
+        allowed_domains: ["PUBLIC", "OTM1"],
+        can_view_all_domains: false
+      }
+    : {
+        project_id: null,
+        profile_id: null,
+        environment_id: null,
+        domain_name: null,
+        allowed_domains: ["PUBLIC"],
+        can_view_all_domains: false
+      };
   return {
     module_id: "home",
     title: "Project Cockpit",
     status: contextReady ? "ready" : "needs_context",
-    description: "Project-level operational overview.",
-    active_context: contextReady
-      ? {
-          project_id: "project_1",
-          profile_id: "profile_1",
-          environment_id: "environment_1",
-          domain_name: "OTM1"
-        }
-      : {},
+    description: "Project context, project information, and module accelerators.",
+    active_context: activeContext,
     setup_status: {
       status: contextReady ? "READY" : "NEEDS_CONTEXT",
       profile_count: 1,
@@ -53,6 +63,49 @@ function cockpitSummary(contextReady: boolean) {
       missing_requirements: contextReady ? [] : ["active_context"]
     },
     counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
+    context_selector: {
+      mode: contextReady ? "PRIVATE" : "PUBLIC",
+      active_context: activeContext,
+      public_view_available: true,
+      requires_private_context: false,
+      set_context_action_key: "set_active_context"
+    },
+    project_info: {
+      title: "Project information",
+      status: contextReady ? "AVAILABLE" : "NEEDS_CONTEXT",
+      links: [],
+      documents: [],
+      contacts: [],
+      secure_vault: {
+        status: "NOT_CONFIGURED",
+        metadata_only: true,
+        secret_values_available: false
+      }
+    },
+    accelerators: [
+      {
+        key: "rates",
+        label: "Rates Studio",
+        description: "Synthetic Rates functional shell target.",
+        href: "/rates",
+        status: "ACTIVE",
+        icon_key: "rates",
+        requires_private_context: true,
+        disabled: !contextReady,
+        disabled_reason: contextReady ? null : "ACTIVE_CONTEXT_REQUIRED"
+      }
+    ],
+    user_scope: {
+      role_mode: "SCOPED",
+      is_dba: false,
+      allowed_domains: contextReady ? ["PUBLIC", "OTM1"] : ["PUBLIC"],
+      can_view_all_domains: false
+    },
+    route_recovery: {
+      default_path: "/home",
+      return_action_key: "return_to_cockpit",
+      blocked_route_message: "Return to Project Cockpit and select an available context or accelerator."
+    },
     module_summary: { total: 2, counts_by_status: { ACTIVE: 2 }, items: [] },
     recent_jobs: [],
     recent_artifacts: [],
@@ -182,7 +235,7 @@ describe("Functional shell journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apply context" }));
 
     await waitFor(() => expect(activeContextRequests).toHaveLength(1));
-    await waitFor(() => expect(screen.getByText("Project context ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Private scope")).toBeInTheDocument());
     expect(screen.getByText("OTM1")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Use compact density" }));
@@ -192,12 +245,12 @@ describe("Functional shell journey", () => {
     await waitFor(() => expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-density", "compact"));
     expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-sidebar", "collapsed");
 
-    await userEvent.click(screen.getByRole("link", { name: /Rates Studio/ }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Workbench modules" })).getByRole("link", { name: /Rates Studio/ }));
     expect(await screen.findByRole("heading", { name: "Rates Studio" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
     expect(await screen.findByRole("heading", { name: "Project Cockpit" })).toBeInTheDocument();
-    expect(screen.getByText("Project context ready")).toBeInTheDocument();
+    expect(screen.getByText("Private scope")).toBeInTheDocument();
     expect(screen.getByText("OTM1")).toBeInTheDocument();
     expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-density", "compact");
     expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-sidebar", "collapsed");
