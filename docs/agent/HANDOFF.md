@@ -3087,12 +3087,14 @@ merge PR #182 according to the user's preferred release cadence.
 ## 2026-05-28 OTM_RESOURCES Versioning Policy
 
 Status:
-Implemented locally for issue #221. Validation passed. Commit, push, and PR are
-still pending.
+Complete. Issue #221 was implemented, PR #222 was merged into `main`, and the
+resource policy is now active.
 
 GitHub tracking:
 
 - Issue #221: OTM_RESOURCES versioning and sensitivity policy.
+- PR #222: merged.
+- Issue #223: follow-up handoff state sync.
 
 Files intentionally changed:
 
@@ -3119,6 +3121,8 @@ Validation run:
   passed with 37 tests when `OTM_OTM_DATA_DICTIONARY_ROOT` pointed at the local
   Data Dictionary.
 - `git diff --check` passed.
+- GitHub PR #222 Backend CI, Frontend CI/build, and CodeRabbit passed before
+  merge.
 
 Validation not run:
 
@@ -3143,10 +3147,11 @@ Open risks:
 
 Next-chat intake notes:
 
-- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-resource-policy`
-  for issue #221.
 - Do not add raw `OTM_RESOURCES` content in this slice.
+- `OTM_OTM_DATA_DICTIONARY_ROOT` is still required for local clean worktrees
+  that run Data Dictionary-dependent tests.
 
 Recommended next step:
 
-Commit, push, and open a small PR for issue #221.
+Close issue #223 after this handoff sync is committed and merged, then continue
+with the next roadmap lane from `origin/main`.
