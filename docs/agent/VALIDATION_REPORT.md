@@ -3,6 +3,65 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Library Row Actions Validation
+
+Validation intent:
+
+- expose route-level row actions from `/assets/library`;
+- preserve the existing in-page selected-asset workflow;
+- verify browser QA on a fresh backend/frontend runtime.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "library row actions"
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+```
+
+Results:
+
+```text
+Focused row actions test: 1 passed, 12 skipped after the expected red failure
+was fixed.
+Focused long Assets journey: 1 passed, 12 skipped.
+Assets functional suite: 13 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8023
+Frontend: http://127.0.0.1:5202
+Database: var/qa-assets-row-actions.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Existing Assets screenshots refreshed by the browser journey, including
+var/qa/assets-library-search.png.
+```
+
+Validated:
+
+- search result rows expose `Open <asset>`, `Upload version for <asset>`, and
+  `Archive <asset>` links;
+- result rows still expose `Select <asset>` for the existing in-page workflow;
+- create, edit, version, link, download, archive, and return flows still pass;
+- live navigation evidence stayed inside the current UI phase.
+
+Deferred:
+
+- linked target type and target OTM version search remain future slices.
+
 ## 2026-05-28 Assets Library Search UI Validation
 
 Validation intent:

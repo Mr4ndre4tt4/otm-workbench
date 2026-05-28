@@ -237,6 +237,35 @@ function actionDisabled(asset: AssetItem | undefined, actionKey: string, fallbac
   return action ? action.disabled : fallbackDisabled;
 }
 
+function assetLibraryRowActions(asset: AssetItem, onSelect: (assetId: string) => void) {
+  const rowUploadDisabled = actionDisabled(asset, "asset.upload_version", asset.status === "ARCHIVED");
+  const rowArchiveDisabled = actionDisabled(asset, "asset.archive", asset.status === "ARCHIVED");
+  return (
+    <div className="master-data-action-bar">
+      <Button aria-label={`Select ${asset.name}`} onClick={() => onSelect(asset.id)} variant="secondary">
+        Select
+      </Button>
+      <Link aria-label={`Open ${asset.name}`} className="button button-secondary" to={`/assets/${asset.id}`}>
+        Open
+      </Link>
+      {rowUploadDisabled ? null : (
+        <Link
+          aria-label={`Upload version for ${asset.name}`}
+          className="button button-secondary"
+          to={`/assets/${asset.id}/versions/new`}
+        >
+          Upload version
+        </Link>
+      )}
+      {rowArchiveDisabled ? null : (
+        <Link aria-label={`Archive ${asset.name}`} className="button button-primary" to={`/assets/${asset.id}/archive`}>
+          Archive
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export function AssetsLibraryView({ token }: { token: string }) {
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -2378,19 +2407,17 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 Next assets page
               </Button>
             </div>
-            <ModuleObjectList
+            <DetailList
               ariaLabel="Assets"
               emptyText="No assets available for the current context."
               items={assetItems.map((asset) => ({
+                action: assetLibraryRowActions(asset, handleSelectAsset),
                 id: asset.id,
                 meta: assetMeta(asset),
                 status: asset.status,
-                subtitle: asset.macro_object_code ?? asset.module_id ?? asset.scope_type,
                 title: asset.name
               }))}
               maxVisibleItems={12}
-              onSelect={handleSelectAsset}
-              selectedId={effectiveAssetId}
             />
           </OperationalPanel>
         ) : null}

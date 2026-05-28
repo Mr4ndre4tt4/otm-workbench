@@ -3,6 +3,66 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Library Row Actions
+
+Status:
+Implemented and validated.
+
+Scope:
+The `/assets/library` search results now expose explicit route-level row
+actions while preserving the in-page selected-asset workflow.
+
+What changed:
+
+- library result rows now render with action-capable `DetailList` rows;
+- each row exposes `Open <asset>` to `/assets/:assetId`;
+- eligible rows expose `Upload version for <asset>` to
+  `/assets/:assetId/versions/new`;
+- eligible rows expose `Archive <asset>` to `/assets/:assetId/archive`;
+- each row also keeps a `Select <asset>` button so the existing workflow panels
+  can still load the row without leaving `/assets/library`;
+- functional coverage now asserts row action links.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_LIBRARY_ROW_ACTIONS.md`
+- `docs/superpowers/plans/2026-05-28-assets-library-row-actions.md`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "library row actions"`:
+  1 passed, 12 skipped after the expected red failure was fixed.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"`:
+  1 passed, 12 skipped.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx`: 13 passed.
+- `npm run build`: passed with the existing Vite large chunk warning.
+- `npm run qa:functional:assets:browser`: passed.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8023`;
+- frontend: `http://127.0.0.1:5202`;
+- database: `var/qa-assets-row-actions.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- backend/frontend QA runtimes were stopped after validation.
+
+Open risks:
+
+- linked target type and target OTM version search remain deferred.
+- `OTM_RESOURCES/`, `outputs/`, and unrelated assistant-planning files remain
+  untracked and outside this slice.
+- Integration Mapping remains reserved for its dedicated chat/workstream unless
+  explicitly requested.
+
+Recommended next step:
+Commit and push this row-actions slice, then continue with another
+non-Integration-Mapping Assets acceptance item or move to the next roadmap
+module the user requests.
 ## 2026-05-28 Assets Library Search UI
 
 Status:
