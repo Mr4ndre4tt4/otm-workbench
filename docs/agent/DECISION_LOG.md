@@ -1,4 +1,4 @@
-# Decision Log
+﻿# Decision Log
 
 **Status:** active
 **Date:** 2026-05-27
@@ -3029,3 +3029,52 @@ Impacted docs:
 Status:
 
 Created in Penpot and ready for user/Michelangelo visual review.
+
+## 2026-05-28: Assets Target OTM Version Taxonomy
+
+Change type:
+
+- backend validation change;
+- governance/documentation change.
+
+Decision:
+
+Validate Assets `target_otm_version` against an Assets-owned classification
+taxonomy named `asset_target_otm_version`.
+
+Current seeded labels:
+
+- `26A`;
+- `26B`.
+
+Source-of-truth rationale:
+
+- Oracle publishes Transportation and Global Trade Management Cloud
+  documentation and release notes by release label, including public 26A and
+  26B documentation paths.
+- The Workbench only needs label validation in the current Assets phase, not a
+  separate platform-wide release registry.
+- Future labels should be added as governed classifications when the project
+  confirms the relevant Oracle documentation baseline.
+
+References:
+
+- https://docs.oracle.com/en/cloud/saas/transportation/26a/release-notes.html
+- https://docs.oracle.com/en/cloud/saas/transportation/26b/otmcg/getting-started-guide.pdf
+
+Reason:
+
+`target_otm_version` is asset metadata and should not accept arbitrary frontend
+text once Assets has a backend-owned taxonomy. Keeping it in the Assets
+classification system preserves the existing classification governance model
+without introducing a larger release registry before multiple modules need it.
+
+Impacted docs:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_TARGET_OTM_VERSION_TAXONOMY.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Status:
+
+Implemented and validated for Assets issue #200.

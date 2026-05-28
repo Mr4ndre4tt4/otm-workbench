@@ -29,6 +29,8 @@ DEFAULT_CLASSIFICATIONS = [
     ("asset_link_type", "EVIDENCE", "Evidence", "Links an asset to evidence.", 50),
     ("asset_link_type", "BATCH", "Batch", "Links an asset to a backend-owned operational batch.", 60),
     ("asset_link_type", "CHECKLIST", "Checklist", "Links an asset to a backend-owned cutover checklist.", 70),
+    ("asset_target_otm_version", "26A", "OTM 26A", "Oracle Transportation and Global Trade Management 26A.", 10),
+    ("asset_target_otm_version", "26B", "OTM 26B", "Oracle Transportation and Global Trade Management 26B.", 20),
 ]
 
 ALLOWED_CLASSIFICATION_TYPES = {item[0] for item in DEFAULT_CLASSIFICATIONS}

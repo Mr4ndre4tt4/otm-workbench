@@ -550,11 +550,11 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
         json=draft_asset_payload(name="Synthetic 26A Asset", target_otm_version="26a"),
         headers=admin_header,
     ).json()
-    client.post(
+    secondary = client.post(
         "/api/v1/modules/assets/assets",
         json=draft_asset_payload(name="Synthetic 26B Asset", target_otm_version="26B"),
         headers=admin_header,
-    )
+    ).json()
 
     exact = client.get(
         "/api/v1/modules/assets/assets",
@@ -563,7 +563,7 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     )
     one_of = client.get(
         "/api/v1/modules/assets/assets",
-        params={"target_otm_version": "26A,27A", "target_otm_version_operator": "one_of"},
+        params={"target_otm_version": "26A,26B", "target_otm_version_operator": "one_of"},
         headers=admin_header,
     )
     not_one_of = client.get(
@@ -573,7 +573,7 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     )
     update = client.patch(
         f"/api/v1/modules/assets/assets/{matching['id']}",
-        json={"target_otm_version": "27a"},
+        json={"target_otm_version": "26b"},
         headers=admin_header,
     )
     clear = client.patch(
@@ -586,13 +586,50 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     assert exact.status_code == 200
     assert [item["id"] for item in exact.json()["items"]] == [matching["id"]]
     assert one_of.status_code == 200
-    assert [item["id"] for item in one_of.json()["items"]] == [matching["id"]]
+    assert {item["id"] for item in one_of.json()["items"]} == {matching["id"], secondary["id"]}
     assert not_one_of.status_code == 200
     assert [item["id"] for item in not_one_of.json()["items"]] == [matching["id"]]
     assert update.status_code == 200
-    assert update.json()["target_otm_version"] == "27A"
+    assert update.json()["target_otm_version"] == "26B"
     assert clear.status_code == 200
     assert clear.json()["target_otm_version"] is None
+
+
+def test_asset_target_otm_version_rejects_unclassified_values(client, admin_header):
+    invalid_create = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Unsupported OTM Version Asset", target_otm_version="27A"),
+        headers=admin_header,
+    )
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Supported OTM Version Asset", target_otm_version="26A"),
+        headers=admin_header,
+    ).json()
+    invalid_update = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"target_otm_version": "27A"},
+        headers=admin_header,
+    )
+    classifications = client.get("/api/v1/modules/assets/classifications", headers=admin_header)
+
+    assert invalid_create.status_code == 400
+    create_payload = invalid_create.json()
+    assert create_payload["code"] == "ASSET_CLASSIFICATION_INVALID"
+    assert create_payload["details"]["field_name"] == "target_otm_version"
+    assert create_payload["details"]["classification_type"] == "asset_target_otm_version"
+    assert "27A" not in json.dumps(create_payload)
+
+    assert invalid_update.status_code == 400
+    update_payload = invalid_update.json()
+    assert update_payload["code"] == "ASSET_METADATA_INVALID"
+    assert update_payload["details"]["field_name"] == "target_otm_version"
+    assert "27A" not in json.dumps(update_payload)
+
+    version_group = next(
+        group for group in classifications.json()["items"] if group["classification_type"] == "asset_target_otm_version"
+    )
+    assert {item["code"] for item in version_group["items"]} == {"26A", "26B"}
 
 
 def test_list_assets_supports_backend_search_operators(client, admin_header):

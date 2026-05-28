@@ -311,6 +311,13 @@ def ensure_link_type(db: Session, link_type: str) -> None:
     ensure_classification(db, "asset_link_type", link_type)
 
 
+def normalize_target_otm_version(db: Session, value: object) -> str | None:
+    normalized_value = str(value or "").strip().upper() or None
+    if normalized_value is not None:
+        ensure_classification(db, "asset_target_otm_version", normalized_value, "target_otm_version")
+    return normalized_value
+
+
 def create_draft_asset(
     db: Session,
     *,
@@ -326,6 +333,7 @@ def create_draft_asset(
     }
     for field_name, classification_type in CLASSIFICATION_FIELDS.items():
         ensure_classification(db, classification_type, normalized[field_name], field_name)
+    target_otm_version = normalize_target_otm_version(db, payload.get("target_otm_version"))
     assert_global_asset_without_secret_risk(normalized["scope_type"], payload)
 
     raw_tags = payload.get("tags") or []
@@ -347,7 +355,7 @@ def create_draft_asset(
         module_id=str(payload.get("module_id") or "").strip() or None,
         macro_object_code=str(payload.get("macro_object_code") or "").strip().upper() or None,
         otm_table_name=str(payload.get("otm_table_name") or "").strip().upper() or None,
-        target_otm_version=str(payload.get("target_otm_version") or "").strip().upper() or None,
+        target_otm_version=target_otm_version,
         tags_json=json.dumps(tags, sort_keys=True),
         created_by=user.email,
     )
@@ -508,7 +516,12 @@ def update_asset_metadata(
             if asset.tags_json != tags_json:
                 asset.tags_json = tags_json
                 changed_fields.append(field_name)
-        elif field_name in {"macro_object_code", "otm_table_name", "target_otm_version"}:
+        elif field_name == "target_otm_version":
+            normalized_value = normalize_target_otm_version(db, value)
+            if asset.target_otm_version != normalized_value:
+                asset.target_otm_version = normalized_value
+                changed_fields.append(field_name)
+        elif field_name in {"macro_object_code", "otm_table_name"}:
             normalized_value = str(value).strip().upper() or None
             if getattr(asset, field_name) != normalized_value:
                 setattr(asset, field_name, normalized_value)

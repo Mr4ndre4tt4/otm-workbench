@@ -3110,3 +3110,36 @@ Notes:
   backend errors that do not echo private IDs or labels.
 - No frontend/browser screenshot was captured because this slice is backend
   target validation and classification seeding.
+
+## 2026-05-28 Assets Target OTM Version Taxonomy
+
+Scope:
+
+- Added `asset_target_otm_version` as the backend-owned Assets release-label
+  taxonomy.
+- Seeded current labels `26A` and `26B`.
+- Validated `target_otm_version` on create and update.
+- Recorded the decision and Oracle documentation rationale.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "target_otm_version" -q
+python -m pytest tests/test_assets_library_assets.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+focused target OTM version tests: 2 passed, 27 deselected
+tests/test_assets_library_assets.py: 29 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- Unsupported values such as `27A` are rejected until added as active governed
+  classifications.
+- No frontend/browser screenshot was captured because this slice is backend
+  taxonomy validation and governance documentation.

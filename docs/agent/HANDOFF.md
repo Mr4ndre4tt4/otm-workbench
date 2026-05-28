@@ -2641,3 +2641,58 @@ Recommended next step:
 
 Push the #199 commit, close #199, then continue with #200 or switch to
 Settings/Cockpit context-isolation if prioritized.
+
+## 2026-05-28 Assets Target OTM Version Taxonomy
+
+Status:
+Implemented, validated, and ready to close #200.
+
+Scope:
+Added backend-owned `target_otm_version` validation through an Assets
+classification taxonomy.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/assets.py`
+- `src/otm_workbench/modules/assets/classifications.py`
+- `tests/test_assets_library_assets.py`
+- `docs/agent/TASK_CONTRACT_ASSETS_TARGET_OTM_VERSION_TAXONOMY.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "target_otm_version" -q`
+  passed with 2 tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 29
+  tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Frontend/browser visual QA. This slice only changed backend taxonomy
+  validation and governance documentation.
+
+Evidence:
+
+- `target_otm_version` accepts seeded `26A`/`26B` labels.
+- Unsupported values such as `27A` are rejected on create and update without
+  customer-specific release data.
+- Decision recorded in `docs/agent/DECISION_LOG.md`.
+
+Open risks:
+
+- Future Oracle releases require governed classification additions after the
+  relevant Oracle documentation baseline is confirmed.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Assets backlog issues #198, #199, and #200 are ready to be closed after this
+  commit is pushed.
+
+Recommended next step:
+
+Push the #200 commit, close #200, then reassess the next roadmap lane outside
+Assets backlog.
