@@ -3158,12 +3158,14 @@ Continue with the next roadmap lane from `origin/main`; do not reopen #223.
 ## 2026-05-28 Frontend Route Inventory Guard
 
 Status:
-Implemented locally for issue #229. Validation passed. Commit, push, and PR are
-pending.
+Complete. Issue #229 was implemented, PR #230 was merged into `main`, and the
+route inventory guard is now active.
 
 GitHub tracking:
 
-- Issue #229: frontend route inventory guard.
+- Issue #229: frontend route inventory guard, closed.
+- PR #230: merged with commit `12c700a4a4f059c98b355fb6fdba5ae51805c378`.
+- Issue #231: follow-up handoff state sync.
 
 Files intentionally changed:
 
@@ -3179,6 +3181,8 @@ Validation run:
 - `npm test -- src/app/routes/WorkbenchRoute.test.tsx src/app/shell/SidebarNav.test.tsx`
   passed with 2 files and 8 tests.
 - `git diff --check` passed.
+- GitHub PR #230 Backend CI, Frontend CI/build, and CodeRabbit passed before
+  merge.
 
 Validation not run:
 
@@ -3200,10 +3204,9 @@ Open risks:
 
 Next-chat intake notes:
 
-- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-route-inventory`
-  for issue #229 until this slice is merged.
 - Do not delete route components in this guard slice.
 
 Recommended next step:
 
-Commit, push, and open PR for #229.
+Close issue #231 after this handoff sync is committed and merged, then continue
+with the next frontend cleanup lane from `origin/main`.
