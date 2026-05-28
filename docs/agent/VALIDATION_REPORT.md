@@ -2659,3 +2659,43 @@ Notes:
   expected `Admin Console` heading and Jobs/Audit acceptance behavior. The
   corrected test now validates Settings scope authority, role/user/grant
   authoring, access-policy binding, and return-to-Cockpit recovery link.
+
+## 2026-05-28 Cockpit GitHub Closure
+
+Scope:
+
+- Revalidated Project Cockpit v3 for GitHub issue #186.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q
+npm test -- src/app/App.test.tsx -t "Cockpit"
+npm test -- src/app/AppFunctionalShell.test.tsx -t "persists backend-owned context"
+```
+
+Results:
+
+```text
+tests/test_project_cockpit_summary.py + tests/test_modules_navigation.py: 17 passed
+App.test.tsx - Cockpit: 1 passed
+AppFunctionalShell.test.tsx - context persistence: 1 passed
+```
+
+Existing browser QA evidence:
+
+```text
+var/qa/cockpit-public-view.png
+var/qa/cockpit-private-scope-viewport.png
+var/qa/cockpit-scoped-user.png
+var/qa/cockpit-route-recovery.png
+```
+
+Notes:
+
+- The accepted Cockpit scope is the v3 single authenticated Cockpit model from
+  `AGENTS.md`, `CURRENT_SCOPE.md`, and the v3 wireframe brief.
+- The older consolidated Cockpit spec still contains command-center/dashboard
+  language and should be cleaned up later so future agents do not revive
+  project-management panels.

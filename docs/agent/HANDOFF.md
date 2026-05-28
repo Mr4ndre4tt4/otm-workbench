@@ -2073,3 +2073,50 @@ Recommended next step:
 
 Close #185 after push, then continue with #186 Cockpit context and accelerator
 launch flow.
+
+## 2026-05-28 Cockpit GitHub Closure
+
+Status:
+Accepted for current UI phase and GitHub closure ready.
+
+Scope:
+Revalidated GitHub issue #186 against the current Cockpit v3 target: Context
+Selector, Project Info, Public View state, and accelerator launcher without
+readiness/workstream/blocker/job/activity dashboard behavior.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_COCKPIT_GITHUB_CLOSURE.md`
+- `docs/agent/module-revalidation/COCKPIT_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q` passed with 17 tests.
+- `npm test -- src/app/App.test.tsx -t "Cockpit"` passed with 1 test.
+- `npm test -- src/app/AppFunctionalShell.test.tsx -t "persists backend-owned context"` passed with 1 test.
+
+Evidence reused:
+
+- `var/qa/cockpit-public-view.png`
+- `var/qa/cockpit-private-scope-viewport.png`
+- `var/qa/cockpit-scoped-user.png`
+- `var/qa/cockpit-route-recovery.png`
+
+Validation not run:
+
+- Fresh browser screenshots. The prior Cockpit v3 browser evidence remains the
+  accepted visual evidence; this slice only performs automated revalidation and
+  GitHub/docs closure.
+
+Open risks:
+
+- The older consolidated Cockpit spec still includes command-center dashboard
+  language and should be rewritten or marked superseded in a later docs cleanup.
+- Parallel shell/assistant and Integration Mapping work remains outside this
+  closure.
+
+Recommended next step:
+
+Close #186 after push, then continue with #187 Rates Studio revalidation.
