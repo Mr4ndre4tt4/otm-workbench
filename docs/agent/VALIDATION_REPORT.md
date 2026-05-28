@@ -2813,3 +2813,43 @@ Notes:
 - jsdom printed the known navigation-to-another-document warning during the
   functional frontend run for download/navigation behavior that browser QA
   owns.
+
+## 2026-05-28 Order Release Revalidation
+
+Scope:
+
+- Revalidated Order Release Generator for GitHub issue #205.
+- Opened #206 for required route-level implementation follow-up.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q
+python -m pytest tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py -q
+python -m pytest tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx
+npm test -- src/app/App.test.tsx -t "Order Release"
+npm run build
+```
+
+Results:
+
+```text
+tests/test_order_release_generator_foundation.py + tests/test_order_release_generator_batches.py: 23 passed
+tests/test_order_release_generator_xml_preview.py + tests/test_order_release_generator_xml_artifact.py: 8 passed
+tests/test_order_release_generator_submit_guard.py + tests/test_order_release_generator_jobs.py: 4 passed
+AppFunctionalOrderReleaseGenerator.test.tsx: 3 passed
+App.test.tsx - Order Release: 1 passed, 29 skipped
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured because this is not a visual
+  acceptance claim.
+- The current technical foundation is healthy, but route-level To-Be workflows
+  remain unimplemented.
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.

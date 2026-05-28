@@ -2252,3 +2252,53 @@ Recommended next step:
 
 Close #203 after push. Keep #202 open as the Master Data stabilization lane
 until the next concrete follow-up slices are created or explicitly deferred.
+
+## 2026-05-28 Order Release Revalidation
+
+Status:
+Revalidation complete; implementation follow-up required.
+
+Scope:
+Opened the Order Release stabilization lane (#204), revalidated Order Release
+Generator against the active To-Be route-level workflow (#205), and created the
+required implementation follow-up (#206).
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/ORDER_RELEASE_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q`
+  passed with 23 tests.
+- `python -m pytest tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py -q`
+  passed with 8 tests.
+- `python -m pytest tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q`
+  passed with 4 tests.
+- `npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx` passed
+  with 3 tests.
+- `npm test -- src/app/App.test.tsx -t "Order Release"` passed with 1 test and
+  29 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Fresh browser screenshots. The current result is not a visual acceptance
+  claim; it records a route-level To-Be implementation gap.
+
+Open risks:
+
+- The current Order Release frontend is technically healthy but still a single
+  staged workspace.
+- To-Be acceptance requires route-level template and batch workflows with
+  dedicated preview, artifacts, and submit-readiness routes.
+- Submit-to-OTM must remain guarded until connection, credential, capability,
+  audit, retry/job, and Oracle transport governance exist.
+
+Recommended next step:
+
+Close #205 after push. Continue #204 through #206:
+`[Slice]: Order Release route-level template and batch workflows`.
