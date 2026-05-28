@@ -12,6 +12,7 @@ import {
   updateAssetClassification,
   uploadAssetVersion,
   useAssetClassifications,
+  useAssetArchiveImpact,
   useAssetDetail,
   useAssetLinks,
   useAssets,
@@ -340,6 +341,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
     ? null
     : selectedAssetId ?? directAssetRouteId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
   const assetDetail = useAssetDetail(token, effectiveAssetId);
+  const archiveImpact = useAssetArchiveImpact(token, directAssetArchiveId);
   const assetVersions = useAssetVersions(token, effectiveAssetId);
   const assetLinks = useAssetLinks(token, effectiveAssetId);
   const selectedAsset = operationAsset?.id === effectiveAssetId ? operationAsset : assetDetail.data;
@@ -351,6 +353,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const linkDisabled = actionDisabled(selectedAsset, "asset.create_link", isArchived);
   const downloadDisabled = actionDisabled(selectedAsset, "asset.download_current", !selectedAsset?.current_version_id);
   const archiveDisabled = actionDisabled(selectedAsset, "asset.archive", isArchived);
+  const assetArchiveImpact = archiveImpact.data;
   const classificationGroups = classifications.data?.items ?? [];
   const flatClassifications = classificationGroups.flatMap((group) =>
     group.items.map((item) => ({ ...item, classification_type: item.classification_type ?? group.classification_type }))
@@ -529,6 +532,8 @@ export function AssetsLibraryView({ token }: { token: string }) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets", assetId] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets", assetId, "detail"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets", assetId, "archive-impact"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets", assetId, "versions"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets", assetId, "links"] })
     ]);
@@ -1665,6 +1670,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
       const linkItems = assetLinks.data?.items ?? [];
       const linkedTargetSummary = `${linkItems.length} linked target${linkItems.length === 1 ? "" : "s"}`;
       const currentVersion = versionItems.find((version) => version.id === selectedAsset.current_version_id) ?? versionItems[0];
+      const archiveImpactDisabled = assetArchiveImpact ? !assetArchiveImpact.eligible : archiveDisabled;
+      const archiveImpactStatus = assetArchiveImpact?.status ?? selectedAsset.status ?? "PENDING";
+      const archiveImpactedVersions = assetArchiveImpact?.impacted_versions ?? versionItems.length;
+      const archiveImpactedLinks = assetArchiveImpact?.impacted_links ?? linkItems.length;
+      const archiveImpactLinkedTypes = assetArchiveImpact?.linked_target_types?.join(", ") || linkedTargetSummary;
       return (
         <>
           <PageHeader
@@ -1700,7 +1710,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   { label: "Versions", value: String(versionItems.length) },
                   { label: "Links", value: linkedTargetSummary }
                 ]}
-                status={archiveDisabled ? "BLOCKED" : "READY"}
+                status={archiveImpactDisabled ? "BLOCKED" : "READY"}
                 subtitle={selectedAsset.asset_type}
                 title={selectedAsset.name}
               >
@@ -1709,14 +1719,14 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 </p>
               </SelectedObjectPanel>
             }
-            status={archiveDisabled ? "BLOCKED" : "READY"}
+            status={archiveImpactDisabled ? "BLOCKED" : "READY"}
             title="Archive review"
           >
             <OperationalPanel
               ariaLabel="Asset archive impact"
               emptyText="Archive impact is unavailable."
               hasItems
-              status={archiveDisabled ? "BLOCKED" : "READY"}
+              status={archiveImpactDisabled ? "BLOCKED" : "READY"}
               title="Impact summary"
             >
               <DetailList
@@ -1725,29 +1735,35 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   {
                     id: "status",
                     meta: [selectedAsset.visibility, selectedAsset.sensitivity],
-                    status: selectedAsset.status,
-                    title: selectedAsset.status
+                    status: archiveImpactStatus,
+                    title: archiveImpactStatus
                   },
                   {
                     id: "version",
                     meta: [
-                      selectedAsset.current_version_id ?? "Missing current version id",
-                      versionItems.length ? `${versionItems.length} version rows` : "No uploaded versions"
+                      assetArchiveImpact?.current_version_id ?? selectedAsset.current_version_id ?? "Missing current version id",
+                      archiveImpactedVersions ? `${archiveImpactedVersions} version rows` : "No uploaded versions"
                     ],
-                    status: selectedAsset.current_version_id ? "ACTIVE" : "PENDING",
-                    title: currentVersion?.file_name ?? selectedAsset.current_version_id ?? "Missing current version"
+                    status: (assetArchiveImpact?.current_version_id ?? selectedAsset.current_version_id) ? "ACTIVE" : "PENDING",
+                    title: currentVersion?.file_name ?? assetArchiveImpact?.current_version_id ?? selectedAsset.current_version_id ?? "Missing current version"
                   },
                   {
                     id: "links",
-                    meta: [linkItems.map((link) => link.target_label).join(", ") || "No linked targets"],
-                    status: linkItems.length ? "ACTIVE" : "PENDING",
-                    title: linkedTargetSummary
+                    meta: [archiveImpactLinkedTypes || "No linked targets"],
+                    status: archiveImpactedLinks ? "ACTIVE" : "PENDING",
+                    title: `${archiveImpactedLinks} linked target${archiveImpactedLinks === 1 ? "" : "s"}`
+                  },
+                  {
+                    id: "disabled-actions",
+                    meta: [assetArchiveImpact?.blocked_reasons.join(", ") || "Archive will lock future mutation actions"],
+                    status: archiveImpactDisabled ? "BLOCKED" : "READY",
+                    title: assetArchiveImpact?.will_disable_actions.join(", ") || "asset.update, asset.upload_version, asset.create_link, asset.archive"
                   }
                 ]}
               />
               <div className="master-data-action-bar">
                 <Button
-                  disabled={isMutating || !effectiveAssetId || archiveDisabled}
+                  disabled={isMutating || !effectiveAssetId || archiveImpactDisabled}
                   onClick={handleArchiveAsset}
                   variant="primary"
                 >

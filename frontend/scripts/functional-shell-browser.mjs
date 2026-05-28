@@ -1,9 +1,22 @@
 /* global console, fetch, process */
 
+import { mkdir } from "node:fs/promises";
+
 const baseUrl = process.env.OTM_WORKBENCH_BASE_URL ?? "http://127.0.0.1:5173";
 const apiBaseUrl = process.env.OTM_WORKBENCH_API_BASE_URL ?? "http://127.0.0.1:8000";
 const email = process.env.OTM_WORKBENCH_QA_EMAIL ?? "demo@example.test";
 const password = process.env.OTM_WORKBENCH_QA_PASSWORD ?? "DemoPass123!";
+const expectedNavigationIds = [
+  "master_data",
+  "home",
+  "rates",
+  "load_plan",
+  "assets",
+  "order_release_generator",
+  "integration_mapping",
+  "settings"
+];
+const excludedNavigationIds = ["catalog", "evidence", "admin", "dev_tools", "coordinate_quality"];
 
 async function loadPlaywright() {
   try {
@@ -86,6 +99,27 @@ async function seedSyntheticContext(token) {
   return { project, profile, environment };
 }
 
+async function assertFreshNavigation(token) {
+  const payload = await apiRequest("/api/v1/platform/navigation", { token });
+  const ids = payload.items?.map((item) => item.id) ?? [];
+  const missing = expectedNavigationIds.filter((id) => !ids.includes(id));
+  const excluded = ids.filter((id) => excludedNavigationIds.includes(id));
+  if (missing.length || excluded.length) {
+    throw new Error(
+      [
+        "Browser QA navigation freshness gate failed.",
+        `Expected IDs: ${expectedNavigationIds.join(", ")}`,
+        `Actual IDs: ${ids.join(", ")}`,
+        missing.length ? `Missing IDs: ${missing.join(", ")}` : "",
+        excluded.length ? `Excluded IDs present: ${excluded.join(", ")}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+  return ids;
+}
+
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
@@ -95,6 +129,7 @@ async function run() {
     body: { email, password }
   });
   const token = login.access_token;
+  const navigationIds = await assertFreshNavigation(token);
   await apiRequest("/api/v1/platform/user-preferences", {
     method: "PUT",
     token,
@@ -143,20 +178,22 @@ async function run() {
     await contextControls.locator("input").fill("otm1");
     await page.getByRole("button", { name: "Apply context" }).click();
 
-    await page.getByText("Project context ready").waitFor();
     await page.getByText("Context updated.").waitFor();
-    await page.getByText("OTM1").waitFor();
+    await page.getByText("OTM1", { exact: true }).waitFor();
+    await page.getByText("Private scope").waitFor();
     await contextControls.locator("input").fill("otm2");
     await page.getByText("Context updated.").waitFor({ state: "hidden" });
     await contextControls.locator("input").fill("otm1");
     await page.getByRole("button", { name: "Apply context" }).click();
     await page.getByText("Context updated.").waitFor();
-    await page.getByText("OTM1").waitFor();
+    await page.getByText("OTM1", { exact: true }).waitFor();
 
-    await page.locator('a[href="/rates"]').click();
+    await page.getByRole("link", { name: "Rates Studio", exact: true }).click();
     await page.getByRole("heading", { name: "Rates Studio" }).waitFor();
-    await page.locator('a[href="/home"]').click();
+    await page.getByRole("link", { name: "Back to Cockpit", exact: true }).click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
+    await mkdir("../var/qa", { recursive: true });
+    await page.screenshot({ path: "../var/qa/cockpit-context-selector.png", fullPage: true });
 
     await page.getByRole("button", { name: "Use compact density" }).click();
     await page.locator('.app-shell[data-density="compact"]').waitFor();
@@ -182,6 +219,8 @@ async function run() {
           journey: "shell-context-preferences-navigation",
           baseUrl,
           apiBaseUrl,
+          navigation_ids: navigationIds,
+          screenshot: "var/qa/cockpit-context-selector.png",
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id

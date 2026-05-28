@@ -191,6 +191,12 @@ def serialize_asset_version(version: AssetVersion) -> dict[str, object]:
     }
 
 
+def serialize_asset_version_public(version: AssetVersion) -> dict[str, object]:
+    payload = serialize_asset_version(version)
+    payload.pop("storage_path", None)
+    return payload
+
+
 def serialize_asset_link(link: AssetLink) -> dict[str, object]:
     return {
         "id": link.id,
@@ -201,6 +207,68 @@ def serialize_asset_link(link: AssetLink) -> dict[str, object]:
         "created_by": link.created_by,
         "created_at": link.created_at.isoformat() if link.created_at else None,
         "updated_at": link.updated_at.isoformat() if link.updated_at else None,
+    }
+
+
+def asset_versions(db: Session, asset_id: str) -> list[AssetVersion]:
+    return (
+        db.query(AssetVersion)
+        .filter(AssetVersion.asset_id == asset_id)
+        .order_by(AssetVersion.version_number.desc())
+        .all()
+    )
+
+
+def asset_links(db: Session, asset_id: str) -> list[AssetLink]:
+    return (
+        db.query(AssetLink)
+        .filter(AssetLink.asset_id == asset_id)
+        .order_by(AssetLink.created_at.desc())
+        .all()
+    )
+
+
+def build_asset_archive_impact(db: Session, asset: Asset) -> dict[str, object]:
+    versions = asset_versions(db, asset.id)
+    links = asset_links(db, asset.id)
+    archive_action = next(
+        (action for action in build_asset_available_actions(asset) if action["key"] == "asset.archive"),
+        None,
+    )
+    disabled = bool(archive_action and archive_action["disabled"])
+    disabled_reason = str(archive_action["disabled_reason"]) if archive_action and archive_action["disabled_reason"] else None
+    linked_target_types = sorted({link.link_type for link in links})
+    return {
+        "asset_id": asset.id,
+        "status": asset.status,
+        "eligible": not disabled,
+        "disabled_reason": disabled_reason,
+        "blocked_reasons": [disabled_reason] if disabled_reason else [],
+        "impacted_versions": len(versions),
+        "current_version_id": asset.current_version_id,
+        "impacted_links": len(links),
+        "linked_target_types": linked_target_types,
+        "will_disable_actions": [
+            "asset.update",
+            "asset.upload_version",
+            "asset.create_link",
+            "asset.archive",
+        ],
+        "archive_action": archive_action,
+    }
+
+
+def serialize_asset_route_detail(db: Session, asset: Asset) -> dict[str, object]:
+    versions = asset_versions(db, asset.id)
+    links = asset_links(db, asset.id)
+    current_version = next((version for version in versions if version.id == asset.current_version_id), None)
+    return {
+        "asset": serialize_asset(asset),
+        "current_version": serialize_asset_version_public(current_version) if current_version else None,
+        "versions": [serialize_asset_version_public(version) for version in versions],
+        "links": [serialize_asset_link(link) for link in links],
+        "available_actions": build_asset_available_actions(asset),
+        "archive_impact": build_asset_archive_impact(db, asset),
     }
 
 
@@ -243,6 +311,13 @@ def ensure_link_type(db: Session, link_type: str) -> None:
     ensure_classification(db, "asset_link_type", link_type)
 
 
+def normalize_target_otm_version(db: Session, value: object) -> str | None:
+    normalized_value = str(value or "").strip().upper() or None
+    if normalized_value is not None:
+        ensure_classification(db, "asset_target_otm_version", normalized_value, "target_otm_version")
+    return normalized_value
+
+
 def create_draft_asset(
     db: Session,
     *,
@@ -258,6 +333,7 @@ def create_draft_asset(
     }
     for field_name, classification_type in CLASSIFICATION_FIELDS.items():
         ensure_classification(db, classification_type, normalized[field_name], field_name)
+    target_otm_version = normalize_target_otm_version(db, payload.get("target_otm_version"))
     assert_global_asset_without_secret_risk(normalized["scope_type"], payload)
 
     raw_tags = payload.get("tags") or []
@@ -279,7 +355,7 @@ def create_draft_asset(
         module_id=str(payload.get("module_id") or "").strip() or None,
         macro_object_code=str(payload.get("macro_object_code") or "").strip().upper() or None,
         otm_table_name=str(payload.get("otm_table_name") or "").strip().upper() or None,
-        target_otm_version=str(payload.get("target_otm_version") or "").strip().upper() or None,
+        target_otm_version=target_otm_version,
         tags_json=json.dumps(tags, sort_keys=True),
         created_by=user.email,
     )
@@ -440,7 +516,12 @@ def update_asset_metadata(
             if asset.tags_json != tags_json:
                 asset.tags_json = tags_json
                 changed_fields.append(field_name)
-        elif field_name in {"macro_object_code", "otm_table_name", "target_otm_version"}:
+        elif field_name == "target_otm_version":
+            normalized_value = normalize_target_otm_version(db, value)
+            if asset.target_otm_version != normalized_value:
+                asset.target_otm_version = normalized_value
+                changed_fields.append(field_name)
+        elif field_name in {"macro_object_code", "otm_table_name"}:
             normalized_value = str(value).strip().upper() or None
             if getattr(asset, field_name) != normalized_value:
                 setattr(asset, field_name, normalized_value)

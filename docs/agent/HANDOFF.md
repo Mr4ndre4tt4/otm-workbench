@@ -1,7 +1,220 @@
-# Handoff
+﻿# Handoff
 
 **Status:** active
 **Date:** 2026-05-27
+
+## 2026-05-28 Rates Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #216.
+
+Scope:
+Added focused backend regression coverage proving same-name Rates batches do
+not leak across active domain or environment scope, while DBA/all-domain
+visibility remains constrained to the active environment.
+
+Files intentionally changed:
+
+- `tests/test_rates_batches.py`
+- `docs/agent/TASK_CONTRACT_RATES_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_rates_batches.py -k "same_name or active_context_scope or dba_context" -q`:
+  5 passed, 5 deselected.
+- `python -m pytest tests/test_rates_batches.py tests/test_rates_summary.py -q`:
+  12 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend context-isolation
+  regression coverage and does not change visible UI behavior.
+
+Evidence:
+
+- GitHub issue #216 tracks the delivery slice.
+- New tests assert visible and hidden batch IDs plus direct detail route access
+  for same-name batches.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Rates slice unless the
+  latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #216 commit, wait for GitHub checks, close the issue, then pick
+the next small context-isolation follow-up from the validation matrix.
+
+## 2026-05-28 Master Data Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #217.
+
+Scope:
+Added focused backend regression coverage proving same-name Master Data
+workbook batches do not leak across active project, domain, or environment
+scope, while DBA/all-domain visibility remains constrained to the active
+environment.
+
+Files intentionally changed:
+
+- `tests/test_master_data_templates.py`
+- `docs/agent/TASK_CONTRACT_MASTER_DATA_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q`:
+  4 passed, 56 deselected.
+- `python -m pytest tests/test_master_data_templates.py -k "context_scope or dba_context or same_name or require_active_context" -q`:
+  5 passed, 55 deselected.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend
+  context-isolation regression coverage and does not change visible UI
+  behavior.
+
+Evidence:
+
+- GitHub issue #217 tracks the delivery slice.
+- New tests assert visible and hidden batch IDs plus direct detail/output/csv
+  route access for same-name workbook batches.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Master Data slice unless
+  the latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #217 commit, wait for GitHub checks, close the issue, then
+pick the next small context-isolation follow-up from the validation matrix.
+
+## 2026-05-28 Order Release Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #218.
+
+Scope:
+Added focused backend regression coverage proving same-name Order Release
+templates and batches do not leak across active project, domain, or environment
+scope, while DBA/all-domain visibility remains constrained to the active
+environment.
+
+Files intentionally changed:
+
+- `tests/test_order_release_generator_foundation.py`
+- `tests/test_order_release_generator_batches.py`
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q`:
+  8 passed, 19 deselected.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q`:
+  27 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend
+  context-isolation regression coverage and does not change visible UI
+  behavior.
+
+Evidence:
+
+- GitHub issue #218 tracks the delivery slice.
+- New tests assert visible and hidden IDs plus direct template versioning,
+  batch creation, detail, and preview route access for same-name records.
+
+Open risks:
+
+- Template `code` remains a global version-family identity; same-code
+  cross-scope template authoring is not supported by the current backend
+  validator even though same-name templates are scoped.
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Order Release slice unless
+  the latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #218 commit, wait for GitHub checks, close the issue, then
+continue with Cockpit browser route recovery/visual evidence if the user asks
+for the next context-isolation item.
+
+## 2026-05-28 Context Isolation Matrix Sync
+
+Status:
+Implemented and validated for GitHub issue #219.
+
+Scope:
+Synchronized the context isolation matrix so completed Cockpit, Rates, Master
+Data, and Order Release validation slices are recorded as completed evidence
+instead of future gaps.
+
+Files intentionally changed:
+
+- `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/TASK_CONTRACT_CONTEXT_ISOLATION_MATRIX_SYNC_2026_05_28.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_operational_context.py -q`: 26 passed.
+- `python -m pytest tests/test_modules_navigation.py -q`: 10 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only synchronizes governance
+  documentation and does not change visible UI behavior.
+
+Evidence:
+
+- GitHub issue #219 tracks the documentation sync.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this governance sync unless the
+  latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #219 commit, wait for GitHub checks, close the issue, then
+continue with the next roadmap item from the refreshed matrix.
 
 ## 2026-05-28 Assets Acceptance Pass
 
@@ -2121,93 +2334,306 @@ Recommended next step:
 
 Close #186 after push, then continue with #187 Rates Studio revalidation.
 
-## 2026-05-28 Workbench Assistant Foundation Merge
+## 2026-05-28 Rates Final Revalidation
 
 Status:
-Merged into `main` through PR #210.
+Accepted for current UI phase and GitHub closure ready.
 
 Scope:
-Added the Workbench Assistant foundation as an authenticated shell overlay, not
-as a top-level navigation module. The slice includes backend assistant APIs,
-assistant persistence migrations, source indexing/search, SQL helper drafting
-and explain endpoints, saved query and join pattern curation, Oracle document
-lookup request/cache scaffolding, frontend assistant UI, browser QA coverage,
-and assistant planning/spec documentation.
+Revalidated GitHub issue #187 against the active Rates Studio To-Be batch
+lifecycle: hub, batch library, creation, overview/detail, staging, table
+detail, issues, CSV preview, export review, approval review, artifacts,
+evidence, and Load Plan handoff.
 
 Files intentionally changed:
 
-- `src/otm_workbench/assistant/*`
-- `src/otm_workbench/main.py`
-- `migrations/env.py`
-- `migrations/versions/c3f7a2b9d4e6_workbench_assistant_foundation.py`
-- `migrations/versions/c4a8e2f7b9d1_artifact_scope_columns.py`
-- `frontend/src/app/shell/WorkbenchAssistant.tsx`
-- `frontend/src/app/shell/WorkbenchShell.tsx`
-- `frontend/src/app/shell/shell.css`
-- `frontend/src/platform/hooks/assistant.ts`
-- `frontend/src/platform/types/assistant.ts`
-- `frontend/scripts/functional-assistant-browser.mjs`
-- `tests/test_assistant_source_index.py`
-- `tests/test_modules_navigation.py`
-- `docs/agent/assistant-planning/*`
-- `docs/superpowers/plans/2026-05-28-workbench-assistant-*.md`
-- `docs/superpowers/specs/2026-05-28-workbench-assistant-design.md`
+- `docs/agent/TASK_CONTRACT_RATES_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/RATES_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
 
 Validation run:
 
-- `python -m alembic upgrade head` passed against a fresh Assistant QA DB.
-- `python -m pytest tests/test_assistant_source_index.py tests/test_modules_navigation.py -q` passed with 54 tests.
-- `npm test -- src/app/AppFunctionalShell.test.tsx -t "Workbench Assistant"` passed.
+- `python -m pytest tests/test_rates_batches.py -q` passed with 8 tests.
+- `python -m pytest tests/test_rates_summary.py -q` passed with 2 tests.
+- `python -m pytest tests/test_rates_csv_export_artifacts.py tests/test_rates_batch_approval.py -q` passed with 21 tests.
+- `python -m pytest tests/test_rates_dictionary.py tests/test_rates_csv_preview.py -q` passed with 14 tests.
+- `python -m pytest tests/test_rates_batch_validation.py tests/test_rates_batch_scenarios.py tests/test_rates_batch_csv_preview.py -q` passed with 20 tests.
+- `npm test -- src/app/AppFunctionalRates.test.tsx` passed with 4 tests.
 - `npm run build` passed with the existing Vite large chunk warning.
-- `node --check scripts/functional-assistant-browser.mjs` passed.
-- `npm run qa:functional:assistant:browser` passed after verifying live
-  `/api/v1/platform/navigation` returned the current UI phase navigation IDs.
-- GitHub CI for PR #210 passed: Backend tests, Frontend tests and build, and
-  CodeRabbit status.
+
+Evidence reused:
+
+- `var/qa/rates-batch-library-search.png`
+- `var/qa/rates-library-new-routes.png`
+- `var/qa/rates-table-detail-route.png`
+- `var/qa/rates-route-level-batch-issues.png`
+- `var/qa/rates-route-level-review-screens.png`
+- `var/qa/rates-approval-export-review-gates.png`
+- `var/qa/rates-artifact-evidence-handoff-routes.png`
+- `var/qa/rates-route-recovery-lifecycle.png`
 
 Validation not run:
 
-- No additional full-repository backend/frontend sweep was run after PR #210
-  merged; the PR checks and focused local/browser validation above are the
-  acceptance evidence for this slice.
-
-Evidence:
-
-- PR #210: `https://github.com/Mr4ndre4tt4/otm-workbench/pull/210`
-- Merge commit: `a7f52d32330a170f97a3e422ecac0e84cbb68f94`
-- Browser QA screenshot: `var/qa/workbench-assistant-shell.png`
+- Fresh browser screenshots. Existing Rates route-level browser evidence remains
+  accepted visual evidence for #187; any future screenshot capture must first
+  pass the `/api/v1/platform/navigation` runtime freshness gate.
 
 Open risks:
 
-- The assistant provides safe foundation scaffolding, but live Oracle document
-  retrieval is still request/cache scaffolding rather than a production
-  connector.
-- The clean PR intentionally excluded local `OTM_RESOURCES`, `outputs`, and
-  unrelated module changes. The original workspace may still contain
-  user-owned or parallel dirty files and should be inspected before future work.
-
-Next chat intake notes:
-
-- Start from `main` at or after merge commit `a7f52d32`.
-- The Assistant should remain an overlay/helper, not a main navigation module.
-- Use `OTM_OTM_DATA_DICTIONARY_ROOT` when tests need the local OTM Data
-  Dictionary path because the settings env prefix is `OTM_`.
+- Backend-owned advanced search metadata/operators, pagination, row mutation,
+  Data Dictionary metadata summary, and expanded blocked-path browser QA remain
+  backlog, not blockers for the current To-Be sequence.
+- Parallel shell/assistant and Integration Mapping work remains outside this
+  closure.
 
 Recommended next step:
 
-Continue with the next planned module delivery slice after refreshing the main
-workspace from `origin/main` and preserving any unrelated local changes.
+Close #187 after push, then choose the next tracked roadmap issue outside
+Rates unless the user explicitly asks for one of the backlog items.
+
+## 2026-05-28 Master Data Final Revalidation
+
+Status:
+Accepted for current UI phase and GitHub closure ready.
+
+Scope:
+Revalidated GitHub issue #203 against the active Master Data / Data Factory
+To-Be route-family model: Data Factory, Template Builder, and Quality Tools as
+separate operational, authoring, and quality workflows.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_MASTER_DATA_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/MASTER_DATA_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_master_data_direct_otm_import_guard.py -q`
+  passed with 5 tests.
+- `python -m pytest tests/test_coordinate_quality_api.py tests/test_coordinate_quality_engine.py -q`
+  passed with 15 tests.
+- `python -m pytest tests/test_master_data_templates.py -q` passed with 58
+  tests.
+- `npm test -- src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalCoordinateQuality.test.tsx`
+  passed with 7 tests.
+- `npm test -- src/app/App.test.tsx -t "Master Data"` passed with 4 tests and
+  26 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Evidence reused:
+
+- `output/gui-qa/master-data/01-master-data-hub.png`
+- `output/gui-qa/master-data/02-template-builder-entry.png`
+- `output/gui-qa/master-data/02-template-builder-search.png`
+- `output/gui-qa/master-data/02-template-builder-detail.png`
+- `output/gui-qa/master-data/02-template-builder-copy.png`
+- `output/gui-qa/master-data/02-template-builder-copy-created.png`
+- `output/gui-qa/master-data/02-template-builder-edit.png`
+- `output/gui-qa/master-data/02-template-builder-retire.png`
+- `output/gui-qa/master-data/02-template-builder-new.png`
+- `output/gui-qa/master-data/03-data-factory-entry.png`
+- `output/gui-qa/master-data/04-template-detail-regions-basic.png`
+- `output/gui-qa/master-data/05-batch-detail-input.png`
+- `output/gui-qa/master-data/06-batch-detail-validated.png`
+- `output/gui-qa/master-data/07-batch-detail-csv-package.png`
+- `output/gui-qa/master-data/08-batch-detail-load-plan.png`
+- `output/gui-qa/master-data/09-quality-tools-hub.png`
+- `output/gui-qa/master-data/10-lat-lon-validator.png`
+- `output/gui-qa/master-data/11-lat-lon-batch-detail.png`
+- `output/gui-qa/master-data/12-lat-lon-export.png`
+
+Validation not run:
+
+- Fresh browser screenshots. Existing Master Data route-family browser evidence
+  remains accepted visual evidence for #203; any future screenshot capture must
+  first pass the `/api/v1/platform/navigation` runtime freshness gate.
+
+Open risks:
+
+- Direct OTM submission remains guarded/future scope until connection,
+  credential, capability, audit, retry/job, and Oracle transport governance
+  exist.
+- Deeper audited spreadsheet editing, advanced coordinate diagnostics, backend
+  retire/delete mutation, and deeper Load Plan handoff behavior remain backlog.
+- Parallel shell/assistant and Integration Mapping work remains outside this
+  closure.
+
+Recommended next step:
+
+Close #203 after push. Keep #202 open as the Master Data stabilization lane
+until the next concrete follow-up slices are created or explicitly deferred.
+
+## 2026-05-28 Order Release Revalidation
+
+Status:
+Revalidation complete; implementation follow-up required.
+
+Scope:
+Opened the Order Release stabilization lane (#204), revalidated Order Release
+Generator against the active To-Be route-level workflow (#205), and created the
+required implementation follow-up (#206).
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/ORDER_RELEASE_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q`
+  passed with 23 tests.
+- `python -m pytest tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py -q`
+  passed with 8 tests.
+- `python -m pytest tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q`
+  passed with 4 tests.
+- `npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx` passed
+  with 3 tests.
+- `npm test -- src/app/App.test.tsx -t "Order Release"` passed with 1 test and
+  29 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Fresh browser screenshots. The current result is not a visual acceptance
+  claim; it records a route-level To-Be implementation gap.
+
+Open risks:
+
+- The current Order Release frontend is technically healthy but still a single
+  staged workspace.
+- To-Be acceptance requires route-level template and batch workflows with
+  dedicated preview, artifacts, and submit-readiness routes.
+- Submit-to-OTM must remain guarded until connection, credential, capability,
+  audit, retry/job, and Oracle transport governance exist.
+
+Recommended next step:
+
+Close #205 after push. Continue #204 through #206:
+`[Slice]: Order Release route-level template and batch workflows`.
+
+## 2026-05-28 Order Release Route-Level Workflows
+
+Status:
+Implemented and validated, with browser QA blocked before module entry.
+
+Scope:
+Implemented #206 by making the current Order Release Generator frontend
+route-aware for template and batch workflow destinations.
+
+Files intentionally changed:
+
+- `frontend/src/modules/order-release-generator/OrderReleaseGeneratorView.tsx`
+- `frontend/src/app/AppFunctionalOrderReleaseGenerator.test.tsx`
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_ROUTE_LEVEL_WORKFLOWS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx` passed with
+  4 tests.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q`
+  passed with 35 tests.
+- `npm test -- src/app/App.test.tsx -t "Order Release"` passed with 1 test and
+  29 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run / blocked:
+
+- `npm run qa:functional:order-release:browser` was attempted and failed before
+  reaching the module, timing out while waiting for `Project Cockpit`. Treat
+  this as a local runtime/script entry issue, not module acceptance evidence.
+
+Evidence:
+
+- Direct URL recovery is covered by
+  `AppFunctionalOrderReleaseGenerator.test.tsx`, including
+  `/order-release-generator/batches/or_batch_1/preview`, route destination
+  links, artifacts route, and submit-readiness route.
+
+Open risks:
+
+- This slice makes the To-Be URLs addressable and recoverable, but it does not
+  fully redesign the visual layout into separate page components.
+- Browser QA should be rerun after a fresh backend/frontend runtime is started.
+
+Recommended next step:
+
+Close #206 after push if the PR accepts automated coverage plus the recorded
+browser-script limitation. Keep #204 open until a browser QA rerun or explicit
+Order Release acceptance closeout.
+
+## 2026-05-28 Load Plan Revalidation
+
+Status:
+Revalidation complete; implementation follow-up required.
+
+Scope:
+Opened the Load Plan stabilization lane (#207), revalidated Load Plan / Cutover
+against the active package/checklist lifecycle (#208), and created the required
+implementation follow-up (#209).
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/LOAD_PLAN_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_load_plan_package_intake.py -q` passed with 23
+  tests.
+- `python -m pytest tests/test_load_plan_cutover_checklist.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_cutover_readiness.py -q` passed with
+  9 tests.
+- `python -m pytest tests/test_load_plan_csvutil_builder.py -q` passed with 16
+  tests.
+- `python -m pytest tests/test_load_plan_zip_analysis.py -q` passed with 12
+  tests.
+- `python -m pytest tests/test_load_plan_sequence_blockers.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q`
+  passed with 16 tests.
+- `python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q`
+  passed with 25 tests.
+- `npm test -- src/app/AppFunctionalLoadPlan.test.tsx` passed with 1 test.
+- `npm test -- src/app/App.test.tsx -t "Load Plan"` passed with 1 test and 29
+  skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Fresh browser screenshots. This revalidation does not claim visual
+  acceptance; #209 must use the runtime navigation freshness gate before any
+  browser evidence.
+
+Open risks:
+
+- Load Plan is technically healthy, but the frontend still uses a staged local
+  workspace rather than route-level package operation recovery.
+- Handoff must remain backend-owned and eligibility-gated.
+- Protected `OTM_RESOURCES/` and unrelated dirty worktree changes remain out
+  of scope.
+
+Recommended next step:
+
+Close #208 after push. Continue #207 through #209:
+`[Slice]: Load Plan route-level package workflows`.
 
 ## 2026-05-28 Load Plan Route-Level Workflows
 
 Status:
-Promoted to a clean branch from the previously implemented #209 patch;
-validated for PR promotion.
+Implemented and validated, with browser QA deferred.
 
 Scope:
-Promotes the Load Plan route-level package workflow implementation to current
-`main` without importing the broader historical branch where it was first
-created. The change makes the current Load Plan frontend route-aware for
+Implemented #209 by making the current Load Plan frontend route-aware for
 package operation destinations.
 
 Files intentionally changed:
@@ -2225,10 +2651,14 @@ Validation run:
   skipped tests.
 - `python -m pytest tests/test_load_plan_package_intake.py -q` passed with 23
   tests.
-- `python -m pytest tests/test_load_plan_cutover_checklist.py tests/test_load_plan_cutover_readiness.py -q`
-  passed with 22 tests.
-- `python -m pytest tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py -q`
-  passed with 28 tests.
+- `python -m pytest tests/test_load_plan_cutover_checklist.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_cutover_readiness.py -q` passed with
+  9 tests.
+- `python -m pytest tests/test_load_plan_csvutil_builder.py -q` passed with 16
+  tests.
+- `python -m pytest tests/test_load_plan_zip_analysis.py -q` passed with 12
+  tests.
 - `python -m pytest tests/test_load_plan_sequence_blockers.py -q` passed with
   13 tests.
 - `python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q`
@@ -2236,15 +2666,11 @@ Validation run:
 - `python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q`
   passed with 25 tests.
 - `npm run build` passed with the existing Vite large chunk warning.
-- `git diff --check` passed.
 
 Validation not run:
 
 - Fresh browser screenshots. Browser QA must first pass the runtime navigation
   freshness gate.
-- The first backend attempts without `OTM_OTM_DATA_DICTIONARY_ROOT` failed
-  because the clean worktree intentionally does not contain protected local
-  `OTM_RESOURCES/`.
 
 Evidence:
 
@@ -2260,21 +2686,18 @@ Open risks:
 
 Recommended next step:
 
-Open a PR linked to #207 and keep #207 open until Load Plan browser QA passes
-the runtime freshness gate or visual evidence is explicitly deferred.
+Close #209 after push if the PR accepts automated coverage plus deferred
+browser visual evidence. Keep #207 open until Load Plan browser QA or explicit
+Load Plan acceptance closeout.
 
 ## 2026-05-28 Load Plan Browser Closeout
 
 Status:
-Promoted to a clean branch from the previously implemented closeout patch;
-validated for PR promotion.
+Implemented, validated, and ready to close #207.
 
 Scope:
-Promotes the Load Plan browser closeout patch to current `main` without
-importing the broader historical branch. The patch adds the idempotent
-`load_plan_packages.domain_name` migration and stabilizes the Load Plan browser
-QA script so it seeds packages inside the active scoped context and selects the
-exact Load Plan navigation link.
+Completed the Load Plan stabilization lane closeout with fresh runtime browser
+QA.
 
 Files intentionally changed:
 
@@ -2287,31 +2710,376 @@ Files intentionally changed:
 Validation run:
 
 - `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
-- `python -m alembic heads` returned a single head: `c5b9d3a1e6f2`.
-- `OTM_DATABASE_URL=sqlite:///./var/qa-load-plan-browser-closeout-promote.db python -m alembic upgrade head`
-  passed on a fresh QA database.
-- `node --check scripts/functional-load-plan-browser.mjs` passed.
-- `git diff --check` passed.
+- Live `/api/v1/platform/navigation` on `http://127.0.0.1:8052` returned:
+  `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`.
+- `python -m alembic upgrade c5b9d3a1e6f2` passed on
+  `var/qa-load-plan-route-closeout.db`.
+- `npm run qa:functional:load-plan:browser` passed against backend
+  `http://127.0.0.1:8052` and frontend `http://127.0.0.1:5222`.
 
 Evidence:
 
-- Historical browser evidence from the source closeout: `var/qa/load-plan-route-closeout.png`.
-- Historical issue comment: `https://github.com/Mr4ndre4tt4/otm-workbench/issues/207#issuecomment-4561087590`
+- `var/qa/load-plan-route-closeout.png`
 
 Validation not run:
 
-- Fresh browser screenshots have not yet been rerun in this clean promotion
-  branch.
+- Full repository backend/frontend suites were not rerun in this closeout; #208
+  and #209 already recorded focused automated coverage and GitHub Actions
+  passed after the route recovery commit.
 
 Open risks:
 
-- Historical screenshot evidence came from the shared local workspace and
-  included a floating Assistant control from parallel work. The sidebar/module
-  evidence remains useful because excluded top-level modules were absent.
+- The screenshot was captured from the shared dirty local workspace and includes
+  a floating Assistant control from parallel work. The sidebar/module evidence
+  remains valid because excluded top-level modules are absent.
 - Deeper visual decomposition into separate Load Plan page components remains
   future enhancement, not current closeout scope.
 
 Recommended next step:
 
-Validate the clean promotion branch, open a PR linked to #207, and keep #207
-closed unless validation exposes a regression that requires reopening.
+Close #207 after push. The next roadmap lane can move to Assets backlog,
+Settings/Cockpit context-isolation work, or another user-prioritized module.
+
+## 2026-05-28 Assets Detail And Archive Impact Contracts
+
+Status:
+Implemented, validated, and ready to close #198.
+
+Scope:
+Added route-optimized Assets contracts so detail/archive screens use
+backend-owned facts instead of frontend-only inference.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/assets.py`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `frontend/src/platform/types/assets.ts`
+- `frontend/src/platform/hooks/assets.ts`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `docs/agent/TASK_CONTRACT_ASSETS_ROUTE_OPTIMIZED_DETAIL_ARCHIVE_IMPACT.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "route_optimized_detail or archive_impact or archive_asset_preserves" -q`
+  passed with 3 tests.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "archives an asset on a direct route"`
+  passed with 1 test.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 26
+  tests.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` passed with 13 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Browser screenshot evidence. This slice changed API contracts and focused
+  archive route consumption, not visual acceptance.
+
+Evidence:
+
+- Backend route detail no longer exposes version `storage_path`.
+- Archive route invalidates detail/archive-impact/version/link queries after
+  archive.
+
+Open risks:
+
+- The full Assets visual route decomposition remains future work.
+- #199 and #200 remain open for backend-owned batch/checklist targets and OTM
+  version taxonomy validation.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Use GitHub issue #199 or #200 as the next Assets step if continuing this lane.
+
+Recommended next step:
+
+Push the #198 commit, close #198, then continue with #199 unless the user
+prioritizes Settings/Cockpit context-isolation first.
+
+## 2026-05-28 Assets Batch And Checklist Link Targets
+
+Status:
+Implemented, validated, and ready to close #199.
+
+Scope:
+Added backend-owned BATCH and CHECKLIST link target validation for Assets.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/classifications.py`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `docs/agent/TASK_CONTRACT_ASSETS_BATCH_CHECKLIST_LINK_TARGETS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "batch_and_checklist_link_targets" -q`
+  passed with 2 tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 28
+  tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Frontend/browser visual QA. This slice only added backend target validation
+  and classification seeding.
+
+Evidence:
+
+- BATCH targets resolve only to scoped `LoadPlanPackage` rows.
+- CHECKLIST targets resolve only when their parent package is scoped to the
+  active user context.
+- Hidden package/checklist rejections do not echo private target IDs or labels.
+
+Open risks:
+
+- BATCH currently means the Load Plan package contract in this UI phase. Future
+  independent batch route families should introduce explicit backend target
+  rules instead of frontend inference.
+- #200 remains open for target OTM version taxonomy validation.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Use #200 as the next Assets backlog item if continuing the Assets lane.
+
+Recommended next step:
+
+Push the #199 commit, close #199, then continue with #200 or switch to
+Settings/Cockpit context-isolation if prioritized.
+
+## 2026-05-28 Assets Target OTM Version Taxonomy
+
+Status:
+Implemented, validated, and ready to close #200.
+
+Scope:
+Added backend-owned `target_otm_version` validation through an Assets
+classification taxonomy.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/assets.py`
+- `src/otm_workbench/modules/assets/classifications.py`
+- `tests/test_assets_library_assets.py`
+- `docs/agent/TASK_CONTRACT_ASSETS_TARGET_OTM_VERSION_TAXONOMY.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "target_otm_version" -q`
+  passed with 2 tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 29
+  tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Frontend/browser visual QA. This slice only changed backend taxonomy
+  validation and governance documentation.
+
+Evidence:
+
+- `target_otm_version` accepts seeded `26A`/`26B` labels.
+- Unsupported values such as `27A` are rejected on create and update without
+  customer-specific release data.
+- Decision recorded in `docs/agent/DECISION_LOG.md`.
+
+Open risks:
+
+- Future Oracle releases require governed classification additions after the
+  relevant Oracle documentation baseline is confirmed.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Assets backlog issues #198, #199, and #200 are ready to be closed after this
+  commit is pushed.
+
+Recommended next step:
+
+Push the #200 commit, close #200, then reassess the next roadmap lane outside
+Assets backlog.
+
+## 2026-05-28 Context Isolation Validation Matrix
+
+Status:
+Implemented, validated, and ready to close #214.
+
+Scope:
+Opened the context-isolation foundation lane and documented the current
+validation matrix across active UI phase modules.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_operational_context.py -q` passed with 26 tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Browser screenshots. This slice records the backend/governance foundation and
+  module-facing validation gates only.
+
+Evidence:
+
+- Platform context foundation is covered by `tests/test_operational_context.py`.
+- Current UI phase navigation remains guarded by `tests/test_modules_navigation.py`.
+- Module-specific gaps are recorded in
+  `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`.
+
+Open risks:
+
+- Cockpit, Rates, Master Data, and Order Release still need module-specific
+  context-isolation evidence before completion.
+- Integration Mapping remains reserved for its separate workstream.
+
+Next-chat intake notes:
+
+- Read `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md` before starting the
+  next module lane.
+- Create the next implementation issue only for the selected module/follow-up,
+  not for every matrix gap at once.
+
+Recommended next step:
+
+Close #214 after push, then select the next concrete lane. Current roadmap
+order points to Cockpit context selector evidence or Rates completion, unless
+the user reprioritizes.
+
+## 2026-05-28 Cockpit Context Selector Evidence
+
+Status:
+Implemented, validated, and ready to close #215.
+
+Scope:
+Captured Cockpit context selector and route recovery evidence with a fresh
+runtime navigation gate.
+
+Files intentionally changed:
+
+- `frontend/scripts/functional-shell-browser.mjs`
+- `docs/agent/TASK_CONTRACT_COCKPIT_CONTEXT_SELECTOR_EVIDENCE.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q`
+  passed with 17 tests.
+- `npm test -- src/app/App.test.tsx -t "Cockpit"` passed with 1 selected test.
+- `node --check scripts/functional-shell-browser.mjs` passed.
+- `npm run qa:functional:shell:browser` passed against backend
+  `http://127.0.0.1:8054` and frontend `http://127.0.0.1:5232`.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Evidence:
+
+- Live navigation IDs before browser QA: `master_data`, `home`, `rates`,
+  `load_plan`, `assets`, `order_release_generator`, `integration_mapping`,
+  `settings`.
+- Screenshot: `var/qa/cockpit-context-selector.png`.
+
+Validation not run:
+
+- Full frontend functional suite. This slice changed only the shell browser QA
+  script and evidence docs.
+
+Open risks:
+
+- The screenshot includes the floating Assistant launcher from unrelated local
+  dirty work. The sidebar and Cockpit context evidence are valid because
+  excluded top-level modules are absent.
+- Cockpit still needs deeper user-review/visual acceptance before being marked
+  complete.
+
+Next-chat intake notes:
+
+- Do not use `VITE_API_BASE_URL` for local browser QA unless backend CORS is
+  explicitly configured; use `VITE_DEV_PROXY_TARGET` for the Vite dev server.
+- Integration Mapping remains reserved for its separate workstream.
+
+Recommended next step:
+
+Close #215 after push. The next natural lane is Rates completion/revalidation
+unless the user wants another Cockpit visual acceptance pass first.
+
+## 2026-05-28 PR 182 Merge Conflict Recovery
+
+Status:
+Complete. Conflicts resolved in an isolated worktree, backend plus frontend
+validation passed, PR #182 was pushed and marked ready for review.
+
+GitHub tracking:
+
+- Issue #220: PR #182 merge-conflict recovery.
+- Issue #220 closed after merge recovery.
+- PR #182: governance recovery branch reconciliation with `origin/main`,
+  mergeable and ready for review.
+
+Files intentionally changed:
+
+- Merge resolution across docs, backend, frontend, migrations, and tests from
+  `origin/main` into `codex/master-data-catalog-redesign-evidence`.
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py -q`
+  passed with 35 tests.
+- `python -m pytest tests/test_project_cockpit_summary.py tests/test_rates_batches.py -q`
+  passed with 17 tests.
+- `python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q`
+  passed with 4 selected tests.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q`
+  passed with 8 selected tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 29
+  tests when `OTM_OTM_DATA_DICTIONARY_ROOT` pointed at the local
+  `OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict` directory.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalShell.test.tsx`
+  passed with 2 files and 15 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Browser screenshots; this slice is merge recovery and does not intentionally
+  change visible UI behavior.
+- Full all-module pytest sweep; an initial broad command timed out, then the
+  touched surfaces were split into focused passing suites.
+
+Open risks:
+
+- `OTM_RESOURCES` is still local/untracked. Isolated worktrees need the
+  Data Dictionary path explicitly configured until the repository adopts a
+  formal resource-versioning policy.
+- CodeRabbit may briefly return to pending after PR metadata changes; GitHub
+  Actions were green after the merge-recovery push.
+
+Next-chat intake notes:
+
+- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-pr182-sync` only
+  for this PR merge recovery until it is committed and pushed.
+- Do not stage the primary workspace's broad dirty state.
+- Integration Mapping changes present in this merge came from `origin/main`;
+  do not extend that module in this chat beyond merge preservation.
+
+Recommended next step:
+
+Wait for any asynchronous CodeRabbit status refresh to settle, then review or
+merge PR #182 according to the user's preferred release cadence.

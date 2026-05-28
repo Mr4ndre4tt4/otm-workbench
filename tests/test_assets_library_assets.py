@@ -2,7 +2,7 @@ import json
 
 from sqlalchemy import inspect
 
-from otm_workbench.models import AuditLog, DomainEvent
+from otm_workbench.models import AuditLog, CutoverChecklist, CutoverChecklistTemplate, DomainEvent, LoadPlanPackage
 
 
 def draft_asset_payload(**overrides):
@@ -68,6 +68,60 @@ def set_active_context(
     )
     assert response.status_code == 200
     return response.json()
+
+
+def create_synthetic_load_plan_package(
+    db_session,
+    *,
+    project_id="project_demo",
+    environment_id="env_demo",
+    profile_id="profile_demo",
+    domain_name="OTM1",
+    suffix="",
+):
+    package = LoadPlanPackage(
+        project_id=project_id,
+        environment_id=environment_id,
+        profile_id=profile_id,
+        domain_name=domain_name,
+        source_module="rates",
+        source_entity_type="rate_batch",
+        source_entity_id=f"rate_batch_demo{suffix}",
+        package_type="RATES",
+        status="REGISTERED",
+        summary_json=json.dumps({"scenario_code": f"RATE_GEO_ONLY{suffix}"}),
+        created_by="admin@example.com",
+    )
+    db_session.add(package)
+    db_session.flush()
+    return package
+
+
+def create_synthetic_cutover_checklist(db_session, package, *, suffix=""):
+    template = CutoverChecklistTemplate(
+        code=f"SYNTHETIC_ASSETS_TEMPLATE{suffix}",
+        name=f"Synthetic Assets Template{suffix}",
+        version=1,
+        status="PUBLISHED",
+        description="Synthetic checklist template for Assets link tests.",
+    )
+    db_session.add(template)
+    db_session.flush()
+    checklist = CutoverChecklist(
+        project_id=package.project_id,
+        environment_id=package.environment_id,
+        profile_id=package.profile_id,
+        template_id=template.id,
+        package_id=package.id,
+        status="DRAFT",
+        package_type=package.package_type,
+        catalog_macro_object_code="RATE_RECORD",
+        summary_json=json.dumps({"package_id": package.id}),
+        created_by="admin@example.com",
+    )
+    db_session.add(checklist)
+    db_session.flush()
+    return checklist
 
 
 def test_assets_table_exists_after_metadata_reset(db_session):
@@ -496,11 +550,11 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
         json=draft_asset_payload(name="Synthetic 26A Asset", target_otm_version="26a"),
         headers=admin_header,
     ).json()
-    client.post(
+    secondary = client.post(
         "/api/v1/modules/assets/assets",
         json=draft_asset_payload(name="Synthetic 26B Asset", target_otm_version="26B"),
         headers=admin_header,
-    )
+    ).json()
 
     exact = client.get(
         "/api/v1/modules/assets/assets",
@@ -509,7 +563,7 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     )
     one_of = client.get(
         "/api/v1/modules/assets/assets",
-        params={"target_otm_version": "26A,27A", "target_otm_version_operator": "one_of"},
+        params={"target_otm_version": "26A,26B", "target_otm_version_operator": "one_of"},
         headers=admin_header,
     )
     not_one_of = client.get(
@@ -519,7 +573,7 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     )
     update = client.patch(
         f"/api/v1/modules/assets/assets/{matching['id']}",
-        json={"target_otm_version": "27a"},
+        json={"target_otm_version": "26b"},
         headers=admin_header,
     )
     clear = client.patch(
@@ -532,13 +586,50 @@ def test_asset_target_otm_version_create_update_and_search(client, admin_header)
     assert exact.status_code == 200
     assert [item["id"] for item in exact.json()["items"]] == [matching["id"]]
     assert one_of.status_code == 200
-    assert [item["id"] for item in one_of.json()["items"]] == [matching["id"]]
+    assert {item["id"] for item in one_of.json()["items"]} == {matching["id"], secondary["id"]}
     assert not_one_of.status_code == 200
     assert [item["id"] for item in not_one_of.json()["items"]] == [matching["id"]]
     assert update.status_code == 200
-    assert update.json()["target_otm_version"] == "27A"
+    assert update.json()["target_otm_version"] == "26B"
     assert clear.status_code == 200
     assert clear.json()["target_otm_version"] is None
+
+
+def test_asset_target_otm_version_rejects_unclassified_values(client, admin_header):
+    invalid_create = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Unsupported OTM Version Asset", target_otm_version="27A"),
+        headers=admin_header,
+    )
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Supported OTM Version Asset", target_otm_version="26A"),
+        headers=admin_header,
+    ).json()
+    invalid_update = client.patch(
+        f"/api/v1/modules/assets/assets/{created['id']}",
+        json={"target_otm_version": "27A"},
+        headers=admin_header,
+    )
+    classifications = client.get("/api/v1/modules/assets/classifications", headers=admin_header)
+
+    assert invalid_create.status_code == 400
+    create_payload = invalid_create.json()
+    assert create_payload["code"] == "ASSET_CLASSIFICATION_INVALID"
+    assert create_payload["details"]["field_name"] == "target_otm_version"
+    assert create_payload["details"]["classification_type"] == "asset_target_otm_version"
+    assert "27A" not in json.dumps(create_payload)
+
+    assert invalid_update.status_code == 400
+    update_payload = invalid_update.json()
+    assert update_payload["code"] == "ASSET_METADATA_INVALID"
+    assert update_payload["details"]["field_name"] == "target_otm_version"
+    assert "27A" not in json.dumps(update_payload)
+
+    version_group = next(
+        group for group in classifications.json()["items"] if group["classification_type"] == "asset_target_otm_version"
+    )
+    assert {item["code"] for item in version_group["items"]} == {"26A", "26B"}
 
 
 def test_list_assets_supports_backend_search_operators(client, admin_header):
@@ -724,6 +815,84 @@ def test_list_assets_rejects_invalid_linked_target_type_operator(client, admin_h
     assert payload["details"]["field_name"] == "linked_target_type"
 
 
+def test_batch_and_checklist_link_targets_are_backend_owned(client, admin_header, db_session):
+    asset = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    package = create_synthetic_load_plan_package(db_session)
+    checklist = create_synthetic_cutover_checklist(db_session, package)
+    db_session.commit()
+
+    batch_link = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "BATCH", "target_id": package.id, "target_label": "Synthetic load package"},
+        headers=admin_header,
+    )
+    checklist_link = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "CHECKLIST", "target_id": checklist.id, "target_label": "Synthetic cutover checklist"},
+        headers=admin_header,
+    )
+    classifications = client.get("/api/v1/modules/assets/classifications", headers=admin_header)
+
+    assert batch_link.status_code == 200
+    assert batch_link.json()["link_type"] == "BATCH"
+    assert batch_link.json()["target_id"] == package.id
+    assert checklist_link.status_code == 200
+    assert checklist_link.json()["link_type"] == "CHECKLIST"
+    link_types = next(group for group in classifications.json()["items"] if group["classification_type"] == "asset_link_type")
+    assert {"BATCH", "CHECKLIST"}.issubset({item["code"] for item in link_types["items"]})
+
+
+def test_batch_and_checklist_link_targets_are_rejected_when_outside_scope(client, admin_header, db_session):
+    project_id, environment_id = create_project_environment(client, admin_header, name_suffix=" Visible Links")
+    other_project_id, other_environment_id = create_project_environment(client, admin_header, name_suffix=" Hidden Links")
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+    asset = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(project_id=None, environment_id=None, profile_id=None, domain_name=None),
+        headers=admin_header,
+    ).json()
+    hidden_package = create_synthetic_load_plan_package(
+        db_session,
+        project_id=other_project_id,
+        environment_id=other_environment_id,
+        profile_id=None,
+        domain_name="OTM2",
+        suffix="_hidden",
+    )
+    hidden_checklist = create_synthetic_cutover_checklist(db_session, hidden_package, suffix="_hidden")
+    db_session.commit()
+
+    hidden_batch_link = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "BATCH", "target_id": hidden_package.id, "target_label": "Hidden load package"},
+        headers=admin_header,
+    )
+    hidden_checklist_link = client.post(
+        f"/api/v1/modules/assets/assets/{asset['id']}/links",
+        json={"link_type": "CHECKLIST", "target_id": hidden_checklist.id, "target_label": "Hidden cutover checklist"},
+        headers=admin_header,
+    )
+
+    assert hidden_batch_link.status_code == 400
+    assert hidden_batch_link.json()["code"] == "ASSET_LINK_INVALID_BATCH"
+    assert hidden_package.id not in hidden_batch_link.text
+    assert "Hidden" not in hidden_batch_link.text
+    assert hidden_checklist_link.status_code == 400
+    assert hidden_checklist_link.json()["code"] == "ASSET_LINK_INVALID_CHECKLIST"
+    assert hidden_checklist.id not in hidden_checklist_link.text
+    assert "Hidden" not in hidden_checklist_link.text
+
+
 def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):
     created = client.post(
         "/api/v1/modules/assets/assets",
@@ -858,6 +1027,89 @@ def test_archive_asset_preserves_record_and_records_audit_event(client, admin_he
     assert actions["asset.archive"]["disabled"] is True
     assert json.loads(audit.metadata_json)["asset_id"] == created["id"]
     assert json.loads(event.payload_json)["status"] == "ARCHIVED"
+
+
+def test_route_optimized_asset_detail_includes_versions_links_actions_and_archive_impact(
+    client,
+    admin_header,
+):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/assets/assets/{created['id']}/versions",
+        files={"file": ("synthetic_mapping_spec.md", b"# synthetic asset\n", "text/markdown")},
+        headers=admin_header,
+    )
+    client.post(
+        f"/api/v1/modules/assets/assets/{created['id']}/links",
+        json={"link_type": "MODULE", "target_id": "assets", "target_label": "Assets Library"},
+        headers=admin_header,
+    )
+
+    response = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/detail",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["asset"]["id"] == created["id"]
+    assert payload["current_version"]["file_name"] == "synthetic_mapping_spec.md"
+    assert payload["versions"][0]["file_name"] == "synthetic_mapping_spec.md"
+    assert payload["links"][0]["target_label"] == "Assets Library"
+    assert {action["key"] for action in payload["available_actions"]} >= {
+        "asset.update",
+        "asset.upload_version",
+        "asset.create_link",
+        "asset.download_current",
+        "asset.archive",
+    }
+    impact = payload["archive_impact"]
+    assert impact["eligible"] is True
+    assert impact["disabled_reason"] is None
+    assert impact["impacted_versions"] == 1
+    assert impact["current_version_id"] == payload["current_version"]["id"]
+    assert impact["impacted_links"] == 1
+    assert impact["linked_target_types"] == ["MODULE"]
+    assert impact["will_disable_actions"] == [
+        "asset.update",
+        "asset.upload_version",
+        "asset.create_link",
+        "asset.archive",
+    ]
+    assert "storage_path" not in str(payload)
+
+
+def test_archive_impact_reports_disabled_facts_for_archived_asset(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    active_impact = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/archive-impact",
+        headers=admin_header,
+    )
+    client.post(f"/api/v1/modules/assets/assets/{created['id']}/archive", headers=admin_header)
+    archived_impact = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/archive-impact",
+        headers=admin_header,
+    )
+
+    assert active_impact.status_code == 200
+    assert active_impact.json()["eligible"] is True
+    assert active_impact.json()["archive_action"]["disabled"] is False
+
+    assert archived_impact.status_code == 200
+    payload = archived_impact.json()
+    assert payload["eligible"] is False
+    assert payload["disabled_reason"] == "ASSET_ARCHIVED"
+    assert payload["blocked_reasons"] == ["ASSET_ARCHIVED"]
+    assert payload["archive_action"]["disabled"] is True
+    assert payload["archive_action"]["disabled_reason"] == "ASSET_ARCHIVED"
 
 
 def test_update_archived_asset_metadata_is_rejected(client, admin_header):

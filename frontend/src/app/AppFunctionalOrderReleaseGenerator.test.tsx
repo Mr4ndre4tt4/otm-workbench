@@ -661,4 +661,127 @@ describe("Functional Order Release Generator journey", () => {
       }
     ]);
   }, 60000);
+
+  it("recovers route-level template and batch workflows from direct URLs", async () => {
+    const fetchMock = vi.fn((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              {
+                id: "order_release_generator",
+                label: "Order Release Generator",
+                path: "/order-release-generator",
+                status: "ACTIVE"
+              }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/templates")) {
+        return Promise.resolve(jsonResponse({ items: [orderReleaseTemplate(), alternateOrderReleaseTemplate()], total: 2 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches")) {
+        return Promise.resolve(jsonResponse({ items: [validBatch()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts")) {
+        return Promise.resolve(
+          jsonResponse({
+            batch_id: "or_batch_1",
+            items: [
+              {
+                artifact_type: "order_release_xml",
+                batch_id: "or_batch_1",
+                content_type: "application/xml",
+                download_url: "/api/v1/modules/order-release-generator/batches/or_batch_1/artifacts/artifact_or_xml/download",
+                file_name: "or_batch_1.db.xml",
+                id: "artifact_or_xml",
+                sensitivity_level: "internal",
+                sha256: "abc123",
+                size_bytes: 512,
+                source_module: "order_release_generator"
+              }
+            ],
+            total: 1
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/order-release-generator/batches/or_batch_1/preview");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Order Release Generator" });
+    const destinations = await screen.findByLabelText("Order Release route destinations");
+    expect(destinations).toHaveTextContent("Back to Order Release");
+    expect(destinations).toHaveTextContent("Open selected template");
+    expect(destinations).toHaveTextContent("Template versions");
+    expect(destinations).toHaveTextContent("Open selected batch");
+    expect(destinations).toHaveTextContent("Edit rows");
+    expect(destinations).toHaveTextContent("XML preview");
+    expect(destinations).toHaveTextContent("Artifacts");
+    expect(destinations).toHaveTextContent("Submit readiness");
+    expect(screen.getByRole("link", { name: "Back to Order Release" })).toHaveAttribute("href", "/order-release-generator");
+    expect(screen.getByRole("link", { name: "Template versions" })).toHaveAttribute(
+      "href",
+      "/order-release-generator/templates/template_or_tl/versions"
+    );
+    expect(screen.getByRole("link", { name: "Open selected batch" })).toHaveAttribute(
+      "href",
+      "/order-release-generator/batches/or_batch_1"
+    );
+    expect(screen.getByRole("link", { name: "Edit rows" })).toHaveAttribute(
+      "href",
+      "/order-release-generator/batches/or_batch_1/rows"
+    );
+    expect(screen.getByRole("link", { name: "Artifacts" })).toHaveAttribute(
+      "href",
+      "/order-release-generator/batches/or_batch_1/artifacts"
+    );
+    expect(screen.getByRole("link", { name: "Submit readiness" })).toHaveAttribute(
+      "href",
+      "/order-release-generator/batches/or_batch_1/submit-readiness"
+    );
+    expect(screen.getByLabelText("Order Release XML preview workflow")).toHaveTextContent("Preview XML");
+
+    await userEvent.click(screen.getByRole("link", { name: "Artifacts" }));
+    expect(await screen.findByLabelText("Order Release XML artifact workflow")).toHaveTextContent("Generate XML artifact");
+    expect(screen.getByLabelText("Order Release XML artifact")).toHaveTextContent("or_batch_1.db.xml");
+
+    await userEvent.click(screen.getByRole("link", { name: "Submit readiness" }));
+    expect(await screen.findByLabelText("Order Release OTM submit guard workflow")).toHaveTextContent("Verify OTM submit guard");
+  }, 60000);
 });

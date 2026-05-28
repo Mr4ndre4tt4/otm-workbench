@@ -1,4 +1,4 @@
-# Validation Report
+﻿# Validation Report
 
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
@@ -2700,75 +2700,251 @@ Notes:
   language and should be cleaned up later so future agents do not revive
   project-management panels.
 
-## 2026-05-28 Workbench Assistant Foundation
+## 2026-05-28 Rates Final Revalidation
 
 Scope:
 
-- Added the Workbench Assistant foundation as a shell overlay and backend API
-  package.
-- Added assistant migrations, focused tests, frontend shell coverage, browser
-  QA automation, and planning/spec documentation.
-- Merged through PR #210 with merge commit
-  `a7f52d32330a170f97a3e422ecac0e84cbb68f94`.
+- Revalidated Rates Studio for GitHub issue #187.
+- No product source behavior changed in this closure slice.
 
 Commands:
 
 ```powershell
-python -m alembic upgrade head
-python -m pytest tests/test_assistant_source_index.py tests/test_modules_navigation.py -q
-npm test -- src/app/AppFunctionalShell.test.tsx -t "Workbench Assistant"
+python -m pytest tests/test_rates_batches.py -q
+python -m pytest tests/test_rates_summary.py -q
+python -m pytest tests/test_rates_csv_export_artifacts.py tests/test_rates_batch_approval.py -q
+python -m pytest tests/test_rates_dictionary.py tests/test_rates_csv_preview.py -q
+python -m pytest tests/test_rates_batch_validation.py tests/test_rates_batch_scenarios.py tests/test_rates_batch_csv_preview.py -q
+npm test -- src/app/AppFunctionalRates.test.tsx
 npm run build
-node --check scripts/functional-assistant-browser.mjs
-npm run qa:functional:assistant:browser
-gh pr checks 210 --watch --interval 10
 ```
 
 Results:
 
 ```text
-alembic upgrade head: passed against fresh Assistant QA DB
-assistant + navigation backend tests: 54 passed
-AppFunctionalShell Workbench Assistant test: passed
+tests/test_rates_batches.py: 8 passed
+tests/test_rates_summary.py: 2 passed
+tests/test_rates_csv_export_artifacts.py + tests/test_rates_batch_approval.py: 21 passed
+tests/test_rates_dictionary.py + tests/test_rates_csv_preview.py: 14 passed
+tests/test_rates_batch_validation.py + tests/test_rates_batch_scenarios.py + tests/test_rates_batch_csv_preview.py: 20 passed
+AppFunctionalRates.test.tsx: 4 passed
 frontend build: passed with existing Vite large chunk warning
-assistant browser QA script syntax: passed
-assistant browser QA: passed
-PR #210 CI: Backend tests passed, Frontend tests and build passed, CodeRabbit status passed
 ```
 
-Browser QA freshness evidence:
+Existing browser QA evidence:
 
 ```text
-baseUrl: http://127.0.0.1:5205
-apiBaseUrl: http://127.0.0.1:8045
-navigationIds:
-- master_data
-- home
-- rates
-- load_plan
-- assets
-- order_release_generator
-- integration_mapping
-- settings
-screenshot: var/qa/workbench-assistant-shell.png
+var/qa/rates-batch-library-search.png
+var/qa/rates-library-new-routes.png
+var/qa/rates-table-detail-route.png
+var/qa/rates-route-level-batch-issues.png
+var/qa/rates-route-level-review-screens.png
+var/qa/rates-approval-export-review-gates.png
+var/qa/rates-artifact-evidence-handoff-routes.png
+var/qa/rates-route-recovery-lifecycle.png
 ```
 
 Notes:
 
-- The Assistant is intentionally outside the main navigation.
-- The assistant source index blocks local `OTM_RESOURCES` as an indexed source
-  root while still allowing the SQL helper to use the OTM Data Dictionary.
-- In local Windows validation, the OTM Data Dictionary override used
-  `OTM_OTM_DATA_DICTIONARY_ROOT` because settings use the `OTM_` env prefix.
+- Fresh browser screenshots were not captured in this closure slice.
+- Future browser QA must query `/api/v1/platform/navigation` on the same
+  runtime/session before screenshots and reject stale evidence if excluded
+  top-level modules appear.
+
+## 2026-05-28 Master Data Final Revalidation
+
+Scope:
+
+- Revalidated Master Data / Data Factory for GitHub issue #203.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_master_data_direct_otm_import_guard.py -q
+python -m pytest tests/test_coordinate_quality_api.py tests/test_coordinate_quality_engine.py -q
+python -m pytest tests/test_master_data_templates.py -q
+npm test -- src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalCoordinateQuality.test.tsx
+npm test -- src/app/App.test.tsx -t "Master Data"
+npm run build
+```
+
+Results:
+
+```text
+tests/test_master_data_direct_otm_import_guard.py: 5 passed
+tests/test_coordinate_quality_api.py + tests/test_coordinate_quality_engine.py: 15 passed
+tests/test_master_data_templates.py: 58 passed
+AppFunctionalMasterData.test.tsx + AppFunctionalCoordinateQuality.test.tsx: 7 passed
+App.test.tsx - Master Data: 4 passed, 26 skipped
+frontend build: passed with existing Vite large chunk warning
+```
+
+Existing browser QA evidence:
+
+```text
+output/gui-qa/master-data/01-master-data-hub.png
+output/gui-qa/master-data/02-template-builder-entry.png
+output/gui-qa/master-data/02-template-builder-search.png
+output/gui-qa/master-data/02-template-builder-detail.png
+output/gui-qa/master-data/02-template-builder-copy.png
+output/gui-qa/master-data/02-template-builder-copy-created.png
+output/gui-qa/master-data/02-template-builder-edit.png
+output/gui-qa/master-data/02-template-builder-retire.png
+output/gui-qa/master-data/02-template-builder-new.png
+output/gui-qa/master-data/03-data-factory-entry.png
+output/gui-qa/master-data/04-template-detail-regions-basic.png
+output/gui-qa/master-data/05-batch-detail-input.png
+output/gui-qa/master-data/06-batch-detail-validated.png
+output/gui-qa/master-data/07-batch-detail-csv-package.png
+output/gui-qa/master-data/08-batch-detail-load-plan.png
+output/gui-qa/master-data/09-quality-tools-hub.png
+output/gui-qa/master-data/10-lat-lon-validator.png
+output/gui-qa/master-data/11-lat-lon-batch-detail.png
+output/gui-qa/master-data/12-lat-lon-export.png
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured in this closure slice.
+- Future browser QA must query `/api/v1/platform/navigation` on the same
+  runtime/session before screenshots and reject stale evidence if excluded
+  top-level modules appear.
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.
+
+## 2026-05-28 Order Release Revalidation
+
+Scope:
+
+- Revalidated Order Release Generator for GitHub issue #205.
+- Opened #206 for required route-level implementation follow-up.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q
+python -m pytest tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py -q
+python -m pytest tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx
+npm test -- src/app/App.test.tsx -t "Order Release"
+npm run build
+```
+
+Results:
+
+```text
+tests/test_order_release_generator_foundation.py + tests/test_order_release_generator_batches.py: 23 passed
+tests/test_order_release_generator_xml_preview.py + tests/test_order_release_generator_xml_artifact.py: 8 passed
+tests/test_order_release_generator_submit_guard.py + tests/test_order_release_generator_jobs.py: 4 passed
+AppFunctionalOrderReleaseGenerator.test.tsx: 3 passed
+App.test.tsx - Order Release: 1 passed, 29 skipped
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured because this is not a visual
+  acceptance claim.
+- The current technical foundation is healthy, but route-level To-Be workflows
+  remain unimplemented.
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.
+
+## 2026-05-28 Order Release Route-Level Workflows
+
+Scope:
+
+- Implemented GitHub issue #206 for route-aware Order Release template and
+  batch workflow destinations.
+- Added direct route recovery coverage for preview, artifacts, and
+  submit-readiness.
+
+Commands:
+
+```powershell
+npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+npm test -- src/app/App.test.tsx -t "Order Release"
+npm run build
+npm run qa:functional:order-release:browser
+```
+
+Results:
+
+```text
+AppFunctionalOrderReleaseGenerator.test.tsx: 4 passed
+Order Release backend suite: 35 passed
+App.test.tsx - Order Release: 1 passed, 29 skipped
+frontend build: passed with existing Vite large chunk warning
+qa:functional:order-release:browser: failed before module entry waiting for Project Cockpit
+```
+
+Notes:
+
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.
+- The browser script failure happened before Order Release module navigation,
+  so no screenshot evidence was accepted for this slice.
+
+## 2026-05-28 Load Plan Final Revalidation
+
+Scope:
+
+- Revalidated Load Plan / Cutover for GitHub issue #208.
+- Opened #209 for the required route-level package workflow follow-up.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_load_plan_package_intake.py -q
+python -m pytest tests/test_load_plan_cutover_checklist.py -q
+python -m pytest tests/test_load_plan_cutover_readiness.py -q
+python -m pytest tests/test_load_plan_csvutil_builder.py -q
+python -m pytest tests/test_load_plan_zip_analysis.py -q
+python -m pytest tests/test_load_plan_sequence_blockers.py -q
+python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q
+python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q
+npm test -- src/app/AppFunctionalLoadPlan.test.tsx
+npm test -- src/app/App.test.tsx -t "Load Plan"
+npm run build
+```
+
+Results:
+
+```text
+tests/test_load_plan_package_intake.py: 23 passed
+tests/test_load_plan_cutover_checklist.py: 13 passed
+tests/test_load_plan_cutover_readiness.py: 9 passed
+tests/test_load_plan_csvutil_builder.py: 16 passed
+tests/test_load_plan_zip_analysis.py: 12 passed
+tests/test_load_plan_sequence_blockers.py: 13 passed
+tests/test_load_plan_review_queue.py + tests/test_load_plan_review_decisions.py: 16 passed
+tests/test_load_plan_cutover_package_export.py + tests/test_load_plan_cutover_go_no_go.py + tests/test_load_plan_cutover_handoff.py + tests/test_load_plan_readiness_export.py: 25 passed
+AppFunctionalLoadPlan.test.tsx: 1 passed
+App.test.tsx - Load Plan: 1 passed, 29 skipped
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured because this is not a visual
+  acceptance claim.
+- The current technical foundation is healthy, but route-level package
+  operation recovery remains unimplemented and is tracked by #209.
 
 ## 2026-05-28 Load Plan Route-Level Workflows
 
 Scope:
 
-- Promoted the previously implemented GitHub issue #209 patch to a clean
-  branch based on current `main`.
-- Adds route-aware Load Plan package operation destinations.
-- Adds direct route recovery coverage for
-  `/load-plan/packages/package_2/zip-review`.
+- Implemented GitHub issue #209 for route-aware Load Plan package operation
+  destinations.
+- Added direct route recovery coverage for `/load-plan/packages/package_2/zip-review`.
 
 Commands:
 
@@ -2792,42 +2968,40 @@ Results:
 AppFunctionalLoadPlan.test.tsx: 2 passed
 App.test.tsx - Load Plan: 1 passed, 29 skipped
 tests/test_load_plan_package_intake.py: 23 passed
-tests/test_load_plan_cutover_checklist.py + tests/test_load_plan_cutover_readiness.py: 22 passed
-tests/test_load_plan_csvutil_builder.py + tests/test_load_plan_zip_analysis.py: 28 passed
+tests/test_load_plan_cutover_checklist.py: 13 passed
+tests/test_load_plan_cutover_readiness.py: 9 passed
+tests/test_load_plan_csvutil_builder.py: 16 passed
+tests/test_load_plan_zip_analysis.py: 12 passed
 tests/test_load_plan_sequence_blockers.py: 13 passed
 tests/test_load_plan_review_queue.py + tests/test_load_plan_review_decisions.py: 16 passed
 tests/test_load_plan_cutover_package_export.py + tests/test_load_plan_cutover_go_no_go.py + tests/test_load_plan_cutover_handoff.py + tests/test_load_plan_readiness_export.py: 25 passed
 frontend build: passed with existing Vite large chunk warning
-git diff --check: no errors
 ```
 
 Notes:
 
-- Fresh browser screenshots are not accepted until browser QA passes the live
-  `/api/v1/platform/navigation` freshness gate.
-- Initial backend attempts without `OTM_OTM_DATA_DICTIONARY_ROOT` failed
-  because this clean worktree intentionally does not contain protected local
-  `OTM_RESOURCES/`; the reruns with the local Data Dictionary override passed.
+- Initial broad backend parallel runs timed out at the shell limit; reruns in
+  smaller blocks passed.
+- Fresh browser screenshots were not captured. Browser visual acceptance still
+  requires the runtime navigation freshness gate.
 
 ## 2026-05-28 Load Plan Browser Closeout
 
 Scope:
 
-- Promotes the previously implemented Load Plan browser closeout patch to a
-  clean branch based on current `main`.
-- Stabilizes the Load Plan browser QA seed path so Rates batches are created
-  inside the active project/environment/profile context.
-- Adds an idempotent Alembic migration for the
-  `load_plan_packages.domain_name` column required by the current model.
+- Closed the Load Plan stabilization lane (#207) after fresh runtime browser QA.
+- Fixed the Load Plan browser QA seed path to create Rates batches inside the
+  active project/environment/profile context.
+- Added an Alembic migration for the `load_plan_packages.domain_name` column
+  required by the current model.
 
 Fresh runtime:
 
 ```text
-Historical source closeout:
-- Backend:  http://127.0.0.1:8052
-- Frontend: http://127.0.0.1:5222
-- Database: var/qa-load-plan-route-closeout.db
-- User:     demo@example.test
+Backend:  http://127.0.0.1:8052
+Frontend: http://127.0.0.1:5222
+Database: var/qa-load-plan-route-closeout.db
+User:     demo@example.test
 ```
 
 Live navigation IDs checked before browser QA:
@@ -2841,20 +3015,16 @@ Commands:
 
 ```powershell
 python -m pytest tests/test_modules_navigation.py -q
-python -m alembic upgrade head
-node --check scripts/functional-load-plan-browser.mjs
-npm run qa:functional:load-plan:browser # historical source closeout
+python -m alembic upgrade c5b9d3a1e6f2
+npm run qa:functional:load-plan:browser
 ```
 
 Results:
 
 ```text
 tests/test_modules_navigation.py: 10 passed
-alembic heads: single head c5b9d3a1e6f2
-alembic upgrade head: passed against fresh var/qa-load-plan-browser-closeout-promote.db
-node --check scripts/functional-load-plan-browser.mjs: passed
-git diff --check: no errors
-Historical source closeout qa:functional:load-plan:browser: passed
+alembic upgrade c5b9d3a1e6f2: passed
+qa:functional:load-plan:browser: passed
 ```
 
 Evidence:
@@ -2873,7 +3043,369 @@ Notes:
 - The third browser QA run exposed an ambiguous `/load-plan` selector after
   Cockpit accelerator links were added; the script now selects the exact Load
   Plan navigation link.
-- The promoted migration was rebased to revise `c4a8e2f7b9d1` so Alembic keeps
-  a single head after the Assistant migrations.
-- Fresh browser QA was not rerun from this clean promotion branch; rely on the
-  historical closeout evidence only for the already closed #207 lane.
+
+## 2026-05-28 Assets Detail And Archive Impact Contracts
+
+Scope:
+
+- Added backend-owned route detail and archive impact contracts for Assets #198.
+- Updated the archive route to consume backend eligibility and impact facts.
+- Kept existing asset list/detail/version/link/archive endpoints compatible.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "route_optimized_detail or archive_impact or archive_asset_preserves" -q
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "archives an asset on a direct route"
+python -m pytest tests/test_assets_library_assets.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+```
+
+Results:
+
+```text
+focused assets backend: 3 passed, 23 deselected
+focused assets frontend: 1 passed, 12 skipped
+tests/test_assets_library_assets.py: 26 passed
+AppFunctionalAssets.test.tsx: 13 passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- The first focused backend run failed because the route detail contract reused
+  the full version serializer and exposed `storage_path`. The contract now uses
+  a public version serializer without local storage paths.
+- No browser screenshot was captured for this API/UI contract slice.
+
+## 2026-05-28 Assets Batch And Checklist Link Targets
+
+Scope:
+
+- Added backend-owned BATCH and CHECKLIST asset link classifications.
+- Validated BATCH links against scoped Load Plan packages.
+- Validated CHECKLIST links through their scoped parent Load Plan package.
+- Preserved client-safe artifact/evidence target checks.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "batch_and_checklist_link_targets" -q
+python -m pytest tests/test_assets_library_assets.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+focused Assets BATCH/CHECKLIST tests: 2 passed, 26 deselected
+tests/test_assets_library_assets.py: 28 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- Hidden/out-of-context package and checklist targets are rejected with generic
+  backend errors that do not echo private IDs or labels.
+- No frontend/browser screenshot was captured because this slice is backend
+  target validation and classification seeding.
+
+## 2026-05-28 Assets Target OTM Version Taxonomy
+
+Scope:
+
+- Added `asset_target_otm_version` as the backend-owned Assets release-label
+  taxonomy.
+- Seeded current labels `26A` and `26B`.
+- Validated `target_otm_version` on create and update.
+- Recorded the decision and Oracle documentation rationale.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "target_otm_version" -q
+python -m pytest tests/test_assets_library_assets.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+focused target OTM version tests: 2 passed, 27 deselected
+tests/test_assets_library_assets.py: 29 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- Unsupported values such as `27A` are rejected until added as active governed
+  classifications.
+- No frontend/browser screenshot was captured because this slice is backend
+  taxonomy validation and governance documentation.
+
+## 2026-05-28 Context Isolation Validation Matrix
+
+Scope:
+
+- Opened the context-isolation foundation lane after Assets backlog closure.
+- Added a module-facing validation matrix for active context, client/domain,
+  environment, Public View, access-policy, DBA/admin visibility, and navigation
+  freshness.
+- Identified module-specific follow-up gates without touching Integration
+  Mapping.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_operational_context.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+tests/test_operational_context.py: 26 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- No browser screenshots were captured; this was a governance and backend
+  validation baseline slice.
+- Follow-up implementation issues should be opened when the next concrete
+  module lane starts, not as broad placeholders.
+
+## 2026-05-28 Cockpit Context Selector Evidence
+
+Scope:
+
+- Revalidated Project Cockpit backend summary contracts and current UI phase
+  navigation.
+- Revalidated the frontend Cockpit v3 macro-group test.
+- Hardened shell browser QA with a live navigation freshness gate and Cockpit
+  context-selector screenshot evidence.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q
+npm test -- src/app/App.test.tsx -t "Cockpit"
+node --check scripts/functional-shell-browser.mjs
+npm run qa:functional:shell:browser
+npm run build
+```
+
+Runtime:
+
+```text
+Backend: http://127.0.0.1:8054
+Frontend: http://127.0.0.1:5232
+Database: var/qa-cockpit-context-selector.db
+User: demo@example.test
+Live navigation IDs: master_data, home, rates, load_plan, assets,
+order_release_generator, integration_mapping, settings
+```
+
+Results:
+
+```text
+Project Cockpit backend/navigation: 17 passed
+Cockpit frontend selected test: 1 passed, 29 skipped
+functional-shell-browser syntax check: passed
+functional-shell-browser QA: passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Evidence:
+
+```text
+var/qa/cockpit-context-selector.png
+```
+
+Notes:
+
+- Browser QA must use Vite proxy via `VITE_DEV_PROXY_TARGET`; setting
+  `VITE_API_BASE_URL` cross-origin triggers unsupported preflight requests.
+- The screenshot was captured from the shared dirty local workspace and includes
+  the floating Assistant launcher from parallel work. The Cockpit/sidebar
+  acceptance evidence remains valid because excluded top-level modules are
+  absent and the context selector shows private `OTM1` scope.
+
+## 2026-05-28 Rates Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #216 for a focused Rates context-isolation regression.
+- Added backend tests proving same-name rate batches stay isolated by active
+  domain and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_rates_batches.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_rates_batches.py tests/test_rates_summary.py -q
+```
+
+Results:
+
+```text
+focused Rates context tests: 5 passed, 5 deselected
+Rates batches and summary: 12 passed
+```
+
+Notes:
+
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
+- Assertions check batch IDs and direct route access instead of relying on
+  display names, because same-name data is the regression risk.
+
+## 2026-05-28 Master Data Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #217 for a focused Master Data context-isolation
+  regression.
+- Added backend tests proving same-name workbook batches stay isolated by
+  active project, domain, and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_master_data_templates.py -k "context_scope or dba_context or same_name or require_active_context" -q
+```
+
+Results:
+
+```text
+focused Master Data same-name/context tests: 4 passed, 56 deselected
+Master Data context slice: 5 passed, 55 deselected
+```
+
+Notes:
+
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
+- Assertions check batch IDs and direct route access instead of relying on
+  workbook file names, because same-name files are the regression risk.
+
+## 2026-05-28 Order Release Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #218 for a focused Order Release context-isolation
+  regression.
+- Added backend tests proving same-name templates stay isolated by active
+  project, domain, and environment while preserving global template-code family
+  semantics.
+- Added backend tests proving same-name batches stay isolated by active
+  project, domain, and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q
+```
+
+Results:
+
+```text
+focused Order Release same-name/context tests: 8 passed, 19 deselected
+Order Release foundation and batches: 27 passed
+```
+
+Notes:
+
+- Initial same-code template tests failed before isolation assertions because
+  template `code` is still treated by the backend as a global version-family
+  identity. The final regression uses same template names with distinct codes.
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
+
+## 2026-05-28 Context Isolation Matrix Sync
+
+Scope:
+
+- Added GitHub issue #219 for a governance sync after completed context
+  isolation regression slices.
+- Updated the context isolation matrix to record #215, #216, #217, and #218 as
+  completed evidence.
+- Removed completed same-name validation lanes from the future follow-up list.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_operational_context.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+tests/test_operational_context.py: 26 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- No product source changed.
+- No browser screenshot was captured because this slice only synchronizes
+  governance documentation.
+
+## 2026-05-28 PR 182 Merge Conflict Recovery
+
+Scope:
+
+- Added GitHub issue #220 for the PR #182 merge-conflict recovery slice.
+- Merged current `origin/main` into
+  `codex/master-data-catalog-redesign-evidence` in an isolated worktree.
+- Resolved governance, migration, backend, frontend, and test conflicts without
+  staging the primary dirty workspace.
+- Preserved the validated context-isolation work on the PR branch while
+  accepting already-promoted mainline Load Plan, Integration Mapping, and
+  Workbench Assistant changes from `origin/main`.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py -q
+python -m pytest tests/test_project_cockpit_summary.py tests/test_rates_batches.py -q
+python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q
+$env:OTM_OTM_DATA_DICTIONARY_ROOT='C:\Users\Enzo Trabalho\Documents\New project 3\OTM_RESOURCES\DATA_DICT26B\data_dictionary\json\data_dict'; python -m pytest tests/test_assets_library_assets.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalShell.test.tsx
+npm run build
+```
+
+Results:
+
+```text
+navigation + operational context: 35 passed
+Cockpit summary + Rates batches: 17 passed
+Master Data focused context slice: 4 passed, 56 deselected
+Order Release focused context slice: 8 passed, 19 deselected
+Assets library assets: 29 passed
+frontend Assets + shell functional tests: 2 files passed, 15 tests passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- The first full Assets run failed because the isolated worktree does not
+  contain the untracked local `OTM_RESOURCES` directory. Rerunning with the
+  explicit local Data Dictionary path passed.
+- The first broad multi-module pytest command timed out before producing useful
+  output; the suite was split into focused commands listed above.
+- `npm install` was required in the isolated worktree before Vitest could run;
+  it reported 0 vulnerabilities.
+- Browser screenshots were not captured because this slice only resolves PR
+  merge drift and does not change intended UI behavior.

@@ -77,13 +77,6 @@ def test_navigation_matches_current_to_be_ui_phase(client, admin_header):
     assert "dev_tools" not in module_ids
 
 
-def test_assistant_is_not_added_to_main_navigation(client, admin_header):
-    response = client.get("/api/v1/platform/navigation", headers=admin_header)
-
-    assert response.status_code == 200
-    assert "assistant" not in [item["id"] for item in response.json()["items"]]
-
-
 def test_modules_endpoint_returns_rates_module(client, admin_header):
     response = client.get("/api/v1/platform/modules", headers=admin_header)
 

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import {
   createOrderReleaseBatch,
@@ -54,6 +55,50 @@ const workflowStages = [
 ] as const;
 
 type OrderReleaseWorkflowStage = (typeof workflowStages)[number]["id"];
+
+type OrderReleaseRouteContext = {
+  batchId: string | null;
+  mode:
+    | "artifact"
+    | "batch"
+    | "batch-new"
+    | "hub"
+    | "preview"
+    | "rows"
+    | "submit"
+    | "template"
+    | "template-new"
+    | "template-versions";
+  stage: OrderReleaseWorkflowStage;
+  templateId: string | null;
+};
+
+function routeContext(pathname: string): OrderReleaseRouteContext {
+  const segments = pathname.split("/").filter(Boolean);
+  const templateIndex = segments.indexOf("templates");
+  const batchIndex = segments.indexOf("batches");
+
+  if (templateIndex >= 0) {
+    const templateId = segments[templateIndex + 1] ?? null;
+    if (templateId === "new") return { batchId: null, mode: "template-new", stage: "templates", templateId: null };
+    if (segments[templateIndex + 2] === "versions") {
+      return { batchId: null, mode: "template-versions", stage: "templates", templateId };
+    }
+    return { batchId: null, mode: "template", stage: "templates", templateId };
+  }
+
+  if (batchIndex >= 0) {
+    const batchId = segments[batchIndex + 1] ?? null;
+    if (batchId === "new") return { batchId: null, mode: "batch-new", stage: "batch", templateId: null };
+    if (segments[batchIndex + 2] === "rows") return { batchId, mode: "rows", stage: "batch", templateId: null };
+    if (segments[batchIndex + 2] === "preview") return { batchId, mode: "preview", stage: "preview", templateId: null };
+    if (segments[batchIndex + 2] === "artifacts") return { batchId, mode: "artifact", stage: "artifact", templateId: null };
+    if (segments[batchIndex + 2] === "submit-readiness") return { batchId, mode: "submit", stage: "submit", templateId: null };
+    return { batchId, mode: "batch", stage: "batch", templateId: null };
+  }
+
+  return { batchId: null, mode: "hub", stage: "templates", templateId: null };
+}
 
 const syntheticOrderReleaseRows = [
   {
@@ -165,11 +210,13 @@ function parseDefaultLines(value: string) {
 
 export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const currentRoute = routeContext(location.pathname);
   const templates = useOrderReleaseTemplates(token);
   const batches = useOrderReleaseBatches(token);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
-  const [activeStage, setActiveStage] = useState<OrderReleaseWorkflowStage>("templates");
+  const [activeStage, setActiveStage] = useState<OrderReleaseWorkflowStage>(currentRoute.stage);
   const [templateCode, setTemplateCode] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [templateRequiredColumns, setTemplateRequiredColumns] = useState("");
@@ -192,8 +239,8 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const [isMutating, setIsMutating] = useState(false);
   const templateItems = templates.data?.items ?? [];
   const batchItems = batches.data?.items ?? [];
-  const effectiveTemplateId = selectedTemplateId ?? templateItems[0]?.id ?? null;
-  const effectiveBatchId = selectedBatchId ?? createdBatch?.id ?? (suppressBatchFallback ? null : batchItems[0]?.id) ?? null;
+  const effectiveTemplateId = selectedTemplateId ?? currentRoute.templateId ?? templateItems[0]?.id ?? null;
+  const effectiveBatchId = selectedBatchId ?? currentRoute.batchId ?? createdBatch?.id ?? (suppressBatchFallback ? null : batchItems[0]?.id) ?? null;
   const selectedTemplate = templateItems.find((item) => item.id === effectiveTemplateId) ?? null;
   const selectedBatch = createdBatch?.id === effectiveBatchId
     ? createdBatch
@@ -205,6 +252,10 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
   const artifacts = useOrderReleaseArtifacts(token, activeBatch?.id ?? null);
   const activeBatchIsValid = activeBatch?.status === "VALID";
   const activeBatchRowIssues = batchRowIssueItems(activeBatch);
+
+  useEffect(() => {
+    setActiveStage(currentRoute.stage);
+  }, [currentRoute.stage, location.pathname]);
 
   if (templates.isLoading) {
     return <StatePanel>Loading Order Release Generator...</StatePanel>;
@@ -418,6 +469,87 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
         ]
       : [];
 
+  const routeDestinations = [
+    {
+      href: "/order-release-generator",
+      id: "hub",
+      meta: ["Template library", "Recent batches"],
+      status: currentRoute.mode === "hub" ? "ACTIVE" : "READY",
+      title: "Back to Order Release"
+    },
+    {
+      href: "/order-release-generator/templates/new",
+      id: "template-new",
+      meta: ["Template authoring"],
+      status: currentRoute.mode === "template-new" ? "ACTIVE" : "READY",
+      title: "Create template"
+    },
+    ...(selectedTemplate
+      ? [
+          {
+            href: `/order-release-generator/templates/${selectedTemplate.id}`,
+            id: "template-detail",
+            meta: [selectedTemplate.code, `v${selectedTemplate.version}`],
+            status: currentRoute.mode === "template" ? "ACTIVE" : selectedTemplate.status,
+            title: "Open selected template"
+          },
+          {
+            href: `/order-release-generator/templates/${selectedTemplate.id}/versions`,
+            id: "template-versions",
+            meta: ["Versioning", selectedTemplate.code],
+            status: currentRoute.mode === "template-versions" ? "ACTIVE" : "READY",
+            title: "Template versions"
+          }
+        ]
+      : []),
+    {
+      href: "/order-release-generator/batches/new",
+      id: "batch-new",
+      meta: ["Batch creation"],
+      status: currentRoute.mode === "batch-new" ? "ACTIVE" : "READY",
+      title: "Create batch"
+    },
+    ...(activeBatch
+      ? [
+          {
+            href: `/order-release-generator/batches/${activeBatch.id}`,
+            id: "batch-detail",
+            meta: batchMeta(activeBatch),
+            status: currentRoute.mode === "batch" ? "ACTIVE" : activeBatch.status,
+            title: "Open selected batch"
+          },
+          {
+            href: `/order-release-generator/batches/${activeBatch.id}/rows`,
+            id: "batch-rows",
+            meta: ["Template-guided row editor"],
+            status: currentRoute.mode === "rows" ? "ACTIVE" : activeBatch.status,
+            title: "Edit rows"
+          },
+          {
+            href: `/order-release-generator/batches/${activeBatch.id}/preview`,
+            id: "batch-preview",
+            meta: ["XML summary", "Safe preview"],
+            status: currentRoute.mode === "preview" ? "ACTIVE" : activeBatch.status,
+            title: "XML preview"
+          },
+          {
+            href: `/order-release-generator/batches/${activeBatch.id}/artifacts`,
+            id: "batch-artifacts",
+            meta: ["Generated XML/DBXML artifacts"],
+            status: currentRoute.mode === "artifact" ? "ACTIVE" : "READY",
+            title: "Artifacts"
+          },
+          {
+            href: `/order-release-generator/batches/${activeBatch.id}/submit-readiness`,
+            id: "batch-submit",
+            meta: ["Backend-owned submit blockers"],
+            status: currentRoute.mode === "submit" ? "ACTIVE" : "GUARDED",
+            title: "Submit readiness"
+          }
+        ]
+      : [])
+  ];
+
   return (
     <>
       <PageHeader
@@ -434,6 +566,21 @@ export function OrderReleaseGeneratorView({ token }: { token: string }) {
           { key: "optional", label: "Optional columns", status: booleanStatus(optionalColumnCount), value: optionalColumnCount },
           { key: "defaults", label: "Defaults", status: booleanStatus(defaultCount), value: defaultCount }
         ]}
+      />
+
+      <DetailList
+        ariaLabel="Order Release route destinations"
+        items={routeDestinations.map((destination) => ({
+          action: (
+            <Link className="button button-secondary" to={destination.href}>
+              {destination.title}
+            </Link>
+          ),
+          id: destination.id,
+          meta: destination.meta,
+          status: destination.status,
+          title: destination.title
+        }))}
       />
 
       <ModuleWorkspaceLayout
