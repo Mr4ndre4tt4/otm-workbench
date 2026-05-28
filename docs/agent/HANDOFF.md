@@ -3,6 +3,55 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Versions Routes Slice
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has route-level version history and direct version upload
+screens.
+
+What changed:
+
+- `/assets/:assetId/versions` renders version history, current-version state,
+  guarded current-version download, and return/upload paths;
+- `/assets/:assetId/versions/new` renders direct upload for one asset using the
+  existing backend version upload contract;
+- neither direct versions route renders the temporary Assets Library workflow
+  rail;
+- the asset detail route's existing `Versions` link now resolves to a real
+  route-level screen;
+- browser QA uploads through the direct route, visits version history, validates
+  live navigation IDs, and captures `var/qa/assets-version-upload-route.png`
+  plus `var/qa/assets-versions-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset versions route"`
+  -> 1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "uploads an asset version on a direct route"`
+  -> 1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 6 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `npm run qa:functional:assets:browser` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8016`;
+- frontend: `http://127.0.0.1:5192`;
+- database: `var/qa-assets-versions-routes.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots: `var/qa/assets-version-upload-route.png`,
+  `var/qa/assets-versions-route.png`, `var/qa/assets-edit-metadata-route.png`,
+  `var/qa/assets-detail-route.png`.
+
+Recommended next step:
+Continue Assets route extraction with dedicated asset link management, then
+classifications and archive review.
+
 ## 2026-05-27 Assets Edit Metadata Route Slice
 
 Status:

@@ -566,6 +566,162 @@ describe("Functional Assets Library journey", () => {
     ]);
   });
 
+  it("renders an asset versions route with history, guarded download, and return paths", async () => {
+    const downloadRequests: unknown[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse(cockpitSummary().active_context));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("ACTIVE", "asset_version_1")], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        return Promise.resolve(jsonResponse(assetFixture("ACTIVE", "asset_version_1")));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        return Promise.resolve(jsonResponse({ items: [versionFixture()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/download")) {
+        downloadRequests.push({ method: init?.method ?? "GET" });
+        return Promise.resolve(
+          new Response("asset file", { headers: { "Content-Disposition": "attachment; filename=synthetic_mapping_spec.md" } })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/asset_qa_1/versions");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Versions for Synthetic Mapping Spec" });
+    expect(screen.getByRole("link", { name: "Back to Asset" })).toHaveAttribute("href", "/assets/asset_qa_1");
+    expect(screen.getByRole("link", { name: "Back to Library" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.getByRole("link", { name: "Upload new version" })).toHaveAttribute(
+      "href",
+      "/assets/asset_qa_1/versions/new"
+    );
+    expect(screen.getByLabelText("Asset versions rows")).toHaveTextContent("synthetic_mapping_spec.md");
+    expect(screen.getByLabelText("Asset versions rows")).toHaveTextContent("v1");
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
+    await screen.findByText("Download started: synthetic_mapping_spec.md.");
+    expect(downloadRequests).toEqual([{ method: "GET" }]);
+  });
+
+  it("uploads an asset version on a direct route without showing the legacy workflow", async () => {
+    const uploadRequests: unknown[] = [];
+    let uploadedVersion: ReturnType<typeof versionFixture> | null = null;
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse(cockpitSummary().active_context));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        return Promise.resolve(jsonResponse(assetFixture(uploadedVersion ? "ACTIVE" : "DRAFT", uploadedVersion?.id ?? null)));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        if (init?.method === "POST") {
+          expect(init?.body).toBeInstanceOf(FormData);
+          uploadRequests.push({ method: init?.method });
+          uploadedVersion = versionFixture();
+          return Promise.resolve(jsonResponse(uploadedVersion));
+        }
+        return Promise.resolve(jsonResponse({ items: uploadedVersion ? [uploadedVersion] : [], total: uploadedVersion ? 1 : 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/asset_qa_1/versions/new");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Upload version for Synthetic Mapping Spec" });
+    expect(screen.getByRole("link", { name: "Back to Asset" })).toHaveAttribute("href", "/assets/asset_qa_1");
+    expect(screen.getByRole("link", { name: "Version history" })).toHaveAttribute(
+      "href",
+      "/assets/asset_qa_1/versions"
+    );
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    const versionFile = new File(["# synthetic mapping spec"], "synthetic_mapping_spec.md", { type: "text/markdown" });
+    await userEvent.upload(screen.getByLabelText("Asset version file"), versionFile);
+    await userEvent.click(screen.getByRole("button", { name: "Upload version" }));
+    await screen.findByText("Asset version synthetic_mapping_spec.md uploaded.");
+    expect(uploadRequests).toEqual([{ method: "POST" }]);
+  });
+
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
     const createRequests: unknown[] = [];
     const classificationRequests: unknown[] = [];

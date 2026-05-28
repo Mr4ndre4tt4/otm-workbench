@@ -3,6 +3,67 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Versions Routes Slice
+
+Validation intent:
+
+- continue Assets route extraction after metadata edit;
+- add version history at `/assets/:assetId/versions`;
+- add direct version upload at `/assets/:assetId/versions/new`;
+- keep link management, classification management, and archive review outside
+  this slice.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset versions route"
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "uploads an asset version on a direct route"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+git diff --check
+```
+
+Results:
+
+```text
+Focused asset versions route test: 1 passed.
+Focused direct upload route test: 1 passed.
+Assets functional suite: 6 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+git diff --check: no errors, LF/CRLF warnings only.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8016
+Frontend: http://127.0.0.1:5192
+Database: var/qa-assets-versions-routes.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Version history screenshot: var/qa/assets-versions-route.png
+Version upload screenshot:  var/qa/assets-version-upload-route.png
+```
+
+Validated:
+
+- `/assets/:assetId/versions` renders without the temporary Assets Library
+  workflow rail;
+- `/assets/:assetId/versions/new` uploads a new file version through the
+  existing backend contract;
+- version history exposes `Back to Asset`, `Back to Library`, `Upload new
+  version`, and guarded `Download current version`;
+- the existing create, workflow edit, direct edit, link, download, archive,
+  switch, and return journey remains green.
+
 ## 2026-05-27 Assets Edit Metadata Route Slice
 
 Validation intent:

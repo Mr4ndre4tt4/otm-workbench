@@ -182,13 +182,17 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const location = useLocation();
   const queryClient = useQueryClient();
   const directAssetEditMatch = /^\/assets\/([^/]+)\/edit$/.exec(location.pathname);
+  const directAssetVersionsNewMatch = /^\/assets\/([^/]+)\/versions\/new$/.exec(location.pathname);
+  const directAssetVersionsMatch = /^\/assets\/([^/]+)\/versions$/.exec(location.pathname);
   const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
   const directAssetEditId = directAssetEditMatch?.[1] ?? null;
+  const directAssetVersionsNewId = directAssetVersionsNewMatch?.[1] ?? null;
+  const directAssetVersionsId = directAssetVersionsMatch?.[1] ?? null;
   const directAssetId =
     directAssetDetailMatch && !["library", "new", "classifications"].includes(directAssetDetailMatch[1])
       ? directAssetDetailMatch[1]
       : null;
-  const directAssetRouteId = directAssetEditId ?? directAssetId;
+  const directAssetRouteId = directAssetVersionsNewId ?? directAssetVersionsId ?? directAssetEditId ?? directAssetId;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
@@ -635,6 +639,161 @@ export function AssetsLibraryView({ token }: { token: string }) {
           <StatePanel tone="error">
             Asset detail is unavailable. <Link to="/assets/library">Back to Library</Link>
           </StatePanel>
+        </>
+      );
+    }
+
+    if (directAssetVersionsNewId) {
+      return (
+        <>
+          <PageHeader
+            description="Upload a new governed file version for this asset without mixing link management or lifecycle actions."
+            label="Asset versions"
+            title={`Upload version for ${selectedAsset.name}`}
+          />
+
+          <div className="master-data-action-bar">
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Back to Asset
+            </Link>
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/versions`}>
+              Version history
+            </Link>
+            <Link className="button button-secondary" to="/assets/library">
+              Back to Library
+            </Link>
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          <ModuleWorkspaceLayout
+            ariaLabel="Asset version upload workspace"
+            side={
+              <SelectedObjectPanel
+                ariaLabel="Asset version upload reference"
+                emptyText="No asset metadata is available."
+                fields={[
+                  { label: "Status", value: selectedAsset.status },
+                  { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" },
+                  { label: "Type", value: selectedAsset.asset_type },
+                  { label: "Sensitivity", value: selectedAsset.sensitivity }
+                ]}
+                status={uploadDisabled ? "BLOCKED" : selectedAsset.current_version_id ? "VERSIONED" : "PENDING"}
+                subtitle={selectedAsset.category}
+                title={selectedAsset.name}
+              >
+                <p className="empty-text">
+                  Upload eligibility stays backend-owned. Archived or blocked assets cannot receive new versions.
+                </p>
+              </SelectedObjectPanel>
+            }
+            status={uploadDisabled ? "BLOCKED" : "READY"}
+            title="Upload new version"
+          >
+            <OperationalPanel
+              ariaLabel="Asset version upload form"
+              emptyText="Version upload is unavailable."
+              hasItems
+              status={uploadDisabled ? "BLOCKED" : "READY"}
+              title="File upload"
+            >
+              <div className="master-data-action-bar">
+                <label>
+                  Asset version file
+                  <input
+                    aria-label="Asset version file"
+                    disabled={uploadDisabled}
+                    onChange={(event) => setSelectedVersionFile(event.target.files?.[0] ?? null)}
+                    type="file"
+                  />
+                </label>
+                <Button
+                  disabled={isMutating || !effectiveAssetId || !selectedVersionFile || uploadDisabled}
+                  onClick={handleUploadVersion}
+                  variant="primary"
+                >
+                  Upload version
+                </Button>
+              </div>
+            </OperationalPanel>
+          </ModuleWorkspaceLayout>
+        </>
+      );
+    }
+
+    if (directAssetVersionsId) {
+      const versionItems = assetVersions.data?.items ?? [];
+      return (
+        <>
+          <PageHeader
+            description="Review governed asset version history and guarded current-version download state."
+            label="Asset versions"
+            title={`Versions for ${selectedAsset.name}`}
+          />
+
+          <div className="master-data-action-bar">
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Back to Asset
+            </Link>
+            <Link className="button button-secondary" to="/assets/library">
+              Back to Library
+            </Link>
+            <Link className="button button-primary" to={`/assets/${selectedAsset.id}/versions/new`}>
+              Upload new version
+            </Link>
+            <Button disabled={isMutating || !effectiveAssetId || downloadDisabled} onClick={handleDownloadCurrentVersion}>
+              Download current version
+            </Button>
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          <ModuleWorkspaceLayout
+            ariaLabel="Asset versions workspace"
+            side={
+              <SelectedObjectPanel
+                ariaLabel="Asset versions reference"
+                emptyText="No asset metadata is available."
+                fields={[
+                  { label: "Status", value: selectedAsset.status },
+                  { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" },
+                  { label: "Versions", value: String(versionItems.length) },
+                  { label: "Download", value: downloadDisabled ? "Blocked" : "Ready" }
+                ]}
+                status={selectedAsset.current_version_id ? "ACTIVE" : "PENDING"}
+                subtitle={selectedAsset.asset_type}
+                title={selectedAsset.name}
+              />
+            }
+            status={selectedAsset.current_version_id ? "ACTIVE" : "PENDING"}
+            title="Version history"
+          >
+            <OperationalPanel
+              ariaLabel="Asset versions history"
+              emptyText="No versions uploaded for this asset."
+              hasItems={versionItems.length > 0}
+              status={selectedAsset.current_version_id ? "ACTIVE" : "PENDING"}
+              title="Versions"
+            >
+              <DetailList
+                ariaLabel="Asset versions rows"
+                emptyText="No versions uploaded for this asset."
+                items={versionItems.map((version) => ({
+                  id: version.id,
+                  meta: [
+                    `v${version.version_number}`,
+                    version.content_type,
+                    `${version.size_bytes} bytes`,
+                    version.uploaded_by ?? "Unknown uploader"
+                  ],
+                  status: version.status,
+                  title: version.file_name
+                }))}
+              />
+            </OperationalPanel>
+          </ModuleWorkspaceLayout>
         </>
       );
     }

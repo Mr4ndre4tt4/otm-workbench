@@ -303,6 +303,35 @@ async function run() {
     await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().click();
     await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Direct Edited").waitFor();
 
+    assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
+    if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct versions-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}/versions/new`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Upload version for Synthetic Rate Table Notes Direct Edited" }).waitFor();
+    await page.getByLabel("Asset version file").setInputFiles({
+      name: "synthetic_direct_version.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from("# synthetic direct version\n")
+    });
+    await page.getByRole("button", { name: "Upload version" }).click();
+    await page.getByText("Asset version synthetic_direct_version.md uploaded.").waitFor();
+    const versionUploadScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-version-upload-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(versionUploadScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: versionUploadScreenshotPath });
+    await page.getByRole("link", { name: "Version history" }).click();
+    await page.getByRole("heading", { name: "Versions for Synthetic Rate Table Notes Direct Edited" }).waitFor();
+    await page.getByLabel("Asset versions rows").getByText("synthetic_direct_version.md").waitFor();
+    const versionsScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-versions-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(versionsScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: versionsScreenshotPath });
+    await page.getByRole("link", { name: "Back to Library" }).click();
+    await page.getByLabel("Assets Library workflow").waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().click();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Direct Edited").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     await page.getByLabel("Asset version file").setInputFiles({
       name: "synthetic_mapping_spec.md",
@@ -453,7 +482,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-upload-link-download-archive-switch-guards-return",
+          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-upload-link-download-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -463,6 +492,8 @@ async function run() {
           reference_asset_id: referenceAsset.id,
           detail_route_screenshot: "var/qa/assets-detail-route.png",
           edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
+          versions_route_screenshot: "var/qa/assets-versions-route.png",
+          version_upload_route_screenshot: "var/qa/assets-version-upload-route.png",
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id
