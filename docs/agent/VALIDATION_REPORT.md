@@ -1,4 +1,4 @@
-# Validation Report
+﻿# Validation Report
 
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
@@ -2699,3 +2699,54 @@ Notes:
 - The older consolidated Cockpit spec still contains command-center/dashboard
   language and should be cleaned up later so future agents do not revive
   project-management panels.
+
+## 2026-05-28 Rates Final Revalidation
+
+Scope:
+
+- Revalidated Rates Studio for GitHub issue #187.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_rates_batches.py -q
+python -m pytest tests/test_rates_summary.py -q
+python -m pytest tests/test_rates_csv_export_artifacts.py tests/test_rates_batch_approval.py -q
+python -m pytest tests/test_rates_dictionary.py tests/test_rates_csv_preview.py -q
+python -m pytest tests/test_rates_batch_validation.py tests/test_rates_batch_scenarios.py tests/test_rates_batch_csv_preview.py -q
+npm test -- src/app/AppFunctionalRates.test.tsx
+npm run build
+```
+
+Results:
+
+```text
+tests/test_rates_batches.py: 8 passed
+tests/test_rates_summary.py: 2 passed
+tests/test_rates_csv_export_artifacts.py + tests/test_rates_batch_approval.py: 21 passed
+tests/test_rates_dictionary.py + tests/test_rates_csv_preview.py: 14 passed
+tests/test_rates_batch_validation.py + tests/test_rates_batch_scenarios.py + tests/test_rates_batch_csv_preview.py: 20 passed
+AppFunctionalRates.test.tsx: 4 passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Existing browser QA evidence:
+
+```text
+var/qa/rates-batch-library-search.png
+var/qa/rates-library-new-routes.png
+var/qa/rates-table-detail-route.png
+var/qa/rates-route-level-batch-issues.png
+var/qa/rates-route-level-review-screens.png
+var/qa/rates-approval-export-review-gates.png
+var/qa/rates-artifact-evidence-handoff-routes.png
+var/qa/rates-route-recovery-lifecycle.png
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured in this closure slice.
+- Future browser QA must query `/api/v1/platform/navigation` on the same
+  runtime/session before screenshots and reject stale evidence if excluded
+  top-level modules appear.

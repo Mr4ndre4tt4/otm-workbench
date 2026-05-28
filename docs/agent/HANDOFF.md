@@ -1,4 +1,4 @@
-# Handoff
+﻿# Handoff
 
 **Status:** active
 **Date:** 2026-05-27
@@ -2120,3 +2120,61 @@ Open risks:
 Recommended next step:
 
 Close #186 after push, then continue with #187 Rates Studio revalidation.
+
+## 2026-05-28 Rates Final Revalidation
+
+Status:
+Accepted for current UI phase and GitHub closure ready.
+
+Scope:
+Revalidated GitHub issue #187 against the active Rates Studio To-Be batch
+lifecycle: hub, batch library, creation, overview/detail, staging, table
+detail, issues, CSV preview, export review, approval review, artifacts,
+evidence, and Load Plan handoff.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_RATES_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/RATES_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_rates_batches.py -q` passed with 8 tests.
+- `python -m pytest tests/test_rates_summary.py -q` passed with 2 tests.
+- `python -m pytest tests/test_rates_csv_export_artifacts.py tests/test_rates_batch_approval.py -q` passed with 21 tests.
+- `python -m pytest tests/test_rates_dictionary.py tests/test_rates_csv_preview.py -q` passed with 14 tests.
+- `python -m pytest tests/test_rates_batch_validation.py tests/test_rates_batch_scenarios.py tests/test_rates_batch_csv_preview.py -q` passed with 20 tests.
+- `npm test -- src/app/AppFunctionalRates.test.tsx` passed with 4 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Evidence reused:
+
+- `var/qa/rates-batch-library-search.png`
+- `var/qa/rates-library-new-routes.png`
+- `var/qa/rates-table-detail-route.png`
+- `var/qa/rates-route-level-batch-issues.png`
+- `var/qa/rates-route-level-review-screens.png`
+- `var/qa/rates-approval-export-review-gates.png`
+- `var/qa/rates-artifact-evidence-handoff-routes.png`
+- `var/qa/rates-route-recovery-lifecycle.png`
+
+Validation not run:
+
+- Fresh browser screenshots. Existing Rates route-level browser evidence remains
+  accepted visual evidence for #187; any future screenshot capture must first
+  pass the `/api/v1/platform/navigation` runtime freshness gate.
+
+Open risks:
+
+- Backend-owned advanced search metadata/operators, pagination, row mutation,
+  Data Dictionary metadata summary, and expanded blocked-path browser QA remain
+  backlog, not blockers for the current To-Be sequence.
+- Parallel shell/assistant and Integration Mapping work remains outside this
+  closure.
+
+Recommended next step:
+
+Close #187 after push, then choose the next tracked roadmap issue outside
+Rates unless the user explicitly asks for one of the backlog items.
