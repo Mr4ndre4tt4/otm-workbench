@@ -185,17 +185,24 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const directAssetVersionsNewMatch = /^\/assets\/([^/]+)\/versions\/new$/.exec(location.pathname);
   const directAssetVersionsMatch = /^\/assets\/([^/]+)\/versions$/.exec(location.pathname);
   const directAssetLinksMatch = /^\/assets\/([^/]+)\/links$/.exec(location.pathname);
+  const directAssetArchiveMatch = /^\/assets\/([^/]+)\/archive$/.exec(location.pathname);
   const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
   const directAssetEditId = directAssetEditMatch?.[1] ?? null;
   const directAssetVersionsNewId = directAssetVersionsNewMatch?.[1] ?? null;
   const directAssetVersionsId = directAssetVersionsMatch?.[1] ?? null;
   const directAssetLinksId = directAssetLinksMatch?.[1] ?? null;
+  const directAssetArchiveId = directAssetArchiveMatch?.[1] ?? null;
   const directAssetId =
     directAssetDetailMatch && !["library", "new", "classifications"].includes(directAssetDetailMatch[1])
       ? directAssetDetailMatch[1]
       : null;
   const directAssetRouteId =
-    directAssetLinksId ?? directAssetVersionsNewId ?? directAssetVersionsId ?? directAssetEditId ?? directAssetId;
+    directAssetArchiveId ??
+    directAssetLinksId ??
+    directAssetVersionsNewId ??
+    directAssetVersionsId ??
+    directAssetEditId ??
+    directAssetId;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
@@ -975,6 +982,106 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   title: link.target_label
                 }))}
               />
+            </OperationalPanel>
+          </ModuleWorkspaceLayout>
+        </>
+      );
+    }
+
+    if (directAssetArchiveId) {
+      const versionItems = assetVersions.data?.items ?? [];
+      const linkItems = assetLinks.data?.items ?? [];
+      const linkedTargetSummary = `${linkItems.length} linked target${linkItems.length === 1 ? "" : "s"}`;
+      const currentVersion = versionItems.find((version) => version.id === selectedAsset.current_version_id) ?? versionItems[0];
+      return (
+        <>
+          <PageHeader
+            description="Review lifecycle impact before archiving this governed reusable asset."
+            label="Asset lifecycle"
+            title={`Archive ${selectedAsset.name}`}
+          />
+
+          <div className="master-data-action-bar">
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Back to Asset
+            </Link>
+            <Link className="button button-secondary" to="/assets/library">
+              Back to Library
+            </Link>
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Cancel
+            </Link>
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          <ModuleWorkspaceLayout
+            ariaLabel="Asset archive workspace"
+            side={
+              <SelectedObjectPanel
+                ariaLabel="Asset archive reference"
+                emptyText="No asset metadata is available."
+                fields={[
+                  { label: "Status", value: selectedAsset.status },
+                  { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" },
+                  { label: "Versions", value: String(versionItems.length) },
+                  { label: "Links", value: linkedTargetSummary }
+                ]}
+                status={archiveDisabled ? "BLOCKED" : "READY"}
+                subtitle={selectedAsset.asset_type}
+                title={selectedAsset.name}
+              >
+                <p className="empty-text">
+                  Archive eligibility is backend-owned. Archived assets block metadata updates, version uploads, and new links.
+                </p>
+              </SelectedObjectPanel>
+            }
+            status={archiveDisabled ? "BLOCKED" : "READY"}
+            title="Archive review"
+          >
+            <OperationalPanel
+              ariaLabel="Asset archive impact"
+              emptyText="Archive impact is unavailable."
+              hasItems
+              status={archiveDisabled ? "BLOCKED" : "READY"}
+              title="Impact summary"
+            >
+              <DetailList
+                ariaLabel="Asset archive impact rows"
+                items={[
+                  {
+                    id: "status",
+                    meta: [selectedAsset.visibility, selectedAsset.sensitivity],
+                    status: selectedAsset.status,
+                    title: selectedAsset.status
+                  },
+                  {
+                    id: "version",
+                    meta: [
+                      selectedAsset.current_version_id ?? "Missing current version id",
+                      versionItems.length ? `${versionItems.length} version rows` : "No uploaded versions"
+                    ],
+                    status: selectedAsset.current_version_id ? "ACTIVE" : "PENDING",
+                    title: currentVersion?.file_name ?? selectedAsset.current_version_id ?? "Missing current version"
+                  },
+                  {
+                    id: "links",
+                    meta: [linkItems.map((link) => link.target_label).join(", ") || "No linked targets"],
+                    status: linkItems.length ? "ACTIVE" : "PENDING",
+                    title: linkedTargetSummary
+                  }
+                ]}
+              />
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={isMutating || !effectiveAssetId || archiveDisabled}
+                  onClick={handleArchiveAsset}
+                  variant="primary"
+                >
+                  Archive asset
+                </Button>
+              </div>
             </OperationalPanel>
           </ModuleWorkspaceLayout>
         </>

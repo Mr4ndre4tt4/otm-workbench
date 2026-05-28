@@ -431,9 +431,20 @@ async function run() {
     await page.getByRole("button", { name: "Download current version" }).click();
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
 
+    assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
+    if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct archive-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}/archive`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Archive Synthetic Rate Table Notes Direct Edited" }).waitFor();
+    await page.getByLabel("Asset archive impact").getByText("synthetic_mapping_spec.md").waitFor();
+    const archiveScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-archive-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(archiveScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: archiveScreenshotPath });
     await page.getByRole("button", { name: "Archive asset" }).click();
     await page.getByText("Asset Synthetic Rate Table Notes Direct Edited archived.").waitFor();
-    await page.getByLabel("Selected asset", { exact: true }).getByText("ARCHIVED").waitFor();
+    await page.getByLabel("Asset archive impact rows").getByText("ARCHIVED").first().waitFor();
     assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
     createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
     if (!createdRouteAsset) {
@@ -503,7 +514,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-archive-switch-guards-return",
+          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-direct-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -516,6 +527,7 @@ async function run() {
           versions_route_screenshot: "var/qa/assets-versions-route.png",
           version_upload_route_screenshot: "var/qa/assets-version-upload-route.png",
           links_route_screenshot: "var/qa/assets-links-route.png",
+          archive_route_screenshot: "var/qa/assets-archive-route.png",
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id

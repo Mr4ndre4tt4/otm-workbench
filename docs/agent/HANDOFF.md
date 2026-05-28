@@ -3,6 +3,52 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Archive Route Slice
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has a route-level archive review screen at
+`/assets/:assetId/archive`.
+
+What changed:
+
+- `/assets/:assetId/archive` renders archive impact and confirmation for one
+  asset;
+- the screen shows lifecycle status, current version file/id, version count,
+  linked target count, visibility, and sensitivity;
+- `Archive asset` uses the existing backend archive endpoint and disables after
+  the asset reaches `ARCHIVED`;
+- the archive route exposes `Back to Asset`, `Back to Library`, and `Cancel`;
+- browser QA now archives through the direct route and captures
+  `var/qa/assets-archive-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "archives an asset"` ->
+  1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 8 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `npm run qa:functional:assets:browser` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8018`;
+- frontend: `http://127.0.0.1:5195`;
+- database: `var/qa-assets-archive-route.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots: `var/qa/assets-archive-route.png`,
+  `var/qa/assets-links-route.png`, `var/qa/assets-version-upload-route.png`,
+  `var/qa/assets-versions-route.png`, `var/qa/assets-edit-metadata-route.png`,
+  `var/qa/assets-detail-route.png`.
+
+Recommended next step:
+Continue Assets route extraction with classification list/create/edit route
+refinement, then run an Assets acceptance pass against the consolidated spec.
+
 ## 2026-05-27 Assets Links Route Slice
 
 Status:
