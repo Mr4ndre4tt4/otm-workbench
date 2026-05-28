@@ -3,6 +3,70 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Acceptance Pass
+
+Status:
+Accepted for current delivery cycle.
+
+Scope:
+Completed GitHub issue #197 by comparing Assets Library against the consolidated
+Assets spec, recording the current-cycle acceptance decision, and creating
+GitHub backlog issues for accepted deferrals.
+
+What changed:
+
+- created `docs/agent/ASSETS_ACCEPTANCE_CHECKLIST_2026-05-28.md`;
+- created `docs/agent/TASK_CONTRACT_ASSETS_ACCEPTANCE_PASS.md`;
+- updated `docs/agent/DOCUMENT_INVENTORY.md` with the acceptance checklist;
+- updated #195 with completed #196, in-progress #197, and backlog links;
+- commented #197 with backlog closeout status;
+- created backlog issues #198, #199, and #200.
+
+Acceptance decision:
+
+Assets Library is accepted for the current delivery cycle. The module now covers
+hub, library search, create, detail, edit metadata, versions, upload, links,
+classification management, guarded download, and archive with backend-owned
+validation and route-level recovery.
+
+Backlog retained:
+
+- #198 route-optimized detail and archive impact contracts;
+- #199 batch/checklist link target lookup;
+- #200 target OTM version taxonomy validation;
+- restore/deprecate lifecycle variants and create-with-file shortcut remain
+  future enhancements.
+
+Validation run:
+
+- Assets spec and implementation evidence review;
+- GitHub issue create/edit/comment for #195 and #197-#200;
+- `git diff --cached --check` before commit.
+
+Validation reused from #196:
+
+- Assets backend suite: 50 passed;
+- Assets functional suite: 13 passed;
+- frontend build passed with existing Vite large chunk warning;
+- browser QA passed after runtime freshness gate.
+
+Validation not run:
+
+- full repository backend suite;
+- full repository frontend suite;
+- new browser QA, because this slice only records acceptance based on the latest
+  #196 Assets validation evidence.
+
+Open risks:
+
+- future Assets enhancements must use the backlog issues instead of expanding
+  accepted current-cycle scope silently.
+- unrelated Assistant and Integration Mapping work remains outside this slice.
+
+Recommended next step:
+Close #197 and #195 after push, then move to the next approved module slice.
+Recommended default: Master Data / Data Factory foundation unless the user
+prioritizes another non-Integration-Mapping module.
 ## 2026-05-28 Assets Target OTM Version Search
 
 Status:

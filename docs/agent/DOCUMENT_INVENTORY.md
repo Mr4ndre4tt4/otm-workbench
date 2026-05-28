@@ -36,6 +36,7 @@ No file is archived by this inventory alone.
 | `docs/agent/TASK_CONTRACT_TO_BE_ALIGNMENT.md` | active | Contract for the current documentation consolidation and To-Be planning slice. |
 | `docs/agent/TO_BE_SOLUTION_ALIGNMENT_PLAN.md` | active | Current plan for adapting the implementation to the Complete Solution Mockup To-Be state. |
 | `docs/agent/TEST_SCENARIO_FIXTURE_STRATEGY.md` | active | Cross-module scenario and valid synthetic fixture strategy. |
+| `docs/agent/ASSETS_ACCEPTANCE_CHECKLIST_2026-05-28.md` | active | Current-cycle Assets Library acceptance checklist and backlog closeout. |
 | `docs/agent/TASK_CONTRACT_FRONTEND_NAVIGATION_PRUNING.md` | active | Contract for the first frontend cleanup implementation slice. |
 | `docs/agent/FRONTEND_NAVIGATION_PRUNING_REPORT.md` | active | Implementation report for pruning main navigation to the To-Be UI phase. |
 | `docs/agent/module-scope/*.md` | active | Module-by-module scope validation notes. |
