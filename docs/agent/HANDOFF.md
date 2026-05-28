@@ -3,6 +3,46 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Browser QA Script Classification
+
+Status:
+Implemented and validated for GitHub issue #237.
+
+Scope:
+Created a governance map for browser QA scripts, marking current-phase scripts
+as active, Integration Mapping as reserved, diagnostic scripts as internal,
+Assistant as deferred, and Admin/Coordinate Quality top-level scripts as stale
+for current acceptance evidence.
+
+Files intentionally changed:
+
+- `docs/agent/BROWSER_QA_SCRIPT_CLASSIFICATION.md`
+- `docs/agent/TASK_CONTRACT_BROWSER_QA_SCRIPT_CLASSIFICATION_2026_05_28.md`
+- `docs/agent/FRONTEND_CLEANUP_CANDIDATE_CLASSIFICATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `Get-ChildItem frontend/scripts -Filter *.mjs | ForEach-Object { node --check $_.FullName }`
+  all scripts parsed successfully.
+- `git diff --check`
+  passed, with expected Windows CRLF warnings.
+
+Validation not planned:
+
+- Browser screenshots are not planned because the slice classifies evidence
+  validity and does not run browser journeys.
+
+Open risks:
+
+- Internal and stale scripts remain callable in `package.json`; removing or
+  renaming commands requires a later implementation issue with impact review.
+
+Recommended next step:
+
+Commit, push, open the PR for #237, wait for checks, then merge if green.
+
 ## 2026-05-28 Internal GUI Route Guard
 
 Status:
