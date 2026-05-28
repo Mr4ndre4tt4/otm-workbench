@@ -3175,3 +3175,59 @@ Notes:
   validation baseline slice.
 - Follow-up implementation issues should be opened when the next concrete
   module lane starts, not as broad placeholders.
+
+## 2026-05-28 Cockpit Context Selector Evidence
+
+Scope:
+
+- Revalidated Project Cockpit backend summary contracts and current UI phase
+  navigation.
+- Revalidated the frontend Cockpit v3 macro-group test.
+- Hardened shell browser QA with a live navigation freshness gate and Cockpit
+  context-selector screenshot evidence.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q
+npm test -- src/app/App.test.tsx -t "Cockpit"
+node --check scripts/functional-shell-browser.mjs
+npm run qa:functional:shell:browser
+npm run build
+```
+
+Runtime:
+
+```text
+Backend: http://127.0.0.1:8054
+Frontend: http://127.0.0.1:5232
+Database: var/qa-cockpit-context-selector.db
+User: demo@example.test
+Live navigation IDs: master_data, home, rates, load_plan, assets,
+order_release_generator, integration_mapping, settings
+```
+
+Results:
+
+```text
+Project Cockpit backend/navigation: 17 passed
+Cockpit frontend selected test: 1 passed, 29 skipped
+functional-shell-browser syntax check: passed
+functional-shell-browser QA: passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Evidence:
+
+```text
+var/qa/cockpit-context-selector.png
+```
+
+Notes:
+
+- Browser QA must use Vite proxy via `VITE_DEV_PROXY_TARGET`; setting
+  `VITE_API_BASE_URL` cross-origin triggers unsupported preflight requests.
+- The screenshot was captured from the shared dirty local workspace and includes
+  the floating Assistant launcher from parallel work. The Cockpit/sidebar
+  acceptance evidence remains valid because excluded top-level modules are
+  absent and the context selector shows private `OTM1` scope.

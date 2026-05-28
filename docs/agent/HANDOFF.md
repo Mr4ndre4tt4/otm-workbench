@@ -2748,3 +2748,60 @@ Recommended next step:
 Close #214 after push, then select the next concrete lane. Current roadmap
 order points to Cockpit context selector evidence or Rates completion, unless
 the user reprioritizes.
+
+## 2026-05-28 Cockpit Context Selector Evidence
+
+Status:
+Implemented, validated, and ready to close #215.
+
+Scope:
+Captured Cockpit context selector and route recovery evidence with a fresh
+runtime navigation gate.
+
+Files intentionally changed:
+
+- `frontend/scripts/functional-shell-browser.mjs`
+- `docs/agent/TASK_CONTRACT_COCKPIT_CONTEXT_SELECTOR_EVIDENCE.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_project_cockpit_summary.py tests/test_modules_navigation.py -q`
+  passed with 17 tests.
+- `npm test -- src/app/App.test.tsx -t "Cockpit"` passed with 1 selected test.
+- `node --check scripts/functional-shell-browser.mjs` passed.
+- `npm run qa:functional:shell:browser` passed against backend
+  `http://127.0.0.1:8054` and frontend `http://127.0.0.1:5232`.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Evidence:
+
+- Live navigation IDs before browser QA: `master_data`, `home`, `rates`,
+  `load_plan`, `assets`, `order_release_generator`, `integration_mapping`,
+  `settings`.
+- Screenshot: `var/qa/cockpit-context-selector.png`.
+
+Validation not run:
+
+- Full frontend functional suite. This slice changed only the shell browser QA
+  script and evidence docs.
+
+Open risks:
+
+- The screenshot includes the floating Assistant launcher from unrelated local
+  dirty work. The sidebar and Cockpit context evidence are valid because
+  excluded top-level modules are absent.
+- Cockpit still needs deeper user-review/visual acceptance before being marked
+  complete.
+
+Next-chat intake notes:
+
+- Do not use `VITE_API_BASE_URL` for local browser QA unless backend CORS is
+  explicitly configured; use `VITE_DEV_PROXY_TARGET` for the Vite dev server.
+- Integration Mapping remains reserved for its separate workstream.
+
+Recommended next step:
+
+Close #215 after push. The next natural lane is Rates completion/revalidation
+unless the user wants another Cockpit visual acceptance pass first.
