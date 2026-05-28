@@ -2750,3 +2750,66 @@ Notes:
 - Future browser QA must query `/api/v1/platform/navigation` on the same
   runtime/session before screenshots and reject stale evidence if excluded
   top-level modules appear.
+
+## 2026-05-28 Master Data Final Revalidation
+
+Scope:
+
+- Revalidated Master Data / Data Factory for GitHub issue #203.
+- No product source behavior changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_master_data_direct_otm_import_guard.py -q
+python -m pytest tests/test_coordinate_quality_api.py tests/test_coordinate_quality_engine.py -q
+python -m pytest tests/test_master_data_templates.py -q
+npm test -- src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalCoordinateQuality.test.tsx
+npm test -- src/app/App.test.tsx -t "Master Data"
+npm run build
+```
+
+Results:
+
+```text
+tests/test_master_data_direct_otm_import_guard.py: 5 passed
+tests/test_coordinate_quality_api.py + tests/test_coordinate_quality_engine.py: 15 passed
+tests/test_master_data_templates.py: 58 passed
+AppFunctionalMasterData.test.tsx + AppFunctionalCoordinateQuality.test.tsx: 7 passed
+App.test.tsx - Master Data: 4 passed, 26 skipped
+frontend build: passed with existing Vite large chunk warning
+```
+
+Existing browser QA evidence:
+
+```text
+output/gui-qa/master-data/01-master-data-hub.png
+output/gui-qa/master-data/02-template-builder-entry.png
+output/gui-qa/master-data/02-template-builder-search.png
+output/gui-qa/master-data/02-template-builder-detail.png
+output/gui-qa/master-data/02-template-builder-copy.png
+output/gui-qa/master-data/02-template-builder-copy-created.png
+output/gui-qa/master-data/02-template-builder-edit.png
+output/gui-qa/master-data/02-template-builder-retire.png
+output/gui-qa/master-data/02-template-builder-new.png
+output/gui-qa/master-data/03-data-factory-entry.png
+output/gui-qa/master-data/04-template-detail-regions-basic.png
+output/gui-qa/master-data/05-batch-detail-input.png
+output/gui-qa/master-data/06-batch-detail-validated.png
+output/gui-qa/master-data/07-batch-detail-csv-package.png
+output/gui-qa/master-data/08-batch-detail-load-plan.png
+output/gui-qa/master-data/09-quality-tools-hub.png
+output/gui-qa/master-data/10-lat-lon-validator.png
+output/gui-qa/master-data/11-lat-lon-batch-detail.png
+output/gui-qa/master-data/12-lat-lon-export.png
+```
+
+Notes:
+
+- Fresh browser screenshots were not captured in this closure slice.
+- Future browser QA must query `/api/v1/platform/navigation` on the same
+  runtime/session before screenshots and reject stale evidence if excluded
+  top-level modules appear.
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.

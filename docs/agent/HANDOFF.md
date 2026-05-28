@@ -2178,3 +2178,77 @@ Recommended next step:
 
 Close #187 after push, then choose the next tracked roadmap issue outside
 Rates unless the user explicitly asks for one of the backlog items.
+
+## 2026-05-28 Master Data Final Revalidation
+
+Status:
+Accepted for current UI phase and GitHub closure ready.
+
+Scope:
+Revalidated GitHub issue #203 against the active Master Data / Data Factory
+To-Be route-family model: Data Factory, Template Builder, and Quality Tools as
+separate operational, authoring, and quality workflows.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_MASTER_DATA_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/MASTER_DATA_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_master_data_direct_otm_import_guard.py -q`
+  passed with 5 tests.
+- `python -m pytest tests/test_coordinate_quality_api.py tests/test_coordinate_quality_engine.py -q`
+  passed with 15 tests.
+- `python -m pytest tests/test_master_data_templates.py -q` passed with 58
+  tests.
+- `npm test -- src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalCoordinateQuality.test.tsx`
+  passed with 7 tests.
+- `npm test -- src/app/App.test.tsx -t "Master Data"` passed with 4 tests and
+  26 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Evidence reused:
+
+- `output/gui-qa/master-data/01-master-data-hub.png`
+- `output/gui-qa/master-data/02-template-builder-entry.png`
+- `output/gui-qa/master-data/02-template-builder-search.png`
+- `output/gui-qa/master-data/02-template-builder-detail.png`
+- `output/gui-qa/master-data/02-template-builder-copy.png`
+- `output/gui-qa/master-data/02-template-builder-copy-created.png`
+- `output/gui-qa/master-data/02-template-builder-edit.png`
+- `output/gui-qa/master-data/02-template-builder-retire.png`
+- `output/gui-qa/master-data/02-template-builder-new.png`
+- `output/gui-qa/master-data/03-data-factory-entry.png`
+- `output/gui-qa/master-data/04-template-detail-regions-basic.png`
+- `output/gui-qa/master-data/05-batch-detail-input.png`
+- `output/gui-qa/master-data/06-batch-detail-validated.png`
+- `output/gui-qa/master-data/07-batch-detail-csv-package.png`
+- `output/gui-qa/master-data/08-batch-detail-load-plan.png`
+- `output/gui-qa/master-data/09-quality-tools-hub.png`
+- `output/gui-qa/master-data/10-lat-lon-validator.png`
+- `output/gui-qa/master-data/11-lat-lon-batch-detail.png`
+- `output/gui-qa/master-data/12-lat-lon-export.png`
+
+Validation not run:
+
+- Fresh browser screenshots. Existing Master Data route-family browser evidence
+  remains accepted visual evidence for #203; any future screenshot capture must
+  first pass the `/api/v1/platform/navigation` runtime freshness gate.
+
+Open risks:
+
+- Direct OTM submission remains guarded/future scope until connection,
+  credential, capability, audit, retry/job, and Oracle transport governance
+  exist.
+- Deeper audited spreadsheet editing, advanced coordinate diagnostics, backend
+  retire/delete mutation, and deeper Load Plan handoff behavior remain backlog.
+- Parallel shell/assistant and Integration Mapping work remains outside this
+  closure.
+
+Recommended next step:
+
+Close #203 after push. Keep #202 open as the Master Data stabilization lane
+until the next concrete follow-up slices are created or explicitly deferred.
