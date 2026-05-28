@@ -332,6 +332,27 @@ async function run() {
     await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().click();
     await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Direct Edited").waitFor();
 
+    assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
+    if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct links-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}/links`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Links for Synthetic Rate Table Notes Direct Edited" }).waitFor();
+    await page.getByLabel("Asset link type").selectOption("MODULE");
+    await page.getByLabel("Asset guided link target").selectOption("load_plan");
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.getByText("Asset link load_plan created.").waitFor();
+    await page.getByLabel("Asset links rows").getByText("Load Plan").waitFor();
+    const linksScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-links-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(linksScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: linksScreenshotPath });
+    await page.getByRole("link", { name: "Back to Library" }).click();
+    await page.getByLabel("Assets Library workflow").waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().click();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Direct Edited").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     await page.getByLabel("Asset version file").setInputFiles({
       name: "synthetic_mapping_spec.md",
@@ -482,7 +503,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-upload-link-download-archive-switch-guards-return",
+          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -494,6 +515,7 @@ async function run() {
           edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
           versions_route_screenshot: "var/qa/assets-versions-route.png",
           version_upload_route_screenshot: "var/qa/assets-version-upload-route.png",
+          links_route_screenshot: "var/qa/assets-links-route.png",
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id

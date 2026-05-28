@@ -3,6 +3,62 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Links Route Slice
+
+Validation intent:
+
+- continue Assets route extraction after version history/upload;
+- add relationship management at `/assets/:assetId/links`;
+- keep archive review, classification refinement, and backend target lookup
+  improvements outside this slice.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset link"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+git diff --check
+```
+
+Results:
+
+```text
+Focused asset links route test: 1 passed.
+Assets functional suite: 7 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+git diff --check: no errors, LF/CRLF warnings only.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8017
+Frontend: http://127.0.0.1:5194
+Database: var/qa-assets-links-route.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Links screenshot: var/qa/assets-links-route.png
+```
+
+Validated:
+
+- `/assets/:assetId/links` renders without the temporary Assets Library
+  workflow rail;
+- the direct route creates a `MODULE` link through the existing backend
+  contract;
+- the route exposes `Back to Asset` and `Back to Library`;
+- the existing create, workflow edit, direct edit, direct versions, workflow
+  links, download, archive, switch, and return journey remains green.
+
 ## 2026-05-27 Assets Versions Routes Slice
 
 Validation intent:

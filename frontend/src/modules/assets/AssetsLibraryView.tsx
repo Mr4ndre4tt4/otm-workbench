@@ -184,15 +184,18 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const directAssetEditMatch = /^\/assets\/([^/]+)\/edit$/.exec(location.pathname);
   const directAssetVersionsNewMatch = /^\/assets\/([^/]+)\/versions\/new$/.exec(location.pathname);
   const directAssetVersionsMatch = /^\/assets\/([^/]+)\/versions$/.exec(location.pathname);
+  const directAssetLinksMatch = /^\/assets\/([^/]+)\/links$/.exec(location.pathname);
   const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
   const directAssetEditId = directAssetEditMatch?.[1] ?? null;
   const directAssetVersionsNewId = directAssetVersionsNewMatch?.[1] ?? null;
   const directAssetVersionsId = directAssetVersionsMatch?.[1] ?? null;
+  const directAssetLinksId = directAssetLinksMatch?.[1] ?? null;
   const directAssetId =
     directAssetDetailMatch && !["library", "new", "classifications"].includes(directAssetDetailMatch[1])
       ? directAssetDetailMatch[1]
       : null;
-  const directAssetRouteId = directAssetVersionsNewId ?? directAssetVersionsId ?? directAssetEditId ?? directAssetId;
+  const directAssetRouteId =
+    directAssetLinksId ?? directAssetVersionsNewId ?? directAssetVersionsId ?? directAssetEditId ?? directAssetId;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
@@ -790,6 +793,186 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   ],
                   status: version.status,
                   title: version.file_name
+                }))}
+              />
+            </OperationalPanel>
+          </ModuleWorkspaceLayout>
+        </>
+      );
+    }
+
+    if (directAssetLinksId) {
+      const linkItems = assetLinks.data?.items ?? [];
+      return (
+        <>
+          <PageHeader
+            description="Create and review governed relationships from this asset to backend-owned workbench targets."
+            label="Asset links"
+            title={`Links for ${selectedAsset.name}`}
+          />
+
+          <div className="master-data-action-bar">
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Back to Asset
+            </Link>
+            <Link className="button button-secondary" to="/assets/library">
+              Back to Library
+            </Link>
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          <ModuleWorkspaceLayout
+            ariaLabel="Asset links workspace"
+            side={
+              <SelectedObjectPanel
+                ariaLabel="Asset links reference"
+                emptyText="No asset metadata is available."
+                fields={[
+                  { label: "Status", value: selectedAsset.status },
+                  { label: "Links", value: String(linkItems.length) },
+                  { label: "Module", value: selectedAsset.module_id ?? "None" },
+                  { label: "Sensitivity", value: selectedAsset.sensitivity }
+                ]}
+                status={linkDisabled ? "BLOCKED" : "READY"}
+                subtitle={selectedAsset.asset_type}
+                title={selectedAsset.name}
+              >
+                <p className="empty-text">
+                  Artifact and evidence relationships stay client-safe through backend validation.
+                </p>
+              </SelectedObjectPanel>
+            }
+            status={linkDisabled ? "BLOCKED" : "READY"}
+            title="Relationship editor"
+          >
+            <OperationalPanel
+              ariaLabel="Asset link creation form"
+              emptyText="Link creation is unavailable."
+              hasItems
+              status={linkDisabled ? "BLOCKED" : "READY"}
+              title="Create link"
+            >
+              <div className="master-data-action-bar">
+                <label>
+                  Asset link type
+                  <select aria-label="Asset link type" onChange={(event) => setLinkType(event.target.value)} value={linkType}>
+                    {assetLinkTypeOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {linkType === "ARTIFACT" || linkType === "EVIDENCE" ? (
+                  <>
+                    <label>
+                      Evidence target source module filter
+                      <input
+                        aria-label="Evidence target source module filter"
+                        onChange={(event) =>
+                          setDraftEvidenceTargetFilters((current) => ({ ...current, source_module: event.target.value }))
+                        }
+                        value={draftEvidenceTargetFilters.source_module ?? ""}
+                      />
+                    </label>
+                    <label>
+                      Evidence target type filter
+                      <input
+                        aria-label="Evidence target type filter"
+                        onChange={(event) =>
+                          setDraftEvidenceTargetFilters((current) => ({ ...current, evidence_type: event.target.value }))
+                        }
+                        value={draftEvidenceTargetFilters.evidence_type ?? ""}
+                      />
+                    </label>
+                    <label>
+                      Evidence target status filter
+                      <input
+                        aria-label="Evidence target status filter"
+                        onChange={(event) =>
+                          setDraftEvidenceTargetFilters((current) => ({ ...current, status: event.target.value }))
+                        }
+                        value={draftEvidenceTargetFilters.status ?? ""}
+                      />
+                    </label>
+                    <label>
+                      Evidence target artifact id filter
+                      <input
+                        aria-label="Evidence target artifact id filter"
+                        onChange={(event) =>
+                          setDraftEvidenceTargetFilters((current) => ({ ...current, artifact_id: event.target.value }))
+                        }
+                        value={draftEvidenceTargetFilters.artifact_id ?? ""}
+                      />
+                    </label>
+                    <Button disabled={isMutating} onClick={applyEvidenceTargetFilters} variant="secondary">
+                      Apply evidence target filters
+                    </Button>
+                    <Button disabled={isMutating} onClick={resetEvidenceTargetFilters} variant="secondary">
+                      Reset evidence target filters
+                    </Button>
+                  </>
+                ) : null}
+                {guidedLinkTargets.length ? (
+                  <label>
+                    Asset guided link target
+                    <select
+                      aria-label="Asset guided link target"
+                      onChange={(event) => handleGuidedLinkTargetChange(event.target.value)}
+                      value={guidedLinkTargets.some((item) => item.targetId === linkTargetId) ? linkTargetId : ""}
+                    >
+                      <option value="">Select backend-owned target</option>
+                      {guidedLinkTargets.map((item) => (
+                        <option key={item.targetId} value={item.targetId}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label>
+                  Asset link target id
+                  <input
+                    aria-label="Asset link target id"
+                    onChange={(event) => setLinkTargetId(event.target.value)}
+                    value={linkTargetId}
+                  />
+                </label>
+                <label>
+                  Asset link target label
+                  <input
+                    aria-label="Asset link target label"
+                    onChange={(event) => setLinkTargetLabel(event.target.value)}
+                    value={linkTargetLabel}
+                  />
+                </label>
+                <Button
+                  disabled={isMutating || !effectiveAssetId || linkDisabled || !linkTargetId.trim()}
+                  onClick={handleCreateLink}
+                  variant="primary"
+                >
+                  Create link
+                </Button>
+              </div>
+            </OperationalPanel>
+
+            <OperationalPanel
+              ariaLabel="Asset links"
+              emptyText="No links created for this asset."
+              hasItems={linkItems.length > 0}
+              status={linkItems.length ? "ACTIVE" : "PENDING"}
+              title="Linked targets"
+            >
+              <DetailList
+                ariaLabel="Asset links rows"
+                emptyText="No links created for this asset."
+                items={linkItems.map((link) => ({
+                  id: link.id,
+                  meta: [link.link_type, link.target_id, link.created_by ?? "Unknown creator"],
+                  status: "ACTIVE",
+                  title: link.target_label
                 }))}
               />
             </OperationalPanel>

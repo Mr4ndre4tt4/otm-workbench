@@ -722,6 +722,95 @@ describe("Functional Assets Library journey", () => {
     expect(uploadRequests).toEqual([{ method: "POST" }]);
   });
 
+  it("creates an asset link on a direct route without showing the legacy workflow", async () => {
+    const linkRequests: unknown[] = [];
+    let createdLink: ReturnType<typeof linkFixture> | null = null;
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" },
+              {
+                id: "integration_mapping",
+                label: "Integration Mapping Studio",
+                path: "/integration-mapping",
+                status: "ACTIVE"
+              }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 3
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse(cockpitSummary().active_context));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("ACTIVE", "asset_version_1")], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        return Promise.resolve(jsonResponse(assetFixture("ACTIVE", "asset_version_1")));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        return Promise.resolve(jsonResponse({ items: [versionFixture()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body));
+          linkRequests.push(body);
+          createdLink = { ...linkFixture(), target_id: body.target_id, target_label: body.target_label };
+          return Promise.resolve(jsonResponse(createdLink));
+        }
+        return Promise.resolve(jsonResponse({ items: createdLink ? [createdLink] : [], total: createdLink ? 1 : 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/asset_qa_1/links");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Links for Synthetic Mapping Spec" });
+    expect(screen.getByRole("link", { name: "Back to Asset" })).toHaveAttribute("href", "/assets/asset_qa_1");
+    expect(screen.getByRole("link", { name: "Back to Library" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Asset link type"), "MODULE");
+    await userEvent.selectOptions(screen.getByLabelText("Asset guided link target"), "integration_mapping");
+    await userEvent.click(screen.getByRole("button", { name: "Create link" }));
+
+    await screen.findByText("Asset link integration_mapping created.");
+    expect(screen.getByLabelText("Asset links rows")).toHaveTextContent("Integration Mapping Studio");
+    expect(linkRequests).toEqual([
+      {
+        link_type: "MODULE",
+        target_id: "integration_mapping",
+        target_label: "Integration Mapping Studio"
+      }
+    ]);
+  });
+
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
     const createRequests: unknown[] = [];
     const classificationRequests: unknown[] = [];

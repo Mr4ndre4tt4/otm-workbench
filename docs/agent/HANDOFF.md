@@ -3,6 +3,53 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Links Route Slice
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has a route-level link management screen at
+`/assets/:assetId/links`.
+
+What changed:
+
+- `/assets/:assetId/links` renders a relationship editor for one asset;
+- existing links render as route-level rows with target label, link type, target
+  id, and creator;
+- link creation uses the existing backend `POST /assets/{asset_id}/links`
+  contract and backend-owned link type classifications;
+- the direct route preserves guided target choices for modules, macro objects,
+  OTM tables, artifacts, and evidence through the current frontend/backend
+  contracts;
+- the direct route exposes `Back to Asset` and `Back to Library`;
+- browser QA creates a `MODULE` link through the direct route and captures
+  `var/qa/assets-links-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset link"` -> 1
+  passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 7 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `npm run qa:functional:assets:browser` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8017`;
+- frontend: `http://127.0.0.1:5194`;
+- database: `var/qa-assets-links-route.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots: `var/qa/assets-links-route.png`,
+  `var/qa/assets-version-upload-route.png`, `var/qa/assets-versions-route.png`,
+  `var/qa/assets-edit-metadata-route.png`, `var/qa/assets-detail-route.png`.
+
+Recommended next step:
+Continue Assets route extraction with classifications and archive review, then
+do an Assets acceptance pass against the consolidated spec.
+
 ## 2026-05-27 Assets Versions Routes Slice
 
 Status:
