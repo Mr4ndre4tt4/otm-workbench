@@ -185,6 +185,40 @@ def apply_asset_text_filter(
     return query
 
 
+def apply_asset_link_type_filter(
+    db: Session,
+    query,
+    *,
+    value: str | None,
+    operator: str | None,
+):
+    values = split_asset_search_values(value)
+    if not values:
+        return query
+    normalized_operator = normalize_asset_search_operator(operator, field_name="linked_target_type") or "exact"
+    normalized_values = [item.upper() for item in values]
+    matching_asset_ids = db.query(AssetLink.asset_id)
+    if normalized_operator == "exact":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type == normalized_values[0])
+        return query.filter(Asset.id.in_(matching_asset_ids))
+    if normalized_operator == "one_of":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type.in_(normalized_values))
+        return query.filter(Asset.id.in_(matching_asset_ids))
+    if normalized_operator == "not_one_of":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type.in_(normalized_values))
+        return query.filter(Asset.id.notin_(matching_asset_ids))
+    raise api_error(
+        400,
+        "ASSET_SEARCH_INVALID_OPERATOR",
+        "Asset linked target type supports exact, one_of, and not_one_of only.",
+        details={
+            "field_name": "linked_target_type",
+            "operator": operator,
+            "allowed_operators": ["one_of", "not_one_of"],
+        },
+    )
+
+
 def validate_asset_otm_references(db: Session, payload: dict[str, object]) -> None:
     dictionary_root = Path(get_settings().otm_data_dictionary_root)
     macro_object_code = str(payload.get("macro_object_code") or "").strip().upper()
@@ -316,6 +350,8 @@ def list_assets(
     macro_object_code_operator: str | None = None,
     otm_table_name: str | None = None,
     otm_table_name_operator: str | None = None,
+    linked_target_type: str | None = None,
+    linked_target_type_operator: str | None = None,
     has_current_version: bool | None = None,
     page: int = 1,
     page_size: int = 50,
@@ -391,6 +427,12 @@ def list_assets(
     )
     if has_current_version is not None:
         query = query.filter(Asset.current_version_id.isnot(None) if has_current_version else Asset.current_version_id.is_(None))
+    query = apply_asset_link_type_filter(
+        db,
+        query,
+        value=linked_target_type,
+        operator=linked_target_type_operator,
+    )
     total = query.count()
     assets = (
         query.order_by(Asset.created_at.desc())

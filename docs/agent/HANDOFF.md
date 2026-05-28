@@ -3,6 +3,53 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Linked Target Search API
+
+Status:
+Implemented and backend validated.
+
+Scope:
+The Assets Library list endpoint now supports backend-owned filtering by linked
+target type using existing `AssetLink.link_type` records.
+
+What changed:
+
+- `GET /api/v1/modules/assets/assets` accepts `linked_target_type`;
+- `linked_target_type_operator=one_of` accepts comma-separated link types;
+- `linked_target_type_operator=not_one_of` excludes assets linked to the given
+  type while retaining unlinked assets;
+- unsupported linked target operators return `ASSET_SEARCH_INVALID_OPERATOR`;
+- no new database columns or frontend controls were added in this slice.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_LINKED_TARGET_SEARCH_API.md`
+- `docs/superpowers/plans/2026-05-28-assets-linked-target-search-api.md`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "linked_target_type"`:
+  2 passed, 21 deselected after the expected red failure was fixed.
+- `python -m pytest tests/test_assets_library_assets.py`: 23 passed.
+- `python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py`:
+  49 passed.
+
+Open risks:
+
+- frontend linked target type filter UI remains deferred.
+- target OTM version search remains deferred.
+- `OTM_RESOURCES/`, `outputs/`, and unrelated assistant-planning files remain
+  untracked and outside this slice.
+- Integration Mapping remains reserved for its dedicated chat/workstream unless
+  explicitly requested.
+
+Recommended next step:
+Commit and push this backend/API slice, then add the frontend linked target type
+filter control or move to another non-Integration-Mapping roadmap item.
 ## 2026-05-28 Assets Library Row Actions
 
 Status:

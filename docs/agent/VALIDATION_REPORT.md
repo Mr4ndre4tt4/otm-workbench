@@ -3,6 +3,46 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Linked Target Search API Validation
+
+Validation intent:
+
+- add backend-owned filtering for the Assets Library `linked target type`
+  metadata field;
+- preserve existing list filters, pagination, and scoping behavior;
+- avoid frontend or Integration Mapping implementation changes.
+
+Validation performed:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "linked_target_type"
+python -m pytest tests/test_assets_library_assets.py
+python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py
+```
+
+Results:
+
+```text
+Focused linked target type tests: 2 passed, 21 deselected.
+Assets backend suite: 23 passed.
+Explicit Assets Library file list: 49 passed.
+```
+
+Validated:
+
+- `linked_target_type=module` returns only assets linked with `MODULE`;
+- `linked_target_type_operator=one_of` accepts comma-separated link types;
+- `linked_target_type_operator=not_one_of` excludes matching linked assets and
+  retains unlinked assets;
+- unsupported linked target operators return `ASSET_SEARCH_INVALID_OPERATOR`;
+- existing asset list, permission, foundation, link, and version behavior
+  remains covered.
+
+Deferred:
+
+- frontend linked target type filter UI;
+- target OTM version search.
+
 ## 2026-05-28 Assets Library Row Actions Validation
 
 Validation intent:

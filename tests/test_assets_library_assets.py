@@ -606,6 +606,70 @@ def test_list_assets_rejects_invalid_search_operator(client, admin_header):
     assert payload["details"]["field_name"] == "name"
 
 
+def test_list_assets_filters_by_linked_target_type(client, admin_header):
+    module_linked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Module Linked Asset"),
+        headers=admin_header,
+    ).json()
+    table_linked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Table Linked Asset"),
+        headers=admin_header,
+    ).json()
+    unlinked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Unlinked Asset"),
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/assets/assets/{module_linked['id']}/links",
+        json={"link_type": "MODULE", "target_id": "assets", "target_label": "Assets Library"},
+        headers=admin_header,
+    )
+    client.post(
+        f"/api/v1/modules/assets/assets/{table_linked['id']}/links",
+        json={"link_type": "OTM_TABLE", "target_id": "RATE_GEO_COST", "target_label": "Rate Geo Cost"},
+        headers=admin_header,
+    )
+
+    module_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module"},
+        headers=admin_header,
+    )
+    one_of_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module,otm_table", "linked_target_type_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "otm_table", "linked_target_type_operator": "not_one_of"},
+        headers=admin_header,
+    )
+
+    assert module_response.status_code == 200
+    assert [item["id"] for item in module_response.json()["items"]] == [module_linked["id"]]
+    assert one_of_response.status_code == 200
+    assert {item["id"] for item in one_of_response.json()["items"]} == {module_linked["id"], table_linked["id"]}
+    assert not_one_of_response.status_code == 200
+    assert {item["id"] for item in not_one_of_response.json()["items"]} == {module_linked["id"], unlinked["id"]}
+
+
+def test_list_assets_rejects_invalid_linked_target_type_operator(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module", "linked_target_type_operator": "regex"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SEARCH_INVALID_OPERATOR"
+    assert payload["details"]["field_name"] == "linked_target_type"
+
+
 def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):
     created = client.post(
         "/api/v1/modules/assets/assets",
