@@ -337,6 +337,169 @@ def test_order_release_templates_follow_active_context_scope(client, admin_heade
     assert hidden_project_batch.status_code == 404
 
 
+def test_order_release_templates_same_name_are_isolated_by_domain_and_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    shared_name = "Shared scoped TL Order Release"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    visible = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SHARED_SCOPE_VISIBLE",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden_domain = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SHARED_SCOPE_DOMAIN",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_SHARED_SCOPE_ENV",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header)
+    hidden_domain_version = client.post(
+        f"/api/v1/modules/order-release-generator/templates/{hidden_domain['id']}/versions",
+        headers=admin_header,
+        json={
+            "name": f"{shared_name} v2",
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    )
+    hidden_environment_batch = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        headers=admin_header,
+        json={"template_id": hidden_environment["id"], "file_name": "hidden_same_code_or.xlsx", "rows": valid_rows()},
+    )
+
+    assert listed.status_code == 200
+    shared_items = [item for item in listed.json()["items"] if item["name"] == shared_name]
+    assert [(item["id"], item["name"]) for item in shared_items] == [(visible["id"], shared_name)]
+    assert hidden_domain_version.status_code == 404
+    assert hidden_environment_batch.status_code == 404
+
+
+def test_order_release_template_dba_same_name_all_domains_still_follow_active_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    shared_name = "Shared DBA scoped TL Order Release"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    otm1 = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_SHARED_SCOPE_OTM1",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM1"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    otm2 = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_SHARED_SCOPE_OTM2",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM2"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM3",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/order-release-generator/templates",
+        headers=admin_header,
+        json={
+            "code": "TL_OR_DBA_SHARED_SCOPE_ENV",
+            "name": shared_name,
+            "required_columns": ["release_gid", "source_location_gid", "destination_location_gid"],
+            "optional_columns": ["remarks"],
+            "defaults": {"domain_name": "OTM3"},
+        },
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header)
+
+    assert listed.status_code == 200
+    shared_items = [item for item in listed.json()["items"] if item["name"] == shared_name]
+    assert {item["id"] for item in shared_items} == {otm1["id"], otm2["id"]}
+    assert hidden_environment["id"] not in {item["id"] for item in shared_items}
+
+
 def test_order_release_templates_keep_public_seed_but_hide_private_without_active_context_for_non_admin(
     client,
     admin_header,

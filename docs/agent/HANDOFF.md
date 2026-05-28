@@ -109,6 +109,65 @@ Recommended next step:
 Push the scoped #217 commit, wait for GitHub checks, close the issue, then
 pick the next small context-isolation follow-up from the validation matrix.
 
+## 2026-05-28 Order Release Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #218.
+
+Scope:
+Added focused backend regression coverage proving same-name Order Release
+templates and batches do not leak across active project, domain, or environment
+scope, while DBA/all-domain visibility remains constrained to the active
+environment.
+
+Files intentionally changed:
+
+- `tests/test_order_release_generator_foundation.py`
+- `tests/test_order_release_generator_batches.py`
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q`:
+  8 passed, 19 deselected.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q`:
+  27 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend
+  context-isolation regression coverage and does not change visible UI
+  behavior.
+
+Evidence:
+
+- GitHub issue #218 tracks the delivery slice.
+- New tests assert visible and hidden IDs plus direct template versioning,
+  batch creation, detail, and preview route access for same-name records.
+
+Open risks:
+
+- Template `code` remains a global version-family identity; same-code
+  cross-scope template authoring is not supported by the current backend
+  validator even though same-name templates are scoped.
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Order Release slice unless
+  the latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #218 commit, wait for GitHub checks, close the issue, then
+continue with Cockpit browser route recovery/visual evidence if the user asks
+for the next context-isolation item.
+
 ## 2026-05-28 Assets Acceptance Pass
 
 Status:

@@ -232,6 +232,139 @@ def test_order_release_batches_follow_active_context_scope(client, admin_header)
     assert hidden_project_preview.status_code == 404
 
 
+def test_order_release_batches_same_name_are_isolated_by_domain_and_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    template_id = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header).json()["items"][0]["id"]
+    shared_file_name = "shared_order_release.xlsx"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    visible = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden_domain = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/batches", headers=admin_header)
+    visible_detail = client.get(
+        f"/api/v1/modules/order-release-generator/batches/{visible['id']}",
+        headers=admin_header,
+    )
+    hidden_domain_detail = client.get(
+        f"/api/v1/modules/order-release-generator/batches/{hidden_domain['id']}",
+        headers=admin_header,
+    )
+    hidden_environment_preview = client.post(
+        f"/api/v1/modules/order-release-generator/batches/{hidden_environment['id']}/preview-xml",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [(item["id"], item["file_name"]) for item in listed.json()["items"]] == [
+        (visible["id"], shared_file_name)
+    ]
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["file_name"] == shared_file_name
+    assert hidden_domain_detail.status_code == 404
+    assert hidden_environment_preview.status_code == 404
+
+
+def test_order_release_batch_dba_same_name_all_domains_still_follow_active_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    template_id = client.get("/api/v1/modules/order-release-generator/templates", headers=admin_header).json()["items"][0]["id"]
+    shared_file_name = "shared_dba_order_release.xlsx"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    otm1 = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    otm2 = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM3",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/order-release-generator/batches",
+        json={"template_id": template_id, "file_name": shared_file_name, "rows": valid_rows()},
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/order-release-generator/batches", headers=admin_header)
+    hidden_detail = client.get(
+        f"/api/v1/modules/order-release-generator/batches/{hidden_environment['id']}",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {otm1["id"], otm2["id"]}
+    assert all(item["file_name"] == shared_file_name for item in listed.json()["items"])
+    assert hidden_detail.status_code == 404
+
+
 def test_order_release_batches_require_active_context_for_non_admin_access_and_create(
     client,
     admin_header,

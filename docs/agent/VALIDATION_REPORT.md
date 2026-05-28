@@ -3294,3 +3294,39 @@ Notes:
   isolation coverage and does not change visible UI behavior.
 - Assertions check batch IDs and direct route access instead of relying on
   workbook file names, because same-name files are the regression risk.
+
+## 2026-05-28 Order Release Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #218 for a focused Order Release context-isolation
+  regression.
+- Added backend tests proving same-name templates stay isolated by active
+  project, domain, and environment while preserving global template-code family
+  semantics.
+- Added backend tests proving same-name batches stay isolated by active
+  project, domain, and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -q
+```
+
+Results:
+
+```text
+focused Order Release same-name/context tests: 8 passed, 19 deselected
+Order Release foundation and batches: 27 passed
+```
+
+Notes:
+
+- Initial same-code template tests failed before isolation assertions because
+  template `code` is still treated by the backend as a global version-family
+  identity. The final regression uses same template names with distinct codes.
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
