@@ -3078,3 +3078,45 @@ Impacted docs:
 Status:
 
 Implemented and validated for Assets issue #200.
+
+## 2026-05-28: OTM_RESOURCES Public Repository Policy
+
+Change type:
+
+- governance/documentation change;
+- repository safety control.
+
+Decision:
+
+Do not commit raw `OTM_RESOURCES/` content to the public GitHub repository.
+
+Rationale:
+
+- The GitHub repository is public.
+- The local resources include Oracle OTM Data Dictionary reference files,
+  operator/operand spreadsheets, and `*.db.xml` exports.
+- Files can be unsafe for public versioning even when they are not client data,
+  because vendor license/provenance, binary spreadsheet contents, and
+  operational export sensitivity must be reviewed separately.
+- Resource-dependent tests can still run from clean worktrees by pointing
+  `OTM_OTM_DATA_DICTIONARY_ROOT` at the local Data Dictionary path.
+
+Policy:
+
+- `OTM_RESOURCES/` and `*.db.xml` are ignored by default.
+- Synthetic fixtures belong under `tests/fixtures/`.
+- Any future resource upload needs explicit GitHub issue tracking, license
+  review, sensitivity scan, and allowlist approval.
+
+Impacted docs:
+
+- `.gitignore`
+- `.env.example`
+- `docs/agent/OTM_RESOURCES_VERSIONING_POLICY.md`
+- `docs/agent/TASK_CONTRACT_OTM_RESOURCES_VERSIONING_POLICY.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Status:
+
+Implemented for issue #221.

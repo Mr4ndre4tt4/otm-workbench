@@ -3409,3 +3409,47 @@ Notes:
   it reported 0 vulnerabilities.
 - Browser screenshots were not captured because this slice only resolves PR
   merge drift and does not change intended UI behavior.
+
+## 2026-05-28 OTM_RESOURCES Versioning Policy
+
+Scope:
+
+- Added GitHub issue #221 for resource versioning and sensitivity governance.
+- Inventoried local `OTM_RESOURCES` by file class without copying raw payload
+  values into repository docs.
+- Documented that raw `OTM_RESOURCES/` stays out of the public repository until
+  a future explicit allowlist confirms license, provenance, sensitivity, and
+  size requirements.
+- Added `.gitignore` protection for `OTM_RESOURCES/` and `*.db.xml`.
+- Added `.env.example` showing how clean worktrees should point at a local Data
+  Dictionary.
+- Updated low-level rates tests to use `get_settings().otm_data_dictionary_root`
+  instead of hardcoded `OTM_RESOURCES/...` paths.
+
+Commands:
+
+```powershell
+git check-ignore -v OTM_RESOURCES/dbXmlExport_1777328478060.db.xml
+git check-ignore -v OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict/RATE_GEO_COST.json
+$env:OTM_OTM_DATA_DICTIONARY_ROOT='C:\Users\Enzo Trabalho\Documents\New project 3\OTM_RESOURCES\DATA_DICT26B\data_dictionary\json\data_dict'; python -m pytest tests/test_rates_dictionary.py tests/test_modules_navigation.py -q
+$env:OTM_OTM_DATA_DICTIONARY_ROOT='C:\Users\Enzo Trabalho\Documents\New project 3\OTM_RESOURCES\DATA_DICT26B\data_dictionary\json\data_dict'; python -m pytest tests/test_rates_dictionary.py tests/test_rates_batch_csv_preview.py tests/test_rates_batch_scenarios.py tests/test_rates_csv_preview.py tests/test_modules_navigation.py -q
+git diff --check
+```
+
+Results:
+
+```text
+git check-ignore: OTM_RESOURCES and *.db.xml paths ignored by .gitignore
+initial rates dictionary/navigation run: 3 failed, 15 passed
+final rates dictionary/csv/scenario/navigation run: 37 passed
+git diff --check: passed
+```
+
+Notes:
+
+- The repository is public, so vendor/provenance review is required even for
+  files that are not customer data.
+- Raw `db.xml` exports remain blocked from GitHub.
+- The first validation run failed because low-level rates tests still used a
+  hardcoded relative Data Dictionary path. The final implementation aligns
+  those tests with the configured application setting.

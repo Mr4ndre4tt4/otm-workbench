@@ -11,3 +11,9 @@ output/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+
+# Local/vendor/reference resources. Keep raw OTM exports and Oracle reference
+# packs out of the public repository unless a future allowlist decision confirms
+# license, provenance, and sanitization requirements.
+OTM_RESOURCES/
+*.db.xml

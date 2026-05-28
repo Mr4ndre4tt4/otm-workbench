@@ -1,10 +1,12 @@
+from pathlib import Path
+
+from otm_workbench.config import get_settings
 from otm_workbench.modules.rates.scenarios import get_rate_scenario, list_rate_scenarios
 from otm_workbench.modules.rates.dictionary import validate_load_sequence
-from pathlib import Path
 from otm_workbench.models import SchemaFile, SchemaPack, SchemaRoot
 
 
-DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+DATA_DICT = Path(get_settings().otm_data_dictionary_root)
 
 
 def create_rates_schema_root(db_session, *, root_name: str):

@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from otm_workbench.config import get_settings
 from otm_workbench.modules.rates.csv_preview import build_otm_csv_preview
 
 
-DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+DATA_DICT = Path(get_settings().otm_data_dictionary_root)
 
 
 def test_otm_csv_preview_uses_table_first_then_columns():
