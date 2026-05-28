@@ -3,6 +3,59 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Detail Actions Cleanup
+
+Status:
+Implemented and fully validated.
+
+Scope:
+The `/assets/:assetId` detail route now exposes the action set documented in
+the consolidated Assets spec.
+
+What changed:
+
+- detail action labels now include `Upload version`, `View versions`, and
+  `Manage links`;
+- detail route adds a guarded `Download current version` button;
+- detail route adds `Archive asset` navigation to
+  `/assets/:assetId/archive`;
+- success/error feedback now renders on the detail route for direct downloads;
+- browser QA checks the direct detail actions and captures
+  `var/qa/assets-detail-actions-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset detail route"` ->
+  1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 12 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `node scripts/functional-assets-browser.mjs` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8021`;
+- frontend: `http://127.0.0.1:5199`;
+- database: `var/qa-assets-detail-actions.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots include `var/qa/assets-detail-actions-route.png`,
+  `var/qa/assets-create-route.png`, `var/qa/assets-classifications-route.png`,
+  `var/qa/assets-classification-create-route.png`,
+  `var/qa/assets-classification-edit-route.png`,
+  `var/qa/assets-archive-route.png`, `var/qa/assets-links-route.png`,
+  `var/qa/assets-version-upload-route.png`, `var/qa/assets-versions-route.png`,
+  `var/qa/assets-edit-metadata-route.png`, `var/qa/assets-detail-route.png`.
+
+Next-chat intake notes:
+
+- `OTM_RESOURCES/` and `outputs/` remain untracked and unrelated.
+- Browser QA runtime `8021/5199` was stopped after validation.
+
+Recommended next step:
+Start planning the `/assets/library` backend-owned search/operator/pagination
+slice, since the remaining Assets acceptance gaps are now backend/API-sized.
+
 ## 2026-05-27 Assets Acceptance Create Route Cleanup
 
 Status:

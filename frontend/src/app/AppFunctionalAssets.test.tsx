@@ -751,7 +751,8 @@ describe("Functional Assets Library journey", () => {
     ]);
   });
 
-  it("renders an asset detail route with metadata, versions, links, and return paths", async () => {
+  it("renders an asset detail route with metadata, versions, links, actions, and return paths", async () => {
+    const downloadRequests: unknown[] = [];
     const fetchMock = vi.fn((input) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -806,6 +807,17 @@ describe("Functional Assets Library journey", () => {
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
         return Promise.resolve(jsonResponse({ items: [linkFixture()], total: 1 }));
       }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/download")) {
+        downloadRequests.push({ method: "GET" });
+        return Promise.resolve(
+          new Response("synthetic file", {
+            headers: {
+              "Content-Disposition": 'attachment; filename="synthetic_mapping_spec.md"',
+              "Content-Type": "text/markdown"
+            }
+          })
+        );
+      }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -819,10 +831,25 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getAllByText("Asset detail").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Back to Library" })).toHaveAttribute("href", "/assets/library");
     expect(screen.getByRole("link", { name: "Back to Assets" })).toHaveAttribute("href", "/assets");
+    expect(screen.getByRole("link", { name: "Edit metadata" })).toHaveAttribute("href", "/assets/asset_qa_1/edit");
+    expect(screen.getByRole("link", { name: "Upload version" })).toHaveAttribute(
+      "href",
+      "/assets/asset_qa_1/versions/new"
+    );
+    expect(screen.getByRole("link", { name: "View versions" })).toHaveAttribute(
+      "href",
+      "/assets/asset_qa_1/versions"
+    );
+    expect(screen.getByRole("link", { name: "Manage links" })).toHaveAttribute("href", "/assets/asset_qa_1/links");
+    expect(screen.getByRole("link", { name: "Archive asset" })).toHaveAttribute("href", "/assets/asset_qa_1/archive");
     expect(screen.getByLabelText("Asset detail metadata")).toHaveTextContent("ORDER_RELEASE");
     expect(screen.getByLabelText("Asset detail versions")).toHaveTextContent("synthetic_mapping_spec.md");
     expect(screen.getByLabelText("Asset detail links")).toHaveTextContent("Integration Mapping Studio");
     expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Download current version" }));
+    await screen.findByText("Download started: synthetic_mapping_spec.md.");
+    expect(downloadRequests).toEqual([{ method: "GET" }]);
   });
 
   it("edits asset metadata on a direct route without showing the legacy workflow", async () => {

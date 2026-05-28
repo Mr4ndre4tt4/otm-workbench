@@ -1859,13 +1859,25 @@ export function AssetsLibraryView({ token }: { token: string }) {
           <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/edit`}>
             Edit metadata
           </Link>
+          <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/versions/new`}>
+            Upload version
+          </Link>
           <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/versions`}>
-            Versions
+            View versions
           </Link>
           <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/links`}>
-            Links
+            Manage links
+          </Link>
+          <Button disabled={isMutating || !effectiveAssetId || downloadDisabled} onClick={handleDownloadCurrentVersion}>
+            Download current version
+          </Button>
+          <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/archive`}>
+            Archive asset
           </Link>
         </div>
+
+        {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+        {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
 
         <ModuleWorkspaceLayout
           ariaLabel="Asset detail workspace"

@@ -3,6 +3,69 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Detail Actions Cleanup
+
+Validation intent:
+
+- align `/assets/:assetId` route-level actions with the consolidated Assets
+  spec;
+- add missing upload, download, and archive actions to the detail screen;
+- keep download guarded by the existing backend endpoint.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset detail route"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+node scripts/functional-assets-browser.mjs
+git diff --check
+```
+
+Results:
+
+```text
+Focused asset detail route test: 1 passed.
+Assets functional suite: 12 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+git diff --check: no errors, LF/CRLF warnings only.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8021
+Frontend: http://127.0.0.1:5199
+Database: var/qa-assets-detail-actions.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Detail actions screenshot: var/qa/assets-detail-actions-route.png
+```
+
+Validated:
+
+- `/assets/:assetId` exposes `Edit metadata`, `Upload version`, `View versions`,
+  `Manage links`, `Download current version`, and `Archive asset`;
+- `Download current version` calls the existing backend guarded download
+  endpoint and does not expose local file paths;
+- `Archive asset` routes to the existing archive confirmation screen;
+- browser QA checks the detail actions before archive and then completes the
+  existing archive/switch/return journey;
+- live navigation evidence stayed inside the current UI phase.
+
+Deferred:
+
+- `/assets/:assetId/download` review route remains optional because the spec
+  allows direct guarded backend download.
+- Backend-owned search operators/pagination for `/assets/library`.
+
 ## 2026-05-27 Assets Acceptance Create Route Cleanup
 
 Validation intent:

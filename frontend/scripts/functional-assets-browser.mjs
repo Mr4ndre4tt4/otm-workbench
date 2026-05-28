@@ -483,6 +483,23 @@ async function run() {
     assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
     createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
     if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct detail action QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Synthetic Rate Table Notes Direct Edited" }).waitFor();
+    await page.getByRole("link", { name: "Upload version" }).waitFor();
+    await page.getByRole("link", { name: "View versions" }).waitFor();
+    await page.getByRole("link", { name: "Manage links" }).waitFor();
+    await page.getByRole("link", { name: "Archive asset" }).waitFor();
+    await page.getByRole("button", { name: "Download current version" }).click();
+    await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
+    const detailActionsScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-detail-actions-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(detailActionsScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: detailActionsScreenshotPath });
+
+    assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
+    if (!createdRouteAsset) {
       throw new Error("Created asset was not available for direct archive-route QA.");
     }
     await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}/archive`, { waitUntil: "domcontentloaded" });
@@ -575,6 +592,7 @@ async function run() {
           classification_create_route_screenshot: "var/qa/assets-classification-create-route.png",
           classification_edit_route_screenshot: "var/qa/assets-classification-edit-route.png",
           asset_create_route_screenshot: "var/qa/assets-create-route.png",
+          detail_actions_route_screenshot: "var/qa/assets-detail-actions-route.png",
           detail_route_screenshot: "var/qa/assets-detail-route.png",
           edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
           versions_route_screenshot: "var/qa/assets-versions-route.png",
