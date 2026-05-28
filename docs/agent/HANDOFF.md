@@ -2696,3 +2696,55 @@ Recommended next step:
 
 Push the #200 commit, close #200, then reassess the next roadmap lane outside
 Assets backlog.
+
+## 2026-05-28 Context Isolation Validation Matrix
+
+Status:
+Implemented, validated, and ready to close #214.
+
+Scope:
+Opened the context-isolation foundation lane and documented the current
+validation matrix across active UI phase modules.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_operational_context.py -q` passed with 26 tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Browser screenshots. This slice records the backend/governance foundation and
+  module-facing validation gates only.
+
+Evidence:
+
+- Platform context foundation is covered by `tests/test_operational_context.py`.
+- Current UI phase navigation remains guarded by `tests/test_modules_navigation.py`.
+- Module-specific gaps are recorded in
+  `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`.
+
+Open risks:
+
+- Cockpit, Rates, Master Data, and Order Release still need module-specific
+  context-isolation evidence before completion.
+- Integration Mapping remains reserved for its separate workstream.
+
+Next-chat intake notes:
+
+- Read `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md` before starting the
+  next module lane.
+- Create the next implementation issue only for the selected module/follow-up,
+  not for every matrix gap at once.
+
+Recommended next step:
+
+Close #214 after push, then select the next concrete lane. Current roadmap
+order points to Cockpit context selector evidence or Rates completion, unless
+the user reprioritizes.

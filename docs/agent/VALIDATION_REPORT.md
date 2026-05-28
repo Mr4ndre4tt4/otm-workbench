@@ -3143,3 +3143,35 @@ Notes:
   classifications.
 - No frontend/browser screenshot was captured because this slice is backend
   taxonomy validation and governance documentation.
+
+## 2026-05-28 Context Isolation Validation Matrix
+
+Scope:
+
+- Opened the context-isolation foundation lane after Assets backlog closure.
+- Added a module-facing validation matrix for active context, client/domain,
+  environment, Public View, access-policy, DBA/admin visibility, and navigation
+  freshness.
+- Identified module-specific follow-up gates without touching Integration
+  Mapping.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_operational_context.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+tests/test_operational_context.py: 26 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- No browser screenshots were captured; this was a governance and backend
+  validation baseline slice.
+- Follow-up implementation issues should be opened when the next concrete
+  module lane starts, not as broad placeholders.
