@@ -312,6 +312,7 @@ class Asset(Base, TimestampMixin):
     module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     macro_object_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     otm_table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    target_otm_version: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     tags_json: Mapped[str] = mapped_column(Text, default="[]")
     current_version_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)

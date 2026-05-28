@@ -54,6 +54,7 @@ class AssetCreateRequest(BaseModel):
     module_id: str | None = None
     macro_object_code: str | None = None
     otm_table_name: str | None = None
+    target_otm_version: str | None = None
     tags: list[str] = []
 
 
@@ -67,6 +68,7 @@ class AssetUpdateRequest(BaseModel):
     module_id: str | None = None
     macro_object_code: str | None = None
     otm_table_name: str | None = None
+    target_otm_version: str | None = None
     tags: list[str] | None = None
 
 
@@ -350,6 +352,8 @@ def list_assets(
     macro_object_code_operator: str | None = None,
     otm_table_name: str | None = None,
     otm_table_name_operator: str | None = None,
+    target_otm_version: str | None = None,
+    target_otm_version_operator: str | None = None,
     linked_target_type: str | None = None,
     linked_target_type_operator: str | None = None,
     has_current_version: bool | None = None,
@@ -422,6 +426,15 @@ def list_assets(
         field_name="otm_table_name",
         value=otm_table_name,
         operator=otm_table_name_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.target_otm_version,
+        field_name="target_otm_version",
+        value=target_otm_version,
+        operator=target_otm_version_operator,
         uppercase_exact=True,
         default_operator="exact",
     )

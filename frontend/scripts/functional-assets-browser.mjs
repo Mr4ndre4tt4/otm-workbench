@@ -295,6 +295,8 @@ async function run() {
     await page.getByLabel("Asset macro object operator").selectOption("begins_with");
     await page.getByLabel("Asset OTM table filter").fill("RATE_GEO_COST");
     await page.getByLabel("Asset OTM table operator").selectOption("one_of");
+    await page.getByLabel("Asset target OTM version filter").fill("26A");
+    await page.getByLabel("Asset target OTM version operator").selectOption("one_of");
     await page.getByLabel("Asset linked target type filter").selectOption("MODULE");
     await page.getByLabel("Asset linked target type operator").selectOption("one_of");
     await page.getByLabel("Asset page size").selectOption("25");
@@ -319,6 +321,12 @@ async function run() {
     await assertControlValue(page.getByLabel("Asset macro object operator"), "contains", "Asset macro object operator after reset");
     await assertControlValue(page.getByLabel("Asset OTM table filter"), "", "Asset OTM table filter after reset");
     await assertControlValue(page.getByLabel("Asset OTM table operator"), "contains", "Asset OTM table operator after reset");
+    await assertControlValue(page.getByLabel("Asset target OTM version filter"), "", "Asset target OTM version filter after reset");
+    await assertControlValue(
+      page.getByLabel("Asset target OTM version operator"),
+      "contains",
+      "Asset target OTM version operator after reset"
+    );
     await assertControlValue(page.getByLabel("Asset linked target type filter"), "", "Asset linked target type filter after reset");
     await assertControlValue(page.getByLabel("Asset linked target type operator"), "one_of", "Asset linked target type operator after reset");
     await assertControlValue(page.getByLabel("Asset page size"), "50", "Asset page size after reset");

@@ -3,6 +3,72 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Target OTM Version Search
+
+Status:
+Implemented and validated.
+
+Scope:
+Completed GitHub issue #196 for `v0.3-assets-stabilization` by adding
+backend-owned `target_otm_version` metadata and exposing it in the Assets
+Library UI.
+
+What changed:
+
+- added `assets.target_otm_version` with Alembic migration;
+- create/update/serialize now carry normalized target OTM version metadata;
+- `GET /api/v1/modules/assets/assets` supports `target_otm_version` and
+  `target_otm_version_operator`;
+- Assets forms expose `Asset target OTM version`;
+- `/assets/library` exposes target OTM version filter/operator controls;
+- browser QA exercises the target OTM version filter and reset behavior.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_TARGET_OTM_VERSION_SEARCH.md`
+- `migrations/versions/c1f4a8e7d9b2_assets_target_otm_version.py`
+- `src/otm_workbench/models.py`
+- `src/otm_workbench/modules/assets/assets.py`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `frontend/src/platform/types/assets.ts`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `frontend/scripts/functional-assets-browser.mjs`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "target_otm_version or table_exists" -q`:
+  failed first, then passed with 2 tests.
+- `python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py -q`:
+  50 passed.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"`:
+  failed first, then passed with 1 passed and 12 skipped.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx`: 13 passed.
+- `npm run build`: passed with the existing Vite large chunk warning.
+- `python -m alembic heads`: `c1f4a8e7d9b2 (head)`.
+- `npm run qa:functional:assets:browser`: passed.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8025`;
+- frontend: `http://127.0.0.1:5204`;
+- database: `var/qa-assets-target-otm-version.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- backend/frontend QA runtimes have no listeners after validation.
+
+Open risks:
+
+- this slice normalizes target OTM version as a safe token and does not yet
+  validate it against an official Oracle release taxonomy.
+- unrelated Assistant and Integration Mapping work remains outside this slice.
+
+Recommended next step:
+Close #196 after push and continue with #197, the Assets acceptance pass and
+backlog closeout.
 ## 2026-05-28 Assets Version Train Setup
 
 Status:

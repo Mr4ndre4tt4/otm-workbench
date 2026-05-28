@@ -3,6 +3,64 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Target OTM Version Search Validation
+
+Validation intent:
+
+- implement issue #196 with a backend-owned `target_otm_version` contract;
+- prove backend create/update/list/search behavior with TDD;
+- expose the UI filter only after backend tests pass;
+- capture browser QA only after live navigation freshness is verified.
+
+Validation performed:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "target_otm_version or table_exists" -q
+python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+python -m alembic heads
+npm run qa:functional:assets:browser
+```
+
+Results:
+
+```text
+Focused backend target OTM version test: failed before implementation, then 2 passed.
+Assets backend suite: 50 passed.
+Focused frontend Assets journey: failed before UI control, then 1 passed / 12 skipped.
+Assets functional suite: 13 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Alembic head: c1f4a8e7d9b2.
+Browser QA: passed.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8025
+Frontend: http://127.0.0.1:5204
+Database: var/qa-assets-target-otm-version.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Existing Assets screenshots refreshed by the browser journey, including
+var/qa/assets-library-search.png.
+```
+
+Validation not run:
+
+- full repository backend suite;
+- full repository frontend suite.
+
+Reason:
+This slice is constrained to Assets target OTM version metadata/search.
 ## 2026-05-28 Assets Version Train Setup Validation
 
 Validation intent:

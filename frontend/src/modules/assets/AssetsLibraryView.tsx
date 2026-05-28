@@ -62,6 +62,7 @@ const emptyAssetFilters: AssetFilters = {
   module_id: "",
   name: "",
   otm_table_name: "",
+  target_otm_version: "",
   scope_type: "",
   status: "",
   tag: ""
@@ -76,6 +77,7 @@ const defaultAssetSearchDraft: AssetFilters = {
   module_id_operator: "contains",
   name_operator: "contains",
   otm_table_name_operator: "contains",
+  target_otm_version_operator: "contains",
   page_size: "50"
 };
 
@@ -97,6 +99,7 @@ const defaultAssetDraft = {
   scope_type: "MODULE",
   sensitivity: "INTERNAL",
   tags: "SYNTHETIC,MVP0",
+  target_otm_version: "26A",
   visibility: "PROJECT"
 };
 
@@ -153,6 +156,7 @@ function assetDraftPayload(assetDraft: typeof defaultAssetDraft) {
     module_id: assetDraft.module_id.trim() || null,
     macro_object_code: assetDraft.macro_object_code.trim() || null,
     otm_table_name: assetDraft.otm_table_name.trim() || null,
+    target_otm_version: assetDraft.target_otm_version.trim() || null,
     tags: assetDraft.tags
       .split(",")
       .map((tag) => tag.trim().toUpperCase())
@@ -172,6 +176,7 @@ function assetDraftFromAsset(asset: AssetItem) {
     scope_type: asset.scope_type,
     sensitivity: asset.sensitivity,
     tags: asset.tags.join(","),
+    target_otm_version: asset.target_otm_version ?? "",
     visibility: asset.visibility
   };
 }
@@ -219,6 +224,7 @@ function cleanAssetSearchFilters(draft: AssetFilters, page = "1") {
   copyTextFilter("module_id", "module_id_operator");
   copyTextFilter("macro_object_code", "macro_object_code_operator");
   copyTextFilter("otm_table_name", "otm_table_name_operator");
+  copyTextFilter("target_otm_version", "target_otm_version_operator");
   copyTextFilter("linked_target_type", "linked_target_type_operator");
   const pageSize = draft.page_size?.trim();
   if (pageSize && pageSize !== "50") {
@@ -842,6 +848,16 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   aria-label="Asset OTM table"
                   onChange={(event) => setAssetDraft((current) => ({ ...current, otm_table_name: event.target.value }))}
                   value={assetDraft.otm_table_name}
+                />
+              </label>
+              <label>
+                Asset target OTM version
+                <input
+                  aria-label="Asset target OTM version"
+                  onChange={(event) =>
+                    setAssetDraft((current) => ({ ...current, target_otm_version: event.target.value }))
+                  }
+                  value={assetDraft.target_otm_version}
                 />
               </label>
               <label>
@@ -1918,6 +1934,17 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   />
                 </label>
                 <label>
+                  Asset target OTM version
+                  <input
+                    aria-label="Asset target OTM version"
+                    disabled={updateDisabled}
+                    onChange={(event) =>
+                      setAssetDraft((current) => ({ ...current, target_otm_version: event.target.value }))
+                    }
+                    value={assetDraft.target_otm_version}
+                  />
+                </label>
+                <label>
                   Asset tags
                   <input
                     aria-label="Asset tags"
@@ -1949,6 +1976,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
       { label: "Module", value: selectedAsset.module_id ?? "None" },
       { label: "Macro object", value: selectedAsset.macro_object_code ?? "None" },
       { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" },
+      { label: "Target OTM version", value: selectedAsset.target_otm_version ?? "None" },
       { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" }
     ];
 
@@ -2114,7 +2142,8 @@ export function AssetsLibraryView({ token }: { token: string }) {
                     { label: "Category", value: selectedAsset.category },
                     { label: "Sensitivity", value: selectedAsset.sensitivity },
                     { label: "Macro object", value: selectedAsset.macro_object_code ?? "None" },
-                    { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" }
+                    { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" },
+                    { label: "Target OTM version", value: selectedAsset.target_otm_version ?? "None" }
                   ]
                 : []
             }
@@ -2370,6 +2399,35 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 </select>
               </label>
               <label>
+                Asset target OTM version filter
+                <input
+                  aria-label="Asset target OTM version filter"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, target_otm_version: event.target.value }))
+                  }
+                  value={draftAssetFilters.target_otm_version ?? ""}
+                />
+              </label>
+              <label>
+                Asset target OTM version operator
+                <select
+                  aria-label="Asset target OTM version operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({
+                      ...current,
+                      target_otm_version_operator: event.target.value
+                    }))
+                  }
+                  value={draftAssetFilters.target_otm_version_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Asset linked target type filter
                 <select
                   aria-label="Asset linked target type filter"
@@ -2572,6 +2630,16 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   aria-label="Asset OTM table"
                   onChange={(event) => setAssetDraft((current) => ({ ...current, otm_table_name: event.target.value }))}
                   value={assetDraft.otm_table_name}
+                />
+              </label>
+              <label>
+                Asset target OTM version
+                <input
+                  aria-label="Asset target OTM version"
+                  onChange={(event) =>
+                    setAssetDraft((current) => ({ ...current, target_otm_version: event.target.value }))
+                  }
+                  value={assetDraft.target_otm_version}
                 />
               </label>
               <label>

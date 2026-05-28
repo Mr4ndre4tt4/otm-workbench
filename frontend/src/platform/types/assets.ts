@@ -17,6 +17,7 @@ export type AssetItem = {
   module_id: string | null;
   macro_object_code: string | null;
   otm_table_name: string | null;
+  target_otm_version: string | null;
   tags: string[];
   current_version_id: string | null;
   available_actions?: AvailableAction[];
@@ -61,6 +62,7 @@ export type AssetCreateRequest = {
   module_id?: string | null;
   macro_object_code?: string | null;
   otm_table_name?: string | null;
+  target_otm_version?: string | null;
   tags: string[];
 };
 
@@ -107,6 +109,8 @@ export type AssetFilters = {
   macro_object_code_operator?: string;
   otm_table_name?: string;
   otm_table_name_operator?: string;
+  target_otm_version?: string;
+  target_otm_version_operator?: string;
   linked_target_type?: string;
   linked_target_type_operator?: string;
   has_current_version?: string;

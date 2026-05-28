@@ -71,9 +71,12 @@ def set_active_context(
 
 
 def test_assets_table_exists_after_metadata_reset(db_session):
-    table_names = inspect(db_session.bind).get_table_names()
+    inspector = inspect(db_session.bind)
+    table_names = inspector.get_table_names()
+    columns = {column["name"] for column in inspector.get_columns("assets")}
 
     assert "assets" in table_names
+    assert "target_otm_version" in columns
 
 
 def test_create_draft_asset_records_metadata_audit_and_event(client, admin_header, db_session):
@@ -485,6 +488,57 @@ def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header)
     payload = response.json()
     assert payload["total"] == 1
     assert payload["items"][0]["id"] == matching["id"]
+
+
+def test_asset_target_otm_version_create_update_and_search(client, admin_header):
+    matching = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic 26A Asset", target_otm_version="26a"),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic 26B Asset", target_otm_version="26B"),
+        headers=admin_header,
+    )
+
+    exact = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26A"},
+        headers=admin_header,
+    )
+    one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26A,27A", "target_otm_version_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26B", "target_otm_version_operator": "not_one_of"},
+        headers=admin_header,
+    )
+    update = client.patch(
+        f"/api/v1/modules/assets/assets/{matching['id']}",
+        json={"target_otm_version": "27a"},
+        headers=admin_header,
+    )
+    clear = client.patch(
+        f"/api/v1/modules/assets/assets/{matching['id']}",
+        json={"target_otm_version": ""},
+        headers=admin_header,
+    )
+
+    assert matching["target_otm_version"] == "26A"
+    assert exact.status_code == 200
+    assert [item["id"] for item in exact.json()["items"]] == [matching["id"]]
+    assert one_of.status_code == 200
+    assert [item["id"] for item in one_of.json()["items"]] == [matching["id"]]
+    assert not_one_of.status_code == 200
+    assert [item["id"] for item in not_one_of.json()["items"]] == [matching["id"]]
+    assert update.status_code == 200
+    assert update.json()["target_otm_version"] == "27A"
+    assert clear.status_code == 200
+    assert clear.json()["target_otm_version"] is None
 
 
 def test_list_assets_supports_backend_search_operators(client, admin_header):

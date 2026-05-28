@@ -164,6 +164,7 @@ def serialize_asset(asset: Asset) -> dict[str, object]:
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         "tags": parse_tags(asset.tags_json),
         "current_version_id": asset.current_version_id,
         "available_actions": build_asset_available_actions(asset),
@@ -278,6 +279,7 @@ def create_draft_asset(
         module_id=str(payload.get("module_id") or "").strip() or None,
         macro_object_code=str(payload.get("macro_object_code") or "").strip().upper() or None,
         otm_table_name=str(payload.get("otm_table_name") or "").strip().upper() or None,
+        target_otm_version=str(payload.get("target_otm_version") or "").strip().upper() or None,
         tags_json=json.dumps(tags, sort_keys=True),
         created_by=user.email,
     )
@@ -302,6 +304,7 @@ def create_draft_asset(
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
     }
     db.add(
         AuditLog(
@@ -361,6 +364,7 @@ def record_asset_change(
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         **(extra or {}),
     }
     db.add(
@@ -402,6 +406,7 @@ def update_asset_metadata(
         "module_id",
         "macro_object_code",
         "otm_table_name",
+        "target_otm_version",
         "tags",
     }
     candidate_payload = {
@@ -411,6 +416,7 @@ def update_asset_metadata(
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         "tags": parse_tags(asset.tags_json),
         **payload,
     }
@@ -434,7 +440,7 @@ def update_asset_metadata(
             if asset.tags_json != tags_json:
                 asset.tags_json = tags_json
                 changed_fields.append(field_name)
-        elif field_name in {"macro_object_code", "otm_table_name"}:
+        elif field_name in {"macro_object_code", "otm_table_name", "target_otm_version"}:
             normalized_value = str(value).strip().upper() or None
             if getattr(asset, field_name) != normalized_value:
                 setattr(asset, field_name, normalized_value)
