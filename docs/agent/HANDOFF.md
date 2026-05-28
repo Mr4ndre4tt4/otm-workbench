@@ -3022,13 +3022,15 @@ unless the user wants another Cockpit visual acceptance pass first.
 ## 2026-05-28 PR 182 Merge Conflict Recovery
 
 Status:
-In progress; conflicts resolved locally in isolated worktree and backend plus
-frontend validation passed. Commit and push are still pending.
+Complete. Conflicts resolved in an isolated worktree, backend plus frontend
+validation passed, PR #182 was pushed and marked ready for review.
 
 GitHub tracking:
 
 - Issue #220: PR #182 merge-conflict recovery.
-- PR #182: governance recovery branch reconciliation with `origin/main`.
+- Issue #220 closed after merge recovery.
+- PR #182: governance recovery branch reconciliation with `origin/main`,
+  mergeable and ready for review.
 
 Files intentionally changed:
 
@@ -3066,8 +3068,8 @@ Open risks:
 - `OTM_RESOURCES` is still local/untracked. Isolated worktrees need the
   Data Dictionary path explicitly configured until the repository adopts a
   formal resource-versioning policy.
-- PR #182 mergeability must be rechecked after push because GitHub recalculates
-  it asynchronously.
+- CodeRabbit may briefly return to pending after PR metadata changes; GitHub
+  Actions were green after the merge-recovery push.
 
 Next-chat intake notes:
 
@@ -3079,5 +3081,5 @@ Next-chat intake notes:
 
 Recommended next step:
 
-Commit the merge with `Closes #220`, push PR #182, then verify GitHub reports
-the PR as mergeable.
+Wait for any asynchronous CodeRabbit status refresh to settle, then review or
+merge PR #182 according to the user's preferred release cadence.
