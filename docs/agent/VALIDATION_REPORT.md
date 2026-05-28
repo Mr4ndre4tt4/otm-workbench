@@ -3,6 +3,38 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Integration Mapping Focus Gate Validation
+
+Validation intent:
+
+- correct delivery drift away from the original Integration Mapping mock/spec
+  objective;
+- add a durable Solon focus gate to prevent generic cleanup from replacing
+  visible mock/spec progress;
+- avoid runtime behavior changes in this governance correction slice.
+
+Validation performed:
+
+```powershell
+git diff --check
+```
+
+Results:
+
+```text
+Whitespace check: passed, with expected Windows CRLF warnings.
+```
+
+Validation not planned:
+
+- backend tests;
+- frontend tests;
+- browser QA screenshots.
+
+Reason:
+This slice updates project controls only. The next slice must be Integration
+Mapping UI progress or a direct enabling API contract.
+
 ## 2026-05-28 Excluded Component Dependency Map Validation
 
 Validation intent:

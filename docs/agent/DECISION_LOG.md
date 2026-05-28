@@ -3,6 +3,58 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28: Add Integration Mapping Mock/Spec Focus Gate
+
+Status:
+accepted priority correction
+
+Change type:
+
+```text
+priority change
+delivery pipeline change
+feature boundary change
+validation strategy change
+```
+
+Decision:
+When this workstream is continuing the Integration Mapping mock/spec effort,
+the next slice must produce visible Integration Mapping UI progress, a direct
+backend/API contract required for that UI, or focused validation evidence for
+that mock/spec slice. Generic cleanup, inventory, route classification, or
+documentation-only work is blocked unless it is an unavoidable prerequisite and
+is explicitly challenged first.
+
+Reason:
+The user corrected the delivery direction after several safe but non-visible
+governance slices. Those slices did not move the original mock-based
+Integration Mapping objective enough. The project needs a durable focus gate so
+future agents do not confuse preparatory cleanup with progress on the requested
+To-Be module experience.
+
+Rules:
+
+- use the supplied mock/spec and Integration Mapping consolidated spec as the
+  immediate source for the next implementation slice;
+- prefer visible UI progress before more governance;
+- only do a non-UI prerequisite when it directly unlocks the next Integration
+  Mapping mock/spec UI state or API contract;
+- challenge any "next step" that does not advance the Integration Mapping
+  To-Be result.
+
+GitHub tracking:
+
+- issue #241: `Governance: prevent Integration Mapping focus drift`.
+
+Impacted files:
+
+- `docs/agent/CURRENT_SCOPE.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
 ## 2026-05-28: Use GitHub Version Trains And Smaller Issue-Linked Commits
 
 Status:
