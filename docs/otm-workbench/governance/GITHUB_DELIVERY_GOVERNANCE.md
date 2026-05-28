@@ -58,9 +58,9 @@ Use milestones for phase-level grouping, not detailed planning:
 - Integration
 - Order Release
 
-When GitHub milestones are not available from the current tool context, create
-one version-tracking issue and link child delivery issues from it. The version
-issue should state:
+If a future tool context cannot manage GitHub milestones directly, create one
+version-tracking issue and link child delivery issues from it. The version issue
+should state:
 
 - delivery intent;
 - included modules or governance controls;

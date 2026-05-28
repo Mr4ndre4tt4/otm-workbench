@@ -57,9 +57,9 @@ behavior.
 
 Open risks:
 
-- GitHub CLI is not currently available in this shell, so milestone management
-  may require connector support, browser/manual GitHub work, or reinstalling
-  `gh` before milestone automation.
+- GitHub CLI is installed at `C:\Program Files\GitHub CLI\gh.exe`, version
+  2.92.0, and authenticated as `Mr4ndre4tt4`; this shell may require the
+  absolute path when `gh` is not on PATH.
 - Parallel local Assistant and Integration Mapping work remains outside this
   governance commit.
 

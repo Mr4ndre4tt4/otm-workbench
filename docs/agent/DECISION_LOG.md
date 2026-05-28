@@ -21,7 +21,7 @@ The project will use lightweight GitHub version trains and smaller
 issue-linked commits. Each meaningful delivery slice should create or update a
 GitHub Issue before implementation when practical. Related slices should be
 grouped by a GitHub milestone when available, or by a version-tracking issue
-when milestone management is not available from the active tool context.
+when milestone automation is not practical in a future tool context.
 
 Reason:
 The workspace now contains multiple parallel workstreams. Smaller commits and
