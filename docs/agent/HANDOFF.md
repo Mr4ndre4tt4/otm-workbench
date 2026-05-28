@@ -3,6 +3,58 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Rates Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #216.
+
+Scope:
+Added focused backend regression coverage proving same-name Rates batches do
+not leak across active domain or environment scope, while DBA/all-domain
+visibility remains constrained to the active environment.
+
+Files intentionally changed:
+
+- `tests/test_rates_batches.py`
+- `docs/agent/TASK_CONTRACT_RATES_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_rates_batches.py -k "same_name or active_context_scope or dba_context" -q`:
+  5 passed, 5 deselected.
+- `python -m pytest tests/test_rates_batches.py tests/test_rates_summary.py -q`:
+  12 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend context-isolation
+  regression coverage and does not change visible UI behavior.
+
+Evidence:
+
+- GitHub issue #216 tracks the delivery slice.
+- New tests assert visible and hidden batch IDs plus direct detail route access
+  for same-name batches.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Rates slice unless the
+  latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #216 commit, wait for GitHub checks, close the issue, then pick
+the next small context-isolation follow-up from the validation matrix.
+
 ## 2026-05-28 Assets Acceptance Pass
 
 Status:

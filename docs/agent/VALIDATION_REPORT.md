@@ -3231,3 +3231,34 @@ Notes:
   the floating Assistant launcher from parallel work. The Cockpit/sidebar
   acceptance evidence remains valid because excluded top-level modules are
   absent and the context selector shows private `OTM1` scope.
+
+## 2026-05-28 Rates Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #216 for a focused Rates context-isolation regression.
+- Added backend tests proving same-name rate batches stay isolated by active
+  domain and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_rates_batches.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_rates_batches.py tests/test_rates_summary.py -q
+```
+
+Results:
+
+```text
+focused Rates context tests: 5 passed, 5 deselected
+Rates batches and summary: 12 passed
+```
+
+Notes:
+
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
+- Assertions check batch IDs and direct route access instead of relying on
+  display names, because same-name data is the regression risk.

@@ -235,7 +235,10 @@ def test_rate_batches_list_and_detail_follow_active_context_scope(client, admin_
     )
 
     listed = client.get("/api/v1/modules/rates/batches", headers=admin_header)
-    visible_detail = client.get(f"/api/v1/modules/rates/batches/{visible['id']}", headers=admin_header)
+    visible_detail = client.get(
+        f"/api/v1/modules/rates/batches/{visible['id']}",
+        headers=admin_header,
+    )
     hidden_detail = client.get(f"/api/v1/modules/rates/batches/{hidden_domain['id']}", headers=admin_header)
     hidden_readiness = client.get(
         f"/api/v1/modules/rates/batches/{hidden_domain['id']}/readiness",
@@ -273,6 +276,117 @@ def test_rate_batches_list_and_detail_follow_active_context_scope(client, admin_
     assert hidden_tables.status_code == 404
     assert hidden_project_detail.status_code == 404
     assert hidden_project_readiness.status_code == 404
+
+
+def test_rate_batches_same_name_are_isolated_by_domain_and_environment(client, admin_header):
+    project_id, environment_id = create_project_environment_context(
+        client,
+        admin_header,
+        domain_name="OTM1",
+    )
+    other_environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project_id, "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+    shared_name = "Shared tariff upload"
+    visible = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+    hidden_domain = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM2",
+    )
+    hidden_environment = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=other_environment["id"],
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/rates/batches", headers=admin_header)
+    visible_detail = client.get(
+        f"/api/v1/modules/rates/batches/{visible['id']}",
+        headers=admin_header,
+    )
+    hidden_domain_detail = client.get(
+        f"/api/v1/modules/rates/batches/{hidden_domain['id']}",
+        headers=admin_header,
+    )
+    hidden_environment_detail = client.get(
+        f"/api/v1/modules/rates/batches/{hidden_environment['id']}",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [(item["id"], item["name"]) for item in listed.json()["items"]] == [
+        (visible["id"], shared_name)
+    ]
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["id"] == visible["id"]
+    assert hidden_domain_detail.status_code == 404
+    assert hidden_environment_detail.status_code == 404
+
+
+def test_rate_batches_dba_same_name_all_domains_still_follow_active_environment(client, admin_header):
+    project_id, environment_id = create_project_environment_context(
+        client,
+        admin_header,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+    other_environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project_id, "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+    shared_name = "Shared DBA tariff upload"
+    otm1 = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+    otm2 = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM2",
+    )
+    hidden_environment = create_scoped_rate_batch(
+        client,
+        admin_header,
+        name=shared_name,
+        project_id=project_id,
+        environment_id=other_environment["id"],
+        domain_name="OTM3",
+    )
+
+    listed = client.get("/api/v1/modules/rates/batches", headers=admin_header)
+    hidden_detail = client.get(
+        f"/api/v1/modules/rates/batches/{hidden_environment['id']}",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {otm1["id"], otm2["id"]}
+    assert all(item["name"] == shared_name for item in listed.json()["items"])
+    assert hidden_detail.status_code == 404
 
 
 def test_rate_batch_table_detail_returns_rows_and_table_issues(client, admin_header):
