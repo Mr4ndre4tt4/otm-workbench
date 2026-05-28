@@ -3,6 +3,49 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Integration Mapping Focus Gate
+
+Status:
+Implemented and validated for GitHub issue #241.
+
+Scope:
+Added a Solon focus correction after the user pointed out that recent progress
+drifted into slow generic governance instead of evolving Integration Mapping
+from the supplied mock/spec. The next slice in this workstream must produce
+visible Integration Mapping UI progress, a direct backend/API contract needed
+for that UI, or focused validation for the Integration Mapping mock/spec slice.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_INTEGRATION_MAPPING_FOCUS_GATE_2026_05_28.md`
+- `docs/agent/CURRENT_SCOPE.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `git diff --check`
+  passed, with expected Windows CRLF warnings.
+
+Validation not planned:
+
+- Runtime tests and browser screenshots are not planned because this is a
+  governance correction only.
+
+Open risks:
+
+- This correction does not itself implement the UI. The next issue/branch must
+  return to Integration Mapping mock/spec implementation immediately.
+
+Recommended next step:
+
+Commit, push, open the PR for #241, wait for checks, then open the next
+implementation slice against Integration Mapping using the supplied mock/spec
+and consolidated Integration Mapping spec.
+
 ## 2026-05-28 Excluded Component Dependency Map
 
 Status:

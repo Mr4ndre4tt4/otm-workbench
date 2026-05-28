@@ -216,6 +216,27 @@ Required per slice:
 - if the slice may continue in another chat, a handoff capsule following
   `docs/agent/CHAT_CONTINUITY_WORKFLOW.md`.
 
+Integration Mapping focus gate:
+
+When the active instruction is to continue Integration Mapping from the
+supplied mock/spec, the next development slice must satisfy at least one of:
+
+- visible Integration Mapping UI progress against the mock/spec To-Be;
+- a direct Integration Mapping backend/API contract required by that UI;
+- focused validation evidence for the Integration Mapping mock/spec slice.
+
+The agent must not substitute generic cleanup, documentation inventory,
+navigation pruning, browser-script classification, or unrelated governance work
+for mock/spec progress. If such work appears necessary, the agent must state:
+
+```text
+Concern:
+Impact on Integration Mapping mock/spec progress:
+Why this is an unavoidable prerequisite:
+Expected visible/API outcome after this prerequisite:
+Decision needed:
+```
+
 Runtime freshness gate:
 
 Before any browser QA screenshot or visual acceptance claim, verify the same

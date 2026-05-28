@@ -126,7 +126,21 @@ See:
 
 ## Active Priority
 
-Priority is not more code. Priority is:
+Priority is not more generic governance or cleanup. The immediate active
+priority for this workstream is Integration Mapping Studio execution from the
+supplied mock/spec direction.
+
+Focus gate:
+
+- the next slice must produce visible Integration Mapping UI progress from the
+  mock/spec or a direct backend/API contract required by that UI;
+- generic frontend cleanup, route classification, script inventory, or archive
+  planning is blocked unless it is an unavoidable prerequisite for the
+  Integration Mapping mock/spec outcome;
+- if a proposed "next step" does not move Integration Mapping toward the
+  mock/spec To-Be, the agent must challenge it before doing the work.
+
+The broader program priority remains:
 
 1. use the Complete Solution Mockup deep-flow boards as the To-Be UX baseline;
 2. classify current frontend routes/components as keep, hide, absorb, alter,
