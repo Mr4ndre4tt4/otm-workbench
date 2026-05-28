@@ -32,7 +32,26 @@ export type MasterDataTemplate = {
   updated_at: string | null;
 };
 
-export type MasterDataTemplatesResponse = PageResponse<MasterDataTemplate>;
+export type MasterDataTemplateSearchOperator = "begins_with" | "contains" | "one_of" | "not_one_of";
+
+export type MasterDataTemplateSearchFilter = {
+  field: string;
+  operator: MasterDataTemplateSearchOperator;
+  value: string;
+};
+
+export type MasterDataTemplateSearchMetadata = {
+  fields: Array<{
+    key: string;
+    label: string;
+  }>;
+  operators: MasterDataTemplateSearchOperator[];
+};
+
+export type MasterDataTemplatesResponse = PageResponse<MasterDataTemplate> & {
+  normalized_filters?: MasterDataTemplateSearchFilter[];
+  search_metadata?: MasterDataTemplateSearchMetadata;
+};
 
 export type MasterDataTemplateValidation = {
   template_code: string;

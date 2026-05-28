@@ -42,9 +42,14 @@ export type CatalogMacroObjectTablesResponse = PageResponse<CatalogMacroObjectTa
 
 export type CatalogTableSummary = {
   table_name: string;
+  exists?: boolean;
   schema_name: string;
   description: string;
   column_count: number;
+  primary_key?: string[];
+  required_columns?: string[];
+  date_columns?: string[];
+  foreign_key_count?: number;
   data_category: string;
   is_transactional: boolean;
   allow_cutover: boolean;
@@ -56,13 +61,34 @@ export type CatalogTablesResponse = PageResponse<CatalogTableSummary>;
 export type CatalogTableColumn = {
   column_name: string;
   data_type: string;
-  is_nullable: boolean;
-  is_constraint: boolean;
+  nullable?: boolean;
+  is_nullable?: boolean;
+  is_primary_key?: boolean;
+  is_required?: boolean;
+  is_constraint?: boolean;
   constraint_values?: string;
   default_value?: string;
 };
 
 export type CatalogTableColumnsResponse = PageResponse<CatalogTableColumn>;
+
+export type CatalogReferenceOption = {
+  gid: string;
+  xid: string;
+  domain_name: string;
+  display_name: string;
+};
+
+export type CatalogReferenceOptionsResponse = {
+  module_id?: string | null;
+  object_type: string;
+  project_id?: string | null;
+  environment_id?: string | null;
+  profile_id?: string | null;
+  domain_name: string;
+  allowed_domains: string[];
+  items: CatalogReferenceOption[];
+};
 
 export type CatalogLoadPlanItem = {
   macro_object_code: string;

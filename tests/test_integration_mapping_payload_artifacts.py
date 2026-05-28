@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationPayloadArtifact
-from tests.test_integration_mapping_definitions import definition_payload
+from tests.test_integration_mapping_definitions import (
+    create_project_with_environments,
+    definition_payload,
+    set_active_context,
+)
 
 
 def create_definition(client, admin_header):
@@ -27,6 +31,14 @@ def payload_import(**overrides):
 
 
 def test_import_integration_payload_creates_internal_artifact(client, admin_header, db_session):
+    project_id, environment_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
     definition = create_definition(client, admin_header)
 
     response = client.post(
@@ -50,6 +62,10 @@ def test_import_integration_payload_creates_internal_artifact(client, admin_head
     assert artifact.source_module == "integration_mapping"
     assert artifact.artifact_type == "integration_payload_sample"
     assert artifact.file_name == "planned_shipment_sample.xml"
+    assert artifact.project_id == project_id
+    assert artifact.environment_id == environment_id
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
     assert payload_artifact is not None
     assert payload_artifact.artifact_id == artifact.id
     assert Path(artifact.file_path).exists()

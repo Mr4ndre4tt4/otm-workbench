@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { AuthProvider } from "../platform/auth";
 
-function renderFunctionalApp() {
+function renderFunctionalApp(initialPath = "/master-data/quality") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false }
@@ -16,7 +16,7 @@ function renderFunctionalApp() {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MemoryRouter initialEntries={["/master-data/quality"]}>
+        <MemoryRouter initialEntries={[initialPath]}>
           <App />
         </MemoryRouter>
       </AuthProvider>
@@ -244,14 +244,26 @@ describe("Functional Coordinate Quality journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "Quality Tools" });
-    await userEvent.click(screen.getByRole("button", { name: /8Quality/ }));
+    expect(screen.getByRole("link", { name: "Open Lat/Lon Validator" })).toHaveAttribute(
+      "href",
+      "/master-data/quality/lat-lon"
+    );
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Coordinate Quality workflow")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: "Open Lat/Lon Validator" }));
+    await screen.findByRole("heading", { name: "Lat/Lon Validator" });
+    expect(screen.getByRole("link", { name: "Back to Quality Tools" })).toHaveAttribute("href", "/master-data/quality");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Preview coordinates" }));
     await screen.findByText("Coordinate Quality preview processed 1 location(s).");
     expect(screen.getByLabelText("Coordinate Quality results")).toHaveTextContent("NULL FILLED");
 
     await userEvent.click(screen.getByRole("button", { name: "Create quality batch" }));
     await screen.findByText("Coordinate Quality batch coordinate_batch_1 created.");
+    await screen.findByRole("heading", { name: "coordinate_batch_1" });
     expect(screen.getByLabelText("Coordinate Quality batches")).toHaveTextContent("coordinate_batch_1");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Export quality package" }));
     await screen.findByText("Coordinate Quality package coordinate_quality_batch_coordinate_batch_1.zip exported.");
@@ -261,11 +273,83 @@ describe("Functional Coordinate Quality journey", () => {
     await userEvent.click(screen.getByRole("link", { name: /Data Factory/ }));
     await userEvent.click(screen.getByRole("link", { name: /Open Quality Tools/ }));
     await screen.findByRole("heading", { name: "Quality Tools" });
-    await userEvent.click(screen.getByRole("button", { name: /8Quality/ }));
+    await userEvent.click(screen.getByRole("link", { name: "Open Lat/Lon Validator" }));
+    await screen.findByRole("heading", { name: "Lat/Lon Validator" });
     expect(await screen.findByLabelText("Coordinate Quality batches")).toHaveTextContent("coordinate_batch_1");
 
     expect(previewRequests).toEqual([{ candidate_count: 2, record_count: 2 }]);
     expect(batchRequests).toEqual([{ record_count: 2, source_type: "api" }]);
     expect(exportRequests).toEqual([{ method: "POST" }]);
+  }, 60000);
+
+  it("recovers a Lat/Lon batch detail route directly from the backend", async () => {
+    const detailRequests: string[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "master_data", label: "Data Factory", path: "/master-data", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/templates")) {
+        return Promise.resolve(jsonResponse({ items: [masterDataTemplate()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches/coordinate_batch_1")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        detailRequests.push(url);
+        return Promise.resolve(
+          jsonResponse({
+            batch_id: "coordinate_batch_1",
+            issues: [],
+            provider_mode: "fake",
+            status: "PROCESSED",
+            summary: coordinatePreview().summary
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/master-data/coordinate-quality/batches/coordinate_batch_1/results")) {
+        return Promise.resolve(jsonResponse({ items: coordinatePreview().results, total: 1 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/master-data/quality/lat-lon/batches/coordinate_batch_1");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "coordinate_batch_1" });
+    expect(screen.getByRole("link", { name: "Back to Quality Tools" })).toHaveAttribute("href", "/master-data/quality");
+    expect(await screen.findByLabelText("Coordinate Quality results")).toHaveTextContent("NULL FILLED");
+    expect(screen.getByLabelText("Coordinate Quality batches")).toHaveTextContent("coordinate_batch_1");
+    expect(screen.queryByLabelText("Data Factory workflow")).not.toBeInTheDocument();
+    expect(detailRequests).toHaveLength(1);
   }, 60000);
 });

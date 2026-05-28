@@ -11,7 +11,14 @@ from tests.test_load_plan_cutover_checklist import create_client_safe_evidence
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     response = client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": "Synthetic CSVUTIL batch", "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": "Synthetic CSVUTIL batch",
+            "domain_name": "OTM1",
+            "project_id": "project_load_plan",
+            "profile_id": "profile_load_plan",
+            "environment_id": "env_cutover",
+        },
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -152,6 +159,16 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
 
     assert ctl.artifact_type == "csvutil_ctl"
     assert cl.artifact_type == "csvutil_cl"
+    assert ctl.project_id == "project_load_plan"
+    assert ctl.profile_id == "profile_load_plan"
+    assert ctl.environment_id == "env_cutover"
+    assert ctl.domain_name == "OTM1"
+    assert ctl.visibility == "PROJECT"
+    assert cl.project_id == "project_load_plan"
+    assert cl.profile_id == "profile_load_plan"
+    assert cl.environment_id == "env_cutover"
+    assert cl.domain_name == "OTM1"
+    assert cl.visibility == "PROJECT"
     assert ctl.content_type == "text/plain"
     assert cl.content_type == "text/plain"
     assert "001,ACCESSORIAL_COST,csv/001_ACCESSORIAL_COST.csv" in ctl_text
@@ -161,8 +178,18 @@ def test_csvutil_build_creates_ctl_cl_manifest_evidence_audit_and_event(client, 
     assert manifest_json["manifest_type"] == "csvutil_build"
     assert manifest_json["package"]["id"] == package["id"]
     assert manifest_json["package"]["catalog_macro_object_code"] == "RATE_RECORD"
+    assert manifest.project_id == "project_load_plan"
+    assert manifest.profile_id == "profile_load_plan"
+    assert manifest.environment_id == "env_cutover"
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     assert {item["artifact_type"] for item in manifest_json["files"]} == {"csvutil_ctl", "csvutil_cl"}
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_load_plan"
+    assert evidence.profile_id == "profile_load_plan"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert evidence.evidence_type == "csvutil_build"
     assert evidence.artifact_id == ctl.id
     evidence_summary = json.loads(evidence.summary_json)

@@ -36,6 +36,52 @@ export type CockpitArtifact = {
   sha256: string;
 };
 
+export type CockpitContextSelector = {
+  mode: "PRIVATE" | "PUBLIC";
+  active_context: Record<string, unknown>;
+  public_view_available: boolean;
+  requires_private_context: boolean;
+  set_context_action_key: string;
+};
+
+export type CockpitProjectInfo = {
+  title: string;
+  status: string;
+  links: { href: string; label: string }[];
+  documents: { href: string; label: string }[];
+  contacts: { label: string; value: string }[];
+  secure_vault: {
+    status: string;
+    metadata_only: boolean;
+    secret_values_available: boolean;
+  };
+};
+
+export type CockpitAccelerator = {
+  key: string;
+  label: string;
+  description: string;
+  href: string;
+  status: string;
+  icon_key: string;
+  requires_private_context: boolean;
+  disabled: boolean;
+  disabled_reason: string | null;
+};
+
+export type CockpitUserScope = {
+  role_mode: string;
+  is_dba: boolean;
+  allowed_domains: string[];
+  can_view_all_domains: boolean;
+};
+
+export type CockpitRouteRecovery = {
+  default_path: string;
+  return_action_key: string;
+  blocked_route_message: string;
+};
+
 export type CockpitSummary = {
   module_id: "home";
   title: string;
@@ -48,6 +94,11 @@ export type CockpitSummary = {
     recent_artifacts: number;
     recent_evidence: number;
   };
+  context_selector: CockpitContextSelector;
+  project_info: CockpitProjectInfo;
+  accelerators: CockpitAccelerator[];
+  user_scope: CockpitUserScope;
+  route_recovery: CockpitRouteRecovery;
   module_summary: {
     total: number;
     counts_by_status: Record<string, number>;

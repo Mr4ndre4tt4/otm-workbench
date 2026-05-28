@@ -297,6 +297,11 @@ def test_cutover_handoff_commit_creates_records_and_transitions_package(
     assert package_row.status == "READY_FOR_CUTOVER"
     assert evidence.evidence_type == "load_plan_cutover_handoff"
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_readiness_export"
+    assert evidence.profile_id == "profile_readiness_export"
+    assert evidence.environment_id == "env_readiness_export"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     handoff_summary = json.loads(handoff.summary_json)
     evidence_summary = json.loads(evidence.summary_json)
     audit_metadata = json.loads(audit.metadata_json)
@@ -308,7 +313,13 @@ def test_cutover_handoff_commit_creates_records_and_transitions_package(
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert audit_metadata["project_id"] == "project_readiness_export"
+    assert audit_metadata["environment_id"] == "env_readiness_export"
+    assert audit_metadata["domain_name"] == "OTM1"
     assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["project_id"] == "project_readiness_export"
+    assert event_payload["environment_id"] == "env_readiness_export"
+    assert event_payload["domain_name"] == "OTM1"
     assert (
         event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"

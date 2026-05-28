@@ -180,6 +180,73 @@ export type IntegrationResponseHandler = {
   updated_at: string | null;
 };
 
+export type IntegrationEnrichmentFieldMapping = {
+  name: string;
+  response_path: string;
+  data_type: string;
+  cardinality: string;
+  fallback_policy: Record<string, unknown>;
+};
+
+export type IntegrationEnrichmentStep = {
+  id: string;
+  definition_id: string;
+  source_schema_document_id: string;
+  response_schema_document_id: string;
+  endpoint_id: string | null;
+  name: string;
+  description: string;
+  step_type: string;
+  key_template: string;
+  key_source_fields: string[];
+  response_field_mappings: IntegrationEnrichmentFieldMapping[];
+  loop_source_path: string | null;
+  loop_filter_expression: string | null;
+  on_empty_response: string;
+  on_error: string;
+  sequence_index: number;
+  status: string;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type IntegrationEnrichedField = {
+  id: string;
+  definition_id: string;
+  enrichment_step_id: string;
+  enrichment_substep_id: string | null;
+  name: string;
+  data_type: string;
+  cardinality: string;
+  response_path: string;
+  fallback_policy: Record<string, unknown>;
+  source_trace: Record<string, unknown>;
+  status: string;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type IntegrationEnrichmentStepValidation = {
+  definition_id: string;
+  enrichment_step_id: string;
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+  enriched_field_count: number;
+};
+
+export type IntegrationEnrichmentReadiness = {
+  definition_id: string;
+  ready: boolean;
+  step_count: number;
+  enriched_field_count: number;
+  blockers: string[];
+  warnings: string[];
+  steps: IntegrationEnrichmentStepValidation[];
+};
+
 export type IntegrationMappingSuggestion = {
   id: string;
   definition_id: string;
@@ -352,6 +419,7 @@ export type IntegrationValidationResult = {
   is_valid: boolean;
   issue_count: number;
   issues?: unknown[];
+  enrichment_readiness?: IntegrationEnrichmentReadiness;
   readiness?: IntegrationValidationReadiness;
   scenario_pack?: IntegrationScenarioPack | null;
 };
@@ -401,6 +469,8 @@ export type IntegrationJoinsResponse = PageResponse<IntegrationJoinRule>;
 export type IntegrationJoinBindingsResponse = PageResponse<IntegrationJoinBinding>;
 export type IntegrationLookupsResponse = PageResponse<IntegrationLookupDefinition>;
 export type IntegrationResponseHandlersResponse = PageResponse<IntegrationResponseHandler>;
+export type IntegrationEnrichmentStepsResponse = PageResponse<IntegrationEnrichmentStep>;
+export type IntegrationEnrichedFieldsResponse = PageResponse<IntegrationEnrichedField>;
 export type IntegrationMappingSuggestionsResponse = PageResponse<IntegrationMappingSuggestion>;
 export type IntegrationArtifactsResponse = PageResponse<IntegrationArtifact> & {
   definition_id: string;

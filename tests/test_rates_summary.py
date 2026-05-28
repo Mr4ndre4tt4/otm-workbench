@@ -1,7 +1,51 @@
-def create_batch(client, admin_header, name="Synthetic summary batch", scenario_code="ACCESSORIAL_ONLY"):
+def create_context(client, admin_header, *, domain_name="OTM1"):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": "Synthetic Rates Summary Workspace"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": "Synthetic Rates Summary Project"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "UAT", "environment_type": "UAT"},
+        headers=admin_header,
+    ).json()
+    response = client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": project["id"],
+            "environment_id": environment["id"],
+            "domain_name": domain_name,
+        },
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+    return project["id"], environment["id"]
+
+
+def create_batch(
+    client,
+    admin_header,
+    *,
+    project_id=None,
+    environment_id=None,
+    domain_name="OTM1",
+    name="Synthetic summary batch",
+    scenario_code="ACCESSORIAL_ONLY",
+):
     response = client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": name, "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": name,
+            "domain_name": domain_name,
+            "project_id": project_id,
+            "environment_id": environment_id,
+        },
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -59,8 +103,36 @@ def test_rates_summary_returns_empty_module_read_model(client, admin_header):
 
 
 def test_rates_summary_reports_counts_recent_objects_and_client_safe_blockers(client, admin_header):
-    blocked_batch = create_batch(client, admin_header, name="Synthetic blocked batch")
-    ready_batch = create_batch(client, admin_header, name="Synthetic ready batch")
+    project_id, environment_id = create_context(client, admin_header)
+    blocked_batch = create_batch(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        name="Synthetic blocked batch",
+    )
+    ready_batch = create_batch(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        name="Synthetic ready batch",
+    )
+    create_batch(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM2",
+        name="Hidden domain batch",
+    )
+    create_batch(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id="env_dev",
+        name="Hidden environment batch",
+    )
     add_accessorial_table(client, admin_header, ready_batch["id"])
     client.post(f"/api/v1/modules/rates/batches/{ready_batch['id']}/csv-preview", headers=admin_header)
 

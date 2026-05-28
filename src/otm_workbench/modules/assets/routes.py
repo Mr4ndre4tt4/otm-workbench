@@ -3,13 +3,14 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.catalog.services import get_macro_object
-from otm_workbench.models import Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
+from otm_workbench.models import ActiveContext, Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
 from otm_workbench.modules.assets.assets import (
     AssetValidationError,
     archive_asset,
@@ -29,9 +30,12 @@ from otm_workbench.modules.assets.classifications import (
     update_asset_classification,
 )
 from otm_workbench.modules.rates.dictionary import load_table_definition
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 
 
 router = APIRouter(prefix="/api/v1/modules/assets", tags=["assets"])
+
+ASSET_SEARCH_OPERATORS = {"begins_with", "contains", "one_of", "not_one_of"}
 
 
 class AssetCreateRequest(BaseModel):
@@ -42,9 +46,15 @@ class AssetCreateRequest(BaseModel):
     visibility: str
     scope_type: str
     sensitivity: str
+    project_id: str | None = None
+    profile_id: str | None = None
+    environment_id: str | None = None
+    domain_name: str | None = None
+    access_policy_id: str | None = None
     module_id: str | None = None
     macro_object_code: str | None = None
     otm_table_name: str | None = None
+    target_otm_version: str | None = None
     tags: list[str] = []
 
 
@@ -58,6 +68,7 @@ class AssetUpdateRequest(BaseModel):
     module_id: str | None = None
     macro_object_code: str | None = None
     otm_table_name: str | None = None
+    target_otm_version: str | None = None
     tags: list[str] | None = None
 
 
@@ -85,6 +96,129 @@ class AssetClassificationUpdateRequest(BaseModel):
 def reject_archived_asset(asset: Asset) -> None:
     if asset.status == "ARCHIVED":
         raise api_error(409, "ASSET_ARCHIVED", "Archived assets cannot be changed.")
+
+
+def scoped_asset_query(db: Session, user: User):
+    query = db.query(Asset)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(Asset.id.is_(None))
+        return query
+    return apply_operational_scope(query, Asset, operational_scope_from_context(active_context))
+
+
+def active_context_scope_payload(db: Session, user: User) -> dict[str, object] | None:
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        return None
+    return {
+        "project_id": active_context.project_id,
+        "profile_id": active_context.profile_id,
+        "environment_id": active_context.environment_id,
+        "domain_name": active_context.domain_name,
+    }
+
+
+def merge_asset_create_scope(db: Session, user: User, payload: dict[str, object]) -> dict[str, object]:
+    scope = active_context_scope_payload(db, user)
+    if scope is None:
+        return payload
+    return {
+        **payload,
+        **{key: payload.get(key) or value for key, value in scope.items()},
+    }
+
+
+def get_scoped_asset_or_404(db: Session, user: User, asset_id: str) -> Asset:
+    asset = scoped_asset_query(db, user).filter(Asset.id == asset_id).first()
+    if asset is None:
+        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    return asset
+
+
+def normalize_asset_search_operator(raw_operator: str | None, *, field_name: str) -> str | None:
+    if raw_operator is None or not raw_operator.strip():
+        return None
+    operator = raw_operator.strip().lower().replace("-", "_").replace(" ", "_")
+    if operator not in ASSET_SEARCH_OPERATORS:
+        raise api_error(
+            400,
+            "ASSET_SEARCH_INVALID_OPERATOR",
+            "Asset search operator is not supported.",
+            details={"field_name": field_name, "operator": raw_operator, "allowed_operators": sorted(ASSET_SEARCH_OPERATORS)},
+        )
+    return operator
+
+
+def split_asset_search_values(raw_value: str | None) -> list[str]:
+    if raw_value is None:
+        return []
+    return [value.strip() for value in raw_value.split(",") if value.strip()]
+
+
+def apply_asset_text_filter(
+    query,
+    column,
+    *,
+    field_name: str,
+    value: str | None,
+    operator: str | None,
+    uppercase_exact: bool = False,
+    default_operator: str = "exact",
+):
+    values = split_asset_search_values(value)
+    if not values:
+        return query
+    normalized_operator = normalize_asset_search_operator(operator, field_name=field_name) or default_operator
+    if normalized_operator == "exact":
+        target = values[0].upper() if uppercase_exact else values[0]
+        return query.filter(column == target)
+    if normalized_operator == "contains":
+        return query.filter(column.ilike(f"%{values[0]}%"))
+    if normalized_operator == "begins_with":
+        return query.filter(column.ilike(f"{values[0]}%"))
+
+    normalized_values = [value.upper() for value in values] if uppercase_exact else values
+    if normalized_operator == "one_of":
+        return query.filter(column.in_(normalized_values))
+    if normalized_operator == "not_one_of":
+        return query.filter(or_(column.is_(None), column.notin_(normalized_values)))
+    return query
+
+
+def apply_asset_link_type_filter(
+    db: Session,
+    query,
+    *,
+    value: str | None,
+    operator: str | None,
+):
+    values = split_asset_search_values(value)
+    if not values:
+        return query
+    normalized_operator = normalize_asset_search_operator(operator, field_name="linked_target_type") or "exact"
+    normalized_values = [item.upper() for item in values]
+    matching_asset_ids = db.query(AssetLink.asset_id)
+    if normalized_operator == "exact":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type == normalized_values[0])
+        return query.filter(Asset.id.in_(matching_asset_ids))
+    if normalized_operator == "one_of":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type.in_(normalized_values))
+        return query.filter(Asset.id.in_(matching_asset_ids))
+    if normalized_operator == "not_one_of":
+        matching_asset_ids = matching_asset_ids.filter(AssetLink.link_type.in_(normalized_values))
+        return query.filter(Asset.id.notin_(matching_asset_ids))
+    raise api_error(
+        400,
+        "ASSET_SEARCH_INVALID_OPERATOR",
+        "Asset linked target type supports exact, one_of, and not_one_of only.",
+        details={
+            "field_name": "linked_target_type",
+            "operator": operator,
+            "allowed_operators": ["one_of", "not_one_of"],
+        },
+    )
 
 
 def validate_asset_otm_references(db: Session, payload: dict[str, object]) -> None:
@@ -184,7 +318,7 @@ def create_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    request_payload = payload.model_dump()
+    request_payload = merge_asset_create_scope(db, user, payload.model_dump())
     validate_asset_otm_references(db, request_payload)
     try:
         asset = create_draft_asset(db, payload=request_payload, user=user)
@@ -199,37 +333,128 @@ def create_asset(
 
 @router.get("/assets")
 def list_assets(
+    asset_id: str | None = None,
+    asset_id_operator: str | None = None,
+    name: str | None = None,
+    name_operator: str | None = None,
+    description: str | None = None,
+    description_operator: str | None = None,
     asset_type: str | None = None,
     category: str | None = None,
     status: str | None = None,
+    visibility: str | None = None,
+    sensitivity: str | None = None,
     scope_type: str | None = None,
     tag: str | None = None,
     module_id: str | None = None,
+    module_id_operator: str | None = None,
     macro_object_code: str | None = None,
+    macro_object_code_operator: str | None = None,
     otm_table_name: str | None = None,
+    otm_table_name_operator: str | None = None,
+    target_otm_version: str | None = None,
+    target_otm_version_operator: str | None = None,
+    linked_target_type: str | None = None,
+    linked_target_type_operator: str | None = None,
+    has_current_version: bool | None = None,
+    page: int = 1,
+    page_size: int = 50,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    query = db.query(Asset)
+    safe_page = max(page, 1)
+    safe_page_size = max(1, min(page_size, 100))
+    query = scoped_asset_query(db, user)
+    query = apply_asset_text_filter(
+        query,
+        Asset.id,
+        field_name="asset_id",
+        value=asset_id,
+        operator=asset_id_operator,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.name,
+        field_name="name",
+        value=name,
+        operator=name_operator,
+        default_operator="contains",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.description,
+        field_name="description",
+        value=description,
+        operator=description_operator,
+        default_operator="contains",
+    )
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type.strip().upper())
     if category:
         query = query.filter(Asset.category == category.strip().upper())
     if status:
         query = query.filter(Asset.status == status.strip().upper())
+    if visibility:
+        query = query.filter(Asset.visibility == visibility.strip().upper())
+    if sensitivity:
+        query = query.filter(Asset.sensitivity == sensitivity.strip().upper())
     if scope_type:
         query = query.filter(Asset.scope_type == scope_type.strip().upper())
     if tag:
         query = query.filter(Asset.tags_json.contains(f'"{tag.strip().upper()}"'))
-    if module_id:
-        query = query.filter(Asset.module_id == module_id.strip())
-    if macro_object_code:
-        query = query.filter(Asset.macro_object_code == macro_object_code.strip().upper())
-    if otm_table_name:
-        query = query.filter(Asset.otm_table_name == otm_table_name.strip().upper())
-    assets = query.order_by(Asset.created_at.desc()).all()
+    query = apply_asset_text_filter(
+        query,
+        Asset.module_id,
+        field_name="module_id",
+        value=module_id,
+        operator=module_id_operator,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.macro_object_code,
+        field_name="macro_object_code",
+        value=macro_object_code,
+        operator=macro_object_code_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.otm_table_name,
+        field_name="otm_table_name",
+        value=otm_table_name,
+        operator=otm_table_name_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.target_otm_version,
+        field_name="target_otm_version",
+        value=target_otm_version,
+        operator=target_otm_version_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    if has_current_version is not None:
+        query = query.filter(Asset.current_version_id.isnot(None) if has_current_version else Asset.current_version_id.is_(None))
+    query = apply_asset_link_type_filter(
+        db,
+        query,
+        value=linked_target_type,
+        operator=linked_target_type_operator,
+    )
+    total = query.count()
+    assets = (
+        query.order_by(Asset.created_at.desc())
+        .offset((safe_page - 1) * safe_page_size)
+        .limit(safe_page_size)
+        .all()
+    )
     items = [serialize_asset(asset) for asset in assets]
-    return PageResponse(items=items, total=len(items))
+    return PageResponse(items=items, total=total, page=safe_page, page_size=safe_page_size)
 
 
 @router.get("/assets/{asset_id}")
@@ -238,9 +463,7 @@ def get_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     return serialize_asset(asset)
 
 
@@ -251,9 +474,7 @@ def patch_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     request_payload = payload.model_dump(exclude_unset=True)
     validate_asset_otm_references(db, request_payload)
@@ -279,9 +500,7 @@ def archive_asset_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     return serialize_asset(archive_asset(db, asset=asset, archived_by=user.email))
 
 
@@ -292,9 +511,7 @@ def create_asset_link_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     link_type = payload.link_type.strip().upper()
     target_id = payload.target_id.strip()
@@ -339,9 +556,7 @@ def list_asset_links(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     links = (
         db.query(AssetLink)
         .filter(AssetLink.asset_id == asset_id)
@@ -358,9 +573,7 @@ def download_current_asset_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     if not asset.current_version_id:
         raise api_error(409, "ASSET_VERSION_MISSING", "Asset has no current version to download.")
     version = db.query(AssetVersion).filter(AssetVersion.id == asset.current_version_id).first()
@@ -384,9 +597,7 @@ def upload_asset_file_version(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     reject_archived_asset(asset)
     content = file.file.read()
     try:
@@ -412,9 +623,7 @@ def list_asset_versions(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if asset is None:
-        raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
+    asset = get_scoped_asset_or_404(db, user, asset_id)
     versions = (
         db.query(AssetVersion)
         .filter(AssetVersion.asset_id == asset_id)

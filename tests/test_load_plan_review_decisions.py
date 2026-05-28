@@ -18,7 +18,14 @@ from otm_workbench.models import (
 def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     response = client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": "Synthetic review decision batch", "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": "Synthetic review decision batch",
+            "domain_name": "OTM1",
+            "project_id": "project_review_decision",
+            "profile_id": "profile_review_decision",
+            "environment_id": "env_review_decision",
+        },
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -142,12 +149,23 @@ def test_review_decision_updates_item_and_creates_evidence_audit_event(client, a
     assert updated_item.status == "CONFIRMED"
     assert evidence.evidence_type == "load_plan_review_decision"
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_review_decision"
+    assert evidence.profile_id == "profile_review_decision"
+    assert evidence.environment_id == "env_review_decision"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
+    assert decision.project_id == "project_review_decision"
+    assert decision.profile_id == "profile_review_decision"
+    assert decision.environment_id == "env_review_decision"
     assert summary["decision_status"] == "CONFIRMED"
     assert summary["decision_note_present"] is True
     assert summary["catalog_macro_object_code"] == "RATE_RECORD"
     assert summary["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert audit.target_id == item["id"]
     assert event.aggregate_id == item["id"]
+    assert json.loads(audit.metadata_json)["domain_name"] == "OTM1"
+    assert event.project_id == "project_review_decision"
+    assert json.loads(event.payload_json)["domain_name"] == "OTM1"
     assert "Synthetic check accepted by reviewer" not in audit.metadata_json
     assert "Synthetic check accepted by reviewer" not in event.payload_json
 

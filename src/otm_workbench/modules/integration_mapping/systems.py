@@ -18,9 +18,19 @@ def normalize_code(value: str) -> str:
     return value.strip().upper()
 
 
-def create_integration_system(db, *, payload: dict[str, object], user: User) -> IntegrationSystem:
+def create_integration_system(
+    db,
+    *,
+    payload: dict[str, object],
+    user: User,
+    scope: dict[str, object] | None = None,
+) -> IntegrationSystem:
     reject_secret_like_payload(payload)
     system = IntegrationSystem(
+        project_id=str(scope.get("project_id") or "").strip() or None if scope else None,
+        environment_id=str(scope.get("environment_id") or "").strip() or None if scope else None,
+        profile_id=str(scope.get("profile_id") or "").strip() or None if scope else None,
+        domain_name=str(scope.get("domain_name") or "").strip().upper() or None if scope else None,
         code=normalize_code(str(payload["code"])),
         name=str(payload["name"]).strip(),
         description=str(payload.get("description") or "").strip(),
@@ -63,6 +73,10 @@ def create_integration_endpoint(
 def serialize_integration_system(system: IntegrationSystem) -> dict[str, object]:
     return {
         "id": system.id,
+        "project_id": system.project_id,
+        "environment_id": system.environment_id,
+        "profile_id": system.profile_id,
+        "domain_name": system.domain_name,
         "code": system.code,
         "name": system.name,
         "description": system.description,

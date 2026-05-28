@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Transmission xmlns="http://xmlns.oracle.com/apps/otm/synthetic">
+  <TransmissionHeader>
+    <DomainName>OTM1</DomainName>
+    <Environment>UAT</Environment>
+  </TransmissionHeader>
+  <Shipment>
+    <ShipmentGid>OTM1.SHIP_SYN_001</ShipmentGid>
+    <TransportModeGid>PUBLIC.TL</TransportModeGid>
+    <SourceLocationGid>OTM1.LOC_ORIGIN</SourceLocationGid>
+    <DestLocationGid>OTM1.LOC_DEST</DestLocationGid>
+  </Shipment>
+</Transmission>

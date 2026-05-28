@@ -14,6 +14,86 @@ def action_by_key(actions, key):
     return next(action for action in actions if action["key"] == key)
 
 
+def create_project_with_environments(client, admin_header, *, name_suffix=""):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": f"Synthetic Master Data Workspace{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": f"Synthetic Master Data Project{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    uat = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "UAT", "environment_type": "UAT"},
+        headers=admin_header,
+    ).json()
+    dev = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "DEV", "environment_type": "DEV"},
+        headers=admin_header,
+    ).json()
+    return project["id"], uat["id"], dev["id"]
+
+
+def set_active_context(
+    client,
+    admin_header,
+    *,
+    project_id,
+    environment_id,
+    domain_name,
+    can_view_all_domains=False,
+):
+    response = client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": project_id,
+            "environment_id": environment_id,
+            "domain_name": domain_name,
+            "can_view_all_domains": can_view_all_domains,
+        },
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+
+
+def workbook_editor_batch_payload(file_name: str) -> dict[str, object]:
+    return {
+        "file_name": file_name,
+        "sheets": [
+            {
+                "sheet_code": "ITEMS",
+                "rows": [
+                    {
+                        "row_id": "ITEMS-1",
+                        "values": {
+                            "item_gid": "SYN.ITEM_1",
+                            "item_xid": "ITEM_1",
+                            "description": "Synthetic Item",
+                        },
+                    }
+                ],
+            },
+            {
+                "sheet_code": "PACKAGING",
+                "rows": [
+                    {
+                        "row_id": "PACKAGING-1",
+                        "values": {
+                            "packaged_item_gid": "SYN.PKG_1",
+                            "packaged_item_xid": "PKG_1",
+                            "item_gid": "SYN.ITEM_1",
+                        },
+                    }
+                ],
+            },
+        ],
+    }
+
+
 def create_master_data_schema_root(db_session, *, root_name: str):
     schema_pack = SchemaPack(
         code=f"OTM_26A_MD_{root_name.upper()}",
@@ -87,6 +167,45 @@ def test_master_data_templates_seed_regions_basic(client, admin_header):
     assert locations_template["name"] == "Locations Basic"
     assert locations_template["catalog_macro_object_code"] == "LOCATION"
     assert locations_template["target_tables"] == ["LOCATION", "LOCATION_ADDRESS"]
+
+
+def test_master_data_templates_support_backend_owned_header_search(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/master-data/templates",
+        params={
+            "template_code": "REG",
+            "template_code_operator": "begins_with",
+            "status": "PUBLISHED,DRAFT",
+            "status_operator": "one_of",
+            "macro_object": "ITEM",
+            "macro_object_operator": "not_one_of",
+        },
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["code"] for item in payload["items"]] == ["REGIONS_BASIC"]
+    assert payload["normalized_filters"] == [
+        {
+            "field": "template_code",
+            "operator": "begins_with",
+            "value": "REG",
+        },
+        {
+            "field": "status",
+            "operator": "one_of",
+            "value": "PUBLISHED,DRAFT",
+        },
+        {
+            "field": "macro_object",
+            "operator": "not_one_of",
+            "value": "ITEM",
+        },
+    ]
+    assert payload["search_metadata"]["operators"] == ["begins_with", "contains", "one_of", "not_one_of"]
+    assert "template_name" in {field["key"] for field in payload["search_metadata"]["fields"]}
 
 
 def test_master_data_template_detail_exposes_sheets_and_fields(client, admin_header):
@@ -1630,6 +1749,243 @@ def test_master_data_workbook_editor_creates_batch_from_valid_rows(client, admin
     ]
 
 
+def test_master_data_batches_follow_active_context_scope(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    other_project_id, other_uat_id, _ = create_project_with_environments(client, admin_header, name_suffix=" Other")
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    visible = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_visible.xlsx"),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden_domain = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_hidden_domain.xlsx"),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_hidden_env.xlsx"),
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=other_project_id,
+        environment_id=other_uat_id,
+        domain_name="OTM1",
+    )
+    hidden_project = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_hidden_project.xlsx"),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/master-data/batches", headers=admin_header)
+    summary = client.get("/api/v1/modules/master-data/batches/summary", headers=admin_header)
+    visible_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{visible['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_output = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}/output-records",
+        headers=admin_header,
+    )
+    hidden_csv_files = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}/csv-files",
+        headers=admin_header,
+    )
+    hidden_validate = client.post(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}/validate-relationships",
+        headers=admin_header,
+    )
+    hidden_project_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_project['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_project_output = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_project['batch_id']}/output-records",
+        headers=admin_header,
+    )
+    hidden_project_csv_files = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_project['batch_id']}/csv-files",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [item["batch_id"] for item in listed.json()["items"]] == [visible["batch_id"]]
+    assert summary.status_code == 200
+    assert summary.json()["total_batches"] == 1
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["batch_id"] == visible["batch_id"]
+    assert visible_detail.json()["project_id"] == project_id
+    assert visible_detail.json()["environment_id"] == uat_id
+    assert visible_detail.json()["domain_name"] == "OTM1"
+    assert hidden_detail.status_code == 404
+    assert hidden_output.status_code == 404
+    assert hidden_csv_files.status_code == 404
+    assert hidden_validate.status_code == 404
+    assert hidden_project_detail.status_code == 404
+    assert hidden_project_output.status_code == 404
+    assert hidden_project_csv_files.status_code == 404
+
+
+def test_master_data_batches_require_active_context_for_non_admin_access_and_create(
+    client,
+    admin_header,
+    auth_header,
+):
+    created = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_no_context_admin.xlsx"),
+    ).json()
+
+    listed = client.get("/api/v1/modules/master-data/batches", headers=auth_header)
+    summary = client.get("/api/v1/modules/master-data/batches/summary", headers=auth_header)
+    detail = client.get(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}",
+        headers=auth_header,
+    )
+    output = client.get(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/output-records",
+        headers=auth_header,
+    )
+    validate = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/validate-relationships",
+        headers=auth_header,
+    )
+    mapping = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/map",
+        headers=auth_header,
+    )
+    build_output = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/build-output",
+        headers=auth_header,
+    )
+    build_csv = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/build-csv",
+        headers=auth_header,
+    )
+    export_csv = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/export-csv-package",
+        headers=auth_header,
+    )
+    submit_otm = client.post(
+        f"/api/v1/modules/master-data/batches/{created['batch_id']}/submit-otm",
+        headers=auth_header,
+    )
+    create = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=auth_header,
+        json=workbook_editor_batch_payload("items_no_context_user.xlsx"),
+    )
+
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+    assert listed.json()["total"] == 0
+    assert summary.status_code == 200
+    assert summary.json()["total_batches"] == 0
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "MASTER_DATA_BATCH_NOT_FOUND"
+    assert output.status_code == 404
+    assert validate.status_code == 404
+    assert mapping.status_code == 404
+    assert build_output.status_code == 404
+    assert build_csv.status_code == 404
+    assert export_csv.status_code == 404
+    assert submit_otm.status_code == 404
+    assert create.status_code == 403
+    assert create.json()["code"] == "ACTIVE_CONTEXT_REQUIRED"
+
+
+def test_master_data_dba_context_can_see_all_domains_in_active_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    otm1 = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_otm1.xlsx"),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    otm2 = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_otm2.xlsx"),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM3",
+    )
+    client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload("items_other_env.xlsx"),
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/master-data/batches", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert {item["batch_id"] for item in listed.json()["items"]} == {
+        otm1["batch_id"],
+        otm2["batch_id"],
+    }
+
+
 def test_master_data_locations_template_detail_and_validation(client, admin_header):
     detail = client.get(
         "/api/v1/modules/master-data/templates/LOCATIONS_BASIC",
@@ -1693,6 +2049,11 @@ def test_master_data_template_build_workbook_creates_artifact(client, admin_head
     artifact = db_session.query(Artifact).filter(Artifact.id == payload["artifact_id"]).one()
     assert artifact.source_module == "master_data"
     assert artifact.artifact_type == "master_data_template_workbook"
+    assert artifact.project_id is None
+    assert artifact.environment_id is None
+    assert artifact.profile_id is None
+    assert artifact.domain_name == "PUBLIC"
+    assert artifact.visibility == "PUBLIC"
     assert artifact.sensitivity_level == "client_safe"
 
     workbook_path = Path(artifact.file_path)
@@ -2648,6 +3009,14 @@ def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
     admin_header,
     db_session,
 ):
+    project_id, environment_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
     workbook = Workbook()
     regions = workbook.active
     regions.title = "REGIONS"
@@ -2700,8 +3069,20 @@ def test_master_data_batch_export_csv_package_creates_zip_manifest_and_evidence(
     assert artifact.artifact_type == "master_data_csv_zip"
     assert artifact.content_type == "application/zip"
     assert artifact.sensitivity_level == "client_safe"
+    assert artifact.project_id == project_id
+    assert artifact.environment_id == environment_id
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
+    assert manifest.project_id == project_id
+    assert manifest.environment_id == environment_id
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     assert evidence.evidence_type == "master_data_csv_export"
     assert evidence.client_safe is True
+    assert evidence.project_id == project_id
+    assert evidence.environment_id == environment_id
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert str(artifact.id) in audit.metadata_json
 
     with zipfile.ZipFile(artifact.file_path) as archive:

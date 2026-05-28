@@ -984,3 +984,178 @@ Evidence generated:
 - `frontend/src/app/AppFunctionalMasterData.test.tsx`
 - `frontend/scripts/functional-master-data-browser.mjs`
 - `output/gui-qa/master-data/04-template-detail-regions-basic.png`
+
+### 2026-05-26 Slice 2B / Slice 3
+
+Delivered the route-level batch execution workspace:
+
+- Batch creation, upload recovery, and batch inspection now navigate to
+  `/master-data/factory/batches/:batchId`.
+- Batch detail is a first-class operational screen with a visible
+  `Back to template` action and no persistent selected-template side panel.
+- The batch route owns five clear execution steps: `Input`, `Validate`,
+  `Output`, `CSV Package`, and `Load Plan`.
+- Relationship validation, mapping, output build, CSV build/export, OTM import
+  guard, Load Plan registration, and cutover checklist readiness now sit on the
+  batch route where the active object is unambiguous.
+- Backend-owned available actions and blocked reasons remain visible on the
+  route; the rendered QA pass confirmed `RELATIONSHIP_VALIDATION_REQUIRED`
+  disables `Map records` until validation refreshes the active batch state.
+- Functional tests now cover route recovery for uploaded batches and inspected
+  batches, plus the happy path through output, CSV export, guarded OTM import,
+  Load Plan registration, and checklist handoff.
+
+Evidence generated:
+
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `output/gui-qa/master-data/05-batch-detail-input.png`
+- `output/gui-qa/master-data/06-batch-detail-validated.png`
+- `output/gui-qa/master-data/07-batch-detail-csv-package.png`
+- `output/gui-qa/master-data/08-batch-detail-load-plan.png`
+
+### 2026-05-26 Slice 4A
+
+Delivered the first Template Builder separation slice:
+
+- `/master-data/template-builder` now renders a dedicated template
+  administration list instead of the mixed workflow strip.
+- Template Builder search is backend-owned for `template_code`,
+  `template_name`, `macro_object`, and `status`, with `begins_with`,
+  `contains`, `one_of`, and `not_one_of` operators and normalized filters
+  returned by the API.
+- Template rows now expose route-level `View`, `Edit`, `Copy`, `Retire`, and
+  `Open in Data Factory` destinations instead of executing complex actions
+  inline.
+- `/master-data/template-builder/:templateCode` has a focused detail route with
+  visible Back and Data Factory links.
+- `/master-data/template-builder/:templateCode/copy` uses the existing backend
+  version/copy capability to create a draft version when allowed.
+- `/master-data/template-builder/:templateCode/delete` is a guarded impact
+  route; because no Master Data retire/delete backend action exists yet, it
+  shows the impact summary and blocks destructive execution explicitly.
+- Existing authoring coverage now enters through `Create template`, preserving
+  the backend-owned draft, validation, publish, and version workflows while the
+  list/detail routes stay uncluttered.
+
+Evidence generated:
+
+- `tests/test_master_data_templates.py`
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `output/gui-qa/master-data/02-template-builder-entry.png`
+- `output/gui-qa/master-data/02-template-builder-search.png`
+- `output/gui-qa/master-data/02-template-builder-detail.png`
+- `output/gui-qa/master-data/02-template-builder-retire.png`
+
+### 2026-05-26 Slice 4B
+
+Delivered focused Template Builder create/edit routes:
+
+- `/master-data/template-builder/new` now has its own `New template` route
+  header and `Template Builder new template workspace`; it no longer shows the
+  legacy `Data Factory workflow` strip or selected-template side panel.
+- The create route still executes the existing backend-owned draft,
+  validation, publish, reset, scenario-pack, table, field, mapping, and
+  relationship-rule controls.
+- `/master-data/template-builder/:templateCode/edit` now has an explicit
+  `Back to Template Detail` return path.
+- The edit route shows dense backend-owned target table and field editors based
+  on the template definition instead of a field card wall.
+- `Save draft` on the edit route executes the existing
+  `PATCH /templates/{templateCode}/draft` contract using the current backend
+  template definition.
+- Browser QA caught and fixed a duplicate React key warning for fields reused
+  across sheets, so rendered table rows now keep stable identity.
+
+Evidence generated:
+
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `output/gui-qa/master-data/02-template-builder-new.png`
+- `output/gui-qa/master-data/02-template-builder-edit.png`
+
+### 2026-05-26 Slice 4C
+
+Delivered focused Template Builder copy polish:
+
+- `/master-data/template-builder/:templateCode/copy` now presents a deliberate
+  copy screen instead of a single generic action button.
+- The copy route shows a source summary, a new-template code field, visible copy
+  options for tables, fields, fixed values, relationship rules, validation
+  rules, and tags, plus a compact preview of the resulting draft scope.
+- `Create copy` executes the existing backend version/copy contract
+  `POST /templates/{templateCode}/versions` with the reviewed new code.
+- After the backend confirms the copy, the UI navigates to
+  `/master-data/template-builder/:newTemplateCode/edit` so the copied draft has
+  an obvious next destination.
+- Browser QA caught route-list selectors that matched copied templates by
+  prefix; the QA script now uses exact accessible names for `REGIONS_BASIC`
+  recovery paths.
+
+Evidence generated:
+
+- `frontend/src/app/App.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-master-data-browser.mjs`
+- `output/gui-qa/master-data/02-template-builder-copy.png`
+- `output/gui-qa/master-data/02-template-builder-copy-created.png`
+
+### 2026-05-26 Slice 5
+
+Delivered Quality Tools route-family separation:
+
+- `/master-data/quality` now renders a focused `Quality Tools` hub with a
+  `Lat/Lon Validator` entry point and recent coordinate quality batches.
+- `/master-data/quality/lat-lon` now owns coordinate preview, batch creation,
+  result inspection, and export actions without showing the Data Factory
+  workflow strip or selected-template side panel.
+- Creating a coordinate quality batch now navigates to
+  `/master-data/quality/lat-lon/batches/:batchId`, giving persisted validation
+  results a route-level detail screen with `Back to Quality Tools`.
+- `/master-data/quality/lat-lon/batches/:batchId` restores batch results from
+  backend list/result endpoints and keeps export execution on the batch route.
+- The Data Factory route family remains operational only; quality controls are
+  no longer a hidden stage inside the mixed workflow.
+
+Evidence generated:
+
+- `frontend/src/app/AppFunctionalCoordinateQuality.test.tsx`
+- `frontend/src/app/AppFunctionalMasterData.test.tsx`
+- `frontend/scripts/functional-coordinate-quality-browser.mjs`
+- `tests/test_coordinate_quality_api.py`
+- `tests/test_coordinate_quality_engine.py`
+- `output/gui-qa/master-data/09-quality-tools-hub.png`
+- `output/gui-qa/master-data/10-lat-lon-validator.png`
+- `output/gui-qa/master-data/11-lat-lon-batch-detail.png`
+- `output/gui-qa/master-data/12-lat-lon-export.png`
+
+### 2026-05-26 Slice 6
+
+Delivered QA cleanup and route recovery hardening:
+
+- Added a direct-route recovery test for
+  `/master-data/quality/lat-lon/batches/:batchId`.
+- The Lat/Lon batch detail route now loads the backend batch detail endpoint
+  directly instead of relying only on the recent-batches list.
+- The active route batch is inserted into the visible batch list when it was
+  loaded by URL, so result inspection has a clear selected object even after a
+  refresh or copied link.
+- Coordinate Quality browser QA continues to cover hub navigation, validator
+  workspace, batch creation, batch route navigation, export, screenshots, and
+  route return.
+- This closes the main route-recovery gap found during the Slice 6 cleanup
+  pass without reintroducing Quality controls into Data Factory.
+
+Evidence generated:
+
+- `frontend/src/app/AppFunctionalCoordinateQuality.test.tsx`
+- `frontend/scripts/functional-coordinate-quality-browser.mjs`
+- `frontend/src/platform/hooks/masterData.ts`
+- `output/gui-qa/master-data/09-quality-tools-hub.png`
+- `output/gui-qa/master-data/10-lat-lon-validator.png`
+- `output/gui-qa/master-data/11-lat-lon-batch-detail.png`
+- `output/gui-qa/master-data/12-lat-lon-export.png`

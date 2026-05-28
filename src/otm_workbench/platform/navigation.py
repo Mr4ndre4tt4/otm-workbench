@@ -1,5 +1,6 @@
 import json
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,17 @@ from otm_workbench.models import (
 )
 
 ICONLY_FILE_KEY = "8h6mUDOqSXent0hqlSY7k7"
+
+CURRENT_MAIN_UI_MODULE_IDS = {
+    "master_data",
+    "home",
+    "rates",
+    "load_plan",
+    "assets",
+    "order_release_generator",
+    "integration_mapping",
+    "settings",
+}
 
 
 def icon_ref(icon_name: str, page: str) -> str:
@@ -46,7 +58,7 @@ def seed_modules(db: Session) -> None:
             route_base="/home",
             status="ACTIVE",
             label_key="module.home.label",
-            description="Project-level operational overview for active context, jobs, artifacts, and evidence.",
+            description="Context selector, project information, Public View entry, and module accelerators.",
             icon_key="home",
             icon_name="Home",
             sort_order=20,
@@ -142,6 +154,17 @@ def seed_modules(db: Session) -> None:
             admin_only=True,
         ),
         Module(
+            id="settings",
+            display_name="Settings",
+            route_base="/settings",
+            status="ACTIVE",
+            label_key="module.settings.label",
+            description="Project, client/domain, environment, user, role, grant, and access-policy setup.",
+            icon_key="settings",
+            icon_name="Setting",
+            sort_order=120,
+        ),
+        Module(
             id="dev_tools",
             display_name="Developer Tools",
             route_base="/dev-tools",
@@ -206,6 +229,7 @@ def effective_capability_names(db: Session, user: User) -> set[str]:
     active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
     if not active_context or not active_context.project_id:
         return set()
+    domain_name = active_context.domain_name.upper() if active_context.domain_name else None
     rows = (
         db.query(Capability.name)
         .join(RoleCapability, RoleCapability.capability_id == Capability.id)
@@ -214,6 +238,8 @@ def effective_capability_names(db: Session, user: User) -> set[str]:
         .filter(
             UserProjectRole.user_id == user.id,
             UserProjectRole.project_id == active_context.project_id,
+            or_(UserProjectRole.environment_id.is_(None), UserProjectRole.environment_id == active_context.environment_id),
+            or_(UserProjectRole.domain_name.is_(None), UserProjectRole.domain_name == domain_name),
         )
         .all()
     )
@@ -228,6 +254,8 @@ def navigation_items(db: Session, user: User) -> list[dict[str, str]]:
     items = []
     capabilities = effective_capability_names(db, user)
     for module in registered_modules(db):
+        if module.id not in CURRENT_MAIN_UI_MODULE_IDS:
+            continue
         if module.admin_only and not user.is_admin:
             continue
         if module.dev_only and (not user.is_admin or not flag_enabled(db, module.feature_flag)):

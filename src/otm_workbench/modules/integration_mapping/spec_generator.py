@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
+    IntegrationEnrichedField,
+    IntegrationEnrichmentStep,
+    IntegrationEnrichmentSubStep,
     IntegrationJoinRule,
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
@@ -14,6 +17,7 @@ from otm_workbench.models import (
     Job,
     utcnow,
 )
+from otm_workbench.modules.integration_mapping.enrichment import parse_json_list
 from otm_workbench.modules.integration_mapping.mappings import parse_transform_config
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 from otm_workbench.platform.jobs import audit_job, dumps_limited_json_object, emit_job_event
@@ -27,6 +31,7 @@ SPEC_SECTIONS = [
     "Mappings",
     "Loops",
     "Joins",
+    "Enrichment Pipeline",
     "Lookups",
     "Response Handling",
     "Synthetic Test Cases",
@@ -55,6 +60,9 @@ def _build_markdown(
     mappings: list[IntegrationMapping],
     loops: list[IntegrationLoopDefinition],
     joins: list[IntegrationJoinRule],
+    enrichment_steps: list[IntegrationEnrichmentStep],
+    enrichment_substeps: list[IntegrationEnrichmentSubStep],
+    enriched_fields: list[IntegrationEnrichedField],
     lookups: list[IntegrationLookupDefinition],
     response_handlers: list[IntegrationResponseHandler],
     validation: dict[str, object],
@@ -77,6 +85,11 @@ def _build_markdown(
         f"- `{join_rule.sequence_index}` `{join_rule.operator}`: `{join_rule.left_path}` to `{join_rule.right_path}`."
         for join_rule in joins
     ]
+    enrichment_rows = enrichment_markdown_rows(
+        enrichment_steps=enrichment_steps,
+        enrichment_substeps=enrichment_substeps,
+        enriched_fields=enriched_fields,
+    )
     lookup_rows = [
         f"- `{lookup.sequence_index}` `{lookup.lookup_type}`: `{lookup.input_path}` -> `{lookup.output_path}`."
         for lookup in lookups
@@ -113,6 +126,11 @@ def _build_markdown(
             "## Joins",
             _rows_or_empty(join_rows),
             "",
+            "## Enrichment Pipeline",
+            _rows_or_empty(enrichment_rows),
+            "- External enrichment calls are not executed by this spec generator.",
+            "- Published enriched fields are metadata contracts for downstream mappings and preview provenance.",
+            "",
             "## Lookups",
             _rows_or_empty(lookup_rows),
             "",
@@ -130,6 +148,57 @@ def _build_markdown(
     )
 
 
+def enrichment_markdown_rows(
+    *,
+    enrichment_steps: list[IntegrationEnrichmentStep],
+    enrichment_substeps: list[IntegrationEnrichmentSubStep],
+    enriched_fields: list[IntegrationEnrichedField],
+) -> list[str]:
+    fields_by_step: dict[tuple[str, str | None], list[IntegrationEnrichedField]] = {}
+    for field in enriched_fields:
+        fields_by_step.setdefault((field.enrichment_step_id, field.enrichment_substep_id), []).append(field)
+
+    rows: list[str] = []
+    for step in enrichment_steps:
+        mappings = parse_json_list(step.response_field_mappings_json)
+        mapping_text = _format_enrichment_mapping_text(mappings)
+        key_fields = ", ".join(f"`{field}`" for field in parse_json_list(step.key_source_fields_json))
+        fields = fields_by_step.get((step.id, None), [])
+        field_text = _format_published_field_text(fields)
+        rows.append(
+            f"- `{step.sequence_index}` `{step.step_type}`: `{step.name}`, key {key_fields or '`n/a`'}, "
+            f"response {mapping_text}, published {field_text}."
+        )
+    for substep in enrichment_substeps:
+        mappings = parse_json_list(substep.response_field_mappings_json)
+        mapping_text = _format_enrichment_mapping_text(mappings)
+        fields = fields_by_step.get((substep.enrichment_step_id, substep.id), [])
+        field_text = _format_published_field_text(fields)
+        rows.append(
+            f"- `{substep.sequence_index}` `SUBSTEP`: `{substep.name}`, request `{substep.request_path_template}`, "
+            f"response {mapping_text}, published {field_text}."
+        )
+    return rows
+
+
+def _format_enrichment_mapping_text(mappings: list[object]) -> str:
+    fragments: list[str] = []
+    for mapping in mappings:
+        if not isinstance(mapping, dict):
+            continue
+        output_field = str(mapping.get("output_field") or "").strip()
+        response_path = str(mapping.get("response_path") or "").strip()
+        if output_field and response_path:
+            fragments.append(f"`{output_field}` <- `{response_path}`")
+    return ", ".join(fragments) if fragments else "`n/a`"
+
+
+def _format_published_field_text(fields: list[IntegrationEnrichedField]) -> str:
+    if not fields:
+        return "`none`"
+    return ", ".join(f"`{field.name}`" for field in fields)
+
+
 def create_spec_artifact(
     db: Session,
     *,
@@ -144,6 +213,11 @@ def create_spec_artifact(
     file_path.write_text(markdown, encoding="utf-8")
     digest, size = file_sha256(file_path)
     artifact = Artifact(
+        project_id=definition.project_id,
+        profile_id=definition.profile_id,
+        environment_id=definition.environment_id,
+        domain_name=definition.domain_name,
+        visibility="PROJECT",
         source_module=SOURCE_MODULE,
         artifact_type="integration_markdown_spec",
         file_path=str(file_path),
@@ -266,6 +340,33 @@ def generate_integration_markdown_spec(
         .order_by(IntegrationJoinRule.sequence_index, IntegrationJoinRule.created_at)
         .all()
     )
+    enrichment_steps = (
+        db.query(IntegrationEnrichmentStep)
+        .filter(
+            IntegrationEnrichmentStep.definition_id == definition.id,
+            IntegrationEnrichmentStep.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichmentStep.sequence_index, IntegrationEnrichmentStep.created_at)
+        .all()
+    )
+    enrichment_substeps = (
+        db.query(IntegrationEnrichmentSubStep)
+        .filter(
+            IntegrationEnrichmentSubStep.definition_id == definition.id,
+            IntegrationEnrichmentSubStep.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichmentSubStep.sequence_index, IntegrationEnrichmentSubStep.created_at)
+        .all()
+    )
+    enriched_fields = (
+        db.query(IntegrationEnrichedField)
+        .filter(
+            IntegrationEnrichedField.definition_id == definition.id,
+            IntegrationEnrichedField.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichedField.created_at, IntegrationEnrichedField.name)
+        .all()
+    )
     lookups = (
         db.query(IntegrationLookupDefinition)
         .filter(IntegrationLookupDefinition.definition_id == definition.id)
@@ -284,6 +385,9 @@ def generate_integration_markdown_spec(
         mappings=mappings,
         loops=loops,
         joins=joins,
+        enrichment_steps=enrichment_steps,
+        enrichment_substeps=enrichment_substeps,
+        enriched_fields=enriched_fields,
         lookups=lookups,
         response_handlers=response_handlers,
         validation=validation,

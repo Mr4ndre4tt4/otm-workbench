@@ -207,11 +207,105 @@ async function run() {
     await page.getByLabel("Selected definition schema documents").getByText("Transmission", { exact: true }).waitFor();
     await page.getByLabel("Selected definition schema documents").getByText("$", { exact: true }).waitFor();
 
+    const definitionListForEnrichment = await apiRequest("/api/v1/modules/integration-mapping/definitions", { token });
+    const createdDefinition = definitionListForEnrichment.items.find((item) => item.code === definitionCode);
+    if (!createdDefinition) {
+      throw new Error(`Could not find created Integration Mapping definition ${definitionCode}.`);
+    }
+    const schemaDocuments = await apiRequest(
+      `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/schema-documents`,
+      { token }
+    );
+    const sourceSchema = schemaDocuments.items.find(
+      (item) => item.root_name === "Transmission" && item.payload_format === "XML"
+    );
+    const targetSchema = schemaDocuments.items.find(
+      (item) => item.root_name === "$" && item.payload_format === "JSON"
+    );
+    if (!sourceSchema) {
+      throw new Error("Could not find synthetic source schema for enrichment QA.");
+    }
+    if (!targetSchema) {
+      throw new Error("Could not find synthetic target schema for enrichment QA.");
+    }
+    const systemListForEnrichment = await apiRequest("/api/v1/modules/integration-mapping/systems", { token });
+    const createdSystem = systemListForEnrichment.items.find((item) => item.code === systemCode);
+    if (!createdSystem) {
+      throw new Error(`Could not find created Integration Mapping system ${systemCode}.`);
+    }
+    const endpointListForEnrichment = await apiRequest(
+      `/api/v1/modules/integration-mapping/systems/${createdSystem.id}/endpoints`,
+      { token }
+    );
+    const createdEndpoint = endpointListForEnrichment.items.find((item) => item.code === endpointCode);
+    if (!createdEndpoint) {
+      throw new Error(`Could not find created Integration Mapping endpoint ${endpointCode}.`);
+    }
+    const intermediatePayload = await apiRequest(
+      `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/payload-artifacts`,
+      {
+        method: "POST",
+        token,
+        body: {
+          payload_role: "INTERMEDIATE_SAMPLE",
+          payload_format: "JSON",
+          file_name: `carrier_enrichment_${suffix}.json`,
+          description: "Synthetic browser enrichment response.",
+          content: '{"location":{"locationName":"Synthetic Carrier","status":"ACTIVE"}}'
+        }
+      }
+    );
+    const intermediateSchema = await apiRequest(
+      `/api/v1/modules/integration-mapping/payload-artifacts/${intermediatePayload.id}/schema-documents`,
+      { method: "POST", token, body: {} }
+    );
+    const enrichmentStep = await apiRequest(
+      `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/enrichment-steps`,
+      {
+        method: "POST",
+        token,
+        body: {
+          source_schema_document_id: sourceSchema.id,
+          response_schema_document_id: intermediateSchema.id,
+          endpoint_id: createdEndpoint.id,
+          name: "Synthetic carrier enrichment",
+          description: "Synthetic browser enrichment metadata.",
+          step_type: "SINGLE",
+          key_template: "{shipment_gid}",
+          key_source_fields: ["/Transmission/Shipment/ShipmentGid"],
+          response_field_mappings: [
+            {
+              response_path: "$.location.locationName",
+              output_field: "carrier_name_enriched",
+              data_type: "String",
+              cardinality: "SCALAR"
+            }
+          ],
+          on_empty_response: "FAIL",
+          on_error: "FAIL",
+          sequence_index: 30
+        }
+      }
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Integration Mapping Studio" }).waitFor();
+    await page.locator(".integration-workflow-step").filter({ hasText: "Definitions list" }).click();
+    await page.getByLabel("Integration mapping definitions").getByRole("button", { name: new RegExp(definitionCode) }).click();
+    await page.getByLabel("Selected integration mapping definition").getByText(definitionCode, { exact: true }).waitFor();
+    await page.locator(".integration-workflow-step").filter({ hasText: "Enrichment pipeline" }).click();
+    const enrichmentPanel = page.getByLabel("Integration enrichment pipeline");
+    await enrichmentPanel.getByText("Synthetic carrier enrichment", { exact: true }).waitFor();
+    await enrichmentPanel.getByText(endpointCode, { exact: true }).waitFor();
+    await enrichmentPanel.getByText("carrier_name_enriched", { exact: true }).waitFor();
+    await enrichmentPanel.getByText("$.location.locationName", { exact: true }).waitFor();
+    await page.getByLabel("Integration enrichment readiness").getByText("Pipeline readiness", { exact: true }).waitFor();
+
     await page.locator(".integration-workflow-step").filter({ hasText: "Mapping rules" }).click();
     const mappingRuleForm = page.locator(".integration-mapping-form").first();
+    const transformTypeSelect = mappingRuleForm.locator("select").filter({ hasText: "CONSTANT" });
     await mappingRuleForm.waitFor();
-    await mappingRuleForm.getByLabel("Source schema").selectOption({ label: "Transmission" });
-    await mappingRuleForm.getByLabel("Target schema").selectOption({ label: "$" });
+    await mappingRuleForm.getByLabel("Source schema").selectOption(sourceSchema.id);
+    await mappingRuleForm.getByLabel("Target schema").selectOption(targetSchema.id);
     await page.getByRole("button", { name: "Load backend suggestions" }).click();
     await page
       .getByRole("button", {
@@ -220,19 +314,18 @@ async function run() {
       .waitFor();
     await page.getByLabel("Mapping source node search").fill("shipment");
     await page.getByLabel("Mapping target node search").fill("shipment");
-    await page
-      .getByRole("button", {
-        name: "Apply suggestion /Transmission/Shipment/ShipmentGid to $.header.shipmentId"
-      })
-      .click();
-    await page.getByLabel("Transform type").selectOption("DIRECT");
+    await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentGid");
+    await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.shipmentId");
+    await transformTypeSelect.selectOption("DIRECT");
     await page.getByLabel("Mapping description").fill("Synthetic direct mapping from shipment id.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.header.shipmentId.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.header.shipmentId", { exact: true }).waitFor();
+    await page.getByLabel("Mapping source node search").fill("");
+    await page.getByLabel("Mapping target node search").fill("");
 
-    await page.getByLabel("Loop source schema").selectOption({ label: "Transmission" });
-    await page.getByLabel("Loop target schema").selectOption({ label: "$" });
+    await page.getByLabel("Loop source schema").selectOption(sourceSchema.id);
+    await page.getByLabel("Loop target schema").selectOption(targetSchema.id);
     await page.getByLabel("Loop name").fill("Synthetic delivery loop");
     await page.getByLabel("Loop source node").selectOption("/Transmission/Shipment/ShipmentStop");
     await page.getByLabel("Loop target node").selectOption("$.deliveries[]");
@@ -241,7 +334,7 @@ async function run() {
     await page.getByText("Created loop Synthetic delivery loop.").waitFor();
     await page.getByLabel("Selected definition loops").getByText("Synthetic delivery loop", { exact: true }).waitFor();
 
-    await page.getByLabel("Join source schema").selectOption({ label: "Transmission" });
+    await page.getByLabel("Join source schema").selectOption(sourceSchema.id);
     await page.getByLabel("Join name").fill("Synthetic shipment stop join");
     await page.getByLabel("Join left node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
     await page.getByLabel("Join right node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequenceCopy");
@@ -251,7 +344,7 @@ async function run() {
     await page.getByText("Created join Synthetic shipment stop join.").waitFor();
     await page.getByLabel("Selected definition joins").getByText("Synthetic shipment stop join", { exact: true }).waitFor();
 
-    await page.getByLabel("Join binding source schema").selectOption({ label: "Transmission" });
+    await page.getByLabel("Join binding source schema").selectOption(sourceSchema.id);
     await page.getByLabel("Join binding name").fill("Stop to release binding");
     const joinBindingSelects = page.locator(".integration-join-binding-form select");
     await joinBindingSelects.nth(1).selectOption("/Transmission/Shipment/ShipmentStop");
@@ -289,7 +382,7 @@ async function run() {
 
     await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
     await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.deliveries[].sequence");
-    await page.getByLabel("Transform type").selectOption("DIRECT");
+    await transformTypeSelect.selectOption("DIRECT");
     await page.getByLabel("Mapping description").fill("Synthetic delivery stop sequence mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
     await page.getByText("Created mapping $.deliveries[].sequence.").waitFor();
@@ -297,7 +390,7 @@ async function run() {
 
     await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/ShipmentGid");
     await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.status");
-    await page.getByLabel("Transform type").selectOption("CONSTANT");
+    await transformTypeSelect.selectOption("CONSTANT");
     await page.getByLabel("Constant value").fill("ACCEPTED");
     await page.getByLabel("Mapping description").fill("Synthetic constant status mapping.");
     await page.getByRole("button", { name: "Create mapping" }).click();
@@ -306,7 +399,7 @@ async function run() {
 
     await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/StartDt/PlannedTime");
     await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.issuedAt");
-    await page.getByLabel("Transform type").selectOption("DATE_FORMAT");
+    await transformTypeSelect.selectOption("DATE_FORMAT");
     await page.getByLabel("Date source format").fill("OTM_GLOGDATE");
     await page.getByLabel("Date target format").fill("ISO8601");
     await page.getByLabel("Date timezone offset").fill("-03:00");
@@ -317,7 +410,7 @@ async function run() {
 
     await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseRefnum/ReleaseRefnumValue");
     await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.filteredAccessKey");
-    await page.getByLabel("Transform type").selectOption("FILTER_BY_QUALIFIER");
+    await transformTypeSelect.selectOption("FILTER_BY_QUALIFIER");
     await page.getByLabel("Filter collection path").fill("/Transmission/Shipment/Release/ReleaseRefnum");
     await page.getByLabel("Filter qualifier path").fill("ReleaseRefnumQualifierGid/Gid/Xid");
     await page.getByLabel("Filter qualifier value").fill("RFN_CHAVE_ACESSO");
@@ -329,7 +422,7 @@ async function run() {
 
     await page.getByLabel("Mapping source node", { exact: true }).selectOption("/Transmission/Shipment/Release/ReleaseGid/Gid/Xid");
     await page.getByLabel("Mapping target node", { exact: true }).selectOption("$.header.releaseCount");
-    await page.getByLabel("Transform type").selectOption("COUNT_DISTINCT");
+    await transformTypeSelect.selectOption("COUNT_DISTINCT");
     await page.getByLabel("Count collection path").fill("/Transmission/Shipment/Release");
     await page.getByLabel("Count value path").fill("ReleaseGid/Gid/Xid");
     await page.getByLabel("Mapping description").fill("Synthetic release count mapping.");
@@ -337,8 +430,8 @@ async function run() {
     await page.getByText("Created mapping $.header.releaseCount.").waitFor();
     await page.getByLabel("Selected definition mappings").getByText("$.header.releaseCount", { exact: true }).waitFor();
 
-    await page.getByLabel("Lookup source schema").selectOption({ label: "Transmission" });
-    await page.getByLabel("Lookup target schema").selectOption({ label: "$" });
+    await page.getByLabel("Lookup source schema").selectOption(sourceSchema.id);
+    await page.getByLabel("Lookup target schema").selectOption(targetSchema.id);
     await page.getByLabel("Lookup name").fill("Synthetic carrier lookup");
     await page.getByLabel("Lookup input node").selectOption("/Transmission/Shipment/ShipmentStop/StopSequence");
     await page.getByLabel("Lookup output node").selectOption("$.deliveries[].carrierName");
@@ -349,7 +442,7 @@ async function run() {
     await page.getByText("Created lookup Synthetic carrier lookup.").waitFor();
     await page.getByLabel("Selected definition lookups").getByText("Synthetic carrier lookup", { exact: true }).waitFor();
 
-    await page.getByLabel("Response schema").selectOption({ label: "$" });
+    await page.getByLabel("Response schema").selectOption(targetSchema.id);
     await page.getByLabel("Response handler name").fill("Accepted delivery response");
     await page.getByLabel("Response path node").selectOption("$.status");
     await page.getByLabel("Success condition").selectOption("EQUALS");
@@ -375,7 +468,7 @@ async function run() {
     await mappingForm.getByLabel("Mapping target node search").evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping target search after reset: ${element.value}`);
     });
-    await mappingForm.getByLabel("Source path").evaluate((element) => {
+    await mappingForm.getByRole("textbox", { name: "Source path", exact: true }).evaluate((element) => {
       if (element.value !== "") throw new Error(`Unexpected mapping source path after reset: ${element.value}`);
     });
     await mappingForm.getByLabel("Alias source context").evaluate((element) => {
@@ -455,11 +548,6 @@ async function run() {
     await page.getByLabel("Integration mapping readiness").getByText("No specification blockers reported", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Preview definition" }).click();
     await page.getByText(/^Preview artifact .+ generated by job .+\.$/).waitFor();
-    const definitions = await apiRequest("/api/v1/modules/integration-mapping/definitions", { token });
-    const createdDefinition = definitions.items.find((item) => item.code === definitionCode);
-    if (!createdDefinition) {
-      throw new Error(`Could not find created Integration Mapping definition ${definitionCode}.`);
-    }
     const previewArtifacts = await apiRequest(
       `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/artifacts`,
       { token }
@@ -504,10 +592,38 @@ async function run() {
     if (!hasLoopAliasProvenance) {
       throw new Error("Preview artifact did not include delivery alias field provenance.");
     }
+    const enrichmentProvenance = preview.enrichment_provenance?.find((item) => item.step_id === enrichmentStep.id);
+    if (!enrichmentProvenance) {
+      throw new Error("Preview artifact did not include enrichment provenance for the browser QA step.");
+    }
+    if (enrichmentProvenance.external_call_executed !== false) {
+      throw new Error("Preview artifact reported an executed enrichment external call.");
+    }
+    if (enrichmentProvenance.published_fields?.[0]?.name !== "carrier_name_enriched") {
+      throw new Error(`Unexpected enrichment published fields: ${JSON.stringify(enrichmentProvenance.published_fields)}`);
+    }
     await page.getByRole("button", { name: "Generate spec" }).click();
     await page.getByText(/^Spec artifact .+ generated by job .+\.$/).waitFor();
     const generatedArtifactsPanel = page.getByLabel("Integration mapping generated artifacts");
     await generatedArtifactsPanel.getByText("integration_mapping_spec.md", { exact: true }).waitFor();
+    const specArtifacts = await apiRequest(
+      `/api/v1/modules/integration-mapping/definitions/${createdDefinition.id}/artifacts`,
+      { token }
+    );
+    const specArtifact = specArtifacts.items.find((item) => item.artifact_type === "integration_markdown_spec");
+    if (!specArtifact?.download_url) {
+      throw new Error("Integration Mapping spec artifact was not available for download.");
+    }
+    const specMarkdown = await apiDownloadText(specArtifact.download_url, { token });
+    if (!specMarkdown.includes("## Enrichment Pipeline")) {
+      throw new Error("Generated Integration Mapping spec did not include the Enrichment Pipeline section.");
+    }
+    if (!specMarkdown.includes("`carrier_name_enriched` <- `$.location.locationName`")) {
+      throw new Error("Generated Integration Mapping spec did not include the enriched field mapping.");
+    }
+    if (!specMarkdown.includes("External enrichment calls are not executed")) {
+      throw new Error("Generated Integration Mapping spec did not preserve the no-external-call policy.");
+    }
     const downloadPromise = page.waitForEvent("download");
     await generatedArtifactsPanel
       .locator(".artifact-list-item")

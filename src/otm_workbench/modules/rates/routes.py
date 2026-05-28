@@ -11,11 +11,13 @@ from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.catalog.services import reference_options_payload, serialize_table_definition
 from otm_workbench.models import (
+    ActiveContext,
     Artifact,
     AuditLog,
     Evidence,
     RateBatch,
     RateBatchIssue,
+    RateBatchRow,
     RateBatchTable,
     ReferenceObject,
     User,
@@ -25,6 +27,11 @@ from otm_workbench.modules.rates.batches import (
     add_rate_batch_tables,
     create_rate_batch,
     get_batch_table_rows,
+)
+from otm_workbench.platform.scoping import (
+    apply_operational_scope,
+    normalize_domain_name,
+    operational_scope_from_context,
 )
 from otm_workbench.modules.rates.approval import (
     approve_rate_batch,
@@ -142,6 +149,65 @@ def serialize_rate_batch(batch: RateBatch) -> dict[str, object]:
     }
 
 
+def scoped_rate_batch_query(db: Session, user: User):
+    query = db.query(RateBatch)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(RateBatch.id.is_(None))
+        return query
+    return apply_operational_scope(query, RateBatch, operational_scope_from_context(active_context))
+
+
+def resolve_rate_batch_create_scope(
+    db: Session,
+    user: User,
+    payload: CreateRateBatchRequest,
+) -> tuple[str | None, str | None, str | None, str]:
+    if user.is_admin:
+        return payload.project_id, payload.environment_id, payload.profile_id, normalize_domain_name(payload.domain_name)
+
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None or not active_context.project_id or not active_context.environment_id:
+        raise api_error(
+            403,
+            "ACTIVE_CONTEXT_REQUIRED",
+            "Rates batch creation requires an active project and environment context.",
+        )
+
+    scope = operational_scope_from_context(active_context)
+    project_id = payload.project_id or scope.project_id
+    environment_id = payload.environment_id or scope.environment_id
+    profile_id = payload.profile_id or scope.profile_id
+    domain_name = normalize_domain_name(payload.domain_name)
+    if project_id != scope.project_id or environment_id != scope.environment_id:
+        raise api_error(
+            403,
+            "RATES_SCOPE_FORBIDDEN",
+            "Rates batch creation is limited to the active project and environment.",
+        )
+    if not scope.can_view_all_domains and domain_name not in scope.allowed_domain_names:
+        raise api_error(
+            403,
+            "RATES_SCOPE_FORBIDDEN",
+            "Rates batch creation is limited to the active domain scope.",
+        )
+    if payload.profile_id and scope.profile_id and payload.profile_id != scope.profile_id:
+        raise api_error(
+            403,
+            "RATES_SCOPE_FORBIDDEN",
+            "Rates batch creation is limited to the active profile scope.",
+        )
+    return project_id, environment_id, profile_id, domain_name
+
+
+def get_scoped_rate_batch_or_404(db: Session, user: User, batch_id: str) -> RateBatch:
+    batch = scoped_rate_batch_query(db, user).filter(RateBatch.id == batch_id).first()
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    return batch
+
+
 def serialize_rate_batch_table(table: RateBatchTable) -> dict[str, object]:
     return {
         "id": table.id,
@@ -166,6 +232,18 @@ def serialize_rate_batch_issue(issue: RateBatchIssue) -> dict[str, object]:
         "column_name": issue.column_name,
         "message": issue.message,
         "details_json": issue.details_json,
+    }
+
+
+def serialize_rate_batch_row(row: RateBatchRow) -> dict[str, object]:
+    try:
+        payload = json.loads(row.normalized_payload_json or "{}")
+    except json.JSONDecodeError:
+        payload = {}
+    return {
+        "row_index": row.row_index,
+        "status": row.status,
+        "payload": payload,
     }
 
 
@@ -368,8 +446,8 @@ def serialize_rate_batch_summary_item(db: Session, batch: RateBatch) -> dict[str
     }
 
 
-def rates_summary_payload(db: Session) -> dict[str, object]:
-    batches = db.query(RateBatch).order_by(RateBatch.created_at.desc()).all()
+def rates_summary_payload(db: Session, user: User) -> dict[str, object]:
+    batches = scoped_rate_batch_query(db, user).order_by(RateBatch.created_at.desc()).all()
     readiness_by_batch = {batch.id: get_rate_batch_readiness(db, batch) for batch in batches}
     total = len(batches)
     ready_for_approval = sum(
@@ -452,7 +530,7 @@ def get_rates_summary(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    return rates_summary_payload(db)
+    return rates_summary_payload(db, user)
 
 
 @router.get("/templates")
@@ -494,15 +572,16 @@ def create_rates_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    project_id, environment_id, profile_id, domain_name = resolve_rate_batch_create_scope(db, user, payload)
     try:
         batch = create_rate_batch(
             db,
             scenario_code=payload.scenario_code,
             name=payload.name,
-            domain_name=payload.domain_name,
-            project_id=payload.project_id,
-            environment_id=payload.environment_id,
-            profile_id=payload.profile_id,
+            domain_name=domain_name,
+            project_id=project_id,
+            environment_id=environment_id,
+            profile_id=profile_id,
             description=payload.description,
             source_type=payload.source_type,
             schema_root_ids=payload.schema_root_ids,
@@ -526,7 +605,7 @@ def list_rates_batches(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batches = db.query(RateBatch).order_by(RateBatch.created_at.desc()).all()
+    batches = scoped_rate_batch_query(db, user).order_by(RateBatch.created_at.desc()).all()
     items = [serialize_rate_batch(batch) for batch in batches]
     if catalog_macro_object_code:
         if is_unsupported_rates_catalog_macro_object(catalog_macro_object_code):
@@ -548,9 +627,7 @@ def get_rates_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     tables = (
         db.query(RateBatchTable)
         .filter(RateBatchTable.batch_id == batch.id)
@@ -563,15 +640,53 @@ def get_rates_batch(
     return payload
 
 
+@router.get("/batches/{batch_id}/tables/{table_name}")
+def get_rates_batch_table_detail(
+    batch_id: str,
+    table_name: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
+    normalized_table_name = table_name.upper()
+    table = (
+        db.query(RateBatchTable)
+        .filter(RateBatchTable.batch_id == batch.id, RateBatchTable.table_name == normalized_table_name)
+        .first()
+    )
+    if table is None:
+        raise HTTPException(status_code=404, detail="Rate batch table not found.")
+    rows = (
+        db.query(RateBatchRow)
+        .filter(RateBatchRow.batch_table_id == table.id)
+        .order_by(RateBatchRow.row_index)
+        .all()
+    )
+    issues = (
+        db.query(RateBatchIssue)
+        .filter(RateBatchIssue.batch_id == batch.id, RateBatchIssue.table_name == normalized_table_name)
+        .order_by(RateBatchIssue.severity, RateBatchIssue.issue_code)
+        .all()
+    )
+    scenario = get_rate_scenario(batch.scenario_code)
+    return {
+        "batch_id": batch.id,
+        "catalog_macro_object_code": scenario.catalog_macro_object_code,
+        "catalog_load_plan_path": scenario.catalog_load_plan_path,
+        "table": serialize_rate_batch_table(table),
+        "rows": [serialize_rate_batch_row(row) for row in rows],
+        "issues": [serialize_rate_batch_issue(issue) for issue in issues],
+        "total": len(rows),
+    }
+
+
 @router.get("/batches/{batch_id}/readiness")
 def get_rates_batch_readiness(
     batch_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     scenario = get_rate_scenario(batch.scenario_code)
     payload = get_rate_batch_readiness(db, batch).to_dict()
     payload["catalog_macro_object_code"] = scenario.catalog_macro_object_code
@@ -587,9 +702,7 @@ def approve_rates_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     try:
         return approve_rate_batch(
             db,
@@ -608,9 +721,7 @@ def add_rates_batch_tables(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     tables = add_rate_batch_tables(
         db,
         batch=batch,
@@ -631,9 +742,7 @@ def validate_rates_batch(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     issues = validate_rate_batch(
         db,
         dictionary_root=Path(get_settings().otm_data_dictionary_root),
@@ -660,9 +769,7 @@ def list_rates_batch_issues(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     issues = (
         db.query(RateBatchIssue)
         .filter(RateBatchIssue.batch_id == batch.id)
@@ -686,9 +793,7 @@ def preview_rates_batch_csv(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     batch_tables = (
         db.query(RateBatchTable)
         .filter(RateBatchTable.batch_id == batch.id)
@@ -723,9 +828,7 @@ def export_rates_batch_csv(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     try:
         result = generate_rates_csv_export(
             db,
@@ -749,9 +852,7 @@ def list_rates_batch_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     artifacts = list_batch_export_artifacts(db, batch.id)
     items = []
     for artifact in artifacts:
@@ -774,9 +875,7 @@ def get_latest_rates_batch_export(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     bundle = latest_batch_export_bundle(db, batch.id)
     if bundle is None:
         raise HTTPException(status_code=404, detail="Rates export not found.")
@@ -799,9 +898,7 @@ def download_rates_batch_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
 
     artifacts = list_batch_export_artifacts(db, batch.id)
     artifact = next((item for item in artifacts if item.id == artifact_id), None)
@@ -853,9 +950,7 @@ def list_rates_batch_evidence(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(RateBatch).filter(RateBatch.id == batch_id).first()
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Rate batch not found.")
+    batch = get_scoped_rate_batch_or_404(db, user, batch_id)
     evidence_items = list_batch_export_evidence(db, batch.id)
     approval_evidence = get_existing_approval_evidence(db, batch.id)
     if approval_evidence is not None and all(item.id != approval_evidence.id for item in evidence_items):

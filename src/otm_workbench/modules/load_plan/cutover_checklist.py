@@ -194,6 +194,16 @@ def method_for_package(package: LoadPlanPackage) -> str:
     return "REVIEW"
 
 
+def domain_name_for_package(package: LoadPlanPackage | None) -> str | None:
+    if package is None:
+        return None
+    if package.domain_name:
+        return package.domain_name
+    summary = parse_json_object(package.summary_json)
+    domain_name = summary.get("domain_name")
+    return domain_name if isinstance(domain_name, str) and domain_name else None
+
+
 def build_summary(package: LoadPlanPackage, *, item_count: int, table_item_count: int) -> dict[str, object]:
     package_summary = parse_json_object(package.summary_json)
     catalog_context = {
@@ -577,6 +587,8 @@ def generate_checklist_readiness(
     checklist: CutoverChecklist,
     generated_by: str,
 ) -> dict[str, object]:
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == checklist.package_id).first()
+    domain_name = domain_name_for_package(package)
     payload = checklist_readiness_payload(db, checklist)
     summary = payload["summary"]
     evidence_summary = {
@@ -589,11 +601,17 @@ def generate_checklist_readiness(
         "error_count": summary["error_count"],
         "warning_count": summary["warning_count"],
     }
+    if domain_name:
+        evidence_summary["domain_name"] = domain_name
     for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
         if summary.get(key):
             evidence_summary[key] = summary[key]
     evidence = Evidence(
         project_id=checklist.project_id,
+        profile_id=checklist.profile_id,
+        environment_id=checklist.environment_id,
+        domain_name=domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="cutover_checklist_readiness",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -606,6 +624,9 @@ def generate_checklist_readiness(
 
     audit_payload = dict(evidence_summary)
     audit_payload["evidence_id"] = evidence.id
+    audit_payload["project_id"] = checklist.project_id
+    audit_payload["profile_id"] = checklist.profile_id
+    audit_payload["environment_id"] = checklist.environment_id
     db.add(
         AuditLog(
             actor_user_id=generated_by,
@@ -720,11 +741,18 @@ def create_checklist_from_package(
         "table_item_count": summary["table_item_count"],
         "package_type": package.package_type,
     }
+    domain_name = domain_name_for_package(package)
+    if domain_name:
+        evidence_summary["domain_name"] = domain_name
     for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
         if summary.get(key):
             evidence_summary[key] = summary[key]
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="cutover_checklist_created",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -741,7 +769,12 @@ def create_checklist_from_package(
         "evidence_id": evidence.id,
         "item_count": summary["item_count"],
         "table_item_count": summary["table_item_count"],
+        "project_id": package.project_id,
+        "profile_id": package.profile_id,
+        "environment_id": package.environment_id,
     }
+    if domain_name:
+        audit_payload["domain_name"] = domain_name
     for key in ("catalog_macro_object_code", "catalog_load_plan_path"):
         if summary.get(key):
             audit_payload[key] = summary[key]

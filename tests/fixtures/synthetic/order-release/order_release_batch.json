@@ -1,0 +1,15 @@
+{
+  "project": "SYNTHETIC_PROJECT",
+  "environment": "UAT",
+  "domainName": "OTM1",
+  "rows": [
+    {
+      "orderReleaseGid": "OTM1.OR_SYN_001",
+      "sourceLocationGid": "OTM1.LOC_ORIGIN",
+      "destinationLocationGid": "OTM1.LOC_DEST",
+      "earlyPickupDate": "2026-06-01T08:00:00-03:00",
+      "lateDeliveryDate": "2026-06-02T18:00:00-03:00",
+      "weightKg": 1200
+    }
+  ]
+}

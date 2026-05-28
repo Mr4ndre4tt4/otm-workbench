@@ -39,6 +39,7 @@ def serialize_load_plan_package(package: LoadPlanPackage) -> dict[str, object]:
         "project_id": package.project_id,
         "environment_id": package.environment_id,
         "profile_id": package.profile_id,
+        "domain_name": package.domain_name,
         "source_module": package.source_module,
         "source_entity_type": package.source_entity_type,
         "source_entity_id": package.source_entity_id,
@@ -191,6 +192,7 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
         project_id=batch.project_id,
         environment_id=batch.environment_id,
         profile_id=batch.profile_id,
+        domain_name=batch.domain_name,
         source_module="rates",
         source_entity_type="rate_batch",
         source_entity_id=batch.id,
@@ -223,6 +225,10 @@ def register_rates_package(db: Session, *, batch: RateBatch, created_by: str) ->
     }
     intake_evidence = Evidence(
         project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_package_intake",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -318,6 +324,10 @@ def register_master_data_package(db: Session, *, batch: MasterDataBatch, created
         "has_approval_evidence": False,
     }
     package = LoadPlanPackage(
+        project_id=batch.project_id,
+        environment_id=batch.environment_id,
+        profile_id=batch.profile_id,
+        domain_name=batch.domain_name,
         source_module="master_data",
         source_entity_type="master_data_batch",
         source_entity_id=batch.id,
@@ -347,6 +357,11 @@ def register_master_data_package(db: Session, *, batch: MasterDataBatch, created
         "row_count": row_count,
     }
     intake_evidence = Evidence(
+        project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_package_intake",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -382,6 +397,7 @@ def register_master_data_package(db: Session, *, batch: MasterDataBatch, created
         DomainEvent(
             event_type="load_plan.package.registered",
             source_module="load_plan",
+            project_id=batch.project_id,
             aggregate_type="load_plan_package",
             aggregate_id=package.id,
             payload_json=json.dumps(
@@ -402,8 +418,12 @@ def register_master_data_package(db: Session, *, batch: MasterDataBatch, created
     return package
 
 
-def load_plan_package_summary(db: Session) -> dict[str, object]:
-    packages = db.query(LoadPlanPackage).all()
+def load_plan_package_summary(
+    db: Session,
+    packages: list[LoadPlanPackage] | None = None,
+) -> dict[str, object]:
+    if packages is None:
+        packages = db.query(LoadPlanPackage).all()
     by_source_module: dict[str, int] = {}
     by_status: dict[str, int] = {}
     by_catalog_macro_object: dict[str, dict[str, object]] = {}

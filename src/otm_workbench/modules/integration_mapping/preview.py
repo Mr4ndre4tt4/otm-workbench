@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from otm_workbench.models import (
     Artifact,
     IntegrationDefinition,
+    IntegrationEnrichedField,
+    IntegrationEnrichmentStep,
+    IntegrationEnrichmentSubStep,
     IntegrationJoinBinding,
     IntegrationJoinBindingHop,
     IntegrationJoinRule,
@@ -19,6 +22,7 @@ from otm_workbench.models import (
     Job,
     utcnow,
 )
+from otm_workbench.modules.integration_mapping.enrichment import parse_json_list, parse_json_object
 from otm_workbench.modules.integration_mapping.mappings import parse_transform_config
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 from otm_workbench.platform.jobs import audit_job, dumps_limited_json_object, emit_job_event
@@ -38,6 +42,18 @@ def preview_counts(db: Session, definition_id: str) -> dict[str, int]:
         "lookups": db.query(IntegrationLookupDefinition)
         .filter(IntegrationLookupDefinition.definition_id == definition_id)
         .count(),
+        "enrichment_steps": db.query(IntegrationEnrichmentStep)
+        .filter(
+            IntegrationEnrichmentStep.definition_id == definition_id,
+            IntegrationEnrichmentStep.status == "ACTIVE",
+        )
+        .count(),
+        "enriched_fields": db.query(IntegrationEnrichedField)
+        .filter(
+            IntegrationEnrichedField.definition_id == definition_id,
+            IntegrationEnrichedField.status == "ACTIVE",
+        )
+        .count(),
     }
 
 
@@ -47,6 +63,7 @@ def build_preview_payload(
     validation: dict[str, object],
     counts: dict[str, int],
     executable_preview: dict[str, object] | None = None,
+    enrichment_provenance: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     preview = {
         "mode": "synthetic_metadata_only",
@@ -69,12 +86,105 @@ def build_preview_payload(
             "status": "materialized_from_synthetic_source",
             "records_previewed": 1,
         }
+    if enrichment_provenance:
+        preview["enrichment_provenance"] = enrichment_provenance
     return {
         "definition_id": definition.id,
         "definition_code": definition.code,
         "preview": preview,
         "validation": validation,
     }
+
+
+def build_enrichment_preview_provenance(db: Session, definition_id: str) -> list[dict[str, object]]:
+    steps = (
+        db.query(IntegrationEnrichmentStep)
+        .filter(
+            IntegrationEnrichmentStep.definition_id == definition_id,
+            IntegrationEnrichmentStep.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichmentStep.sequence_index, IntegrationEnrichmentStep.created_at)
+        .all()
+    )
+    provenance: list[dict[str, object]] = []
+    for step in steps:
+        published_fields = active_enriched_fields(db, enrichment_step_id=step.id, enrichment_substep_id=None)
+        provenance.append(
+            {
+                "step_id": step.id,
+                "name": step.name,
+                "step_type": step.step_type,
+                "endpoint_id": step.endpoint_id,
+                "key_template": step.key_template,
+                "key_source_fields": parse_json_list(step.key_source_fields_json),
+                "response_schema_document_id": step.response_schema_document_id,
+                "response_field_mappings": parse_json_list(step.response_field_mappings_json),
+                "published_fields": published_fields,
+                "external_call_executed": False,
+                "value_policy": "metadata_only_no_external_call",
+            }
+        )
+        for substep in active_enrichment_substeps(db, step.id):
+            provenance.append(
+                {
+                    "step_id": step.id,
+                    "substep_id": substep.id,
+                    "name": substep.name,
+                    "step_type": "SUBSTEP",
+                    "endpoint_id": substep.endpoint_id,
+                    "request_path_template": substep.request_path_template,
+                    "request_key_bindings": parse_json_object(substep.request_key_bindings_json),
+                    "response_schema_document_id": substep.response_schema_document_id,
+                    "response_field_mappings": parse_json_list(substep.response_field_mappings_json),
+                    "published_fields": active_enriched_fields(
+                        db,
+                        enrichment_step_id=step.id,
+                        enrichment_substep_id=substep.id,
+                    ),
+                    "external_call_executed": False,
+                    "value_policy": "metadata_only_no_external_call",
+                }
+            )
+    return provenance
+
+
+def active_enrichment_substeps(db: Session, enrichment_step_id: str) -> list[IntegrationEnrichmentSubStep]:
+    return (
+        db.query(IntegrationEnrichmentSubStep)
+        .filter(
+            IntegrationEnrichmentSubStep.enrichment_step_id == enrichment_step_id,
+            IntegrationEnrichmentSubStep.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichmentSubStep.sequence_index, IntegrationEnrichmentSubStep.created_at)
+        .all()
+    )
+
+
+def active_enriched_fields(
+    db: Session,
+    *,
+    enrichment_step_id: str,
+    enrichment_substep_id: str | None,
+) -> list[dict[str, object]]:
+    query = db.query(IntegrationEnrichedField).filter(
+        IntegrationEnrichedField.enrichment_step_id == enrichment_step_id,
+        IntegrationEnrichedField.status == "ACTIVE",
+    )
+    if enrichment_substep_id is None:
+        query = query.filter(IntegrationEnrichedField.enrichment_substep_id.is_(None))
+    else:
+        query = query.filter(IntegrationEnrichedField.enrichment_substep_id == enrichment_substep_id)
+    fields = query.order_by(IntegrationEnrichedField.created_at, IntegrationEnrichedField.name).all()
+    return [
+        {
+            "field_id": field.id,
+            "name": field.name,
+            "response_path": field.response_path,
+            "data_type": field.data_type,
+            "cardinality": field.cardinality,
+        }
+        for field in fields
+    ]
 
 
 def source_value_from_xml_path(content: str, path: str) -> object:
@@ -837,6 +947,11 @@ def create_preview_artifact(
     file_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     digest, size = file_sha256(file_path)
     artifact = Artifact(
+        project_id=definition.project_id,
+        profile_id=definition.profile_id,
+        environment_id=definition.environment_id,
+        domain_name=definition.domain_name,
+        visibility="PROJECT",
         source_module=SOURCE_MODULE,
         artifact_type="integration_preview",
         file_path=str(file_path),
@@ -937,11 +1052,13 @@ def build_integration_preview(
 ) -> dict[str, object]:
     counts = preview_counts(db, definition.id)
     executable_preview = build_executable_json_preview(db, definition=definition)
+    enrichment_provenance = build_enrichment_preview_provenance(db, definition.id)
     preview_payload = build_preview_payload(
         definition=definition,
         validation=validation,
         counts=counts,
         executable_preview=executable_preview,
+        enrichment_provenance=enrichment_provenance,
     )
     artifact = create_preview_artifact(db, definition=definition, artifact_root=artifact_root, payload=preview_payload)
     job = record_completed_preview_job(

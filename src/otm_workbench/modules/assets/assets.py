@@ -9,6 +9,7 @@ from otm_workbench.modules.assets.secret_risk import (
     assert_global_asset_without_secret_risk,
     assert_global_content_without_secret_risk,
 )
+from otm_workbench.platform.scoping import normalize_domain_name
 from otm_workbench.modules.rates.exports import file_sha256, utc_timestamp
 
 
@@ -150,6 +151,8 @@ def serialize_asset(asset: Asset) -> dict[str, object]:
         "project_id": asset.project_id,
         "profile_id": asset.profile_id,
         "environment_id": asset.environment_id,
+        "domain_name": asset.domain_name,
+        "access_policy_id": asset.access_policy_id,
         "name": asset.name,
         "description": asset.description,
         "asset_type": asset.asset_type,
@@ -161,6 +164,7 @@ def serialize_asset(asset: Asset) -> dict[str, object]:
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         "tags": parse_tags(asset.tags_json),
         "current_version_id": asset.current_version_id,
         "available_actions": build_asset_available_actions(asset),
@@ -259,6 +263,11 @@ def create_draft_asset(
     raw_tags = payload.get("tags") or []
     tags = [str(tag).strip().upper() for tag in raw_tags if str(tag).strip()]
     asset = Asset(
+        project_id=str(payload.get("project_id") or "").strip() or None,
+        profile_id=str(payload.get("profile_id") or "").strip() or None,
+        environment_id=str(payload.get("environment_id") or "").strip() or None,
+        domain_name=normalize_domain_name(str(payload.get("domain_name") or "")) if payload.get("domain_name") else None,
+        access_policy_id=str(payload.get("access_policy_id") or "").strip() or None,
         name=str(payload["name"]).strip(),
         description=str(payload.get("description") or "").strip(),
         asset_type=normalized["asset_type"],
@@ -270,6 +279,7 @@ def create_draft_asset(
         module_id=str(payload.get("module_id") or "").strip() or None,
         macro_object_code=str(payload.get("macro_object_code") or "").strip().upper() or None,
         otm_table_name=str(payload.get("otm_table_name") or "").strip().upper() or None,
+        target_otm_version=str(payload.get("target_otm_version") or "").strip().upper() or None,
         tags_json=json.dumps(tags, sort_keys=True),
         created_by=user.email,
     )
@@ -278,15 +288,23 @@ def create_draft_asset(
 
     audit_payload = {
         "asset_id": asset.id,
+        "project_id": asset.project_id,
+        "profile_id": asset.profile_id,
+        "environment_id": asset.environment_id,
+        "domain_name": asset.domain_name,
+        "access_policy_id": asset.access_policy_id,
         "status": asset.status,
         "asset_type": asset.asset_type,
         "category": asset.category,
         "visibility": asset.visibility,
+        "domain_name": asset.domain_name,
+        "access_policy_id": asset.access_policy_id,
         "scope_type": asset.scope_type,
         "sensitivity": asset.sensitivity,
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
     }
     db.add(
         AuditLog(
@@ -332,6 +350,11 @@ def record_asset_change(
 ) -> None:
     payload = {
         "asset_id": asset.id,
+        "project_id": asset.project_id,
+        "profile_id": asset.profile_id,
+        "environment_id": asset.environment_id,
+        "domain_name": asset.domain_name,
+        "access_policy_id": asset.access_policy_id,
         "status": asset.status,
         "asset_type": asset.asset_type,
         "category": asset.category,
@@ -341,6 +364,7 @@ def record_asset_change(
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         **(extra or {}),
     }
     db.add(
@@ -382,6 +406,7 @@ def update_asset_metadata(
         "module_id",
         "macro_object_code",
         "otm_table_name",
+        "target_otm_version",
         "tags",
     }
     candidate_payload = {
@@ -391,6 +416,7 @@ def update_asset_metadata(
         "module_id": asset.module_id,
         "macro_object_code": asset.macro_object_code,
         "otm_table_name": asset.otm_table_name,
+        "target_otm_version": asset.target_otm_version,
         "tags": parse_tags(asset.tags_json),
         **payload,
     }
@@ -414,7 +440,7 @@ def update_asset_metadata(
             if asset.tags_json != tags_json:
                 asset.tags_json = tags_json
                 changed_fields.append(field_name)
-        elif field_name in {"macro_object_code", "otm_table_name"}:
+        elif field_name in {"macro_object_code", "otm_table_name", "target_otm_version"}:
             normalized_value = str(value).strip().upper() or None
             if getattr(asset, field_name) != normalized_value:
                 setattr(asset, field_name, normalized_value)

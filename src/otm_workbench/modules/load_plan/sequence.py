@@ -336,6 +336,10 @@ def generate_sequence_snapshot(
     }
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=package.domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_sequence_snapshot",
         summary_json=json.dumps(evidence_summary, sort_keys=True),

@@ -2,15 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiDownload, apiGet, apiPost, apiPut } from "../api";
 import type {
+  AccessPolicyCreate,
   ActiveContextResponse,
   ActiveContextUpdate,
   AuditLogItem,
   CockpitSummary,
   CurrentUser,
+  DevToolsDataDictionaryResponse,
+  DevToolsDataDictionaryTableDetailResponse,
+  DevToolsEnvironmentReadinessResponse,
+  DevToolsFkCatalogResponse,
+  DevToolsSchemaPacksResponse,
+  DevToolsSummary,
   EffectiveCapabilities,
   EnvironmentCreate,
   FeatureFlag,
   FeatureFlagUpdate,
+  GrantCreate,
   IdName,
   IdNameResponse,
   LoginResponse,
@@ -22,6 +30,14 @@ import type {
   ProjectCreate,
   PlatformJobEvent,
   ProjectSetupStatus,
+  RoleCreate,
+  SettingsAccessModel,
+  SettingsAccessPolicy,
+  SettingsGrant,
+  SettingsRole,
+  SettingsScopeAuthority,
+  SettingsUser,
+  UserCreate,
   WorkspaceCreate,
   UserPreferences
 } from "../types";
@@ -84,6 +100,38 @@ export function useProjectSetupStatus(token: string | null, projectId: string | 
     queryFn: () => apiGet<ProjectSetupStatus>(`/api/v1/platform/projects/${projectId}/setup-status`, { token }),
     enabled: Boolean(token && projectId)
   });
+}
+
+export function useSettingsScopeAuthority(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "settings", "scope-authority"],
+    queryFn: () => apiGet<SettingsScopeAuthority>("/api/v1/platform/settings/scope-authority", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useSettingsAccessModel(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "settings", "access-model"],
+    queryFn: () => apiGet<SettingsAccessModel>("/api/v1/platform/settings/access-model", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function createRole(token: string, payload: RoleCreate) {
+  return apiPost<SettingsRole>("/api/v1/platform/roles", payload, { token });
+}
+
+export function createUser(token: string, payload: UserCreate) {
+  return apiPost<SettingsUser>("/api/v1/platform/users", payload, { token });
+}
+
+export function createGrant(token: string, payload: GrantCreate) {
+  return apiPost<SettingsGrant>("/api/v1/platform/grants", payload, { token });
+}
+
+export function createAccessPolicy(token: string, payload: AccessPolicyCreate) {
+  return apiPost<SettingsAccessPolicy>("/api/v1/platform/access-policies", payload, { token });
 }
 
 export function useActiveContextCapabilities(token: string | null) {
@@ -174,6 +222,69 @@ export function useCockpitSummary(token: string | null) {
   return useQuery({
     queryKey: ["platform", "project-cockpit", "summary"],
     queryFn: () => apiGet<CockpitSummary>("/api/v1/platform/project-cockpit/summary", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useDevToolsSummary(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "summary"],
+    queryFn: () => apiGet<DevToolsSummary>("/api/v1/platform/dev-tools/summary", { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useDevToolsDataDictionary(token: string | null, query: string, limit = 25) {
+  const params = new URLSearchParams();
+  params.set("query", query);
+  params.set("limit", String(limit));
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "data-dictionary", query, limit],
+    queryFn: () => apiGet<DevToolsDataDictionaryResponse>(`/api/v1/platform/dev-tools/data-dictionary?${params}`, { token }),
+    enabled: Boolean(token)
+  });
+}
+
+export function useDevToolsDataDictionaryTable(token: string | null, tableName: string | undefined) {
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "data-dictionary", "tables", tableName],
+    queryFn: () =>
+      apiGet<DevToolsDataDictionaryTableDetailResponse>(`/api/v1/platform/dev-tools/data-dictionary/tables/${tableName}`, {
+        token
+      }),
+    enabled: Boolean(token && tableName)
+  });
+}
+
+export function useDevToolsFkCatalog(token: string | null, sourceTable: string, limit = 50) {
+  const params = new URLSearchParams();
+  params.set("source_table", sourceTable);
+  params.set("limit", String(limit));
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "fk-catalog", sourceTable, limit],
+    queryFn: () => apiGet<DevToolsFkCatalogResponse>(`/api/v1/platform/dev-tools/fk-catalog?${params}`, { token }),
+    enabled: Boolean(token && sourceTable)
+  });
+}
+
+export function useDevToolsSchemaPacks(token: string | null, otmVersion: string, code = "", limit = 25) {
+  const params = new URLSearchParams();
+  params.set("otm_version", otmVersion);
+  if (code) {
+    params.set("code", code);
+  }
+  params.set("limit", String(limit));
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "schema-packs", otmVersion, code, limit],
+    queryFn: () => apiGet<DevToolsSchemaPacksResponse>(`/api/v1/platform/dev-tools/schema-packs?${params}`, { token }),
+    enabled: Boolean(token && otmVersion)
+  });
+}
+
+export function useDevToolsEnvironmentReadiness(token: string | null) {
+  return useQuery({
+    queryKey: ["platform", "dev-tools", "environment-readiness"],
+    queryFn: () => apiGet<DevToolsEnvironmentReadinessResponse>("/api/v1/platform/dev-tools/environment-readiness", { token }),
     enabled: Boolean(token)
   });
 }

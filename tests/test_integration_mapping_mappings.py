@@ -1,14 +1,18 @@
 from sqlalchemy import inspect
 
 from otm_workbench.models import IntegrationMapping
-from tests.test_integration_mapping_definitions import definition_payload
+from tests.test_integration_mapping_definitions import (
+    create_project_with_environments,
+    definition_payload,
+    set_active_context,
+)
 from tests.test_integration_mapping_payload_artifacts import payload_import
 
 
-def create_definition(client, admin_header):
+def create_definition(client, admin_header, *, code="PS_MAPPING_CRUD"):
     response = client.post(
         "/api/v1/modules/integration-mapping/definitions",
-        json=definition_payload(code="PS_MAPPING_CRUD"),
+        json=definition_payload(code=code),
         headers=admin_header,
     )
     assert response.status_code == 200
@@ -216,6 +220,111 @@ def test_list_and_get_integration_mappings(client, admin_header):
     assert listing.json()["items"][0]["id"] == created.json()["id"]
     assert detail.status_code == 200
     assert detail.json()["id"] == created.json()["id"]
+
+
+def test_integration_mapping_child_routes_follow_definition_scope(client, admin_header):
+    project_id, uat_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden = create_definition(client, admin_header, code="PS_MAPPING_HIDDEN_SCOPE")
+    hidden_source = create_schema_document(client, admin_header, hidden["id"])
+    hidden_target = create_schema_document(
+        client,
+        admin_header,
+        hidden["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="hidden-delivery.json",
+        content='{"header":{"shipmentId":"SYNTHETIC"}}',
+    )
+    hidden_mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{hidden['id']}/mappings",
+        json=mapping_payload(hidden_source, hidden_target),
+        headers=admin_header,
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listing = client.get(
+        f"/api/v1/modules/integration-mapping/definitions/{hidden['id']}/mappings",
+        headers=admin_header,
+    )
+    detail = client.get(
+        f"/api/v1/modules/integration-mapping/mappings/{hidden_mapping['id']}",
+        headers=admin_header,
+    )
+    deleted = client.delete(
+        f"/api/v1/modules/integration-mapping/mappings/{hidden_mapping['id']}",
+        headers=admin_header,
+    )
+
+    assert listing.status_code == 404
+    assert detail.status_code == 404
+    assert deleted.status_code == 404
+
+
+def test_integration_mapping_child_routes_require_active_context_for_non_admin(
+    client,
+    admin_header,
+    auth_header,
+):
+    project_id, uat_id, _dev_id = create_project_with_environments(client, admin_header)
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    definition = create_definition(client, admin_header, code="PS_MAPPING_NO_CONTEXT")
+    source = create_schema_document(client, admin_header, definition["id"])
+    target = create_schema_document(
+        client,
+        admin_header,
+        definition["id"],
+        payload_role="TARGET_SAMPLE",
+        payload_format="JSON",
+        file_name="no-context-delivery.json",
+        content='{"header":{"shipmentId":"SYNTHETIC"}}',
+    )
+    mapping = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(source, target),
+        headers=admin_header,
+    ).json()
+
+    listing = client.get(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        headers=auth_header,
+    )
+    detail = client.get(
+        f"/api/v1/modules/integration-mapping/mappings/{mapping['id']}",
+        headers=auth_header,
+    )
+    create = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/mappings",
+        json=mapping_payload(source, target, target_path="$.header.secondShipmentId"),
+        headers=auth_header,
+    )
+    deleted = client.delete(
+        f"/api/v1/modules/integration-mapping/mappings/{mapping['id']}",
+        headers=auth_header,
+    )
+
+    assert listing.status_code == 404
+    assert detail.status_code == 404
+    assert create.status_code == 404
+    assert deleted.status_code == 404
 
 
 def test_delete_integration_mapping_removes_rule_from_definition(client, admin_header):

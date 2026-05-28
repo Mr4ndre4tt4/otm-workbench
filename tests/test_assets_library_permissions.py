@@ -11,16 +11,21 @@ def create_asset(client, admin_header):
     return response.json()
 
 
-def test_authenticated_non_admin_can_read_assets(client, admin_header, auth_header):
+def test_authenticated_non_admin_without_active_context_cannot_read_operational_assets(
+    client,
+    admin_header,
+    auth_header,
+):
     asset = create_asset(client, admin_header)
 
     listed = client.get("/api/v1/modules/assets/assets", headers=auth_header)
     detail = client.get(f"/api/v1/modules/assets/assets/{asset['id']}", headers=auth_header)
 
     assert listed.status_code == 200
-    assert listed.json()["total"] == 1
-    assert detail.status_code == 200
-    assert detail.json()["id"] == asset["id"]
+    assert listed.json()["total"] == 0
+    assert listed.json()["items"] == []
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "ASSET_NOT_FOUND"
 
 
 def test_non_admin_cannot_create_asset(client, auth_header):

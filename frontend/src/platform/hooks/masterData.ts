@@ -20,6 +20,7 @@ import type {
   MasterDataScenarioPacksResponse,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
+  MasterDataTemplateSearchOperator,
   MasterDataTemplateValidation,
   MasterDataTemplatesResponse,
   MasterDataWorkbookArtifact,
@@ -28,10 +29,30 @@ import type {
   MasterDataWorkbookEditorValidation
 } from "../types";
 
-export function useMasterDataTemplates(token: string | null) {
+export type MasterDataTemplateFilters = {
+  macro_object?: string;
+  macro_object_operator?: MasterDataTemplateSearchOperator;
+  status?: string;
+  status_operator?: MasterDataTemplateSearchOperator;
+  template_code?: string;
+  template_code_operator?: MasterDataTemplateSearchOperator;
+  template_name?: string;
+  template_name_operator?: MasterDataTemplateSearchOperator;
+};
+
+function masterDataTemplateQuery(filters: MasterDataTemplateFilters = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/api/v1/modules/master-data/templates?${query}` : "/api/v1/modules/master-data/templates";
+}
+
+export function useMasterDataTemplates(token: string | null, filters: MasterDataTemplateFilters = {}) {
   return useQuery({
-    queryKey: ["modules", "master-data", "templates"],
-    queryFn: () => apiGet<MasterDataTemplatesResponse>("/api/v1/modules/master-data/templates", { token }),
+    queryKey: ["modules", "master-data", "templates", filters],
+    queryFn: () => apiGet<MasterDataTemplatesResponse>(masterDataTemplateQuery(filters), { token }),
     enabled: Boolean(token)
   });
 }
@@ -85,6 +106,14 @@ export function getMasterDataBatch(token: string, batchId: string) {
   return apiGet<MasterDataBatch>(`/api/v1/modules/master-data/batches/${batchId}`, { token });
 }
 
+export function useMasterDataBatchDetail(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "batches", batchId],
+    queryFn: () => apiGet<MasterDataBatch>(`/api/v1/modules/master-data/batches/${batchId}`, { token }),
+    enabled: Boolean(token && batchId)
+  });
+}
+
 export function useMasterDataBatchSummary(token: string | null, filters: MasterDataBatchFilters = {}) {
   const query = masterDataBatchQuery(filters, false).replace(
     "/api/v1/modules/master-data/batches",
@@ -127,6 +156,15 @@ export function useCoordinateQualityBatches(token: string | null) {
     queryFn: () =>
       apiGet<CoordinateQualityBatchesResponse>("/api/v1/modules/master-data/coordinate-quality/batches", { token }),
     enabled: Boolean(token)
+  });
+}
+
+export function useCoordinateQualityBatchDetail(token: string | null, batchId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "master-data", "coordinate-quality", "batches", batchId],
+    queryFn: () =>
+      apiGet<CoordinateQualityBatch>(`/api/v1/modules/master-data/coordinate-quality/batches/${batchId}`, { token }),
+    enabled: Boolean(token && batchId)
   });
 }
 

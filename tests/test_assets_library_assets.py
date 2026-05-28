@@ -14,6 +14,11 @@ def draft_asset_payload(**overrides):
         "visibility": "PROJECT",
         "scope_type": "PROJECT",
         "sensitivity": "INTERNAL",
+        "project_id": "project_demo",
+        "profile_id": "profile_demo",
+        "environment_id": "env_demo",
+        "domain_name": "otm1",
+        "access_policy_id": "policy_assets_demo",
         "module_id": "assets",
         "macro_object_code": "RATE_RECORD",
         "otm_table_name": "RATE_GEO_COST",
@@ -23,10 +28,55 @@ def draft_asset_payload(**overrides):
     return payload
 
 
+def create_project_environment(client, admin_header, *, name_suffix=""):
+    workspace = client.post(
+        "/api/v1/platform/workspaces",
+        json={"name": f"Synthetic Assets Workspace{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    project = client.post(
+        "/api/v1/platform/projects",
+        json={"workspace_id": workspace["id"], "name": f"Synthetic Assets Project{name_suffix}"},
+        headers=admin_header,
+    ).json()
+    environment = client.post(
+        "/api/v1/platform/environments",
+        json={"project_id": project["id"], "name": "UAT", "environment_type": "UAT"},
+        headers=admin_header,
+    ).json()
+    return project["id"], environment["id"]
+
+
+def set_active_context(
+    client,
+    admin_header,
+    *,
+    project_id,
+    environment_id,
+    domain_name,
+    can_view_all_domains=False,
+):
+    response = client.post(
+        "/api/v1/platform/active-context",
+        json={
+            "project_id": project_id,
+            "environment_id": environment_id,
+            "domain_name": domain_name,
+            "can_view_all_domains": can_view_all_domains,
+        },
+        headers=admin_header,
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_assets_table_exists_after_metadata_reset(db_session):
-    table_names = inspect(db_session.bind).get_table_names()
+    inspector = inspect(db_session.bind)
+    table_names = inspector.get_table_names()
+    columns = {column["name"] for column in inspector.get_columns("assets")}
 
     assert "assets" in table_names
+    assert "target_otm_version" in columns
 
 
 def test_create_draft_asset_records_metadata_audit_and_event(client, admin_header, db_session):
@@ -47,6 +97,11 @@ def test_create_draft_asset_records_metadata_audit_and_event(client, admin_heade
     assert asset["visibility"] == "PROJECT"
     assert asset["scope_type"] == "PROJECT"
     assert asset["sensitivity"] == "INTERNAL"
+    assert asset["project_id"] == "project_demo"
+    assert asset["profile_id"] == "profile_demo"
+    assert asset["environment_id"] == "env_demo"
+    assert asset["domain_name"] == "OTM1"
+    assert asset["access_policy_id"] == "policy_assets_demo"
     assert asset["tags"] == ["SYNTHETIC", "MVP0"]
     actions = {action["key"]: action for action in asset["available_actions"]}
     assert actions["asset.update"]["disabled"] is False
@@ -61,6 +116,39 @@ def test_create_draft_asset_records_metadata_audit_and_event(client, admin_heade
     combined = "\n".join([json.dumps(asset, sort_keys=True), audit.metadata_json, event.payload_json])
     assert "customer" not in combined.lower()
     assert "cliente" not in combined.lower()
+
+
+def test_create_asset_inherits_active_context_when_scope_is_omitted(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header, name_suffix=" Create Scope")
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+
+    response = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            project_id=None,
+            profile_id=None,
+            environment_id=None,
+            domain_name=None,
+            access_policy_id=None,
+        ),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    asset = response.json()
+    detail = client.get(f"/api/v1/modules/assets/assets/{asset['id']}", headers=admin_header)
+
+    assert asset["project_id"] == project_id
+    assert asset["environment_id"] == environment_id
+    assert asset["domain_name"] == "OTM1"
+    assert detail.status_code == 200
+    assert detail.json()["id"] == asset["id"]
 
 
 def test_create_draft_asset_rejects_unknown_classification(client, admin_header):
@@ -148,6 +236,194 @@ def test_list_and_detail_assets_with_filters(client, admin_header):
     assert detail.json()["id"] == created["id"]
 
 
+def test_asset_routes_follow_active_context_scope(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header)
+    other_project_id, other_environment_id = create_project_environment(client, admin_header, name_suffix=" Other")
+    visible = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    hidden_domain = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Domain Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM2",
+        ),
+        headers=admin_header,
+    ).json()
+    hidden_project = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Project Asset",
+            project_id=other_project_id,
+            environment_id=other_environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Hidden Environment Asset",
+            project_id=project_id,
+            environment_id="env_dev",
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=admin_header)
+    visible_detail = client.get(f"/api/v1/modules/assets/assets/{visible['id']}", headers=admin_header)
+    hidden_detail = client.get(f"/api/v1/modules/assets/assets/{hidden_domain['id']}", headers=admin_header)
+    hidden_update = client.patch(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}",
+        json={"name": "Synthetic Hidden Domain Asset Updated"},
+        headers=admin_header,
+    )
+    hidden_archive = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/archive",
+        headers=admin_header,
+    )
+    hidden_link_create = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/links",
+        json={"link_type": "OTM_TABLE", "target_id": "RATE_GEO_COST", "target_label": "Rate Geo Cost"},
+        headers=admin_header,
+    )
+    hidden_link_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/links",
+        headers=admin_header,
+    )
+    hidden_version_upload = client.post(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/versions",
+        files={"file": ("hidden.md", b"# hidden synthetic asset\n", "text/markdown")},
+        headers=admin_header,
+    )
+    hidden_version_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/versions",
+        headers=admin_header,
+    )
+    hidden_download = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_domain['id']}/download",
+        headers=admin_header,
+    )
+    hidden_project_detail = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}",
+        headers=admin_header,
+    )
+    hidden_project_link_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}/links",
+        headers=admin_header,
+    )
+    hidden_project_version_list = client.get(
+        f"/api/v1/modules/assets/assets/{hidden_project['id']}/versions",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["items"]] == [visible["id"]]
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["id"] == visible["id"]
+    assert hidden_detail.status_code == 404
+    assert hidden_update.status_code == 404
+    assert hidden_archive.status_code == 404
+    assert hidden_link_create.status_code == 404
+    assert hidden_link_list.status_code == 404
+    assert hidden_version_upload.status_code == 404
+    assert hidden_version_list.status_code == 404
+    assert hidden_download.status_code == 404
+    assert hidden_project_detail.status_code == 404
+    assert hidden_project_link_list.status_code == 404
+    assert hidden_project_version_list.status_code == 404
+
+
+def test_asset_routes_hide_operational_assets_for_non_admin_without_active_context(
+    client,
+    admin_header,
+    auth_header,
+):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=auth_header)
+    detail = client.get(f"/api/v1/modules/assets/assets/{created['id']}", headers=auth_header)
+    links = client.get(f"/api/v1/modules/assets/assets/{created['id']}/links", headers=auth_header)
+    versions = client.get(f"/api/v1/modules/assets/assets/{created['id']}/versions", headers=auth_header)
+    download = client.get(f"/api/v1/modules/assets/assets/{created['id']}/download", headers=auth_header)
+
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+    assert listed.json()["total"] == 0
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "ASSET_NOT_FOUND"
+    assert links.status_code == 404
+    assert versions.status_code == 404
+    assert download.status_code == 404
+
+
+def test_asset_dba_context_can_see_all_domains_in_active_environment(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header)
+    otm1 = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic OTM1 Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM1",
+        ),
+        headers=admin_header,
+    ).json()
+    otm2 = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic OTM2 Asset",
+            project_id=project_id,
+            environment_id=environment_id,
+            domain_name="OTM2",
+        ),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Other Environment Asset",
+            project_id=project_id,
+            environment_id="env_dev",
+            domain_name="OTM3",
+        ),
+        headers=admin_header,
+    )
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/assets/assets", headers=admin_header)
+
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {otm1["id"], otm2["id"]}
+
+
 def test_list_assets_filters_by_scope_tag_and_module(client, admin_header):
     matching = client.post(
         "/api/v1/modules/assets/assets",
@@ -212,6 +488,240 @@ def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header)
     payload = response.json()
     assert payload["total"] == 1
     assert payload["items"][0]["id"] == matching["id"]
+
+
+def test_asset_target_otm_version_create_update_and_search(client, admin_header):
+    matching = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic 26A Asset", target_otm_version="26a"),
+        headers=admin_header,
+    ).json()
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic 26B Asset", target_otm_version="26B"),
+        headers=admin_header,
+    )
+
+    exact = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26A"},
+        headers=admin_header,
+    )
+    one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26A,27A", "target_otm_version_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"target_otm_version": "26B", "target_otm_version_operator": "not_one_of"},
+        headers=admin_header,
+    )
+    update = client.patch(
+        f"/api/v1/modules/assets/assets/{matching['id']}",
+        json={"target_otm_version": "27a"},
+        headers=admin_header,
+    )
+    clear = client.patch(
+        f"/api/v1/modules/assets/assets/{matching['id']}",
+        json={"target_otm_version": ""},
+        headers=admin_header,
+    )
+
+    assert matching["target_otm_version"] == "26A"
+    assert exact.status_code == 200
+    assert [item["id"] for item in exact.json()["items"]] == [matching["id"]]
+    assert one_of.status_code == 200
+    assert [item["id"] for item in one_of.json()["items"]] == [matching["id"]]
+    assert not_one_of.status_code == 200
+    assert [item["id"] for item in not_one_of.json()["items"]] == [matching["id"]]
+    assert update.status_code == 200
+    assert update.json()["target_otm_version"] == "27A"
+    assert clear.status_code == 200
+    assert clear.json()["target_otm_version"] is None
+
+
+def test_list_assets_supports_backend_search_operators(client, admin_header):
+    alpha = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Alpha Rate Playbook",
+            description="Reusable rating payload sample.",
+            module_id="rates",
+            macro_object_code="RATE_RECORD",
+            otm_table_name="RATE_GEO_COST",
+        ),
+        headers=admin_header,
+    ).json()
+    beta = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Beta Integration Payload",
+            description="Reusable integration payload sample.",
+            module_id="integration_mapping",
+            macro_object_code="RATE_RECORD",
+            otm_table_name="RATE_GEO_COST",
+        ),
+        headers=admin_header,
+    ).json()
+    gamma = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Gamma Location Notes",
+            description="Location setup notes.",
+            module_id="master_data",
+            macro_object_code="REGION",
+            otm_table_name="REGION",
+        ),
+        headers=admin_header,
+    ).json()
+
+    contains = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"description": "integration payload", "description_operator": "contains"},
+        headers=admin_header,
+    )
+    begins_with = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"name": "synthetic gamma", "name_operator": "begins_with"},
+        headers=admin_header,
+    )
+    one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"module_id": "rates,master_data", "module_id_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"otm_table_name": "REGION", "otm_table_name_operator": "not_one_of"},
+        headers=admin_header,
+    )
+
+    assert contains.status_code == 200
+    assert [item["id"] for item in contains.json()["items"]] == [beta["id"]]
+    assert begins_with.status_code == 200
+    assert [item["id"] for item in begins_with.json()["items"]] == [gamma["id"]]
+    assert one_of.status_code == 200
+    assert {item["id"] for item in one_of.json()["items"]} == {alpha["id"], gamma["id"]}
+    assert not_one_of.status_code == 200
+    assert {item["id"] for item in not_one_of.json()["items"]} == {alpha["id"], beta["id"]}
+
+
+def test_list_assets_returns_pagination_metadata(client, admin_header):
+    created_ids = []
+    for index in range(3):
+        created = client.post(
+            "/api/v1/modules/assets/assets",
+            json=draft_asset_payload(name=f"Synthetic Paginated Asset {index}"),
+            headers=admin_header,
+        ).json()
+        created_ids.append(created["id"])
+
+    first_page = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"page": 1, "page_size": 2},
+        headers=admin_header,
+    )
+    second_page = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"page": 2, "page_size": 2},
+        headers=admin_header,
+    )
+
+    assert first_page.status_code == 200
+    assert second_page.status_code == 200
+    assert first_page.json()["total"] == 3
+    assert first_page.json()["page"] == 1
+    assert first_page.json()["page_size"] == 2
+    assert len(first_page.json()["items"]) == 2
+    assert second_page.json()["total"] == 3
+    assert second_page.json()["page"] == 2
+    assert second_page.json()["page_size"] == 2
+    assert len(second_page.json()["items"]) == 1
+    assert {item["id"] for item in first_page.json()["items"] + second_page.json()["items"]} == set(created_ids)
+
+
+def test_list_assets_rejects_invalid_search_operator(client, admin_header):
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Operator Guard Asset"),
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"name": "synthetic", "name_operator": "regex"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SEARCH_INVALID_OPERATOR"
+    assert payload["details"]["field_name"] == "name"
+
+
+def test_list_assets_filters_by_linked_target_type(client, admin_header):
+    module_linked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Module Linked Asset"),
+        headers=admin_header,
+    ).json()
+    table_linked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Table Linked Asset"),
+        headers=admin_header,
+    ).json()
+    unlinked = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Unlinked Asset"),
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/assets/assets/{module_linked['id']}/links",
+        json={"link_type": "MODULE", "target_id": "assets", "target_label": "Assets Library"},
+        headers=admin_header,
+    )
+    client.post(
+        f"/api/v1/modules/assets/assets/{table_linked['id']}/links",
+        json={"link_type": "OTM_TABLE", "target_id": "RATE_GEO_COST", "target_label": "Rate Geo Cost"},
+        headers=admin_header,
+    )
+
+    module_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module"},
+        headers=admin_header,
+    )
+    one_of_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module,otm_table", "linked_target_type_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of_response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "otm_table", "linked_target_type_operator": "not_one_of"},
+        headers=admin_header,
+    )
+
+    assert module_response.status_code == 200
+    assert [item["id"] for item in module_response.json()["items"]] == [module_linked["id"]]
+    assert one_of_response.status_code == 200
+    assert {item["id"] for item in one_of_response.json()["items"]} == {module_linked["id"], table_linked["id"]}
+    assert not_one_of_response.status_code == 200
+    assert {item["id"] for item in not_one_of_response.json()["items"]} == {module_linked["id"], unlinked["id"]}
+
+
+def test_list_assets_rejects_invalid_linked_target_type_operator(client, admin_header):
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"linked_target_type": "module", "linked_target_type_operator": "regex"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SEARCH_INVALID_OPERATOR"
+    assert payload["details"]["field_name"] == "linked_target_type"
 
 
 def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):

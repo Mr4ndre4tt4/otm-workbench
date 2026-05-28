@@ -6,9 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 import { AuthProvider } from "../platform/auth";
-import type { PlatformJob } from "../platform/types";
 
-function renderFunctionalApp(initialPath = "/admin") {
+function renderFunctionalApp(initialPath = "/settings") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false }
@@ -41,91 +40,120 @@ function platformPreferences() {
   };
 }
 
-function cockpitSummary() {
+function settingsScopeAuthority() {
   return {
-    module_id: "home",
-    title: "Project Cockpit",
-    status: "ready",
-    description: "Project-level operational overview.",
-    active_context: {},
-    setup_status: {
-      status: "READY",
-      profile_count: 1,
-      environment_count: 1,
-      active_context_selected: true,
-      missing_requirements: []
+    module: "settings",
+    label: "Settings",
+    label_key: "module.settings.label",
+    status: "READY",
+    active_context: {
+      user_id: "user_admin",
+      project_id: "project_1",
+      profile_id: "profile_1",
+      environment_id: "environment_1",
+      domain_name: "OTM1",
+      allowed_domains: ["PUBLIC", "OTM1"],
+      can_view_all_domains: false
     },
-    counts: { recent_jobs: 0, recent_artifacts: 0, recent_evidence: 0 },
-    module_summary: { total: 2, counts_by_status: { ACTIVE: 2 }, items: [] },
-    recent_jobs: [],
-    recent_artifacts: [],
-    recent_evidence: [],
-    available_actions: []
+    setup_counts: {
+      workspaces: 1,
+      projects: 1,
+      profiles: 1,
+      environments: 1
+    },
+    setup_visibility: {
+      level: "PROJECT",
+      can_manage_users: true,
+      can_manage_workspaces: true,
+      can_manage_projects: true,
+      can_manage_profiles: true,
+      can_manage_environments: true,
+      can_manage_roles: true,
+      can_manage_grants: true,
+      can_manage_access_policies: true
+    },
+    blocked_reasons: [],
+    available_actions: [
+      {
+        key: "create_workspace",
+        label: "Create workspace",
+        method: "POST",
+        href: "/api/v1/platform/workspaces",
+        variant: "primary",
+        icon_key: "settings.workspace",
+        disabled: false,
+        disabled_reason: null,
+        requires_confirmation: false
+      },
+      {
+        key: "assign_grant",
+        label: "Assign grant",
+        method: "POST",
+        href: "/api/v1/platform/grants",
+        variant: "primary",
+        icon_key: "settings.grant",
+        disabled: false,
+        disabled_reason: null,
+        requires_confirmation: false
+      }
+    ]
   };
 }
 
-describe("Functional Admin Console journey", () => {
+describe("Functional Settings journey", () => {
   afterEach(() => {
     sessionStorage.clear();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it("surfaces setup, capabilities, jobs, audit, and demo job actions from platform APIs", async () => {
-    const createRequests: unknown[] = [];
-    const runRequests: string[] = [];
-    const cancelRequests: string[] = [];
-    const featureFlagRequests: unknown[] = [];
-    const workspaceRequests: unknown[] = [];
-    const projectRequests: unknown[] = [];
-    const profileRequests: unknown[] = [];
-    const environmentRequests: unknown[] = [];
-    let featureFlags = [{ id: "flag_1", name: "dev_tools", enabled: false, scope: "global" }];
-    let workspaces = [{ id: "workspace_1", name: "Default workspace" }];
-    let projects = [{ id: "project_1", name: "Synthetic Project" }];
-    const profilesByProject: Record<string, Array<{ id: string; name: string }>> = {
-      project_1: [{ id: "profile_1", name: "Default profile" }]
-    };
-    const environmentsByProject: Record<string, Array<{ id: string; name: string }>> = {
-      project_1: [{ id: "environment_1", name: "DEV environment" }]
-    };
-    let jobs: PlatformJob[] = [
+  it("surfaces setup authority, role grants, and access policy bindings from Settings APIs", async () => {
+    const roleRequests: unknown[] = [];
+    const userRequests: unknown[] = [];
+    const grantRequests: unknown[] = [];
+    const policyRequests: unknown[] = [];
+    let roles = [{ id: "role_1", name: "Rates Operator", capability_names: ["rates.batch.view"] }];
+    let users = [{ id: "user_2", email: "operator@example.test", is_active: true, is_admin: false }];
+    let grants = [
       {
-        id: "job_pending",
-        job_type: "DEMO_ECHO",
-        source_module: "platform",
+        id: "grant_1",
         project_id: "project_1",
-        profile_id: "profile_1",
+        project_name: "Synthetic Rollout",
         environment_id: "environment_1",
         domain_name: "OTM1",
-        status: "PENDING",
-        progress: 0,
-        message: "Job created.",
-        input: { value: "pending" },
-        result: {},
-        error: null,
-        created_by: "admin@example.test",
-        created_at: "2026-05-21T10:00:00",
-        started_at: null,
-        finished_at: null,
-        cancelled_at: null
+        user_id: "user_2",
+        user_email: "operator@example.test",
+        role_id: "role_1",
+        role_name: "Rates Operator",
+        binding_scope_label: "Synthetic Rollout / DEV / OTM1",
+        binding_requirements: [
+          "User: operator@example.test",
+          "Role: Rates Operator",
+          "Project: Synthetic Rollout",
+          "Environment: DEV",
+          "Domain: OTM1"
+        ],
+        active_context_match: true,
+        active_context_disabled_reason: null
       }
     ];
-    const jobEvents: Record<string, Array<Record<string, unknown>>> = {
-      job_pending: [
-        {
-          id: "event_pending_created",
-          job_id: "job_pending",
-          event_type: "JOB_CREATED",
-          status_before: null,
-          status_after: "PENDING",
-          message: "Job created.",
-          payload: { job_id: "job_pending", job_type: "DEMO_ECHO", source_module: "platform" },
-          created_by: "admin@example.test",
-          created_at: "2026-05-21T10:00:00"
-        }
-      ]
-    };
+    let accessPolicies = [
+      {
+        id: "policy_1",
+        project_id: "project_1",
+        project_name: "Synthetic Rollout",
+        name: "OTM1 private policy",
+        visibility: "PRIVATE",
+        domain_name: "OTM1",
+        rule_json: "{\"mode\":\"domain_role\"}",
+        created_by: "user_admin",
+        binding_scope_label: "Synthetic Rollout / PRIVATE / OTM1",
+        binding_requirements: ["Project: Synthetic Rollout", "Visibility: PRIVATE", "Domain: OTM1"],
+        active_context_match: true,
+        active_context_disabled_reason: null
+      }
+    ];
+
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -137,7 +165,7 @@ describe("Functional Admin Console journey", () => {
           jsonResponse({
             items: [
               { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
-              { id: "admin", label: "Admin Console", path: "/admin", status: "PLANNED" }
+              { id: "settings", label: "Settings", path: "/settings", status: "ACTIVE" }
             ],
             total: 2,
             page: 1,
@@ -146,86 +174,49 @@ describe("Functional Admin Console journey", () => {
         );
       }
       if (url.endsWith("/api/v1/platform/user-preferences")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(platformPreferences()));
       }
-      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        return Promise.resolve(jsonResponse(cockpitSummary()));
-      }
       if (url.endsWith("/api/v1/platform/session/me")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse({ id: "user_admin", email: "admin@example.test", is_admin: true }));
       }
       if (url.endsWith("/api/v1/platform/workspaces")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          workspaceRequests.push(body);
-          expect(body).toEqual({ name: "Synthetic Workspace B" });
-          const workspace = { id: "workspace_2", name: body.name };
-          workspaces = [...workspaces, workspace];
-          return Promise.resolve(jsonResponse(workspace));
-        }
-        return Promise.resolve(jsonResponse(workspaces));
+        return Promise.resolve(jsonResponse([{ id: "workspace_1", name: "Synthetic Workspace" }]));
       }
       if (url.endsWith("/api/v1/platform/projects")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          projectRequests.push(body);
-          expect(body).toEqual({ workspace_id: "workspace_2", name: "Synthetic Project B" });
-          const project = { id: "project_2", name: body.name };
-          projects = [...projects, project];
-          profilesByProject.project_2 = [];
-          environmentsByProject.project_2 = [];
-          return Promise.resolve(jsonResponse(project));
-        }
         return Promise.resolve(
           jsonResponse({
-            items: projects,
-            total: projects.length,
+            items: [{ id: "project_1", name: "Synthetic Rollout" }],
+            total: 1,
             page: 1,
             page_size: 50
           })
         );
       }
-      if (url.includes("/api/v1/platform/profiles")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          profileRequests.push(body);
-          expect(body).toEqual({ project_id: "project_2", name: "Synthetic Profile B" });
-          const profile = { id: "profile_2", name: body.name };
-          profilesByProject.project_2 = [profile];
-          return Promise.resolve(jsonResponse(profile));
-        }
-        const projectMatch = /project_id=([^&]+)/.exec(url);
-        const projectKey = projectMatch?.[1] ?? "project_1";
-        const items = profilesByProject[projectKey] ?? [];
-        return Promise.resolve(jsonResponse({ items, total: items.length, page: 1, page_size: 50 }));
+      if (url.endsWith("/api/v1/platform/profiles?project_id=project_1")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "profile_1", name: "Default" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
       }
-      if (url.includes("/api/v1/platform/environments")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          environmentRequests.push(body);
-          expect(body).toEqual({ project_id: "project_2", name: "Synthetic DEV B", environment_type: "DEV" });
-          const environment = { id: "environment_2", name: body.name };
-          environmentsByProject.project_2 = [environment];
-          return Promise.resolve(jsonResponse(environment));
-        }
-        const projectMatch = /project_id=([^&]+)/.exec(url);
-        const projectKey = projectMatch?.[1] ?? "project_1";
-        const items = environmentsByProject[projectKey] ?? [];
-        return Promise.resolve(jsonResponse({ items, total: items.length, page: 1, page_size: 50 }));
+      if (url.endsWith("/api/v1/platform/environments?project_id=project_1")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "environment_1", name: "DEV" }],
+            total: 1,
+            page: 1,
+            page_size: 50
+          })
+        );
       }
       if (url.endsWith("/api/v1/platform/projects/project_1/setup-status")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(
           jsonResponse({
             project_id: "project_1",
-            project_name: "Synthetic Project",
+            project_name: "Synthetic Rollout",
             status: "READY",
             profile_count: 1,
             environment_count: 1,
@@ -234,162 +225,104 @@ describe("Functional Admin Console journey", () => {
           })
         );
       }
+      if (url.endsWith("/api/v1/platform/settings/scope-authority")) {
+        return Promise.resolve(jsonResponse(settingsScopeAuthority()));
+      }
+      if (url.endsWith("/api/v1/platform/settings/access-model")) {
+        return Promise.resolve(
+          jsonResponse({
+            setup_visibility: settingsScopeAuthority().setup_visibility,
+            active_project_id: "project_1",
+            users,
+            roles,
+            capability_names: ["rates.batch.view", "rates.batch.export"],
+            grants,
+            access_policies: accessPolicies
+          })
+        );
+      }
       if (url.endsWith("/api/v1/platform/active-context/capabilities")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(
           jsonResponse({
             user_id: "user_admin",
             project_id: "project_1",
             is_admin: true,
-            roles: ["ADMIN"],
+            roles: ["DBA"],
             capabilities: ["*"]
           })
         );
       }
-      if (url.endsWith("/api/v1/platform/feature-flags")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          featureFlagRequests.push(body);
-          expect(body).toEqual({ name: "dev_tools", enabled: true, scope: "global" });
-          featureFlags = [{ id: "flag_1", name: "dev_tools", enabled: true, scope: "global" }];
-          return Promise.resolve(jsonResponse(featureFlags[0]));
-        }
-        return Promise.resolve(jsonResponse({ items: featureFlags, total: featureFlags.length, page: 1, page_size: 50 }));
-      }
       if (url.endsWith("/api/v1/platform/jobs")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        if (init?.method === "POST") {
-          const body = JSON.parse(String(init.body));
-          createRequests.push(body);
-          expect(body).toEqual({
-            job_type: "DEMO_ECHO",
-            source_module: "platform",
-            project_id: "project_1",
-            profile_id: "profile_1",
-            environment_id: "environment_1",
-            domain_name: "OTM1",
-            input: { value: "synthetic-admin-ui" },
-            execute_now: false
-          });
-          const created = {
-            ...jobs[0],
-            id: "job_created",
-            status: "PENDING",
-            progress: 0,
-            message: "Job created.",
-            input: { value: "synthetic-admin-ui" },
-            result: {},
-            created_at: "2026-05-21T10:05:00",
-            started_at: null,
-            finished_at: null,
-            cancelled_at: null
-          };
-          jobs = [created, ...jobs];
-          jobEvents.job_created = [
-            {
-              id: "event_created",
-              job_id: "job_created",
-              event_type: "JOB_CREATED",
-              status_before: null,
-              status_after: "PENDING",
-              message: "Job created.",
-              payload: { job_id: "job_created", job_type: "DEMO_ECHO", source_module: "platform" },
-              created_by: "admin@example.test",
-              created_at: "2026-05-21T10:05:00"
-            }
-          ];
-          return Promise.resolve(jsonResponse(created));
-        }
-        return Promise.resolve(jsonResponse({ items: jobs, total: jobs.length, page: 1, page_size: 50 }));
-      }
-      if (url.endsWith("/api/v1/platform/jobs/job_pending/cancel")) {
-        expect(init?.method).toBe("POST");
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        cancelRequests.push(url);
-        const cancelled = {
-          ...jobs.find((job) => job.id === "job_pending")!,
-          status: "CANCELLED",
-          progress: 100,
-          message: "Job cancelled.",
-          cancelled_at: "2026-05-21T10:04:00"
-        };
-        jobs = jobs.map((job) => (job.id === "job_pending" ? cancelled : job));
-        jobEvents.job_pending = [
-          ...jobEvents.job_pending,
-          {
-            id: "event_pending_cancelled",
-            job_id: "job_pending",
-            event_type: "JOB_CANCELLED",
-            status_before: "PENDING",
-            status_after: "CANCELLED",
-            message: "Job cancelled.",
-            payload: { job_id: "job_pending", job_type: "DEMO_ECHO", source_module: "platform" },
-            created_by: "admin@example.test",
-            created_at: "2026-05-21T10:04:00"
-          }
-        ];
-        return Promise.resolve(jsonResponse(cancelled));
-      }
-      if (url.endsWith("/api/v1/platform/jobs/job_created/run")) {
-        expect(init?.method).toBe("POST");
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        runRequests.push(url);
-        const updated = {
-          ...jobs.find((job) => job.id === "job_created")!,
-          status: "SUCCEEDED",
-          progress: 100,
-          message: "Demo job completed.",
-          result: { echo: { value: "synthetic-admin-ui" } },
-          started_at: "2026-05-21T10:05:01",
-          finished_at: "2026-05-21T10:05:02"
-        };
-        jobs = jobs.map((job) => (job.id === "job_created" ? updated : job));
-        jobEvents.job_created = [
-          ...jobEvents.job_created,
-          {
-            id: "event_started",
-            job_id: "job_created",
-            event_type: "JOB_STARTED",
-            status_before: "PENDING",
-            status_after: "RUNNING",
-            message: "Job started.",
-            payload: { job_id: "job_created", job_type: "DEMO_ECHO", source_module: "platform" },
-            created_by: "admin@example.test",
-            created_at: "2026-05-21T10:05:01"
-          },
-          {
-            id: "event_succeeded",
-            job_id: "job_created",
-            event_type: "JOB_SUCCEEDED",
-            status_before: "RUNNING",
-            status_after: "SUCCEEDED",
-            message: "Demo job completed.",
-            payload: { job_id: "job_created", job_type: "DEMO_ECHO", source_module: "platform" },
-            created_by: "admin@example.test",
-            created_at: "2026-05-21T10:05:02"
-          }
-        ];
-        return Promise.resolve(jsonResponse(updated));
-      }
-      if (url.includes("/api/v1/platform/jobs/") && url.endsWith("/events")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        const jobId = /\/api\/v1\/platform\/jobs\/([^/]+)\/events$/.exec(url)?.[1];
-        return Promise.resolve(jsonResponse({ items: jobEvents[jobId ?? ""] ?? [], total: jobEvents[jobId ?? ""]?.length ?? 0, page: 1, page_size: 50 }));
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
       }
       if (url.endsWith("/api/v1/platform/audit-logs")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        return Promise.resolve(
-          jsonResponse({
-            items: [
-              { id: "audit_1", action: "job.create", target_type: "job", target_id: "job_pending" },
-              { id: "audit_2", action: "feature_flag.upsert", target_type: "feature_flag", target_id: "flag_1" }
-            ],
-            total: 2,
-            page: 1,
-            page_size: 50
-          })
-        );
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/feature-flags")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/platform/roles")) {
+        const body = JSON.parse(String(init?.body));
+        roleRequests.push(body);
+        const role = { id: "role_2", name: body.name, capability_names: body.capability_names };
+        roles = [...roles, role];
+        return Promise.resolve(jsonResponse(role));
+      }
+      if (url.endsWith("/api/v1/platform/users")) {
+        const body = JSON.parse(String(init?.body));
+        userRequests.push(body);
+        const user = { id: "user_3", email: body.email, is_active: true, is_admin: false };
+        users = [...users, user];
+        return Promise.resolve(jsonResponse(user));
+      }
+      if (url.endsWith("/api/v1/platform/grants")) {
+        const body = JSON.parse(String(init?.body));
+        grantRequests.push(body);
+        const user = users.find((item) => item.id === body.user_id);
+        const role = roles.find((item) => item.id === body.role_id);
+        const grant = {
+          id: "grant_2",
+          project_id: body.project_id,
+          project_name: "Synthetic Rollout",
+          environment_id: body.environment_id,
+          domain_name: body.domain_name,
+          user_id: body.user_id,
+          user_email: user?.email ?? body.user_id,
+          role_id: body.role_id,
+          role_name: role?.name ?? body.role_id,
+          binding_scope_label: "Synthetic Rollout / DEV / OTM1",
+          binding_requirements: [
+            `User: ${user?.email ?? body.user_id}`,
+            `Role: ${role?.name ?? body.role_id}`,
+            "Project: Synthetic Rollout",
+            "Environment: DEV",
+            "Domain: OTM1"
+          ],
+          active_context_match: true,
+          active_context_disabled_reason: null
+        };
+        grants = [...grants, grant];
+        return Promise.resolve(jsonResponse(grant));
+      }
+      if (url.endsWith("/api/v1/platform/access-policies")) {
+        const body = JSON.parse(String(init?.body));
+        policyRequests.push(body);
+        const policy = {
+          id: "policy_2",
+          project_id: body.project_id,
+          project_name: "Synthetic Rollout",
+          name: body.name,
+          visibility: body.visibility,
+          domain_name: body.domain_name,
+          rule_json: body.rule_json,
+          created_by: "user_admin",
+          binding_scope_label: `Synthetic Rollout / ${body.visibility} / ${body.domain_name}`,
+          binding_requirements: [`Project: Synthetic Rollout`, `Visibility: ${body.visibility}`, `Domain: ${body.domain_name}`],
+          active_context_match: true,
+          active_context_disabled_reason: null
+        };
+        accessPolicies = [...accessPolicies, policy];
+        return Promise.resolve(jsonResponse(policy));
       }
       return Promise.reject(new Error(`Unexpected request: ${url}`));
     });
@@ -400,87 +333,77 @@ describe("Functional Admin Console journey", () => {
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await screen.findByRole("heading", { name: "Admin Console" });
-    expect(await screen.findByText("admin@example.test")).toBeInTheDocument();
-    expect((await screen.findAllByText("Synthetic Project")).length).toBeGreaterThan(0);
-    expect(await screen.findByText("Effective capabilities")).toBeInTheDocument();
-    expect(await screen.findByText("*")).toBeInTheDocument();
-    expect((await within(await screen.findByLabelText("Platform jobs")).findAllByText("job_pending")).length).toBeGreaterThan(0);
-    expect(await within(await screen.findByLabelText("Audit trail")).findByText("feature_flag.upsert")).toBeInTheDocument();
-    expect(await within(await screen.findByLabelText("Selected job events")).findByText("JOB_CREATED")).toBeInTheDocument();
-    expect(await within(await screen.findByLabelText("Feature flags")).findByText("dev_tools")).toBeInTheDocument();
-    expect(await within(await screen.findByLabelText("Feature flags")).findByText("DISABLED")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Settings setup visibility")).toHaveTextContent("PROJECT");
+    expect(screen.getByLabelText("Settings setup visibility")).toHaveTextContent("Grants: Manage");
+    expect(screen.queryByRole("heading", { name: "Admin Console" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Admin Console/ })).not.toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Workspace name"), "Synthetic Workspace B");
-    await userEvent.click(screen.getByRole("button", { name: "Create workspace" }));
-    await waitFor(() => expect(workspaceRequests).toEqual([{ name: "Synthetic Workspace B" }]));
-    expect((await within(await screen.findByLabelText("Setup authoring")).findAllByText("Synthetic Workspace B")).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Role authoring")).toHaveTextContent("Rates Operator");
+    expect(screen.getByLabelText("User authoring")).toHaveTextContent("operator@example.test");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("Synthetic Rollout / DEV / OTM1");
+    expect(screen.getByLabelText("Grant binding review")).toHaveTextContent("READY");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("Visibility: PRIVATE");
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("READY");
 
-    await userEvent.selectOptions(screen.getByLabelText("Project workspace"), "workspace_2");
-    await userEvent.type(screen.getByLabelText("Project name"), "Synthetic Project B");
-    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
-    await waitFor(() => expect(projectRequests).toEqual([{ workspace_id: "workspace_2", name: "Synthetic Project B" }]));
-    expect((await within(await screen.findByLabelText("Setup authoring")).findAllByText("Synthetic Project B")).length).toBeGreaterThan(0);
+    await userEvent.type(screen.getByLabelText("Role name"), "Load Planner");
+    await userEvent.type(screen.getByLabelText("Capabilities"), "load_plan.package.view, load_plan.package.export");
+    await userEvent.click(screen.getByRole("button", { name: "Create role" }));
+    await waitFor(() =>
+      expect(roleRequests).toEqual([
+        {
+          name: "Load Planner",
+          capability_names: ["load_plan.package.view", "load_plan.package.export"]
+        }
+      ])
+    );
+    expect(await screen.findByText("Created role Load Planner.")).toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByLabelText("Profile project"), "project_2");
-    await userEvent.type(screen.getByLabelText("Profile name"), "Synthetic Profile B");
-    await userEvent.click(screen.getByRole("button", { name: "Create profile" }));
-    await waitFor(() => expect(profileRequests).toEqual([{ project_id: "project_2", name: "Synthetic Profile B" }]));
-    expect((await within(await screen.findByLabelText("Setup authoring")).findAllByText("Synthetic Profile B")).length).toBeGreaterThan(0);
+    await userEvent.type(screen.getByLabelText("User email"), "planner@example.test");
+    await userEvent.click(screen.getByRole("button", { name: "Create user" }));
+    await waitFor(() =>
+      expect(userRequests).toEqual([
+        {
+          email: "planner@example.test",
+          is_active: true,
+          password: "SyntheticPass123!"
+        }
+      ])
+    );
+    expect(await screen.findByText("Created user planner@example.test.")).toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByLabelText("Environment project"), "project_2");
-    await userEvent.selectOptions(screen.getByLabelText("Environment type"), "DEV");
-    await userEvent.type(screen.getByLabelText("Environment name"), "Synthetic DEV B");
-    await userEvent.click(screen.getByRole("button", { name: "Create environment" }));
-    await waitFor(() => expect(environmentRequests).toEqual([{ project_id: "project_2", name: "Synthetic DEV B", environment_type: "DEV" }]));
-    expect((await within(await screen.findByLabelText("Setup authoring")).findAllByText("Synthetic DEV B")).length).toBeGreaterThan(0);
+    await userEvent.type(screen.getByLabelText("Grant domain"), "OTM1");
+    await userEvent.click(screen.getByRole("button", { name: "Assign grant" }));
+    await waitFor(() =>
+      expect(grantRequests).toEqual([
+        {
+          project_id: "project_1",
+          environment_id: "environment_1",
+          domain_name: "OTM1",
+          role_id: "role_2",
+          user_id: "user_3"
+        }
+      ])
+    );
+    expect(await screen.findByText("Assigned Load Planner to planner@example.test.")).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Workspace name"), "Temporary Workspace Draft");
-    await userEvent.selectOptions(screen.getByLabelText("Project workspace"), "workspace_2");
-    await userEvent.type(screen.getByLabelText("Project name"), "Temporary Project Draft");
-    await userEvent.selectOptions(screen.getByLabelText("Profile project"), "project_2");
-    await userEvent.type(screen.getByLabelText("Profile name"), "Temporary Profile Draft");
-    await userEvent.selectOptions(screen.getByLabelText("Environment project"), "project_2");
-    await userEvent.selectOptions(screen.getByLabelText("Environment type"), "UAT");
-    await userEvent.type(screen.getByLabelText("Environment name"), "Temporary UAT Draft");
-    await userEvent.click(screen.getByRole("button", { name: "Reset setup drafts" }));
-    expect(screen.getByLabelText("Workspace name")).toHaveValue("");
-    expect(screen.getByLabelText("Project workspace")).toHaveValue("workspace_1");
-    expect(screen.getByLabelText("Project name")).toHaveValue("");
-    expect(screen.getByLabelText("Profile project")).toHaveValue("project_1");
-    expect(screen.getByLabelText("Profile name")).toHaveValue("");
-    expect(screen.getByLabelText("Environment project")).toHaveValue("project_1");
-    expect(screen.getByLabelText("Environment type")).toHaveValue("DEV");
-    expect(screen.getByLabelText("Environment name")).toHaveValue("");
-    expect(screen.queryByText("Created environment Synthetic DEV B.")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Policy name"), "OTM1 project policy");
+    await userEvent.type(screen.getByLabelText("Domain"), "OTM1");
+    await userEvent.click(screen.getByRole("button", { name: "Create access policy" }));
+    await waitFor(() =>
+      expect(policyRequests).toEqual([
+        {
+          project_id: "project_1",
+          name: "OTM1 project policy",
+          visibility: "PRIVATE",
+          domain_name: "OTM1",
+          rule_json: "{\"mode\":\"domain_role\"}"
+        }
+      ])
+    );
+    expect(await screen.findByText("Created access policy OTM1 project policy.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Access policy binding review")).toHaveTextContent("OTM1 project policy");
 
-    await userEvent.click(screen.getByRole("button", { name: "Enable feature flag dev_tools" }));
-    await waitFor(() => expect(within(screen.getByLabelText("Feature flags")).getByText("ENABLED")).toBeInTheDocument());
-    expect(featureFlagRequests).toEqual([{ name: "dev_tools", enabled: true, scope: "global" }]);
-
-    await userEvent.click(screen.getByRole("button", { name: "Cancel job job_pending" }));
-    await waitFor(() => expect(within(screen.getByLabelText("Platform jobs")).getAllByText("CANCELLED").length).toBeGreaterThan(0));
-    expect(await within(await screen.findByLabelText("Selected job events")).findByText("JOB_CANCELLED")).toBeInTheDocument();
-    expect(cancelRequests).toHaveLength(1);
-
-    await userEvent.click(screen.getByRole("button", { name: "Create demo job" }));
-    expect((await within(await screen.findByLabelText("Platform jobs")).findAllByText("job_created")).length).toBeGreaterThan(0);
-    expect(createRequests).toHaveLength(1);
-
-    await userEvent.click(screen.getByRole("button", { name: "Run job job_created" }));
-    await waitFor(() => expect(within(screen.getByLabelText("Platform jobs")).getAllByText("SUCCEEDED").length).toBeGreaterThan(0));
-    expect(await within(await screen.findByLabelText("Selected job events")).findByText("JOB_SUCCEEDED")).toBeInTheDocument();
-    expect((await screen.findAllByText("Demo job completed.")).length).toBeGreaterThan(0);
-    expect(runRequests).toHaveLength(1);
-
-    await userEvent.click(screen.getByRole("button", { name: "View events job_pending" }));
-    expect(document.querySelector(".form-success")?.textContent ?? "").not.toContain("Demo job completed.");
-    expect(await within(await screen.findByLabelText("Selected job events")).findByText("JOB_CANCELLED")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("link", { name: /Project Cockpit/ }));
-    await screen.findByRole("heading", { name: "Project Cockpit" });
-    await userEvent.click(screen.getByRole("link", { name: /Admin Console/ }));
-    await screen.findByRole("heading", { name: "Admin Console" });
-    expect((await within(await screen.findByLabelText("Platform jobs")).findAllByText("job_created")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Return to Cockpit" })).toHaveAttribute("href", "/home");
   });
 });

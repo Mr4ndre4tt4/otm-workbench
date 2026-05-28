@@ -223,6 +223,56 @@ describe("Functional Integration Mapping Studio journey", () => {
     let joinBindings: Array<Record<string, unknown>> = [];
     let lookups: Array<Record<string, unknown>> = [];
     let responseHandlers: Array<Record<string, unknown>> = [];
+    const enrichmentSteps: Array<Record<string, unknown>> = [
+      {
+        id: "enrichment_step_1",
+        definition_id: "definition_1",
+        source_schema_document_id: "schema_source",
+        response_schema_document_id: "schema_target",
+        endpoint_id: "endpoint_1",
+        name: "Synthetic carrier enrichment",
+        description: "Synthetic endpoint-backed carrier enrichment.",
+        step_type: "LOOKUP",
+        key_template: "{{ /Transmission/Shipment/ShipmentGid }}",
+        key_source_fields: ["/Transmission/Shipment/ShipmentGid"],
+        response_field_mappings: [
+          {
+            name: "carrier_name_enriched",
+            response_path: "$.carrier.name",
+            data_type: "string",
+            cardinality: "SINGLE",
+            fallback_policy: { on_missing: "EMPTY_STRING" }
+          }
+        ],
+        loop_source_path: null,
+        loop_filter_expression: null,
+        on_empty_response: "WARN",
+        on_error: "BLOCK",
+        sequence_index: 30,
+        status: "ACTIVE",
+        created_by: "admin@example.test",
+        created_at: "2026-05-21T10:06:10",
+        updated_at: "2026-05-21T10:06:10"
+      }
+    ];
+    const enrichedFields: Array<Record<string, unknown>> = [
+      {
+        id: "enriched_field_1",
+        definition_id: "definition_1",
+        enrichment_step_id: "enrichment_step_1",
+        enrichment_substep_id: null,
+        name: "carrier_name_enriched",
+        data_type: "string",
+        cardinality: "SINGLE",
+        response_path: "$.carrier.name",
+        fallback_policy: { on_missing: "EMPTY_STRING" },
+        source_trace: { step_name: "Synthetic carrier enrichment", response_path: "$.carrier.name" },
+        status: "ACTIVE",
+        created_by: "admin@example.test",
+        created_at: "2026-05-21T10:06:10",
+        updated_at: "2026-05-21T10:06:10"
+      }
+    ];
     let generatedArtifacts: Array<Record<string, unknown>> = [];
     const alternateDefinition = {
       id: "definition_2",
@@ -992,6 +1042,37 @@ describe("Functional Integration Mapping Studio journey", () => {
         }
         return Promise.resolve(jsonResponse({ items: responseHandlers, total: responseHandlers.length, page: 1, page_size: 50 }));
       }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/enrichment-steps")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: enrichmentSteps, total: enrichmentSteps.length, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/enriched-fields")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ items: enrichedFields, total: enrichedFields.length, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/enrichment-readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            definition_id: "definition_1",
+            ready: true,
+            step_count: enrichmentSteps.length,
+            enriched_field_count: enrichedFields.length,
+            blockers: [],
+            warnings: [],
+            steps: [
+              {
+                definition_id: "definition_1",
+                enrichment_step_id: "enrichment_step_1",
+                ready: true,
+                blockers: [],
+                warnings: [],
+                enriched_field_count: 1
+              }
+            ]
+          })
+        );
+      }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_1/validate")) {
         actionRequests.push("validate");
         return Promise.resolve(
@@ -1089,10 +1170,26 @@ describe("Functional Integration Mapping Studio journey", () => {
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/joins") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/join-bindings") ||
         url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/lookups") ||
-        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/response-handlers")
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/response-handlers") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/enrichment-steps") ||
+        url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/enriched-fields")
       ) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse({ items: [], total: 0, page: 1, page_size: 50 }));
+      }
+      if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/enrichment-readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            definition_id: "definition_2",
+            ready: false,
+            step_count: 0,
+            enriched_field_count: 0,
+            blockers: ["No enrichment steps configured."],
+            warnings: [],
+            steps: []
+          })
+        );
       }
       if (url.endsWith("/api/v1/modules/integration-mapping/definitions/definition_2/artifacts")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -1468,6 +1565,15 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(reviewPanel).toHaveTextContent("Accepted delivery response");
     expect(reviewPanel).toHaveTextContent("EQUALS ACCEPTED");
 
+    await userEvent.click(screen.getByRole("button", { name: /5Enrichment pipeline/ }));
+    const enrichmentPanel = await screen.findByLabelText("Integration enrichment pipeline");
+    expect(enrichmentPanel).toHaveTextContent("Synthetic carrier enrichment");
+    expect(enrichmentPanel).toHaveTextContent("CREATE_DELIVERY_UI");
+    expect(enrichmentPanel).toHaveTextContent("carrier_name_enriched");
+    expect(enrichmentPanel).toHaveTextContent("$.carrier.name");
+    expect(enrichmentPanel).toHaveTextContent("READY");
+
+    await userEvent.click(screen.getByRole("button", { name: /4Mapping rules/ }));
     await userEvent.click(screen.getByRole("button", { name: "Reset mapping rule drafts" }));
     expect(screen.getByLabelText("Source schema")).toHaveValue("");
     expect(screen.getByLabelText("Target schema")).toHaveValue("");
@@ -1557,7 +1663,7 @@ describe("Functional Integration Mapping Studio journey", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(actionRequests).toEqual(["validate", "preview", "generate-spec"]);
 
-    await userEvent.click(screen.getByRole("button", { name: /5Definitions list/ }));
+    await userEvent.click(screen.getByRole("button", { name: /6Definitions list/ }));
     await userEvent.click(within(screen.getByLabelText("Integration mapping definitions")).getByRole("button", { name: /ALT_EXTERNAL_DELIVERY_UI/ }));
     expect(await screen.findByLabelText("Selected integration mapping definition")).toHaveTextContent("ALT_EXTERNAL_DELIVERY_UI");
     expect(screen.getByLabelText("Integration Mapping next action")).toHaveTextContent("Create payload samples");

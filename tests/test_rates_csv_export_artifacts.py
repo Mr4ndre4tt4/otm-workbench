@@ -8,7 +8,14 @@ from otm_workbench.models import Artifact, AuditLog, Evidence, Manifest, RateBat
 def create_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
     return client.post(
         "/api/v1/modules/rates/batches",
-        json={"scenario_code": scenario_code, "name": "Synthetic export batch", "domain_name": "OTM1"},
+        json={
+            "scenario_code": scenario_code,
+            "name": "Synthetic export batch",
+            "domain_name": "OTM1",
+            "project_id": "project_rates",
+            "profile_id": "profile_rates",
+            "environment_id": "env_uat",
+        },
         headers=admin_header,
     ).json()
 
@@ -121,9 +128,19 @@ def test_export_registers_artifact_manifest_evidence_and_audit(client, admin_hea
     refreshed_batch = db_session.query(RateBatch).filter(RateBatch.id == batch["id"]).one()
 
     assert artifact.artifact_type == "rates_csv_zip"
+    assert artifact.project_id == "project_rates"
+    assert artifact.profile_id == "profile_rates"
+    assert artifact.environment_id == "env_uat"
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
     assert artifact.content_type == "application/zip"
     assert artifact.sha256 == payload["sha256"]
     assert manifest.source_module == "rates"
+    assert manifest.project_id == "project_rates"
+    assert manifest.profile_id == "profile_rates"
+    assert manifest.environment_id == "env_uat"
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     manifest_json = json.loads(manifest.manifest_json)
     evidence_summary = json.loads(evidence.summary_json)
     assert manifest_json["batch"]["catalog_macro_object_code"] == "RATE_RECORD"
@@ -134,6 +151,11 @@ def test_export_registers_artifact_manifest_evidence_and_audit(client, admin_hea
     )
     assert "OTM1.ACC_COST_001" not in manifest.manifest_json
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_rates"
+    assert evidence.profile_id == "profile_rates"
+    assert evidence.environment_id == "env_uat"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     assert evidence.artifact_id == artifact.id
     assert evidence.manifest_id == manifest.id
     assert "OTM1.ACC_COST_001" not in evidence.summary_json
@@ -172,6 +194,38 @@ def test_batch_artifacts_and_evidence_endpoints_return_export_records(client, ad
     assert evidence.json()["catalog_load_plan_path"] == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     assert evidence.json()["items"][0]["id"] == export["evidence_id"]
     assert "OTM1.ACC_COST_001" not in str(evidence.json())
+
+
+def test_rate_batch_approval_evidence_inherits_batch_scope(client, admin_header, db_session):
+    batch = create_batch(client, admin_header)
+    add_accessorial_table(client, admin_header, batch["id"])
+    preview = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/csv-preview",
+        headers=admin_header,
+    )
+    assert preview.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/rates/batches/{batch['id']}/approve",
+        json={"approval_note": "Synthetic approval evidence."},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    evidence = db_session.query(Evidence).filter(Evidence.id == payload["evidence_id"]).one()
+    summary = json.loads(evidence.summary_json)
+    assert payload["status"] == "APPROVED"
+    assert evidence.source_module == "rates"
+    assert evidence.evidence_type == "rates_batch_approval"
+    assert evidence.project_id == "project_rates"
+    assert evidence.profile_id == "profile_rates"
+    assert evidence.environment_id == "env_uat"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
+    assert summary["source_entity_id"] == batch["id"]
+    assert summary["domain_name"] == "OTM1"
+    assert summary["catalog_macro_object_code"] == "RATE_RECORD"
 
 
 def test_latest_export_endpoint_returns_manifest_artifact_and_download_url(client, admin_header):

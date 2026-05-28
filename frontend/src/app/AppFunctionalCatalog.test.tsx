@@ -437,6 +437,100 @@ function schemaRootPaths(schemaRootId: string, query = "") {
   };
 }
 
+function catalogTablesSearch() {
+  return {
+    items: [
+      {
+        table_name: "RATE_GEO",
+        schema_name: "GLOGOWNER",
+        description: "Synthetic rate geo table.",
+        column_count: 3,
+        data_category: "RATES_SETUP",
+        is_transactional: false,
+        allow_cutover: true,
+        allow_csvutil: true
+      },
+      {
+        table_name: "RATE_GEO_COST",
+        schema_name: "GLOGOWNER",
+        description: "Synthetic rate geo cost table.",
+        column_count: 4,
+        data_category: "RATES_SETUP",
+        is_transactional: false,
+        allow_cutover: true,
+        allow_csvutil: true
+      }
+    ],
+    total: 2,
+    page: 1,
+    page_size: 2
+  };
+}
+
+function catalogTableDetail() {
+  return {
+    table_name: "RATE_GEO_COST",
+    exists: true,
+    schema_name: "GLOGOWNER",
+    description: "Synthetic rate geo cost table.",
+    primary_key: ["RATE_GEO_COST_GROUP_GID"],
+    required_columns: ["RATE_GEO_COST_GROUP_GID"],
+    date_columns: ["EFFECTIVE_DATE"],
+    foreign_key_count: 1,
+    data_category: "RATES_SETUP",
+    is_transactional: false,
+    allow_cutover: true,
+    allow_csvutil: true
+  };
+}
+
+function catalogTableColumns() {
+  return {
+    items: [
+      {
+        column_name: "RATE_GEO_COST_GROUP_GID",
+        data_type: "VARCHAR2",
+        nullable: false,
+        is_primary_key: true,
+        is_required: true
+      },
+      {
+        column_name: "EFFECTIVE_DATE",
+        data_type: "DATE",
+        nullable: true,
+        is_primary_key: false,
+        is_required: false
+      }
+    ],
+    total: 2,
+    page: 1,
+    page_size: 2
+  };
+}
+
+function catalogReferenceOptions() {
+  return {
+    module_id: "rates",
+    object_type: "CURRENCY",
+    domain_name: "OTM1",
+    allowed_domains: ["PUBLIC", "OTM1"],
+    items: [
+      {
+        gid: "PUBLIC.USD",
+        xid: "USD",
+        domain_name: "PUBLIC",
+        display_name: "US Dollar"
+      },
+      {
+        gid: "OTM1.BRL",
+        xid: "BRL",
+        domain_name: "OTM1",
+        display_name: "Brazilian Real"
+      }
+    ]
+  };
+}
+
 describe("Functional Catalog journey", () => {
   afterEach(() => {
     sessionStorage.clear();
@@ -444,11 +538,372 @@ describe("Functional Catalog journey", () => {
     vi.restoreAllMocks();
   });
 
+  it("opens a route-level macro-object detail with a visible return path", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(macroObjectSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(rateRecordDetail()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/tables")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(rateRecordTables()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/load-plan")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(rateRecordLoadPlan()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/RATE_RECORD/data-dictionary-cross-check")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(rateRecordCrossCheck()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/catalog/macro-objects/RATE_RECORD");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "RATE_RECORD Catalog detail" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Catalog" })).toHaveAttribute("href", "/catalog");
+    expect(within(screen.getByLabelText("Selected macro object tables")).getByText("RATE_GEO_COST")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Selected macro object load plan")).getByText("RATE_OFFERING")).toBeInTheDocument();
+  });
+
+  it("uses macro-object rows as route navigation from the Catalog hub", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(macroObjectSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionDetail()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/tables")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionTables()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/load-plan")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionLoadPlan()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects/REGION/data-dictionary-cross-check")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(regionCrossCheck()));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/catalog");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "OTM Catalog Core" });
+    expect(screen.queryByLabelText("Selected macro object tables")).not.toBeInTheDocument();
+    await userEvent.click(within(screen.getByLabelText("Catalog macro objects")).getByRole("button", { name: /REGION/ }));
+    expect(await screen.findByRole("heading", { name: "REGION Catalog detail" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Catalog" })).toHaveAttribute("href", "/catalog");
+    expect(within(screen.getByLabelText("Selected macro object tables")).getByText("REGION")).toBeInTheDocument();
+  });
+
+  it("opens table explorer and route-level table detail from Catalog Core", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [{ id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(macroObjectSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
+      if (url.includes("/api/v1/catalog/tables?")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        expect(url).toContain("query=rate_geo");
+        return Promise.resolve(jsonResponse(catalogTablesSearch()));
+      }
+      if (url.endsWith("/api/v1/catalog/tables/RATE_GEO_COST")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(catalogTableDetail()));
+      }
+      if (url.endsWith("/api/v1/catalog/tables/RATE_GEO_COST/columns")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(catalogTableColumns()));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/catalog/tables");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Catalog Table Explorer" })).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText("Table search"));
+    await userEvent.type(screen.getByLabelText("Table search"), "rate_geo");
+    expect(await within(await screen.findByLabelText("Catalog table search results")).findByText("RATE_GEO_COST")).toBeInTheDocument();
+    await userEvent.click(within(screen.getByLabelText("Catalog table search results")).getByRole("button", { name: /RATE_GEO_COST/ }));
+
+    expect(await screen.findByRole("heading", { name: "RATE_GEO_COST Table detail" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Tables" })).toHaveAttribute("href", "/catalog/tables");
+    expect(screen.getByText("Synthetic rate geo cost table.")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Catalog table columns")).getByText("RATE_GEO_COST_GROUP_GID")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Catalog table columns")).getByText("EFFECTIVE_DATE")).toBeInTheDocument();
+  });
+
+  it("opens reference options on a route-level browser and validates scoped references", async () => {
+    const referenceOptionRequests: string[] = [];
+    const referenceValidationRequests: unknown[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }
+            ],
+            total: 2,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(macroObjectSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
+      if (url.includes("/api/v1/catalog/reference/options")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        referenceOptionRequests.push(url);
+        const parsedUrl = new URL(url, "http://localhost");
+        expect(parsedUrl.searchParams.get("object_type")).toBe("CURRENCY");
+        expect(parsedUrl.searchParams.get("domain_name")).toBe("OTM1");
+        return Promise.resolve(jsonResponse(catalogReferenceOptions()));
+      }
+      if (url.endsWith("/api/v1/catalog/validate/reference")) {
+        expect(init?.method).toBe("POST");
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init.body));
+        referenceValidationRequests.push(body);
+        expect(body).toEqual({
+          module_id: "rates",
+          field_name: "currency_gid",
+          value: "OTM2.BRL",
+          domain_name: "OTM1"
+        });
+        return Promise.resolve(
+          jsonResponse({
+            valid: false,
+            severity: "ERROR",
+            policy: "MUST_EXIST",
+            object_type: "CURRENCY",
+            gid: "OTM2.BRL",
+            domain_name: "OTM1",
+            message: "Reference is outside the active domain scope."
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/catalog/reference-options");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Catalog Reference Options" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Catalog" })).toHaveAttribute("href", "/catalog");
+    expect(await within(await screen.findByLabelText("Catalog reference options")).findByText("PUBLIC.USD")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Catalog reference options")).getByText("OTM1.BRL")).toBeInTheDocument();
+    expect(screen.getByText("Allowed domains: PUBLIC, OTM1")).toBeInTheDocument();
+    expect(referenceOptionRequests).toHaveLength(1);
+
+    await userEvent.clear(screen.getByLabelText("Reference value"));
+    await userEvent.type(screen.getByLabelText("Reference value"), "OTM2.BRL");
+    await userEvent.click(screen.getByRole("button", { name: "Validate reference" }));
+    expect(await screen.findByText("Reference validation: ERROR")).toBeInTheDocument();
+    expect(screen.getByText("Reference is outside the active domain scope.")).toBeInTheDocument();
+    expect(referenceValidationRequests).toHaveLength(1);
+  });
+
+  it("opens schema guidance on a route-level inspector with path search", async () => {
+    const schemaPathRequests: string[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "catalog", label: "OTM Catalog Core", path: "/catalog", status: "ACTIVE" }
+            ],
+            total: 2,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/macro-objects")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(macroObjectSummary()));
+      }
+      if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots/root_transmission/paths")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        schemaPathRequests.push(url);
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootPaths("root_transmission", parsedUrl.searchParams.get("query") ?? "")));
+      }
+      if (url.includes("/api/v1/catalog/schema-roots")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const parsedUrl = new URL(url, "http://localhost");
+        return Promise.resolve(jsonResponse(schemaRootsByRole(parsedUrl.searchParams.get("schema_guidance_role") ?? "")));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/catalog/schema-guidance");
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Catalog Schema Guidance" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Catalog" })).toHaveAttribute("href", "/catalog");
+    expect(screen.getByText("Ready guidance")).toBeInTheDocument();
+    expect(screen.getByText("Blocked guidance")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Integration envelope roots")).getByText("Transmission")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Macro schema roots")).getByText("Planned Shipment")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("RATE_RECORD")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Inspect Transmission" }));
+    expect(await within(await screen.findByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionHeader")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Schema path search"), "Body");
+    expect(await within(screen.getByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionBody")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Selected schema root paths")).queryByText("/Transmission/TransmissionHeader")).not.toBeInTheDocument();
+    expect(schemaPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=Body"))).toBe(true);
+  });
+
   it("validates table, column, and reference contracts from Catalog Core", async () => {
     const tableValidationRequests: unknown[] = [];
     const columnValidationRequests: unknown[] = [];
     const referenceValidationRequests: unknown[] = [];
-    const schemaPathRequests: string[] = [];
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -499,12 +954,6 @@ describe("Functional Catalog journey", () => {
       if (url.endsWith("/api/v1/catalog/schema-guidance/readiness")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
         return Promise.resolve(jsonResponse(schemaGuidanceReadiness()));
-      }
-      if (url.includes("/api/v1/catalog/schema-roots/root_transmission/paths")) {
-        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
-        schemaPathRequests.push(url);
-        const parsedUrl = new URL(url, "http://localhost");
-        return Promise.resolve(jsonResponse(schemaRootPaths("root_transmission", parsedUrl.searchParams.get("query") ?? "")));
       }
       if (url.includes("/api/v1/catalog/schema-roots")) {
         expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
@@ -593,23 +1042,8 @@ describe("Functional Catalog journey", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await screen.findByRole("heading", { name: "OTM Catalog Core" });
-    expect(await screen.findByRole("heading", { name: "Schema guidance" })).toBeInTheDocument();
-    expect(screen.getByText("Ready guidance")).toBeInTheDocument();
-    expect(screen.getByText("Blocked guidance")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Integration envelope roots")).getByText("Transmission")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Macro schema roots")).getByText("Planned Shipment")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("RATE_RECORD")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Schema guidance readiness")).getByText("BLOCKED SCHEMA LINKS")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Inspect Transmission" }));
-    expect(await within(await screen.findByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionHeader")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Selected schema root paths")).getByText("/Transmission/TransmissionBody")).toBeInTheDocument();
-    expect(screen.getByText("Synthetic repeatable transmission body path.")).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText("Schema path search"), "Body");
-    expect(await within(screen.getByLabelText("Selected schema root paths")).findByText("/Transmission/TransmissionBody")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Selected schema root paths")).queryByText("/Transmission/TransmissionHeader")).not.toBeInTheDocument();
-    expect(schemaPathRequests.some((requestUrl) => requestUrl.endsWith("/paths?query=Body"))).toBe(true);
-    expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
-    expect(await within(await screen.findByLabelText("Selected macro object load plan")).findByText("RATE_OFFERING")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Schema Guidance" })).toHaveAttribute("href", "/catalog/schema-guidance");
+    expect(screen.queryByRole("heading", { name: "Schema guidance" })).not.toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Table name"));
     await userEvent.type(screen.getByLabelText("Table name"), "SHIPMENT");
@@ -635,12 +1069,13 @@ describe("Functional Catalog journey", () => {
     expect(screen.getByText("Reference is outside the active domain scope.")).toBeInTheDocument();
     expect(referenceValidationRequests).toHaveLength(1);
 
-    await userEvent.click(screen.getByRole("button", { name: /REGION/ }));
+    await userEvent.click(within(screen.getByLabelText("Catalog macro objects")).getByRole("button", { name: /REGION/ }));
+    expect(await screen.findByRole("heading", { name: "REGION Catalog detail" })).toBeInTheDocument();
     expect(screen.queryByText("Reference validation: ERROR")).not.toBeInTheDocument();
     expect(screen.queryByText("Reference is outside the active domain scope.")).not.toBeInTheDocument();
     expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("REGION")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /RATE_RECORD/ }));
-    expect(await within(await screen.findByLabelText("Selected macro object tables")).findByText("RATE_GEO_COST")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "Back to Catalog" }));
+    await screen.findByRole("heading", { name: "OTM Catalog Core" });
 
     await userEvent.click(screen.getByRole("button", { name: "Reset catalog validation" }));
     expect(screen.getByLabelText("Table name")).toHaveValue("RATE_GEO_COST");

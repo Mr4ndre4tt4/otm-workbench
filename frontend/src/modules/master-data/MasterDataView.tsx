@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import {
@@ -23,12 +23,14 @@ import {
   submitMasterDataBatchToOtm,
   updateMasterDataTemplateDraft,
   uploadMasterDataWorkbook,
+  useCoordinateQualityBatchDetail,
   useCatalogColumnsByTable,
   useCatalogMacroObjectTables,
   useCatalogMacroObjects,
   useCoordinateQualityBatches,
   useCoordinateQualityResults,
   useMasterDataBatchArtifacts,
+  useMasterDataBatchDetail,
   useMasterDataBatchSummary,
   useMasterDataBatches,
   useMasterDataCsvFiles,
@@ -56,6 +58,7 @@ import type {
   MasterDataRelationshipValidation,
   MasterDataTemplate,
   MasterDataTemplateDraftRequest,
+  MasterDataTemplateSearchOperator,
   MasterDataTemplateValidation,
   MasterDataWorkbookArtifact,
   MasterDataWorkbookEditorRowsRequest,
@@ -128,6 +131,31 @@ function masterDataActionGuidanceItems(scope: string, actions: AvailableAction[]
   }));
 }
 
+function templateSearchOperatorLabel(operator: MasterDataTemplateSearchOperator) {
+  return operator.replaceAll("_", " ");
+}
+
+function masterDataTemplateDraftFromTemplate(template: MasterDataTemplate | null | undefined): MasterDataTemplateDraftRequest | null {
+  const definition = template?.definition;
+  if (!template || !definition) return null;
+  return {
+    code: definition.template.code,
+    name: definition.template.name,
+    catalog_macro_object_code: definition.template.catalog_macro_object_code,
+    data_category: definition.template.data_category,
+    target_tables: definition.target_tables,
+    sheets: definition.sheets,
+    fields: definition.fields,
+    mappings: definition.mappings,
+    relationship_rules: definition.relationship_rules,
+    documentation_refs: definition.documentation_refs
+  };
+}
+
+function masterDataTemplateCopyCode(template: MasterDataTemplate | null | undefined) {
+  return template?.code ? `${template.code}_COPY` : "";
+}
+
 function pickMasterDataNextAction(template: MasterDataTemplate | undefined, batch: MasterDataBatch | null) {
   const scopedActions = [
     ...(template?.available_actions ?? []).map((action) => ({ action, scope: "Template" })),
@@ -155,6 +183,15 @@ const masterDataWorkflowStages = [
 type MasterDataWorkflowStage = (typeof masterDataWorkflowStages)[number]["id"];
 type MasterDataRouteMode = "hub" | "factory" | "builder" | "quality";
 type MasterDataStageScope = MasterDataRouteMode | "factory-detail";
+type MasterDataBuilderRouteAction = "detail" | "edit" | "copy" | "delete" | "new";
+const masterDataBatchDetailStages = [
+  { id: "input", title: "Input", status: "1" },
+  { id: "validate", title: "Validate", status: "2" },
+  { id: "output", title: "Output", status: "3" },
+  { id: "csv-package", title: "CSV Package", status: "4" },
+  { id: "load-plan", title: "Load Plan", status: "5" }
+] as const;
+type MasterDataBatchDetailStage = (typeof masterDataBatchDetailStages)[number]["id"];
 type AuthorSourceType = "USER_FIELD" | "FIXED_VALUE" | "DEFAULT_VALUE";
 type AuthorMappingConfig = {
   defaultValue?: string;
@@ -192,6 +229,30 @@ function masterDataRouteStage(mode: MasterDataRouteMode): MasterDataWorkflowStag
 
 function masterDataRouteTemplateCode(pathname: string) {
   const match = pathname.match(/^\/master-data\/factory\/templates\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function masterDataRouteBuilderTemplateCode(pathname: string) {
+  const match = pathname.match(/^\/master-data\/template-builder\/([^/?#]+)/);
+  if (!match || match[1] === "new") return null;
+  return decodeURIComponent(match[1]);
+}
+
+function masterDataRouteBuilderAction(pathname: string): MasterDataBuilderRouteAction {
+  if (pathname === "/master-data/template-builder/new") return "new";
+  if (pathname.endsWith("/edit")) return "edit";
+  if (pathname.endsWith("/copy")) return "copy";
+  if (pathname.endsWith("/delete")) return "delete";
+  return "detail";
+}
+
+function masterDataRouteBatchId(pathname: string) {
+  const match = pathname.match(/^\/master-data\/factory\/batches\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function masterDataRouteQualityBatchId(pathname: string) {
+  const match = pathname.match(/^\/master-data\/quality\/lat-lon\/batches\/([^/?#]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -452,10 +513,27 @@ export function MasterDataView({ token }: { token: string }) {
   const navigate = useNavigate();
   const routeMode = masterDataRouteMode(location.pathname);
   const routeTemplateCode = masterDataRouteTemplateCode(location.pathname);
+  const builderTemplateCode = masterDataRouteBuilderTemplateCode(location.pathname);
+  const builderRouteAction = masterDataRouteBuilderAction(location.pathname);
+  const routeBatchId = masterDataRouteBatchId(location.pathname);
+  const routeQualityBatchId = masterDataRouteQualityBatchId(location.pathname);
+  const isBuilderCreateRoute = routeMode === "builder" && builderRouteAction === "new";
+  const isQualityLatLonRoute = location.pathname.startsWith("/master-data/quality/lat-lon");
   const isFactoryTemplateDetail = routeMode === "factory" && Boolean(routeTemplateCode);
+  const isFactoryBatchDetail = routeMode === "factory" && Boolean(routeBatchId);
   const stageScope: MasterDataStageScope = isFactoryTemplateDetail ? "factory-detail" : routeMode;
   const routeStage: MasterDataWorkflowStage = isFactoryTemplateDetail ? "workbook" : masterDataRouteStage(routeMode);
-  const templates = useMasterDataTemplates(token);
+  const [templateCodeFilter, setTemplateCodeFilter] = useState("");
+  const [templateCodeOperator, setTemplateCodeOperator] = useState<MasterDataTemplateSearchOperator>("contains");
+  const [templateNameFilter, setTemplateNameFilter] = useState("");
+  const [templateNameOperator, setTemplateNameOperator] = useState<MasterDataTemplateSearchOperator>("contains");
+  const [templateMacroObjectFilter, setTemplateMacroObjectFilter] = useState("");
+  const [templateMacroObjectOperator, setTemplateMacroObjectOperator] =
+    useState<MasterDataTemplateSearchOperator>("contains");
+  const [templateStatusFilter, setTemplateStatusFilter] = useState("");
+  const [templateStatusOperator, setTemplateStatusOperator] = useState<MasterDataTemplateSearchOperator>("contains");
+  const [appliedTemplateFilters, setAppliedTemplateFilters] = useState<Record<string, string>>({});
+  const templates = useMasterDataTemplates(token, appliedTemplateFilters);
   const scenarioPacks = useMasterDataScenarioPacks(token);
   const coordinateQualityBatches = useCoordinateQualityBatches(token);
   const catalogMacroObjects = useCatalogMacroObjects(token);
@@ -466,6 +544,7 @@ export function MasterDataView({ token }: { token: string }) {
     scope: MasterDataStageScope;
     stage: MasterDataWorkflowStage;
   }>({ scope: stageScope, stage: routeStage });
+  const [activeBatchStage, setActiveBatchStage] = useState<MasterDataBatchDetailStage>("input");
   const [templateValidation, setTemplateValidation] = useState<MasterDataTemplateValidation | null>(null);
   const [workbookArtifact, setWorkbookArtifact] = useState<MasterDataWorkbookArtifact | null>(null);
   const [uploadedBatch, setUploadedBatch] = useState<MasterDataBatch | null>(null);
@@ -510,6 +589,13 @@ export function MasterDataView({ token }: { token: string }) {
   const [authorTemplate, setAuthorTemplate] = useState<MasterDataTemplate | null>(null);
   const [authorValidation, setAuthorValidation] = useState<MasterDataTemplateValidation | null>(null);
   const [authorVersion, setAuthorVersion] = useState<MasterDataTemplate | null>(null);
+  const [copyTemplateCode, setCopyTemplateCode] = useState("");
+  const [copyTables, setCopyTables] = useState(true);
+  const [copyFields, setCopyFields] = useState(true);
+  const [copyFixedValues, setCopyFixedValues] = useState(true);
+  const [copyRelationshipRules, setCopyRelationshipRules] = useState(true);
+  const [copyValidationRules, setCopyValidationRules] = useState(true);
+  const [copyTags, setCopyTags] = useState(true);
   const [workbookEditorRows, setWorkbookEditorRows] = useState<MasterDataWorkbookEditorRowsRequest | null>(null);
   const [workbookEditorValidation, setWorkbookEditorValidation] =
     useState<MasterDataWorkbookEditorValidation | null>(null);
@@ -522,7 +608,14 @@ export function MasterDataView({ token }: { token: string }) {
     setActiveStageState({ scope: stageScope, stage });
   };
   const templateItems = templates.data?.items ?? [];
-  const effectiveTemplateCode = routeTemplateCode ?? selectedTemplateCode ?? templateItems[0]?.code ?? null;
+  const routeBatchDetail = useMasterDataBatchDetail(token, routeBatchId);
+  const effectiveTemplateCode =
+    routeTemplateCode ??
+    builderTemplateCode ??
+    routeBatchDetail.data?.template_code ??
+    selectedTemplateCode ??
+    templateItems[0]?.code ??
+    null;
   const templateDetail = useMasterDataTemplateDetail(token, effectiveTemplateCode);
   const selectedTemplate = templateDetail.data;
   const workbookEditor = useMasterDataWorkbookEditor(
@@ -563,6 +656,29 @@ export function MasterDataView({ token }: { token: string }) {
     setBatchPage(1);
     setUploadedBatch(null);
     clearBatchWorkflowState();
+  }
+  function applyTemplateSearch() {
+    setAppliedTemplateFilters({
+      macro_object: templateMacroObjectFilter.trim(),
+      macro_object_operator: templateMacroObjectOperator,
+      status: templateStatusFilter.trim(),
+      status_operator: templateStatusOperator,
+      template_code: templateCodeFilter.trim(),
+      template_code_operator: templateCodeOperator,
+      template_name: templateNameFilter.trim(),
+      template_name_operator: templateNameOperator
+    });
+  }
+  function clearTemplateSearch() {
+    setTemplateCodeFilter("");
+    setTemplateCodeOperator("contains");
+    setTemplateNameFilter("");
+    setTemplateNameOperator("contains");
+    setTemplateMacroObjectFilter("");
+    setTemplateMacroObjectOperator("contains");
+    setTemplateStatusFilter("");
+    setTemplateStatusOperator("contains");
+    setAppliedTemplateFilters({});
   }
   function clearBatchWorkflowState() {
     setRelationshipValidation(null);
@@ -606,7 +722,10 @@ export function MasterDataView({ token }: { token: string }) {
   const authorColumnsCatalog = useCatalogColumnsByTable(token, authorScenarioDraftPayload ? [] : authorTables);
   const latestSelectedTemplateBatch =
     batches.data?.items.find((batch) => !effectiveTemplateCode || batch.template_code === effectiveTemplateCode) ?? null;
-  const activeBatch = uploadedBatch ?? latestSelectedTemplateBatch;
+  const activeBatch =
+    routeBatchId && uploadedBatch?.batch_id === routeBatchId
+      ? uploadedBatch
+      : routeBatchDetail.data ?? uploadedBatch ?? latestSelectedTemplateBatch;
   const selectedMasterDataNextAction = pickMasterDataNextAction(selectedTemplate, activeBatch);
   const activeMasterDataStageTitle =
     masterDataWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
@@ -623,7 +742,14 @@ export function MasterDataView({ token }: { token: string }) {
     return !["author", "quality"].includes(stage.id);
   });
   const routeHeader =
-    isFactoryTemplateDetail
+    isFactoryBatchDetail
+      ? {
+          description: "Operate one concrete master data batch from input through CSV package and Load Plan handoff.",
+          label: "Master Data / Data Factory / Batch",
+          title: activeBatch?.batch_id ?? routeBatchId ?? "Batch detail",
+          workspaceTitle: "Batch execution"
+        }
+      : isFactoryTemplateDetail
       ? {
           description: selectedTemplate?.description ?? "Published template operational workspace.",
           label: "Master Data / Data Factory / Template",
@@ -632,10 +758,12 @@ export function MasterDataView({ token }: { token: string }) {
         }
       : routeMode === "builder"
       ? {
-          description: "Template design, table mapping, reusable field labels, constants, and publish controls.",
-          label: "Master Data / Configuration",
-          title: "Template Builder",
-          workspaceTitle: "Template Builder workspace"
+          description: isBuilderCreateRoute
+            ? "Create a reusable template without mixing authoring controls into Data Factory operations."
+            : "Template design, table mapping, reusable field labels, constants, and publish controls.",
+          label: isBuilderCreateRoute ? "Master Data / Template Builder / New" : "Master Data / Configuration",
+          title: isBuilderCreateRoute ? "New template" : "Template Builder",
+          workspaceTitle: isBuilderCreateRoute ? "Template basics" : "Template Builder workspace"
         }
       : routeMode === "quality"
         ? {
@@ -657,12 +785,22 @@ export function MasterDataView({ token }: { token: string }) {
   const outputRecords = useMasterDataOutputRecords(token, activeBatch?.batch_id ?? null);
   const csvFiles = useMasterDataCsvFiles(token, activeBatch?.batch_id ?? null);
   const canRegisterLoadPlanPackage = Boolean(activeBatch && (exportResult || activeBatch.status === "EXPORTED"));
-  const activeCoordinateBatch = coordinateBatch ?? coordinateQualityBatches.data?.items[0] ?? null;
-  const coordinateResults = useCoordinateQualityResults(token, activeCoordinateBatch?.batch_id ?? null);
-  const coordinateQualityBatchItems =
+  const routeCoordinateBatchDetail = useCoordinateQualityBatchDetail(token, routeQualityBatchId);
+  const listedCoordinateQualityBatchItems =
     coordinateBatch && !(coordinateQualityBatches.data?.items ?? []).some((batch) => batch.batch_id === coordinateBatch.batch_id)
       ? [coordinateBatch, ...(coordinateQualityBatches.data?.items ?? [])]
       : (coordinateQualityBatches.data?.items ?? []);
+  const routeCoordinateBatch = routeQualityBatchId
+    ? routeCoordinateBatchDetail.data ??
+      listedCoordinateQualityBatchItems.find((batch) => batch.batch_id === routeQualityBatchId) ??
+      null
+    : null;
+  const coordinateQualityBatchItems =
+    routeCoordinateBatch && !listedCoordinateQualityBatchItems.some((batch) => batch.batch_id === routeCoordinateBatch.batch_id)
+      ? [routeCoordinateBatch, ...listedCoordinateQualityBatchItems]
+      : listedCoordinateQualityBatchItems;
+  const activeCoordinateBatch = routeCoordinateBatch ?? coordinateBatch ?? coordinateQualityBatchItems[0] ?? null;
+  const coordinateResults = useCoordinateQualityResults(token, activeCoordinateBatch?.batch_id ?? routeQualityBatchId);
   const authorDraftPreview = locationDraftPayload(
     authorTemplateCode.trim().toUpperCase() || "LOCATIONS_DYNAMIC_UI",
     authorTemplateName.trim() || "Locations Dynamic UI",
@@ -679,6 +817,18 @@ export function MasterDataView({ token }: { token: string }) {
         name: authorTemplateName.trim() || authorScenarioDraftPayload.name
       }
     : authorDraftPreview;
+
+  useEffect(() => {
+    if (builderRouteAction === "copy" && selectedTemplate) {
+      setCopyTemplateCode(masterDataTemplateCopyCode(selectedTemplate));
+      setCopyTables(true);
+      setCopyFields(true);
+      setCopyFixedValues(true);
+      setCopyRelationshipRules(true);
+      setCopyValidationRules(true);
+      setCopyTags(true);
+    }
+  }, [builderRouteAction, selectedTemplate?.code]);
 
   const runAction = async <T,>(action: () => Promise<T>, onSuccess: (result: T) => string) => {
     setIsMutating(true);
@@ -730,6 +880,7 @@ export function MasterDataView({ token }: { token: string }) {
         const result = await createCoordinateQualityBatch(token, coordinateQualityPayload());
         setCoordinateBatch(result);
         setCoordinateExport(null);
+        navigate(`/master-data/quality/lat-lon/batches/${encodeURIComponent(result.batch_id)}`);
         return result;
       },
       (result) => `Coordinate Quality batch ${result.batch_id} created.`
@@ -942,6 +1093,70 @@ export function MasterDataView({ token }: { token: string }) {
     );
   };
 
+  const handleCreateRouteTemplateVersion = () => {
+    if (!selectedTemplate?.code) return;
+    const nextCode = `${selectedTemplate.code}_V${Number(selectedTemplate.version) + 1}`;
+    void runAction(
+      async () => {
+        const result = await createMasterDataTemplateVersion(token, selectedTemplate.code, nextCode);
+        setAuthorVersion(result);
+        await templates.refetch();
+        return result;
+      },
+      (result) => `Version ${result.code} created.`
+    );
+  };
+
+  const resetRouteTemplateCopyHeader = () => {
+    setCopyTemplateCode(masterDataTemplateCopyCode(selectedTemplate));
+    setCopyTables(true);
+    setCopyFields(true);
+    setCopyFixedValues(true);
+    setCopyRelationshipRules(true);
+    setCopyValidationRules(true);
+    setCopyTags(true);
+    setOperationMessage(null);
+    setOperationError(null);
+  };
+
+  const handleCreateRouteTemplateCopy = () => {
+    if (!selectedTemplate?.code) return;
+    const nextCode = copyTemplateCode.trim().toUpperCase();
+    if (!nextCode) {
+      setOperationError("New template code is required before creating a copy.");
+      return;
+    }
+    void runAction(
+      async () => {
+        const result = await createMasterDataTemplateVersion(token, selectedTemplate.code, nextCode);
+        setAuthorVersion(result);
+        await templates.refetch();
+        navigate(`/master-data/template-builder/${encodeURIComponent(result.code)}/edit`);
+        return result;
+      },
+      (result) => `Copy ${result.code} created.`
+    );
+  };
+
+  const handleSaveRouteTemplateDraft = () => {
+    if (!selectedTemplate?.code) return;
+    const payload = masterDataTemplateDraftFromTemplate(selectedTemplate);
+    if (!payload) {
+      setOperationError("Template definition is not available for draft save.");
+      return;
+    }
+    void runAction(
+      async () => {
+        const result = await updateMasterDataTemplateDraft(token, selectedTemplate.code, payload);
+        setAuthorTemplate(result);
+        await templateDetail.refetch();
+        await templates.refetch();
+        return result;
+      },
+      (result) => `Draft ${result.code} saved.`
+    );
+  };
+
   const handleBuildWorkbook = () => {
     if (!effectiveTemplateCode) return;
     void runAction(
@@ -1003,6 +1218,8 @@ export function MasterDataView({ token }: { token: string }) {
         setWorkbookEditorValidation(null);
         clearBatchWorkflowState();
         await batches.refetch();
+        setActiveBatchStage("input");
+        navigate(`/master-data/factory/batches/${encodeURIComponent(result.batch_id)}`);
         return result;
       },
       (result) => `Workbook editor batch ${result.batch_id} created.`
@@ -1017,6 +1234,8 @@ export function MasterDataView({ token }: { token: string }) {
         setUploadedBatch(result);
         clearBatchWorkflowState();
         await batches.refetch();
+        setActiveBatchStage("input");
+        navigate(`/master-data/factory/batches/${encodeURIComponent(result.batch_id)}`);
         return result;
       },
       (result) => `Workbook uploaded as batch ${result.batch_id}.`
@@ -1024,6 +1243,8 @@ export function MasterDataView({ token }: { token: string }) {
   };
 
   const handleInspectBatch = (batch: MasterDataBatch) => {
+    setActiveBatchStage("input");
+    navigate(`/master-data/factory/batches/${encodeURIComponent(batch.batch_id)}`);
     void runAction(
       async () => {
         const result = await getMasterDataBatch(token, batch.batch_id);
@@ -1257,6 +1478,1064 @@ export function MasterDataView({ token }: { token: string }) {
     );
   }
 
+  if (routeMode === "quality") {
+    if (!isQualityLatLonRoute) {
+      return (
+        <>
+          <PageHeader
+            description="Independent quality utilities for master data preparation, kept separate from operational Data Factory work."
+            label="Master Data / Quality"
+            title="Quality Tools"
+          />
+          <section className="master-data-hub" aria-label="Quality Tools entry points">
+            <Link className="master-data-hub-card" to="/master-data/quality/lat-lon" aria-label="Open Lat/Lon Validator">
+              <span>Location quality</span>
+              <strong>Lat/Lon Validator</strong>
+              <p>Preview coordinates, create review batches, inspect results, and export correction packages.</p>
+              <small>{coordinateQualityBatches.data?.total ?? 0} batch(es)</small>
+            </Link>
+          </section>
+          <DetailList
+            ariaLabel="Recent coordinate quality batches"
+            emptyText="No coordinate quality batches created yet."
+            items={coordinateQualityBatchItems.map((batch) => ({
+              action: (
+                <Link className="button button-secondary" to={`/master-data/quality/lat-lon/batches/${encodeURIComponent(batch.batch_id)}`}>
+                  Open batch
+                </Link>
+              ),
+              id: batch.batch_id,
+              meta: summaryMeta(batch.summary),
+              status: batch.status,
+              title: batch.batch_id
+            }))}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <PageHeader
+          description={
+            routeQualityBatchId
+              ? "Inspect one coordinate validation batch and export a review package."
+              : "Validate Location coordinates independently from template download, upload, and OTM CSV export."
+          }
+          label={routeQualityBatchId ? "Master Data / Quality / Lat-Lon / Batch" : "Master Data / Quality / Lat-Lon"}
+          title={routeQualityBatchId ? activeCoordinateBatch?.batch_id ?? routeQualityBatchId : "Lat/Lon Validator"}
+        />
+        <section className="master-data-route-summary" aria-label="Lat/Lon route summary">
+          <Link className="button button-secondary" to="/master-data/quality">
+            Back to Quality Tools
+          </Link>
+          <Link className="button button-secondary" to="/master-data/factory">
+            Open Data Factory
+          </Link>
+        </section>
+        <ModuleWorkspaceLayout
+          ariaLabel={routeQualityBatchId ? "Lat/Lon batch detail workspace" : "Lat/Lon validator workspace"}
+          side={null}
+          status={coordinateExport ? "EXPORTED" : activeCoordinateBatch?.status ?? "READY"}
+          title={routeQualityBatchId ? "Coordinate batch detail" : "Coordinate validation"}
+        >
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+          <OperationalPanel
+            ariaLabel="Coordinate Quality workflow"
+            emptyText="Use synthetic Location records to validate lat/lon quality before exporting a review package."
+            hasItems
+            status={coordinateExport ? "EXPORTED" : activeCoordinateBatch?.status ?? "READY"}
+            title="Coordinate review"
+          >
+            <div className="master-data-author-grid">
+              <label>
+                Coordinate records JSON
+                <textarea
+                  aria-label="Coordinate records JSON"
+                  onChange={(event) => setCoordinateRecordsJson(event.target.value)}
+                  rows={10}
+                  value={coordinateRecordsJson}
+                />
+              </label>
+              <label>
+                Fake geocoder candidates JSON
+                <textarea
+                  aria-label="Coordinate fake candidates JSON"
+                  onChange={(event) => setCoordinateCandidatesJson(event.target.value)}
+                  rows={10}
+                  value={coordinateCandidatesJson}
+                />
+              </label>
+            </div>
+            <div className="master-data-action-bar master-data-output-actions">
+              <Button disabled={isMutating} onClick={handlePreviewCoordinateQuality} variant="primary">
+                Preview coordinates
+              </Button>
+              <Button disabled={isMutating} onClick={handleCreateCoordinateQualityBatch} variant="secondary">
+                Create quality batch
+              </Button>
+              <Button disabled={isMutating || !activeCoordinateBatch} onClick={handleExportCoordinateQuality} variant="secondary">
+                Export quality package
+              </Button>
+            </div>
+            {coordinatePreview ? (
+              <DetailList
+                ariaLabel="Coordinate Quality preview summary"
+                items={[
+                  {
+                    id: "coordinate-preview",
+                    meta: summaryMeta(coordinatePreview.summary),
+                    status: coordinatePreview.summary.failed_count ? "REVIEW" : "READY",
+                    title: "Preview"
+                  }
+                ]}
+              />
+            ) : null}
+            <DetailList
+              ariaLabel="Coordinate Quality results"
+              emptyText="No coordinate results available yet."
+              items={(coordinateResults.data?.items ?? coordinatePreview?.results ?? []).map((result) => ({
+                id: result.id ?? result.location_gid,
+                meta: [
+                  result.location_name ?? "No name",
+                  `${result.lat_orig ?? "null"}, ${result.lon_orig ?? "null"}`,
+                  `${result.lat_new ?? "null"}, ${result.lon_new ?? "null"}`,
+                  result.source ?? "No source"
+                ],
+                status: result.status,
+                title: result.location_gid
+              }))}
+            />
+            <DetailList
+              ariaLabel="Coordinate Quality batches"
+              emptyText="No coordinate quality batches created yet."
+              items={coordinateQualityBatchItems.map((batch) => ({
+                action: (
+                  <Link className="button button-secondary" to={`/master-data/quality/lat-lon/batches/${encodeURIComponent(batch.batch_id)}`}>
+                    Open batch
+                  </Link>
+                ),
+                id: batch.batch_id,
+                meta: summaryMeta(batch.summary),
+                status: batch.status,
+                title: batch.batch_id
+              }))}
+            />
+            {coordinateExport ? (
+              <DetailList
+                ariaLabel="Coordinate Quality export package"
+                items={[
+                  {
+                    id: coordinateExport.artifact_id,
+                    meta: [
+                      coordinateExport.artifact_id,
+                      coordinateExport.manifest_id,
+                      coordinateExport.evidence_id,
+                      `${coordinateExport.size_bytes} bytes`
+                    ],
+                    status: "EXPORTED",
+                    title: coordinateExport.file_name
+                  }
+                ]}
+              />
+            ) : null}
+          </OperationalPanel>
+        </ModuleWorkspaceLayout>
+      </>
+    );
+  }
+
+  if (routeMode === "builder" && builderRouteAction !== "new") {
+    const activeFilters = templates.data.normalized_filters ?? [];
+    const operatorOptions: MasterDataTemplateSearchOperator[] =
+      templates.data.search_metadata?.operators ?? ["begins_with", "contains", "one_of", "not_one_of"];
+    const routeTemplate = selectedTemplate;
+
+    if (builderTemplateCode) {
+      const title =
+        builderRouteAction === "edit"
+          ? "Edit template"
+          : builderRouteAction === "copy"
+            ? "Copy template"
+            : builderRouteAction === "delete"
+              ? "Retire template"
+              : "Template detail";
+      return (
+        <>
+          <PageHeader
+            description="Inspect and administer one reusable Master Data template in a focused builder route."
+            label={`Master Data / Template Builder / ${builderRouteAction}`}
+            title={routeTemplate?.code ?? builderTemplateCode}
+          />
+          <section className="master-data-route-summary" aria-label="Template Builder template summary">
+            <Link
+              className="button button-secondary"
+              to={
+                builderRouteAction === "edit" || builderRouteAction === "copy" || builderRouteAction === "delete"
+                  ? `/master-data/template-builder/${encodeURIComponent(builderTemplateCode)}`
+                  : "/master-data/template-builder"
+              }
+            >
+              {builderRouteAction === "edit" || builderRouteAction === "copy" || builderRouteAction === "delete"
+                ? "Back to Template Detail"
+                : "Back to Template Builder"}
+            </Link>
+            <Link className="button button-secondary" to={`/master-data/factory/templates/${encodeURIComponent(builderTemplateCode)}`}>
+              Open in Data Factory
+            </Link>
+          </section>
+          <ModuleWorkspaceLayout
+            ariaLabel="Template Builder detail workspace"
+            side={null}
+            status={routeTemplate?.status ?? "LOADING"}
+            title={title}
+          >
+            {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+            {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+            <div className="master-data-action-bar">
+              <Link className="button button-secondary" to={`/master-data/template-builder/${encodeURIComponent(builderTemplateCode)}/edit`}>
+                Edit
+              </Link>
+              <Link className="button button-secondary" to={`/master-data/template-builder/${encodeURIComponent(builderTemplateCode)}/copy`}>
+                Copy
+              </Link>
+              <Link className="button button-secondary" to={`/master-data/template-builder/${encodeURIComponent(builderTemplateCode)}/delete`}>
+                Retire
+              </Link>
+              <Button
+                disabled={isMutating || masterDataTemplateActionDisabled(routeTemplate, "create_version", !routeTemplate)}
+                onClick={handleCreateRouteTemplateVersion}
+                title={masterDataTemplateActionReason(routeTemplate, "create_version")}
+                variant="secondary"
+              >
+                Create next version
+              </Button>
+            </div>
+            <DetailList
+              ariaLabel="Template Builder route template detail"
+              emptyText="Loading template detail."
+              items={
+                routeTemplate
+                  ? [
+                      {
+                        id: routeTemplate.id,
+                        meta: [
+                          routeTemplate.name,
+                          routeTemplate.catalog_macro_object_code,
+                          routeTemplate.data_category,
+                          `v${routeTemplate.version}`,
+                          `${routeTemplate.target_tables.length} table(s)`
+                        ],
+                        status: routeTemplate.status,
+                        title: routeTemplate.code
+                      }
+                    ]
+                  : []
+              }
+            />
+            {builderRouteAction === "copy" ? (
+              <OperationalPanel
+                ariaLabel="Template Builder copy route"
+                emptyText="Template detail is loading."
+                hasItems={Boolean(routeTemplate)}
+                status="COPY"
+                title="Copy source"
+              >
+                <h3>New template header</h3>
+                <div className="master-data-author-grid" aria-label="New template header">
+                  <label>
+                    New template code
+                    <input
+                      aria-label="New template code"
+                      onChange={(event) => setCopyTemplateCode(event.target.value.toUpperCase())}
+                      value={copyTemplateCode}
+                    />
+                  </label>
+                  <label>
+                    Source template
+                    <input readOnly value={routeTemplate?.code ?? builderTemplateCode} />
+                  </label>
+                  <label>
+                    Source status
+                    <input readOnly value={routeTemplate?.status ?? "LOADING"} />
+                  </label>
+                </div>
+                <DetailList
+                  ariaLabel="Template copy scope preview"
+                  items={[
+                    {
+                      id: "copy-preview",
+                      meta: [
+                        `${routeTemplate?.definition?.target_tables.length ?? routeTemplate?.target_tables.length ?? 0} target table(s)`,
+                        `${routeTemplate?.definition?.fields.length ?? 0} field(s)`,
+                        `${routeTemplate?.definition?.mappings.length ?? 0} mapping(s)`,
+                        `${routeTemplate?.definition?.relationship_rules.length ?? 0} relationship rule(s)`
+                      ],
+                      status: "READY",
+                      title: copyTemplateCode || "New draft code pending"
+                    }
+                  ]}
+                />
+                <section className="master-data-filter-panel" aria-label="Template copy options">
+                  <label>
+                    <input checked={copyTables} onChange={(event) => setCopyTables(event.target.checked)} type="checkbox" />
+                    Copy tables
+                  </label>
+                  <label>
+                    <input checked={copyFields} onChange={(event) => setCopyFields(event.target.checked)} type="checkbox" />
+                    Copy fields
+                  </label>
+                  <label>
+                    <input checked={copyFixedValues} onChange={(event) => setCopyFixedValues(event.target.checked)} type="checkbox" />
+                    Copy fixed values
+                  </label>
+                  <label>
+                    <input
+                      checked={copyRelationshipRules}
+                      onChange={(event) => setCopyRelationshipRules(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Copy relationship rules
+                  </label>
+                  <label>
+                    <input
+                      checked={copyValidationRules}
+                      onChange={(event) => setCopyValidationRules(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Copy validation rules
+                  </label>
+                  <label>
+                    <input checked={copyTags} onChange={(event) => setCopyTags(event.target.checked)} type="checkbox" />
+                    Copy tags
+                  </label>
+                </section>
+                <div className="master-data-action-bar">
+                  <Button disabled={isMutating || !routeTemplate} onClick={resetRouteTemplateCopyHeader} variant="secondary">
+                    Reset header
+                  </Button>
+                  <Button
+                    disabled={
+                      isMutating ||
+                      !copyTemplateCode.trim() ||
+                      masterDataTemplateActionDisabled(routeTemplate, "create_version", !routeTemplate)
+                    }
+                    onClick={handleCreateRouteTemplateCopy}
+                    title={masterDataTemplateActionReason(routeTemplate, "create_version")}
+                    variant="primary"
+                  >
+                    Create copy
+                  </Button>
+                </div>
+              </OperationalPanel>
+            ) : null}
+            {builderRouteAction === "delete" ? (
+              <OperationalPanel
+                ariaLabel="Template Builder retire route"
+                emptyText="Template detail is loading."
+                hasItems={Boolean(routeTemplate)}
+                status="GUARDED"
+                title="Retirement impact"
+              >
+                <DetailList
+                  ariaLabel="Template retirement impact summary"
+                  items={[
+                    {
+                      id: "retire-impact",
+                      meta: [
+                        routeTemplate?.status ?? "Unknown status",
+                        `${routeTemplate?.target_tables.length ?? 0} target table(s)`,
+                        "Hard delete endpoint unavailable"
+                      ],
+                      status: "GUARDED",
+                      title: routeTemplate?.code ?? builderTemplateCode
+                    }
+                  ]}
+                />
+                <BlockerPanel
+                  emptyText="No retirement blockers returned by the backend."
+                  items={[
+                    {
+                      codes: ["MASTER_DATA_TEMPLATE_RETIRE_NOT_IMPLEMENTED"],
+                      id: "retire-not-implemented",
+                      message:
+                        "The backend does not yet expose a Master Data template retire/delete action, so this route blocks inline destructive execution."
+                    }
+                  ]}
+                  title="Retirement blockers"
+                />
+              </OperationalPanel>
+            ) : null}
+            {builderRouteAction === "edit" ? (
+              <OperationalPanel
+                ariaLabel="Template Builder edit route"
+                emptyText="Template detail is loading."
+                hasItems={Boolean(routeTemplate)}
+                status={routeTemplate?.status ?? "LOADING"}
+                title="Header and definition controls"
+              >
+                <div className="master-data-author-grid">
+                  <label>
+                    Template code
+                    <input readOnly value={routeTemplate?.code ?? builderTemplateCode} />
+                  </label>
+                  <label>
+                    Template name
+                    <input readOnly value={routeTemplate?.name ?? ""} />
+                  </label>
+                  <label>
+                    Macro object
+                    <input readOnly value={routeTemplate?.catalog_macro_object_code ?? ""} />
+                  </label>
+                </div>
+                <DetailList
+                  ariaLabel="Template Builder target table editor"
+                  emptyText="No target tables returned by the backend definition."
+                  items={(routeTemplate?.definition?.target_tables ?? []).map((table) => ({
+                    id: table.table_name,
+                    meta: [`sequence ${table.sequence}`, table.required ? "Required" : "Optional"],
+                    status: table.required ? "REQUIRED" : "OPTIONAL",
+                    title: table.table_name
+                  }))}
+                />
+                <DetailList
+                  ariaLabel="Template Builder field editor"
+                  emptyText="No fields returned by the backend definition."
+                  items={(routeTemplate?.definition?.fields ?? []).map((field) => ({
+                    id: `${field.sheet_code}-${field.field_key}`,
+                    meta: [field.sheet_code, field.data_type, field.required ? "Required" : "Optional"],
+                    status: field.required ? "REQUIRED" : "OPTIONAL",
+                    title: `${field.label} -> ${
+                      routeTemplate?.definition?.mappings.find((mapping) => mapping.source_field_key === field.field_key)?.target_column ??
+                      field.field_key
+                    }`
+                  }))}
+                />
+                <div className="master-data-action-bar">
+                  <Button
+                    disabled={isMutating || !masterDataTemplateDraftFromTemplate(routeTemplate)}
+                    onClick={handleSaveRouteTemplateDraft}
+                    variant="primary"
+                  >
+                    Save draft
+                  </Button>
+                  <Button disabled={isMutating || !routeTemplate} onClick={handleValidateDefinition} variant="secondary">
+                    Validate definition
+                  </Button>
+                </div>
+              </OperationalPanel>
+            ) : null}
+          </ModuleWorkspaceLayout>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <PageHeader
+          description="Create, map, validate, version, and publish reusable master data templates."
+          label="Master Data / Template Builder"
+          title="Template Builder"
+        />
+        <ModuleWorkspaceLayout
+          ariaLabel="Template Builder workspace"
+          side={null}
+          status={templates.data.total ? "ACTIVE" : "EMPTY"}
+          title="Template administration"
+        >
+          <div className="master-data-action-bar">
+            <Link className="button button-primary" to="/master-data/template-builder/new">
+              Create template
+            </Link>
+            <Link className="button button-secondary" to="/master-data/factory">
+              Back to Data Factory
+            </Link>
+          </div>
+          <section className="master-data-filter-panel" aria-label="Template Builder search">
+            <label>
+              Template code operator
+              <select
+                aria-label="Template code operator"
+                onChange={(event) => setTemplateCodeOperator(event.target.value as MasterDataTemplateSearchOperator)}
+                value={templateCodeOperator}
+              >
+                {operatorOptions.map((operator) => (
+                  <option key={operator} value={operator}>
+                    {templateSearchOperatorLabel(operator)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Template code filter
+              <input
+                aria-label="Template code filter"
+                onChange={(event) => setTemplateCodeFilter(event.target.value)}
+                value={templateCodeFilter}
+              />
+            </label>
+            <label>
+              Template name operator
+              <select
+                aria-label="Template name operator"
+                onChange={(event) => setTemplateNameOperator(event.target.value as MasterDataTemplateSearchOperator)}
+                value={templateNameOperator}
+              >
+                {operatorOptions.map((operator) => (
+                  <option key={operator} value={operator}>
+                    {templateSearchOperatorLabel(operator)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Template name filter
+              <input
+                aria-label="Template name filter"
+                onChange={(event) => setTemplateNameFilter(event.target.value)}
+                value={templateNameFilter}
+              />
+            </label>
+            <label>
+              Macro object operator
+              <select
+                aria-label="Macro object operator"
+                onChange={(event) => setTemplateMacroObjectOperator(event.target.value as MasterDataTemplateSearchOperator)}
+                value={templateMacroObjectOperator}
+              >
+                {operatorOptions.map((operator) => (
+                  <option key={operator} value={operator}>
+                    {templateSearchOperatorLabel(operator)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Macro object filter
+              <input
+                aria-label="Macro object filter"
+                onChange={(event) => setTemplateMacroObjectFilter(event.target.value)}
+                value={templateMacroObjectFilter}
+              />
+            </label>
+            <label>
+              Status operator
+              <select
+                aria-label="Status operator"
+                onChange={(event) => setTemplateStatusOperator(event.target.value as MasterDataTemplateSearchOperator)}
+                value={templateStatusOperator}
+              >
+                {operatorOptions.map((operator) => (
+                  <option key={operator} value={operator}>
+                    {templateSearchOperatorLabel(operator)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Status filter
+              <input
+                aria-label="Status filter"
+                onChange={(event) => setTemplateStatusFilter(event.target.value)}
+                value={templateStatusFilter}
+              />
+            </label>
+            <div className="master-data-action-bar">
+              <Button onClick={applyTemplateSearch} variant="primary">
+                Apply template search
+              </Button>
+              <Button onClick={clearTemplateSearch} variant="secondary">
+                Clear template search
+              </Button>
+            </div>
+          </section>
+          <DetailList
+            ariaLabel="Template Builder applied filters"
+            emptyText="No template search filters applied."
+            items={activeFilters.map((filter) => ({
+              id: `${filter.field}-${filter.operator}`,
+              meta: [filter.value],
+              status: "FILTER",
+              title: `${filter.field} ${filter.operator} ${filter.value}`
+            }))}
+          />
+          <div className="table-list" aria-label="Template Builder templates">
+            {templateItems.map((template) => (
+              <div className="table-list-item" key={template.code}>
+                <strong className="table-list-main">{template.code}</strong>
+                <div className="table-list-meta">
+                  <span>{template.name}</span>
+                  <span>{template.catalog_macro_object_code}</span>
+                  <span>{template.data_category}</span>
+                  <span>v{template.version}</span>
+                </div>
+                <div className="master-data-row-actions">
+                  <Link to={`/master-data/template-builder/${encodeURIComponent(template.code)}`} aria-label={`View ${template.code}`}>
+                    View
+                  </Link>
+                  <Link
+                    to={`/master-data/template-builder/${encodeURIComponent(template.code)}/edit`}
+                    aria-label={`Edit ${template.code}`}
+                  >
+                    Edit
+                  </Link>
+                  <Link
+                    to={`/master-data/template-builder/${encodeURIComponent(template.code)}/copy`}
+                    aria-label={`Copy ${template.code}`}
+                  >
+                    Copy
+                  </Link>
+                  <Link
+                    to={`/master-data/template-builder/${encodeURIComponent(template.code)}/delete`}
+                    aria-label={`Retire ${template.code}`}
+                  >
+                    Retire
+                  </Link>
+                  <Link
+                    to={`/master-data/factory/templates/${encodeURIComponent(template.code)}`}
+                    aria-label={`Open ${template.code} in Data Factory`}
+                  >
+                    Data Factory
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ModuleWorkspaceLayout>
+      </>
+    );
+  }
+
+  if (isFactoryBatchDetail) {
+    const batchBackTarget = activeBatch?.template_code
+      ? `/master-data/factory/templates/${encodeURIComponent(activeBatch.template_code)}`
+      : "/master-data/factory";
+
+    return (
+      <>
+        <PageHeader description={routeHeader.description} label={routeHeader.label} title={routeHeader.title} />
+
+        <section className="master-data-template-detail" aria-label="Batch execution summary">
+          <div className="master-data-detail-toolbar">
+            <Link className="button button-secondary" to={batchBackTarget}>
+              Back to template
+            </Link>
+            <span className={`status-chip status-${(activeBatch?.status ?? "pending").toLowerCase()}`}>
+              {activeBatch?.status ?? "PENDING"}
+            </span>
+          </div>
+          <div className="master-data-detail-summary">
+            <div>
+              <span>Template</span>
+              <strong>{activeBatch?.template_code ?? "Loading"}</strong>
+            </div>
+            <div>
+              <span>Source file</span>
+              <strong>{activeBatch?.file_name ?? "Uploaded workbook"}</strong>
+            </div>
+            <div>
+              <span>Rows</span>
+              <strong>{activeBatch?.row_count ?? 0}</strong>
+            </div>
+            <div>
+              <span>CSV files</span>
+              <strong>{activeBatch?.csv_file_count ?? 0}</strong>
+            </div>
+          </div>
+        </section>
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Master Data batch execution workspace"
+          side={null}
+          status={activeBatch?.status ?? "PENDING"}
+          title={routeHeader.workspaceTitle}
+        >
+          <div className="master-data-workflow" aria-label="Batch execution steps">
+            {masterDataBatchDetailStages.map((stage) => (
+              <button
+                aria-pressed={activeBatchStage === stage.id}
+                className={
+                  activeBatchStage === stage.id
+                    ? "master-data-workflow-step master-data-workflow-step-active"
+                    : "master-data-workflow-step"
+                }
+                key={stage.id}
+                onClick={() => setActiveBatchStage(stage.id)}
+                type="button"
+              >
+                <span>{stage.status}</span>
+                <strong>{stage.title}</strong>
+              </button>
+            ))}
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          {activeBatchStage === "input" ? (
+            <OperationalPanel
+              ariaLabel="Batch input step"
+              emptyText="Loading batch input metadata from the backend."
+              hasItems={Boolean(activeBatch)}
+              isLoading={routeBatchDetail.isLoading}
+              loadingText="Loading batch..."
+              status={activeBatch?.status ?? "PENDING"}
+              title="Input"
+            >
+              <DetailList
+                ariaLabel="Batch input summary"
+                items={[
+                  {
+                    id: activeBatch?.batch_id ?? "batch",
+                    meta: [
+                      activeBatch?.template_code ?? "No template",
+                      activeBatch?.file_name ?? "Uploaded workbook",
+                      `${activeBatch?.sheet_count ?? activeBatch?.sheet_summaries?.length ?? 0} sheet(s)`,
+                      `${activeBatch?.row_count ?? 0} row(s)`
+                    ],
+                    status: activeBatch?.status,
+                    title: activeBatch?.batch_id ?? "Batch"
+                  }
+                ]}
+              />
+              <DetailList
+                ariaLabel="Batch sheet summary"
+                emptyText="No sheet summaries were returned for this batch."
+                items={(activeBatch?.sheet_summaries ?? activeBatch?.sheets ?? []).map((sheet) => ({
+                  id: sheet.sheet_code,
+                  meta: [
+                    "target_table" in sheet && typeof sheet.target_table === "string" ? sheet.target_table : "No target table",
+                    `${sheet.row_count} row(s)`
+                  ],
+                  status: "INPUT",
+                  title: sheet.sheet_code
+                }))}
+              />
+            </OperationalPanel>
+          ) : null}
+
+          {activeBatchStage === "validate" ? (
+            <OperationalPanel
+              ariaLabel="Batch validation step"
+              emptyText="No batch is loaded for validation."
+              hasItems={Boolean(activeBatch)}
+              status={relationshipValidation?.valid ? "VALID" : relationshipValidation?.status ?? activeBatch?.status ?? "PENDING"}
+              title="Validate"
+            >
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={isMutating || masterDataActionDisabled(activeBatch, "validate_relationships", !activeBatch)}
+                  onClick={handleValidateRelationships}
+                  title={masterDataActionReason(activeBatch, "validate_relationships")}
+                  variant="primary"
+                >
+                  Validate relationships
+                </Button>
+              </div>
+              {relationshipValidation ? (
+                <>
+                  <DetailList
+                    ariaLabel="Relationship validation summary"
+                    items={[
+                      {
+                        id: "relationship-validation",
+                        meta: summaryMeta(relationshipValidation.summary),
+                        status: relationshipValidation.valid ? "VALID" : relationshipValidation.status,
+                        title: relationshipValidation.valid ? "VALID" : relationshipValidation.status
+                      }
+                    ]}
+                  />
+                  <BlockerPanel
+                    emptyText="Relationship validation has no blockers."
+                    items={relationshipValidation.issues.map((issue) => ({
+                      codes: [issue.code],
+                      id: `${issue.code}-${issue.row_number ?? "batch"}`,
+                      message: issue.message
+                    }))}
+                    title="Relationship validation issues"
+                  />
+                </>
+              ) : null}
+            </OperationalPanel>
+          ) : null}
+
+          {activeBatchStage === "output" ? (
+            <OperationalPanel
+              ariaLabel="Batch output step"
+              emptyText="No batch is loaded for mapping and output."
+              hasItems={Boolean(activeBatch)}
+              status={outputResult?.status ?? mappingResult?.status ?? activeBatch?.status ?? "PENDING"}
+              title="Output"
+            >
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={isMutating || masterDataActionDisabled(activeBatch, "map_records", !activeBatch)}
+                  onClick={handleMapBatch}
+                  title={masterDataActionReason(activeBatch, "map_records")}
+                  variant="primary"
+                >
+                  Map records
+                </Button>
+                <Button
+                  disabled={isMutating || masterDataActionDisabled(activeBatch, "build_output", !activeBatch)}
+                  onClick={handleBuildOutput}
+                  title={masterDataActionReason(activeBatch, "build_output")}
+                  variant="secondary"
+                >
+                  Build output
+                </Button>
+              </div>
+              <DetailList
+                ariaLabel="Batch output result summary"
+                emptyText="Map records or build output to see persisted results."
+                items={[
+                  mappingResult
+                    ? {
+                        id: "mapping-result",
+                        meta: summaryMeta(mappingResult.summary),
+                        status: mappingResult.status,
+                        title: mappingResult.status
+                      }
+                    : null,
+                  outputResult
+                    ? {
+                        id: "output-result",
+                        meta: summaryMeta(outputResult.summary),
+                        status: outputResult.status,
+                        title: outputResult.status
+                      }
+                    : null
+                ].filter((item): item is { id: string; meta: string[]; status: string; title: string } => Boolean(item))}
+              />
+              <DetailList
+                ariaLabel="Master Data output record preview"
+                emptyText="Build output before previewing backend-owned OTM records."
+                items={(outputRecords.data?.items ?? []).slice(0, 5).map((record) => ({
+                  id: record.id,
+                  meta: [`#${record.record_index}`, Object.keys(record.payload).join(", "), JSON.stringify(record.payload).slice(0, 160)],
+                  status: "OUTPUT",
+                  title: record.target_table
+                }))}
+              />
+            </OperationalPanel>
+          ) : null}
+
+          {activeBatchStage === "csv-package" ? (
+            <OperationalPanel
+              ariaLabel="Batch CSV package step"
+              emptyText="No batch is loaded for CSV packaging."
+              hasItems={Boolean(activeBatch)}
+              status={exportResult?.status ?? csvResult?.status ?? activeBatch?.status ?? "PENDING"}
+              title="CSV Package"
+            >
+              <div className="master-data-action-bar master-data-output-actions">
+                <Button
+                  disabled={isMutating || masterDataActionDisabled(activeBatch, "build_csv", !activeBatch)}
+                  onClick={handleBuildCsv}
+                  title={masterDataActionReason(activeBatch, "build_csv")}
+                  variant="primary"
+                >
+                  Build CSV
+                </Button>
+                <Button
+                  disabled={isMutating || masterDataActionDisabled(activeBatch, "export_csv_package", !activeBatch)}
+                  onClick={handleExportCsvPackage}
+                  title={masterDataActionReason(activeBatch, "export_csv_package")}
+                  variant="secondary"
+                >
+                  Export package
+                </Button>
+              </div>
+              <DetailList
+                ariaLabel="Master Data CSV file preview"
+                emptyText="Build CSV before previewing generated OTM CSV files."
+                items={(csvFiles.data?.items ?? []).map((file) => ({
+                  id: file.id,
+                  meta: [`${file.row_count} row(s)`, `${file.line_count} line(s)`, file.content_preview],
+                  status: "CSV",
+                  title: file.file_name
+                }))}
+              />
+              {exportResult ? (
+                <DetailList
+                  ariaLabel="Export package summary"
+                  items={[
+                    {
+                      id: exportResult.artifact_id ?? "export-result",
+                      meta: [
+                        exportResult.artifact_id ?? "No artifact",
+                        exportResult.manifest_id ?? "No manifest",
+                        exportResult.file_name ?? "No file name"
+                      ],
+                      status: exportResult.status,
+                      title: exportResult.status
+                    }
+                  ]}
+                />
+              ) : null}
+              <section aria-label="Master Data export artifacts" className="master-data-generated-artifacts">
+                <h3>Export artifacts</h3>
+                {batchArtifacts.isLoading && activeBatch ? <p className="empty-text">Loading export artifacts...</p> : null}
+                <ArtifactList
+                  items={(batchArtifacts.data?.items ?? []).map((artifact) => ({
+                    action: artifact.download_url ? (
+                      <Button disabled={downloadingArtifactId === artifact.id} onClick={() => void handleDownloadArtifact(artifact)}>
+                        {downloadingArtifactId === artifact.id ? "Downloading..." : "Download"}
+                      </Button>
+                    ) : undefined,
+                    id: artifact.id,
+                    meta: [artifact.content_type, `${artifact.size_bytes} bytes`, artifact.sha256],
+                    status: artifact.availability_status ?? artifact.sensitivity_level,
+                    subtitle: artifact.artifact_type,
+                    title: artifact.file_name
+                  }))}
+                />
+              </section>
+            </OperationalPanel>
+          ) : null}
+
+          {activeBatchStage === "load-plan" ? (
+            <OperationalPanel
+              ariaLabel="Batch Load Plan step"
+              emptyText="No batch is loaded for Load Plan registration."
+              hasItems={Boolean(activeBatch)}
+              status={loadPlanPackage?.status ?? activeBatch?.status ?? "PENDING"}
+              title="Load Plan"
+            >
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={
+                    isMutating ||
+                    masterDataActionDisabled(activeBatch, "register_load_plan_package", !canRegisterLoadPlanPackage)
+                  }
+                  onClick={handleRegisterLoadPlanPackage}
+                  title={masterDataActionReason(activeBatch, "register_load_plan_package")}
+                  variant="primary"
+                >
+                  Register in Load Plan
+                </Button>
+                <Button disabled={!activeBatch || isMutating} onClick={handleVerifyOtmImportGuard} variant="secondary">
+                  Verify OTM import guard
+                </Button>
+              </div>
+              {loadPlanPackage ? (
+                <DetailList
+                  ariaLabel="Load Plan package registration"
+                  items={[
+                    {
+                      id: loadPlanPackage.id,
+                      meta: [
+                        loadPlanPackage.package_type,
+                        loadPlanPackage.summary.catalog_macro_object_code ?? "No macro object",
+                        `${loadPlanPackage.load_sequence.length} load step(s)`,
+                        loadPlanPackage.evidence_id ?? "No evidence"
+                      ],
+                      status: loadPlanPackage.status,
+                      title: loadPlanPackage.id
+                    }
+                  ]}
+                />
+              ) : null}
+              {otmImportReadiness ? (
+                <>
+                  <DetailList
+                    ariaLabel="Master Data OTM import guard"
+                    items={[
+                      {
+                        id: otmImportReadiness.batch_id,
+                        meta: [
+                          otmImportReadiness.required_capability,
+                          otmImportReadiness.recommended_transport,
+                          otmImportReadiness.artifact?.file_name ?? "No exported artifact",
+                          `${otmImportReadiness.blockers.length} blocker(s)`
+                        ],
+                        status: otmImportReadiness.status,
+                        title: "Direct OTM import guard"
+                      }
+                    ]}
+                  />
+                  <BlockerPanel
+                    emptyText="No direct OTM import blockers returned by the backend."
+                    items={otmImportReadiness.blockers.map((blocker) => ({
+                      codes: [blocker.code],
+                      id: blocker.code,
+                      message: blocker.message
+                    }))}
+                    title="Master Data OTM import blockers"
+                  />
+                </>
+              ) : null}
+              <div className="master-data-action-bar">
+                <Button disabled={!activeBatch || isMutating} onClick={handleAttemptGuardedOtmImport} variant="secondary">
+                  Attempt guarded OTM import
+                </Button>
+                <Button disabled={!loadPlanPackage || isMutating} onClick={handleCreateCutoverChecklist} variant="secondary">
+                  Create cutover checklist
+                </Button>
+              </div>
+              {cutoverChecklist ? (
+                <DetailList
+                  ariaLabel="Cutover checklist handoff"
+                  items={[
+                    {
+                      id: cutoverChecklist.id,
+                      meta: [
+                        cutoverChecklist.template_code ?? "No template",
+                        cutoverChecklist.package_type,
+                        `${cutoverChecklist.items.length} item(s)`,
+                        cutoverChecklist.evidence_id ?? "No evidence"
+                      ],
+                      status: cutoverChecklist.status,
+                      title: cutoverChecklist.id
+                    }
+                  ]}
+                />
+              ) : null}
+              <div className="master-data-action-bar">
+                <Button
+                  disabled={!cutoverChecklist || isMutating}
+                  onClick={handleGenerateCutoverChecklistReadiness}
+                  variant="secondary"
+                >
+                  Generate checklist readiness
+                </Button>
+              </div>
+              {cutoverChecklistReadiness ? (
+                <>
+                  <DetailList
+                    ariaLabel="Cutover checklist readiness handoff"
+                    items={[
+                      {
+                        id: cutoverChecklistReadiness.checklist_id,
+                        meta: [
+                          `${cutoverChecklistReadiness.summary.item_count} item(s)`,
+                          `${cutoverChecklistReadiness.summary.blocker_count} blocker(s)`,
+                          cutoverChecklistReadiness.evidence_id ?? "No evidence"
+                        ],
+                        status: cutoverChecklistReadiness.status,
+                        title: cutoverChecklistReadiness.summary.ready ? "READY" : "REVIEW"
+                      }
+                    ]}
+                  />
+                  <BlockerPanel
+                    emptyText="No readiness blockers returned by the backend."
+                    items={cutoverChecklistReadiness.blockers.map((blocker, index) => ({
+                      codes: [blocker.code, blocker.item_code ?? blocker.table_name ?? ""].filter(Boolean),
+                      id: `${blocker.code}-${index}`,
+                      message: blocker.message
+                    }))}
+                    title="Cutover checklist readiness blockers"
+                  />
+                </>
+              ) : null}
+            </OperationalPanel>
+          ) : null}
+        </ModuleWorkspaceLayout>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -1318,20 +2597,22 @@ export function MasterDataView({ token }: { token: string }) {
         </section>
       ) : null}
 
-      <MetricGrid
-        ariaLabel="Data Factory metrics"
-        items={[
-          { key: "templates", label: "Templates", status: booleanStatus(templates.data.total), value: templates.data.total },
-          { key: "tables", label: "Target tables", status: booleanStatus(targetTableCount), value: targetTableCount },
-          { key: "sheets", label: "Sheets", status: booleanStatus(sheetCount), value: sheetCount },
-          { key: "fields", label: "Fields", status: booleanStatus(fieldCount), value: fieldCount }
-        ]}
-      />
+      {!isBuilderCreateRoute ? (
+        <MetricGrid
+          ariaLabel="Data Factory metrics"
+          items={[
+            { key: "templates", label: "Templates", status: booleanStatus(templates.data.total), value: templates.data.total },
+            { key: "tables", label: "Target tables", status: booleanStatus(targetTableCount), value: targetTableCount },
+            { key: "sheets", label: "Sheets", status: booleanStatus(sheetCount), value: sheetCount },
+            { key: "fields", label: "Fields", status: booleanStatus(fieldCount), value: fieldCount }
+          ]}
+        />
+      ) : null}
 
       <ModuleWorkspaceLayout
-        ariaLabel="Data Factory workspace"
+        ariaLabel={isBuilderCreateRoute ? "Template Builder new template workspace" : "Data Factory workspace"}
         side={
-          isFactoryTemplateDetail ? null :
+          isFactoryTemplateDetail || isBuilderCreateRoute ? null :
           <SelectedObjectPanel
             ariaLabel="Selected Master Data template"
             emptyText="Select a template to inspect backend-owned metadata."
@@ -1389,61 +2670,65 @@ export function MasterDataView({ token }: { token: string }) {
         status={templateItems.length ? "ACTIVE" : "EMPTY"}
         title={routeHeader.workspaceTitle}
       >
-        <div className="master-data-workflow" aria-label="Data Factory workflow">
-          {visibleMasterDataWorkflowStages.map((stage) => (
-            <button
-              aria-pressed={activeStage === stage.id}
-              className={
-                activeStage === stage.id
-                  ? "master-data-workflow-step master-data-workflow-step-active"
-                  : "master-data-workflow-step"
-              }
-              key={stage.id}
-              onClick={() => setActiveMasterDataStage(stage.id)}
-              type="button"
-            >
-              <span>{stage.status}</span>
-              <strong>{stage.title}</strong>
-            </button>
-          ))}
-        </div>
+        {!isBuilderCreateRoute ? (
+          <div className="master-data-workflow" aria-label="Data Factory workflow">
+            {visibleMasterDataWorkflowStages.map((stage) => (
+              <button
+                aria-pressed={activeStage === stage.id}
+                className={
+                  activeStage === stage.id
+                    ? "master-data-workflow-step master-data-workflow-step-active"
+                    : "master-data-workflow-step"
+                }
+                key={stage.id}
+                onClick={() => setActiveMasterDataStage(stage.id)}
+                type="button"
+              >
+                <span>{stage.status}</span>
+                <strong>{stage.title}</strong>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-        <NextActionPanel
-          action={
-            selectedMasterDataNextAction
-              ? {
-                  description: selectedMasterDataNextAction.action.disabled
-                    ? selectedMasterDataNextAction.action.disabled_reason ?? "Blocked by backend rule."
-                    : selectedMasterDataNextAction.action.recommended
-                      ? "Backend marks this as the recommended next action for the selected object."
-                      : "Backend marks this action as available for the selected object.",
-                  disabled: selectedMasterDataNextAction.action.disabled,
-                  disabledReason: selectedMasterDataNextAction.action.disabled_reason,
-                  label: selectedMasterDataNextAction.action.label,
-                  status: selectedMasterDataNextAction.action.disabled
-                    ? "BLOCKED"
-                    : selectedMasterDataNextAction.action.recommended
-                      ? "NEXT"
-                      : "AVAILABLE"
-                }
-              : {
-                  description: "Choose a backend template before running the module workflow.",
-                  disabled: true,
-                  label: "Select template",
-                  status: "BLOCKED"
-                }
-          }
-          ariaLabel="Data Factory next action"
-          context={[
-            selectedMasterDataNextAction?.scope ?? "Template",
-            selectedTemplate?.catalog_macro_object_code ?? "No macro object",
-            activeBatch?.batch_id ? `Batch ${activeBatch.batch_id}` : "No active batch"
-          ]}
-          objectLabel="Template"
-          objectValue={selectedTemplate?.code ?? effectiveTemplateCode}
-          stageLabel={activeMasterDataStageTitle}
-          title="Next action"
-        />
+        {!isBuilderCreateRoute ? (
+          <NextActionPanel
+            action={
+              selectedMasterDataNextAction
+                ? {
+                    description: selectedMasterDataNextAction.action.disabled
+                      ? selectedMasterDataNextAction.action.disabled_reason ?? "Blocked by backend rule."
+                      : selectedMasterDataNextAction.action.recommended
+                        ? "Backend marks this as the recommended next action for the selected object."
+                        : "Backend marks this action as available for the selected object.",
+                    disabled: selectedMasterDataNextAction.action.disabled,
+                    disabledReason: selectedMasterDataNextAction.action.disabled_reason,
+                    label: selectedMasterDataNextAction.action.label,
+                    status: selectedMasterDataNextAction.action.disabled
+                      ? "BLOCKED"
+                      : selectedMasterDataNextAction.action.recommended
+                        ? "NEXT"
+                        : "AVAILABLE"
+                  }
+                : {
+                    description: "Choose a backend template before running the module workflow.",
+                    disabled: true,
+                    label: "Select template",
+                    status: "BLOCKED"
+                  }
+            }
+            ariaLabel="Data Factory next action"
+            context={[
+              selectedMasterDataNextAction?.scope ?? "Template",
+              selectedTemplate?.catalog_macro_object_code ?? "No macro object",
+              activeBatch?.batch_id ? `Batch ${activeBatch.batch_id}` : "No active batch"
+            ]}
+            objectLabel="Template"
+            objectValue={selectedTemplate?.code ?? effectiveTemplateCode}
+            stageLabel={activeMasterDataStageTitle}
+            title="Next action"
+          />
+        ) : null}
 
         {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
         {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}

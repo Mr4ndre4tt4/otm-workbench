@@ -22,6 +22,9 @@ def create_rate_batch(client, admin_header, scenario_code="ACCESSORIAL_ONLY"):
             "scenario_code": scenario_code,
             "name": "Synthetic readiness export batch",
             "domain_name": "OTM1",
+            "project_id": "project_readiness_export",
+            "profile_id": "profile_readiness_export",
+            "environment_id": "env_readiness_export",
         },
         headers=admin_header,
     )
@@ -126,12 +129,27 @@ def test_readiness_export_creates_zip_artifact_manifest_evidence_audit_event(
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert artifact.artifact_type == "load_plan_readiness_export_zip"
+    assert artifact.project_id == "project_readiness_export"
+    assert artifact.profile_id == "profile_readiness_export"
+    assert artifact.environment_id == "env_readiness_export"
+    assert artifact.domain_name == "OTM1"
+    assert artifact.visibility == "PROJECT"
     assert artifact.content_type == "application/zip"
     assert artifact.sensitivity_level == "internal"
     assert Path(artifact.file_path).exists()
     assert manifest.source_module == "load_plan"
+    assert manifest.project_id == "project_readiness_export"
+    assert manifest.profile_id == "profile_readiness_export"
+    assert manifest.environment_id == "env_readiness_export"
+    assert manifest.domain_name == "OTM1"
+    assert manifest.visibility == "PROJECT"
     assert evidence.evidence_type == "load_plan_readiness_export"
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_readiness_export"
+    assert evidence.profile_id == "profile_readiness_export"
+    assert evidence.environment_id == "env_readiness_export"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
     evidence_summary = json.loads(evidence.summary_json)
     audit_metadata = json.loads(audit.metadata_json)
     event_payload = json.loads(event.payload_json)
@@ -141,7 +159,13 @@ def test_readiness_export_creates_zip_artifact_manifest_evidence_audit_event(
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"
     )
     assert audit_metadata["catalog_macro_object_code"] == "RATE_RECORD"
+    assert audit_metadata["project_id"] == "project_readiness_export"
+    assert audit_metadata["environment_id"] == "env_readiness_export"
+    assert audit_metadata["domain_name"] == "OTM1"
     assert event_payload["catalog_macro_object_code"] == "RATE_RECORD"
+    assert event_payload["project_id"] == "project_readiness_export"
+    assert event_payload["environment_id"] == "env_readiness_export"
+    assert event_payload["domain_name"] == "OTM1"
     assert (
         event_payload["catalog_load_plan_path"]
         == "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan"

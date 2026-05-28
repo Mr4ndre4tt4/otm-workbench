@@ -1,0 +1,79 @@
+{
+  "fixture_pack": "otm-workbench-synthetic-baseline",
+  "status": "active",
+  "created_for": "context-segregation-fixture-strategy",
+  "scope": {
+    "project": "SYNTHETIC_PROJECT",
+    "environment": "UAT",
+    "domain_name": "OTM1",
+    "visibility": "PRIVATE"
+  },
+  "files": [
+    {
+      "path": "rates/rate_geo_cost.csv",
+      "module": "rates",
+      "type": "otm_csv",
+      "purpose": "Rates CSV shape with date session line"
+    },
+    {
+      "path": "integration/planned_shipment.xml",
+      "module": "integration",
+      "type": "xml",
+      "purpose": "Synthetic source payload for mapping"
+    },
+    {
+      "path": "integration/delivery_payload.json",
+      "module": "integration",
+      "type": "json",
+      "purpose": "Synthetic target payload for mapping"
+    },
+    {
+      "path": "integration/shipment_to_delivery.xslt",
+      "module": "integration",
+      "type": "xslt",
+      "purpose": "Minimal valid transform fixture"
+    },
+    {
+      "path": "order-release/order_release_batch.json",
+      "module": "order_release",
+      "type": "json",
+      "purpose": "Synthetic rows for order release generation"
+    },
+    {
+      "path": "load-plan/cutover_handoff.md",
+      "module": "load_plan",
+      "type": "md",
+      "purpose": "Synthetic handoff note"
+    },
+    {
+      "path": "assets/client_safe_note.md",
+      "module": "assets",
+      "type": "md",
+      "purpose": "Client-safe asset document"
+    },
+    {
+      "path": "master-data/location_upload.xlsx",
+      "module": "master_data",
+      "type": "xlsx",
+      "purpose": "Workbook upload baseline"
+    },
+    {
+      "path": "assets/client_safe_asset.docx",
+      "module": "assets",
+      "type": "docx",
+      "purpose": "Client-safe document asset"
+    },
+    {
+      "path": "load-plan/cutover_handoff.pdf",
+      "module": "load_plan",
+      "type": "pdf",
+      "purpose": "Cutover handoff packet baseline"
+    },
+    {
+      "path": "load-plan/csvutil_package.zip",
+      "module": "load_plan",
+      "type": "zip",
+      "purpose": "Synthetic CSVUTIL package with manifest and OTM CSV"
+    }
+  ]
+}

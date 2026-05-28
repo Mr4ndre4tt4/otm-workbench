@@ -63,6 +63,12 @@ def catalog_context_for_readiness(readiness: LoadPlanCutoverReadiness) -> dict[s
     }
 
 
+def domain_name_for_readiness(readiness: LoadPlanCutoverReadiness) -> str | None:
+    summary = parse_json_object(readiness.summary_json)
+    domain_name = summary.get("domain_name")
+    return str(domain_name).strip().upper() if domain_name else None
+
+
 def generate_readiness_export(
     db: Session,
     *,
@@ -119,6 +125,10 @@ def generate_readiness_export(
     zip_hash, zip_size = file_sha256(zip_path)
     artifact = Artifact(
         project_id=readiness.project_id,
+        profile_id=readiness.profile_id,
+        environment_id=readiness.environment_id,
+        domain_name=domain_name_for_readiness(readiness),
+        visibility="PROJECT",
         source_module="load_plan",
         artifact_type="load_plan_readiness_export_zip",
         file_path=str(zip_path),
@@ -133,6 +143,10 @@ def generate_readiness_export(
 
     manifest = Manifest(
         project_id=readiness.project_id,
+        profile_id=readiness.profile_id,
+        environment_id=readiness.environment_id,
+        domain_name=domain_name_for_readiness(readiness),
+        visibility="PROJECT",
         source_module="load_plan",
         status="CREATED",
         manifest_json=manifest_content.decode("utf-8"),
@@ -152,6 +166,10 @@ def generate_readiness_export(
     }
     evidence = Evidence(
         project_id=readiness.project_id,
+        profile_id=readiness.profile_id,
+        environment_id=readiness.environment_id,
+        domain_name=domain_name_for_readiness(readiness),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_readiness_export",
         summary_json=json.dumps(evidence_summary, sort_keys=True),
@@ -193,6 +211,10 @@ def generate_readiness_export(
                 {
                     "readiness_id": readiness.id,
                     "package_id": readiness.package_id,
+                    "project_id": readiness.project_id,
+                    "profile_id": readiness.profile_id,
+                    "environment_id": readiness.environment_id,
+                    "domain_name": domain_name_for_readiness(readiness),
                     "artifact_id": artifact.id,
                     "manifest_id": manifest.id,
                     "evidence_id": evidence.id,
@@ -215,6 +237,10 @@ def generate_readiness_export(
                 {
                     "readiness_id": readiness.id,
                     "package_id": readiness.package_id,
+                    "project_id": readiness.project_id,
+                    "profile_id": readiness.profile_id,
+                    "environment_id": readiness.environment_id,
+                    "domain_name": domain_name_for_readiness(readiness),
                     "status": EXPORTED_STATUS,
                     "readiness_status": readiness.status,
                     **catalog_context,

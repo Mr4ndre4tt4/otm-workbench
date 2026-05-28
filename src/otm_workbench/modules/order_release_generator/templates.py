@@ -113,6 +113,7 @@ def seed_order_release_templates(db: Session) -> None:
         return
     db.add(
         OrderReleaseTemplate(
+            domain_name="PUBLIC",
             code=str(SYNTHETIC_TL_TEMPLATE["code"]),
             name=str(SYNTHETIC_TL_TEMPLATE["name"]),
             version=int(SYNTHETIC_TL_TEMPLATE["version"]),
@@ -140,6 +141,7 @@ def create_order_release_template(
     created_by: str,
     transmission_schema_root_id: str | None = None,
     release_schema_root_id: str | None = None,
+    scope: dict[str, object] | None = None,
 ) -> tuple[OrderReleaseTemplate | None, list[dict[str, object]]]:
     normalized_code = code.strip().upper()
     normalized_name = name.strip()
@@ -165,6 +167,10 @@ def create_order_release_template(
     require_schema_root(db, schema_root_id=normalized_release_schema_root_id, field="release_schema_root_id")
 
     template = OrderReleaseTemplate(
+        project_id=str(scope.get("project_id") or "").strip() or None if scope else None,
+        environment_id=str(scope.get("environment_id") or "").strip() or None if scope else None,
+        profile_id=str(scope.get("profile_id") or "").strip() or None if scope else None,
+        domain_name=str(scope.get("domain_name") or "").strip().upper() or None if scope else None,
         code=normalized_code,
         name=normalized_name,
         version=1,
@@ -229,6 +235,10 @@ def create_order_release_template_version(
     )
     next_version = int(latest_version[0] if latest_version else source_template.version) + 1
     template = OrderReleaseTemplate(
+        project_id=source_template.project_id,
+        environment_id=source_template.environment_id,
+        profile_id=source_template.profile_id,
+        domain_name=source_template.domain_name,
         code=source_template.code,
         name=normalized_name,
         version=next_version,
@@ -269,6 +279,10 @@ def parse_json_object(value: str) -> dict[str, object]:
 def serialize_order_release_template(template: OrderReleaseTemplate) -> dict[str, object]:
     return {
         "id": template.id,
+        "project_id": template.project_id,
+        "environment_id": template.environment_id,
+        "profile_id": template.profile_id,
+        "domain_name": template.domain_name,
         "code": template.code,
         "name": template.name,
         "version": template.version,

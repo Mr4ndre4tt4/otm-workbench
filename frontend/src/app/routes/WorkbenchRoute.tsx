@@ -1,13 +1,19 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { ComponentGalleryRoute } from "./ComponentGalleryRoute";
 import { MODULE_DESCRIPTIONS } from "./moduleDescriptions";
 import { isNavigationItemActive } from "./routeUtils";
-import { ContextSummary, ContextSwitcher, PageHeader, ReadinessPanel } from "../shell";
+import { ContextSummary, ContextSwitcher, PageHeader } from "../shell";
 import {
   AssetsLibraryView,
   AdminConsoleView,
   CatalogCoreView,
+  DeveloperToolsDataDictionaryTableView,
+  DeveloperToolsDataDictionaryView,
+  DeveloperToolsEnvironmentReadinessView,
+  DeveloperToolsFkCatalogView,
+  DeveloperToolsSchemaPacksView,
+  DeveloperToolsView,
   EvidenceHubView,
   IntegrationMappingView,
   LoadPlanView,
@@ -19,13 +25,15 @@ import { booleanStatus } from "../../modules/moduleStatus";
 import { useCockpitSummary } from "../../platform/hooks";
 import type { NavigationItem } from "../../platform/types";
 import {
-  ActivityRow,
-  MetricGrid,
   ModuleWorkspaceLayout,
   ModuleWorkspaceSide,
-  OperationalPanel,
   StatePanel
 } from "../../ui/components";
+import { renderIcon } from "../../ui/icons";
+
+function contextModeLabel(mode: string) {
+  return mode === "PUBLIC" ? "Public View" : "Private scope";
+}
 
 function CockpitContent({ token }: { token: string }) {
   const cockpit = useCockpitSummary(token);
@@ -39,6 +47,47 @@ function CockpitContent({ token }: { token: string }) {
   }
 
   const data = cockpit.data;
+  const contextSelector = data.context_selector ?? {
+    active_context: data.active_context ?? {},
+    mode: data.active_context?.project_id ? "PRIVATE" : "PUBLIC",
+    public_view_available: true,
+    requires_private_context: false,
+    set_context_action_key: "set_active_context"
+  };
+  const projectInfo = data.project_info ?? {
+    contacts: [],
+    documents: [],
+    links: [],
+    secure_vault: {
+      metadata_only: true,
+      secret_values_available: false,
+      status: "NOT_CONFIGURED"
+    },
+    status: data.setup_status?.active_context_selected ? "AVAILABLE" : "NEEDS_CONTEXT",
+    title: "Project information"
+  };
+  const userScope = data.user_scope ?? {
+    allowed_domains: Array.isArray(data.active_context?.allowed_domains) ? data.active_context.allowed_domains : ["PUBLIC"],
+    can_view_all_domains: Boolean(data.active_context?.can_view_all_domains),
+    is_dba: false,
+    role_mode: "SCOPED"
+  };
+  const accelerators = data.accelerators ?? data.module_summary.items.map((module) => ({
+    description: module.description ?? module.path,
+    disabled: false,
+    disabled_reason: null,
+    href: module.path,
+    icon_key: module.id,
+    key: module.id,
+    label: module.label,
+    requires_private_context: module.id !== "home",
+    status: module.status
+  }));
+  const routeRecovery = data.route_recovery ?? {
+    blocked_route_message: "Return to Project Cockpit and select an available context or accelerator.",
+    default_path: "/home",
+    return_action_key: "return_to_cockpit"
+  };
 
   return (
     <>
@@ -50,69 +99,74 @@ function CockpitContent({ token }: { token: string }) {
       />
 
       <ContextSummary context={data.active_context} />
-      <ContextSwitcher token={token} />
 
-      <ReadinessPanel setupStatus={data.setup_status} status={data.status} />
+      <section className="cockpit-deep-flow" aria-label="Project Cockpit workspace">
+        <div className="panel cockpit-context-panel">
+          <div className="panel-header">
+            <h2>Context Selector</h2>
+            <span className="status-chip">{contextModeLabel(contextSelector.mode)}</span>
+          </div>
+          <p className="empty-text">
+            {contextSelector.mode === "PUBLIC"
+              ? "Public scope is active. Private client/domain accelerators stay blocked until a private context is selected."
+              : "Private client/domain and environment scope is active for module work."}
+          </p>
+          <ContextSwitcher activeContext={contextSelector.active_context} token={token} />
+        </div>
 
-      <MetricGrid
-        ariaLabel="Project activity"
-        items={[
-          {
-            key: "visible_modules",
-            label: "Visible modules",
-            status: booleanStatus(data.module_summary.total),
-            value: data.module_summary.total
-          },
-          {
-            key: "recent_jobs",
-            label: "Recent jobs",
-            status: booleanStatus(data.counts.recent_jobs),
-            value: data.counts.recent_jobs
-          },
-          {
-            key: "recent_artifacts",
-            label: "Artifacts",
-            status: booleanStatus(data.counts.recent_artifacts),
-            value: data.counts.recent_artifacts
-          },
-          {
-            key: "recent_evidence",
-            label: "Evidence",
-            status: booleanStatus(data.counts.recent_evidence),
-            value: data.counts.recent_evidence
-          }
-        ]}
-      />
+        <div className="panel cockpit-project-info-panel">
+          <div className="panel-header">
+            <h2>{projectInfo.title}</h2>
+            <span className="status-chip">{projectInfo.status}</span>
+          </div>
+          <div className="cockpit-info-grid">
+            <span className="detail-field">
+              <span>Vault</span>
+              <strong>{projectInfo.secure_vault.status}</strong>
+            </span>
+            <span className="detail-field">
+              <span>Secrets</span>
+              <strong>{projectInfo.secure_vault.secret_values_available ? "Available" : "Metadata only"}</strong>
+            </span>
+            <span className="detail-field">
+              <span>Access</span>
+              <strong>{userScope.role_mode}</strong>
+            </span>
+            <span className="detail-field">
+              <span>Domains</span>
+              <strong>{userScope.allowed_domains.join(", ")}</strong>
+            </span>
+          </div>
+          <p className="empty-text">Project links, documents, contacts, and secure-vault metadata are owned by Settings.</p>
+        </div>
 
-      <section className="activity-layout">
-        <OperationalPanel
-          ariaLabel="Recent jobs"
-          emptyText="No recent jobs for the active project."
-          hasItems={data.recent_jobs.length > 0}
-          status={data.counts.recent_jobs ? "ACTIVE" : "EMPTY"}
-          title="Recent jobs"
-        >
-          {data.recent_jobs.map((job) => (
-            <ActivityRow key={job.id} status={job.status} subtitle={job.source_module} title={job.job_type} />
-          ))}
-        </OperationalPanel>
-
-        <OperationalPanel
-          ariaLabel="Recent evidence"
-          emptyText="No client-safe evidence for the active project."
-          hasItems={data.recent_evidence.length > 0}
-          status={data.counts.recent_evidence ? "ACTIVE" : "EMPTY"}
-          title="Recent evidence"
-        >
-          {data.recent_evidence.map((evidence) => (
-            <ActivityRow
-              key={evidence.id}
-              status={evidence.status}
-              subtitle={evidence.source_module}
-              title={evidence.evidence_type}
-            />
-          ))}
-        </OperationalPanel>
+        <div className="panel cockpit-accelerators-panel">
+          <div className="panel-header">
+            <h2>Accelerators</h2>
+            <span className="status-chip">{booleanStatus(accelerators.length)}</span>
+          </div>
+          <div className="cockpit-accelerator-grid">
+            {accelerators.map((accelerator) =>
+              accelerator.disabled ? (
+                <div className="cockpit-accelerator cockpit-accelerator-disabled" key={accelerator.key}>
+                  <span className="cockpit-accelerator-icon">{renderIcon(accelerator.icon_key)}</span>
+                  <strong>
+                    {accelerator.label}
+                    {accelerator.disabled_reason ? ` / ${accelerator.disabled_reason}` : ""}
+                  </strong>
+                  <span>{accelerator.description}</span>
+                </div>
+              ) : (
+                <Link className="cockpit-accelerator" key={accelerator.key} to={accelerator.href}>
+                  <span className="cockpit-accelerator-icon">{renderIcon(accelerator.icon_key)}</span>
+                  <strong>{accelerator.label}</strong>
+                  <span>{accelerator.description}</span>
+                </Link>
+              )
+            )}
+          </div>
+          <p className="empty-text">{routeRecovery.blocked_route_message}</p>
+        </div>
       </section>
     </>
   );
@@ -155,7 +209,14 @@ function UnknownRoute() {
         label="Route not available"
         title="Module unavailable"
       />
-      <StatePanel tone="error">Use the backend-owned navigation menu to open an available module.</StatePanel>
+      <StatePanel tone="error">
+        Use the backend-owned navigation menu to open an available module.
+        <div className="state-actions">
+          <Link className="button button-primary" to="/home">
+            Return to Cockpit
+          </Link>
+        </div>
+      </StatePanel>
     </>
   );
 }
@@ -185,8 +246,29 @@ export function WorkbenchRoute({ items, token }: { items: NavigationItem[]; toke
   if (item?.id === "catalog") {
     return <CatalogCoreView token={token} />;
   }
+  if (item?.id === "settings") {
+    return <AdminConsoleView token={token} />;
+  }
   if (item?.id === "admin") {
     return <AdminConsoleView token={token} />;
+  }
+  if (item?.id === "dev_tools") {
+    if (currentPath.startsWith("/dev-tools/data-dictionary/tables/")) {
+      return <DeveloperToolsDataDictionaryTableView token={token} />;
+    }
+    if (currentPath === "/dev-tools/data-dictionary") {
+      return <DeveloperToolsDataDictionaryView token={token} />;
+    }
+    if (currentPath === "/dev-tools/fk-catalog") {
+      return <DeveloperToolsFkCatalogView token={token} />;
+    }
+    if (currentPath === "/dev-tools/schema-packs") {
+      return <DeveloperToolsSchemaPacksView token={token} />;
+    }
+    if (currentPath === "/dev-tools/environment-readiness") {
+      return <DeveloperToolsEnvironmentReadinessView token={token} />;
+    }
+    return <DeveloperToolsView item={item} token={token} />;
   }
   if (item?.id === "master_data") {
     return <MasterDataView token={token} />;

@@ -169,6 +169,12 @@ def catalog_context_for_package(package: LoadPlanPackage) -> dict[str, object]:
     }
 
 
+def domain_name_for_package(package: LoadPlanPackage) -> str | None:
+    summary = parse_json_object(package.summary_json)
+    domain_name = summary.get("domain_name")
+    return str(domain_name).strip().upper() if domain_name else None
+
+
 def create_artifact(
     db: Session,
     *,
@@ -179,6 +185,10 @@ def create_artifact(
     digest, size = file_sha256(path)
     artifact = Artifact(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         artifact_type=artifact_type,
         file_path=str(path),
@@ -264,6 +274,10 @@ def generate_csvutil_build_with_sequence(
         manifest_payload["checklist_id"] = checklist_id
     manifest = Manifest(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         status="CREATED",
         manifest_json=json.dumps(manifest_payload, indent=2, sort_keys=True),
@@ -327,6 +341,10 @@ def generate_csvutil_build_with_sequence(
         evidence_summary["checklist_id"] = checklist_id
     evidence = Evidence(
         project_id=package.project_id,
+        profile_id=package.profile_id,
+        environment_id=package.environment_id,
+        domain_name=domain_name_for_package(package),
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="csvutil_build",
         summary_json=json.dumps(evidence_summary, sort_keys=True),

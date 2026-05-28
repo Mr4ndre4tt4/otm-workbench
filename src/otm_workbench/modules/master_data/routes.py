@@ -10,6 +10,7 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_user
 from otm_workbench.models import (
+    ActiveContext,
     Artifact,
     AuditLog,
     Evidence,
@@ -48,6 +49,7 @@ from otm_workbench.modules.master_data.workbook_editor import (
     validate_master_data_workbook_rows,
 )
 from otm_workbench.platform.services import file_sha256
+from otm_workbench.platform.scoping import apply_operational_scope, operational_scope_from_context
 
 router = APIRouter(prefix="/api/v1/modules/master-data", tags=["master-data"])
 router.include_router(coordinate_quality_router)
@@ -227,6 +229,10 @@ def serialize_master_data_batch(db: Session, batch: MasterDataBatch) -> dict[str
     )
     return {
         "batch_id": batch.id,
+        "project_id": batch.project_id,
+        "environment_id": batch.environment_id,
+        "profile_id": batch.profile_id,
+        "domain_name": batch.domain_name,
         "template_code": batch.template_code,
         "status": batch.status,
         "file_name": batch.file_name,
@@ -314,8 +320,47 @@ def serialize_master_data_csv_file(csv_file: MasterDataCsvFile) -> dict[str, obj
     }
 
 
-def get_master_data_batch_or_404(db: Session, batch_id: str) -> MasterDataBatch:
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
+def active_context_for_user(db: Session, user: User) -> ActiveContext | None:
+    return db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+
+
+def active_context_scope_payload(db: Session, user: User) -> dict[str, object] | None:
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        return None
+    return {
+        "project_id": active_context.project_id,
+        "environment_id": active_context.environment_id,
+        "profile_id": active_context.profile_id,
+        "domain_name": active_context.domain_name,
+    }
+
+
+def require_master_data_batch_create_scope(db: Session, user: User) -> dict[str, object] | None:
+    scope = active_context_scope_payload(db, user)
+    if user.is_admin:
+        return scope
+    if scope is None or not scope.get("project_id") or not scope.get("environment_id"):
+        raise api_error(
+            403,
+            "ACTIVE_CONTEXT_REQUIRED",
+            "Master Data batch creation requires an active project and environment context.",
+        )
+    return scope
+
+
+def scoped_master_data_batch_query(db: Session, user: User):
+    query = db.query(MasterDataBatch)
+    active_context = active_context_for_user(db, user)
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(MasterDataBatch.id.is_(None))
+        return query
+    return apply_operational_scope(query, MasterDataBatch, operational_scope_from_context(active_context))
+
+
+def get_master_data_batch_or_404(db: Session, user: User, batch_id: str) -> MasterDataBatch:
+    batch = scoped_master_data_batch_query(db, user).filter(MasterDataBatch.id == batch_id).first()
     if batch is None:
         raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
     return batch
@@ -323,13 +368,14 @@ def get_master_data_batch_or_404(db: Session, batch_id: str) -> MasterDataBatch:
 
 def filtered_master_data_batch_query(
     db: Session,
+    user: User,
     *,
     template_code: str | None = None,
     status: str | None = None,
     file_name_contains: str | None = None,
     min_row_count: int | None = None,
 ):
-    query = db.query(MasterDataBatch)
+    query = scoped_master_data_batch_query(db, user)
     if template_code:
         query = query.filter(MasterDataBatch.template_code == template_code.upper())
     if status:
@@ -381,6 +427,53 @@ def master_data_submit_guard_error(batch_id: str, readiness: dict[str, object]):
     )
 
 
+MASTER_DATA_TEMPLATE_SEARCH_OPERATORS = ["begins_with", "contains", "one_of", "not_one_of"]
+
+
+def normalize_master_data_template_search_operator(operator: str) -> str:
+    normalized = operator.strip().lower().replace(" ", "_").replace("-", "_")
+    if normalized not in MASTER_DATA_TEMPLATE_SEARCH_OPERATORS:
+        return "contains"
+    return normalized
+
+
+def master_data_template_search_metadata() -> dict[str, object]:
+    return {
+        "fields": [
+            {"key": "template_code", "label": "Template code"},
+            {"key": "template_name", "label": "Template name"},
+            {"key": "macro_object", "label": "Macro object"},
+            {"key": "status", "label": "Status"},
+        ],
+        "operators": MASTER_DATA_TEMPLATE_SEARCH_OPERATORS,
+    }
+
+
+def master_data_template_search_value(template: MasterDataTemplate, field: str) -> str:
+    if field == "template_code":
+        return template.code
+    if field == "template_name":
+        return template.name
+    if field == "macro_object":
+        return template.catalog_macro_object_code
+    if field == "status":
+        return template.status
+    return ""
+
+
+def master_data_template_matches_filter(template: MasterDataTemplate, field: str, operator: str, value: str) -> bool:
+    candidate = master_data_template_search_value(template, field).lower()
+    normalized_value = value.lower()
+    values = [item.strip().lower() for item in normalized_value.split(",") if item.strip()]
+    if operator == "begins_with":
+        return candidate.startswith(normalized_value)
+    if operator == "one_of":
+        return candidate in values
+    if operator == "not_one_of":
+        return candidate not in values
+    return normalized_value in candidate
+
+
 @router.get("/health")
 def master_data_health(user: User = Depends(require_user)):
     return {"status": "ok", "module": "master_data", "catalog_macro_object_code": "REGION"}
@@ -388,13 +481,47 @@ def master_data_health(user: User = Depends(require_user)):
 
 @router.get("/templates")
 def list_master_data_templates(
+    template_code: str | None = None,
+    template_code_operator: str = "contains",
+    template_name: str | None = None,
+    template_name_operator: str = "contains",
+    macro_object: str | None = None,
+    macro_object_operator: str = "contains",
+    status: str | None = None,
+    status_operator: str = "contains",
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
     seed_master_data_templates(db)
     templates = db.query(MasterDataTemplate).order_by(MasterDataTemplate.code).all()
+    filters = [
+        ("template_code", template_code_operator, template_code),
+        ("template_name", template_name_operator, template_name),
+        ("status", status_operator, status),
+        ("macro_object", macro_object_operator, macro_object),
+    ]
+    normalized_filters = [
+        {"field": field, "operator": normalize_master_data_template_search_operator(operator), "value": value.strip()}
+        for field, operator, value in filters
+        if value and value.strip()
+    ]
+    for normalized_filter in normalized_filters:
+        templates = [
+            template
+            for template in templates
+            if master_data_template_matches_filter(
+                template,
+                normalized_filter["field"],
+                normalized_filter["operator"],
+                normalized_filter["value"],
+            )
+        ]
     items = [serialize_master_data_template(template) for template in templates]
-    return PageResponse(items=items, total=len(items))
+    return {
+        **PageResponse(items=items, total=len(items)).model_dump(),
+        "normalized_filters": normalized_filters,
+        "search_metadata": master_data_template_search_metadata(),
+    }
 
 
 @router.get("/scenario-packs")
@@ -498,8 +625,13 @@ def create_master_data_batch_from_workbook_editor_rows(
             "Master Data template must be published before workbook editing.",
         )
     try:
-        result = create_master_data_batch_from_editor_rows(db, template, payload)
-        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, str(result["batch_id"])))
+        result = create_master_data_batch_from_editor_rows(
+            db,
+            template,
+            payload,
+            require_master_data_batch_create_scope(db, user),
+        )
+        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, user, str(result["batch_id"])))
     except WorkbookEditorValidationError as exc:
         raise api_error(
             422,
@@ -629,6 +761,7 @@ def list_master_data_batches(
     safe_page_size = max(1, min(page_size, 100))
     query = filtered_master_data_batch_query(
         db,
+        user,
         template_code=template_code,
         status=status,
         file_name_contains=file_name_contains,
@@ -656,6 +789,7 @@ def get_master_data_batch_summary(
 ):
     batches = filtered_master_data_batch_query(
         db,
+        user,
         template_code=template_code,
         status=status,
         file_name_contains=file_name_contains,
@@ -693,7 +827,7 @@ def get_master_data_batch_detail(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = get_master_data_batch_or_404(db, batch_id)
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     return serialize_master_data_batch(db, batch)
 
 
@@ -703,7 +837,7 @@ def list_master_data_batch_artifacts(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    get_master_data_batch_or_404(db, batch_id)
+    get_master_data_batch_or_404(db, user, batch_id)
     artifacts = [
         serialize_master_data_artifact(batch_id, artifact, evidence)
         for artifact, evidence in master_data_batch_artifacts(db, batch_id)
@@ -717,7 +851,7 @@ def list_master_data_batch_output_records(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    get_master_data_batch_or_404(db, batch_id)
+    get_master_data_batch_or_404(db, user, batch_id)
     records = (
         db.query(MasterDataOutputRecord)
         .filter(MasterDataOutputRecord.batch_id == batch_id)
@@ -734,7 +868,7 @@ def list_master_data_batch_csv_files(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    get_master_data_batch_or_404(db, batch_id)
+    get_master_data_batch_or_404(db, user, batch_id)
     csv_files = (
         db.query(MasterDataCsvFile)
         .filter(MasterDataCsvFile.batch_id == batch_id)
@@ -751,7 +885,7 @@ def get_master_data_otm_import_readiness(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = get_master_data_batch_or_404(db, batch_id)
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     return build_master_data_otm_import_readiness(db, batch)
 
 
@@ -761,7 +895,7 @@ def submit_master_data_batch_to_otm(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = get_master_data_batch_or_404(db, batch_id)
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     readiness = build_master_data_otm_import_readiness(db, batch)
     db.add(
         AuditLog(
@@ -791,7 +925,7 @@ def download_master_data_batch_artifact(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    get_master_data_batch_or_404(db, batch_id)
+    get_master_data_batch_or_404(db, user, batch_id)
     artifact, evidence = get_batch_artifact_or_404(db, batch_id, artifact_id)
     path = Path(artifact.file_path)
     if not path.exists() or not path.is_file():
@@ -942,8 +1076,9 @@ def create_master_data_batch_from_workbook(
             file.file,
             file.filename or "master_data_upload.xlsx",
             file.content_type or "application/octet-stream",
+            require_master_data_batch_create_scope(db, user),
         )
-        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, str(result["batch_id"])))
+        return serialize_master_data_batch(db, get_master_data_batch_or_404(db, user, str(result["batch_id"])))
     except (KeyError, ValueError) as exc:
         raise api_error(
             422,
@@ -959,9 +1094,7 @@ def validate_master_data_batch_relationships_endpoint(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     try:
         return validate_master_data_batch_relationships(db, batch)
     except ValueError as exc:
@@ -980,9 +1113,7 @@ def map_master_data_batch(
     user: User = Depends(require_user),
 ):
     seed_master_data_templates(db)
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     template = (
         db.query(MasterDataTemplate)
         .filter(MasterDataTemplate.code == batch.template_code)
@@ -1007,9 +1138,7 @@ def build_master_data_batch_output(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     try:
         return build_master_data_output_records(db, batch)
     except ValueError as exc:
@@ -1027,9 +1156,7 @@ def build_master_data_batch_csv(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     try:
         return build_master_data_csv_files(db, batch, dictionary_root())
     except ValueError as exc:
@@ -1047,9 +1174,7 @@ def export_master_data_batch_csv_package(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    batch = db.query(MasterDataBatch).filter(MasterDataBatch.id == batch_id).first()
-    if batch is None:
-        raise api_error(404, "MASTER_DATA_BATCH_NOT_FOUND", "Master Data batch not found.")
+    batch = get_master_data_batch_or_404(db, user, batch_id)
     try:
         return export_master_data_csv_package(
             db,

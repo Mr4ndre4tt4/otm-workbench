@@ -26,7 +26,7 @@ def test_navigation_returns_backend_owned_icon_and_label_metadata(client, admin_
     assert response.status_code == 200
     items = response.json()["items"]
     home = next(item for item in items if item["id"] == "home")
-    catalog = next(item for item in items if item["id"] == "catalog")
+    settings = next(item for item in items if item["id"] == "settings")
 
     assert home["label"] == "Project Cockpit"
     assert home["label_key"] == "module.home.label"
@@ -37,11 +37,13 @@ def test_navigation_returns_backend_owned_icon_and_label_metadata(client, admin_
     assert home["icon_name"] == "Home"
     assert home["icon_light_ref"]["figma_page"] == "Library | Light"
     assert home["icon_dark_ref"]["figma_page"] == "Library | Dark"
-    assert catalog["label_key"] == "module.catalog.label"
-    assert catalog["icon_key"] == "catalog"
+    assert settings["label"] == "Settings"
+    assert settings["label_key"] == "module.settings.label"
+    assert settings["path"] == "/settings"
+    assert settings["icon_key"] == "settings"
 
 
-def test_feature_flag_can_enable_dev_module_for_admin(client, admin_header):
+def test_feature_flag_does_not_reintroduce_dev_tools_to_main_navigation(client, admin_header):
     flag = client.post(
         "/api/v1/platform/feature-flags",
         json={"name": "dev_tools", "enabled": True, "scope": "global"},
@@ -51,7 +53,28 @@ def test_feature_flag_can_enable_dev_module_for_admin(client, admin_header):
 
     response = client.get("/api/v1/platform/navigation", headers=admin_header)
     module_ids = [item["id"] for item in response.json()["items"]]
-    assert "dev_tools" in module_ids
+    assert "dev_tools" not in module_ids
+
+
+def test_navigation_matches_current_to_be_ui_phase(client, admin_header):
+    response = client.get("/api/v1/platform/navigation", headers=admin_header)
+
+    assert response.status_code == 200
+    module_ids = [item["id"] for item in response.json()["items"]]
+    assert module_ids == [
+        "master_data",
+        "home",
+        "rates",
+        "load_plan",
+        "assets",
+        "order_release_generator",
+        "integration_mapping",
+        "settings",
+    ]
+    assert "catalog" not in module_ids
+    assert "evidence" not in module_ids
+    assert "admin" not in module_ids
+    assert "dev_tools" not in module_ids
 
 
 def test_modules_endpoint_returns_rates_module(client, admin_header):

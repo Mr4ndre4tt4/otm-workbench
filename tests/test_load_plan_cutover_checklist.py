@@ -8,6 +8,10 @@ from otm_workbench.models import AuditLog, DomainEvent, Evidence, LoadPlanPackag
 
 def create_registered_locations_package(db_session) -> LoadPlanPackage:
     package = LoadPlanPackage(
+        project_id="project_master_data",
+        profile_id="profile_cutover",
+        environment_id="env_cutover",
+        domain_name="OTM1",
         source_module="master_data",
         source_entity_type="master_data_batch",
         source_entity_id="synthetic_locations_batch",
@@ -123,6 +127,9 @@ def test_create_cutover_checklist_from_load_plan_package(client, admin_header, d
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["project_id"] == "project_master_data"
+    assert payload["profile_id"] == "profile_cutover"
+    assert payload["environment_id"] == "env_cutover"
     assert payload["package_id"] == package.id
     assert payload["template_code"] == "MVP0_STANDARD_CUTOVER"
     assert payload["status"] == "DRAFT"
@@ -150,6 +157,12 @@ def test_create_cutover_checklist_from_load_plan_package(client, admin_header, d
     )
     assert evidence.client_safe is True
     assert evidence.sensitivity_level == "client_safe"
+    assert evidence.project_id == "project_master_data"
+    assert evidence.profile_id == "profile_cutover"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
+    assert json.loads(evidence.summary_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in evidence.summary_json
 
     audit = (
@@ -158,6 +171,7 @@ def test_create_cutover_checklist_from_load_plan_package(client, admin_header, d
         .one()
     )
     assert audit.target_id == payload["id"]
+    assert json.loads(audit.metadata_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in audit.metadata_json
 
     event = (
@@ -166,6 +180,8 @@ def test_create_cutover_checklist_from_load_plan_package(client, admin_header, d
         .one()
     )
     assert event.aggregate_id == payload["id"]
+    assert event.project_id == "project_master_data"
+    assert json.loads(event.payload_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in event.payload_json
 
 
@@ -373,6 +389,12 @@ def test_cutover_checklist_readiness_reports_blockers(client, admin_header, db_s
         .one()
     )
     assert evidence.client_safe is True
+    assert evidence.project_id == "project_master_data"
+    assert evidence.profile_id == "profile_cutover"
+    assert evidence.environment_id == "env_cutover"
+    assert evidence.domain_name == "OTM1"
+    assert evidence.visibility == "PROJECT"
+    assert json.loads(evidence.summary_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in evidence.summary_json
 
     audit = (
@@ -381,6 +403,7 @@ def test_cutover_checklist_readiness_reports_blockers(client, admin_header, db_s
         .one()
     )
     assert audit.target_id == checklist["id"]
+    assert json.loads(audit.metadata_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in audit.metadata_json
 
     event = (
@@ -389,6 +412,8 @@ def test_cutover_checklist_readiness_reports_blockers(client, admin_header, db_s
         .one()
     )
     assert event.aggregate_id == checklist["id"]
+    assert event.project_id == "project_master_data"
+    assert json.loads(event.payload_json)["domain_name"] == "OTM1"
     assert "synthetic_locations_batch" not in event.payload_json
 
 

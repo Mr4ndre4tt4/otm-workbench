@@ -1,9 +1,16 @@
 # Linear Delivery Governance OTM-62
 
-**Status:** active  
+**Status:** historical/paused  
 **Date:** 2026-05-21  
+**Paused:** 2026-05-27  
+**Replacement:** `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`  
 **Linear:** `OTM-62`  
 **Scope:** project visibility and delivery board upkeep for OTM Workbench.
+
+Do not require Linear updates for new delivery slices unless the user
+explicitly reactivates Linear. Historical Linear issue IDs remain useful as
+evidence links, but GitHub Issues, Pull Requests, and Actions are now the
+active delivery visibility layer.
 
 ## 1. Purpose
 

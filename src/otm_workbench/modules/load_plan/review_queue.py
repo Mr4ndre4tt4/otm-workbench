@@ -144,6 +144,11 @@ def catalog_context_for_package_id(db: Session, package_id: str) -> dict[str, ob
     }
 
 
+def package_domain_name(db: Session, package_id: str) -> str | None:
+    package = db.query(LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first()
+    return package.domain_name if package is not None else None
+
+
 def decide_review_item(
     db: Session,
     *,
@@ -159,8 +164,13 @@ def decide_review_item(
 
     decided_at = utcnow()
     catalog_context = catalog_context_for_package_id(db, item.package_id)
+    domain_name = package_domain_name(db, item.package_id)
     evidence = Evidence(
         project_id=item.project_id,
+        profile_id=item.profile_id,
+        environment_id=item.environment_id,
+        domain_name=domain_name,
+        visibility="PROJECT",
         source_module="load_plan",
         evidence_type="load_plan_review_decision",
         status="CREATED",
@@ -211,6 +221,10 @@ def decide_review_item(
                     "decision_status": normalized_status,
                     "evidence_id": evidence.id,
                     "decision_note_present": bool(decision_note.strip()),
+                    "project_id": item.project_id,
+                    "profile_id": item.profile_id,
+                    "environment_id": item.environment_id,
+                    "domain_name": domain_name,
                 },
                 sort_keys=True,
             ),
@@ -229,6 +243,9 @@ def decide_review_item(
                     "decision_status": normalized_status,
                     "evidence_id": evidence.id,
                     "decision_note_present": bool(decision_note.strip()),
+                    "profile_id": item.profile_id,
+                    "environment_id": item.environment_id,
+                    "domain_name": domain_name,
                 },
                 sort_keys=True,
             ),

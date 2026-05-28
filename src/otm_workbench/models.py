@@ -114,6 +114,8 @@ class UserProjectRole(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    environment_id: Mapped[str | None] = mapped_column(ForeignKey("environments.id"), nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), index=True)
 
 
@@ -122,6 +124,19 @@ class RoleCapability(Base):
 
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), primary_key=True)
     capability_id: Mapped[str] = mapped_column(ForeignKey("capabilities.id"), primary_key=True)
+
+
+class AccessPolicy(Base, TimestampMixin):
+    __tablename__ = "access_policies"
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_access_policy_project_name"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    rule_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
 
 class Module(Base, TimestampMixin):
@@ -209,11 +224,140 @@ class JobEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class AssistantSource(Base, TimestampMixin):
+    __tablename__ = "assistant_sources"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    title: Mapped[str] = mapped_column(String, index=True)
+    source_type: Mapped[str] = mapped_column(String, index=True)
+    source_uri: Mapped[str] = mapped_column(Text, default="")
+    module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    content_hash: Mapped[str] = mapped_column(String, default="", index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class AssistantChunk(Base, TimestampMixin):
+    __tablename__ = "assistant_chunks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("assistant_sources.id"), index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer, default=0)
+    heading: Mapped[str] = mapped_column(String, default="")
+    body_text: Mapped[str] = mapped_column(Text)
+    token_estimate: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class AssistantIndexRun(Base, TimestampMixin):
+    __tablename__ = "assistant_index_runs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    status: Mapped[str] = mapped_column(String, default="PENDING", index=True)
+    source_count: Mapped[int] = mapped_column(Integer, default=0)
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AssistantSavedQuery(Base, TimestampMixin):
+    __tablename__ = "assistant_saved_queries"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String, index=True)
+    purpose: Mapped[str] = mapped_column(Text, default="")
+    sql_text: Mapped[str] = mapped_column(Text)
+    module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    warnings_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AssistantSavedQueryTable(Base, TimestampMixin):
+    __tablename__ = "assistant_saved_query_tables"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    query_id: Mapped[str] = mapped_column(ForeignKey("assistant_saved_queries.id"), index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    alias: Mapped[str] = mapped_column(String, default="")
+    role: Mapped[str] = mapped_column(String, default="PRIMARY", index=True)
+
+
+class AssistantSavedQueryColumn(Base, TimestampMixin):
+    __tablename__ = "assistant_saved_query_columns"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    query_id: Mapped[str] = mapped_column(ForeignKey("assistant_saved_queries.id"), index=True)
+    table_name: Mapped[str] = mapped_column(String, index=True)
+    column_name: Mapped[str] = mapped_column(String, index=True)
+    alias: Mapped[str] = mapped_column(String, default="")
+    role: Mapped[str] = mapped_column(String, default="SELECTED", index=True)
+
+
+class AssistantJoinPattern(Base, TimestampMixin):
+    __tablename__ = "assistant_join_patterns"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String, index=True)
+    module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    left_table: Mapped[str] = mapped_column(String, index=True)
+    left_column: Mapped[str] = mapped_column(String, index=True)
+    right_table: Mapped[str] = mapped_column(String, index=True)
+    right_column: Mapped[str] = mapped_column(String, index=True)
+    join_type: Mapped[str] = mapped_column(String, default="INNER", index=True)
+    business_meaning: Mapped[str] = mapped_column(Text, default="")
+    confidence: Mapped[str] = mapped_column(String, default="LOW", index=True)
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    source_type: Mapped[str] = mapped_column(String, default="MANUAL", index=True)
+    source_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    warnings_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AssistantOracleDocCache(Base, TimestampMixin):
+    __tablename__ = "assistant_oracle_doc_cache"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    title: Mapped[str] = mapped_column(String, index=True)
+    url: Mapped[str] = mapped_column(Text)
+    source_domain: Mapped[str] = mapped_column(String, index=True)
+    product_area: Mapped[str] = mapped_column(String, default="", index=True)
+    topic: Mapped[str] = mapped_column(String, default="", index=True)
+    version_label: Mapped[str] = mapped_column(String, default="", index=True)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="DRAFT", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Artifact(Base, TimestampMixin):
     __tablename__ = "artifacts"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     artifact_type: Mapped[str] = mapped_column(String)
     file_path: Mapped[str] = mapped_column(String)
@@ -229,6 +373,11 @@ class Manifest(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, default="CREATED")
     manifest_json: Mapped[str] = mapped_column(Text, default="{}")
@@ -239,6 +388,11 @@ class Evidence(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
     project_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String, default="PRIVATE", index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String)
     evidence_type: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, default="CREATED")
@@ -269,6 +423,8 @@ class Asset(Base, TimestampMixin):
     project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    access_policy_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
     asset_type: Mapped[str] = mapped_column(String, index=True)
@@ -280,6 +436,7 @@ class Asset(Base, TimestampMixin):
     module_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     macro_object_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     otm_table_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    target_otm_version: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     tags_json: Mapped[str] = mapped_column(Text, default="[]")
     current_version_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
@@ -316,6 +473,10 @@ class OrderReleaseTemplate(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("code", "version", name="uq_order_release_templates_code_version"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String)
     version: Mapped[int] = mapped_column(Integer, default=1, index=True)
@@ -342,6 +503,10 @@ class OrderReleaseBatch(Base, TimestampMixin):
     __tablename__ = "order_release_batches"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(ForeignKey("order_release_templates.id"), index=True)
     status: Mapped[str] = mapped_column(String, default="PARSED", index=True)
     file_name: Mapped[str] = mapped_column(String)
@@ -368,6 +533,10 @@ class IntegrationDefinition(Base, TimestampMixin):
     __tablename__ = "integration_definitions"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, unique=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -393,6 +562,10 @@ class IntegrationSystem(Base, TimestampMixin):
     __tablename__ = "integration_systems"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     code: Mapped[str] = mapped_column(String, unique=True, index=True)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -585,6 +758,67 @@ class IntegrationResponseHandler(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
+class IntegrationEnrichmentStep(Base, TimestampMixin):
+    __tablename__ = "integration_enrichment_steps"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    source_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    response_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    endpoint_id: Mapped[str | None] = mapped_column(ForeignKey("integration_endpoints.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(Text, default="")
+    step_type: Mapped[str] = mapped_column(String, default="SINGLE", index=True)
+    key_template: Mapped[str] = mapped_column(String, default="")
+    key_source_fields_json: Mapped[str] = mapped_column(Text, default="[]")
+    response_field_mappings_json: Mapped[str] = mapped_column(Text, default="[]")
+    loop_source_path: Mapped[str] = mapped_column(String, default="", index=True)
+    loop_filter_expression: Mapped[str] = mapped_column(String, default="")
+    on_empty_response: Mapped[str] = mapped_column(String, default="FAIL", index=True)
+    on_error: Mapped[str] = mapped_column(String, default="FAIL", index=True)
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class IntegrationEnrichmentSubStep(Base, TimestampMixin):
+    __tablename__ = "integration_enrichment_substeps"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    enrichment_step_id: Mapped[str] = mapped_column(ForeignKey("integration_enrichment_steps.id"), index=True)
+    endpoint_id: Mapped[str | None] = mapped_column(ForeignKey("integration_endpoints.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    request_path_template: Mapped[str] = mapped_column(String, default="")
+    request_key_bindings_json: Mapped[str] = mapped_column(Text, default="{}")
+    response_schema_document_id: Mapped[str] = mapped_column(ForeignKey("integration_schema_documents.id"), index=True)
+    response_field_mappings_json: Mapped[str] = mapped_column(Text, default="[]")
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
+class IntegrationEnrichedField(Base, TimestampMixin):
+    __tablename__ = "integration_enriched_fields"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    definition_id: Mapped[str] = mapped_column(ForeignKey("integration_definitions.id"), index=True)
+    enrichment_step_id: Mapped[str] = mapped_column(ForeignKey("integration_enrichment_steps.id"), index=True)
+    enrichment_substep_id: Mapped[str | None] = mapped_column(
+        ForeignKey("integration_enrichment_substeps.id"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String, index=True)
+    data_type: Mapped[str] = mapped_column(String, default="String", index=True)
+    cardinality: Mapped[str] = mapped_column(String, default="SCALAR", index=True)
+    response_path: Mapped[str] = mapped_column(String, index=True)
+    fallback_policy_json: Mapped[str] = mapped_column(Text, default="{}")
+    source_trace_json: Mapped[str] = mapped_column(Text, default="{}")
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
+    created_by: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
+
 class MasterDataTemplate(Base, TimestampMixin):
     __tablename__ = "master_data_templates"
 
@@ -606,6 +840,10 @@ class MasterDataBatch(Base, TimestampMixin):
     __tablename__ = "master_data_batches"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(ForeignKey("master_data_templates.id"), index=True)
     template_code: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="PARSED")
@@ -1063,6 +1301,7 @@ class LoadPlanPackage(Base, TimestampMixin):
     project_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     environment_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     profile_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    domain_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     source_module: Mapped[str] = mapped_column(String, index=True)
     source_entity_type: Mapped[str] = mapped_column(String, index=True)
     source_entity_id: Mapped[str] = mapped_column(String, index=True)

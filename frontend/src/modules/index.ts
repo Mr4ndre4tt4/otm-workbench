@@ -1,6 +1,12 @@
 export { AssetsLibraryView } from './assets/AssetsLibraryView';
 export { AdminConsoleView } from './admin/AdminConsoleView';
 export { CatalogCoreView } from './catalog/CatalogCoreView';
+export { DeveloperToolsDataDictionaryView } from './developer-tools/DeveloperToolsDataDictionaryView';
+export { DeveloperToolsDataDictionaryTableView } from './developer-tools/DeveloperToolsDataDictionaryTableView';
+export { DeveloperToolsEnvironmentReadinessView } from './developer-tools/DeveloperToolsEnvironmentReadinessView';
+export { DeveloperToolsView } from './developer-tools/DeveloperToolsView';
+export { DeveloperToolsFkCatalogView } from './developer-tools/DeveloperToolsFkCatalogView';
+export { DeveloperToolsSchemaPacksView } from './developer-tools/DeveloperToolsSchemaPacksView';
 export { EvidenceHubView } from './evidence/EvidenceHubView';
 export { IntegrationMappingView } from './integration-mapping/IntegrationMappingView';
 export { LoadPlanView } from './load-plan/LoadPlanView';

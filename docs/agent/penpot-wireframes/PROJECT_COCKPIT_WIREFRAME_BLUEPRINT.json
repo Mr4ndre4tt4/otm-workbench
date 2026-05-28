@@ -1,0 +1,273 @@
+{
+  "module": "Shell / Login / Logout / Project Cockpit",
+  "status": "created in Penpot on 2026-05-26; ready for visual review",
+  "date": "2026-05-26",
+  "targetPageName": "01 Shell, Login, Logout, and Project Cockpit",
+  "sourceDocuments": [
+    "docs/agent/module-scope/PROJECT_COCKPIT_SCOPE_REVIEW.md",
+    "docs/agent/wireframe-briefs/PROJECT_COCKPIT_WIREFRAME_BRIEF.md",
+    "docs/agent/PENPOT_WIREFRAME_PLAN.md"
+  ],
+  "canvas": {
+    "frameWidth": 1440,
+    "frameHeight": 1024,
+    "gapX": 120,
+    "gapY": 120,
+    "columns": 2
+  },
+  "style": {
+    "fidelity": "low",
+    "font": "Inter",
+    "colors": {
+      "background": "#F7F8FA",
+      "frame": "#FFFFFF",
+      "ink": "#1F2933",
+      "muted": "#697586",
+      "line": "#CBD5E1",
+      "disabled": "#E5E7EB",
+      "blocked": "#F5E6E6",
+      "success": "#E7F4EA"
+    }
+  },
+  "sharedPatterns": [
+    "AuthShell",
+    "AuthenticatedShell",
+    "ContextBar",
+    "ReadinessStrip",
+    "BlockerSummary",
+    "BackendOwnedActionList",
+    "ReturnPath"
+  ],
+  "frames": [
+    {
+      "id": "SHELL-01",
+      "name": "SHELL-01 Login",
+      "route": "/login",
+      "state": "default",
+      "purpose": "Authenticate without exposing module navigation.",
+      "regions": [
+        "Product mark placeholder",
+        "Environment label",
+        "Credential fields",
+        "Sign in action",
+        "Help/recovery link",
+        "Version/build label"
+      ],
+      "acceptance": "No module navigation or project action appears before authentication."
+    },
+    {
+      "id": "SHELL-02",
+      "name": "SHELL-02 Login invalid credentials",
+      "route": "/login",
+      "state": "error",
+      "purpose": "Show a failed sign-in with clear recovery.",
+      "regions": [
+        "Inline error summary",
+        "Invalid field state",
+        "Retry action",
+        "Help/recovery link",
+        "No authenticated navigation"
+      ],
+      "acceptance": "Error copy is clear, non-leaky, and focus returns to the actionable area."
+    },
+    {
+      "id": "SHELL-03",
+      "name": "SHELL-03 Logout confirmed",
+      "route": "/logout",
+      "state": "signed-out",
+      "purpose": "Confirm session end and remove authenticated actions.",
+      "regions": [
+        "Session-ended message",
+        "Signed-out status",
+        "Return to login action",
+        "Optional last environment label",
+        "No module navigation"
+      ],
+      "acceptance": "The screen cannot be mistaken for an authenticated route."
+    },
+    {
+      "id": "SHELL-04",
+      "name": "SHELL-04 Signed-out recovery",
+      "route": "protected route fallback",
+      "state": "recovery",
+      "purpose": "Recover when a protected route is opened after session expiry.",
+      "regions": [
+        "Protected-route notice",
+        "Original route label",
+        "Return to login action",
+        "Work-not-executed reassurance",
+        "No module actions"
+      ],
+      "acceptance": "The user understands why they were stopped and how to resume."
+    },
+    {
+      "id": "SHELL-05",
+      "name": "SHELL-05 No active project",
+      "route": "/home",
+      "state": "missing-context",
+      "purpose": "Show authenticated shell while project context is missing.",
+      "regions": [
+        "Signed-in top bar",
+        "Disabled module navigation with reasons",
+        "Context setup prompt",
+        "Recent/select project action",
+        "Missing-context blocker panel"
+      ],
+      "acceptance": "No operational module appears ready when project context is missing."
+    },
+    {
+      "id": "SHELL-06",
+      "name": "SHELL-06 Context setup",
+      "route": "/home/context",
+      "state": "setup",
+      "purpose": "Select or repair project, profile, environment, and scope.",
+      "regions": [
+        "Context form",
+        "Validation summary",
+        "Project selector",
+        "Profile/environment selectors",
+        "Save and cancel actions",
+        "Readiness preview"
+      ],
+      "acceptance": "The user can see which context fields gate module access."
+    },
+    {
+      "id": "SHELL-07",
+      "name": "SHELL-07 Project Cockpit ready",
+      "route": "/home",
+      "state": "ready",
+      "purpose": "Provide the ready-state command center.",
+      "regions": [
+        "Context bar",
+        "Readiness strip",
+        "Next safe action",
+        "Workstream status summary",
+        "Blocker summary",
+        "Activity summary",
+        "Jobs/artifacts/evidence shortcuts",
+        "Backend-owned global actions"
+      ],
+      "acceptance": "The first viewport makes context, readiness, blocker count, and next action obvious."
+    },
+    {
+      "id": "SHELL-08",
+      "name": "SHELL-08 Readiness blocked",
+      "route": "/home/readiness",
+      "state": "blocked",
+      "purpose": "Explain why the project is not ready.",
+      "regions": [
+        "Context bar",
+        "Readiness status",
+        "Grouped blocker list",
+        "Disabled action reasons",
+        "Retry/recheck action",
+        "Return to cockpit"
+      ],
+      "acceptance": "The user can identify the blocking condition before entering modules."
+    },
+    {
+      "id": "SHELL-09",
+      "name": "SHELL-09 Workstreams",
+      "route": "/home/workstreams",
+      "state": "list",
+      "purpose": "Show module/workstream progress without becoming the module.",
+      "regions": [
+        "Workstream table",
+        "Status/owner/next action columns",
+        "Module entry action",
+        "Disabled reason when gated",
+        "Filter chips"
+      ],
+      "acceptance": "Each workstream has a destination or a visible reason it is blocked."
+    },
+    {
+      "id": "SHELL-10",
+      "name": "SHELL-10 Blockers",
+      "route": "/home/blockers",
+      "state": "list",
+      "purpose": "Make cross-module blockers inspectable and actionable.",
+      "regions": [
+        "Blocker table",
+        "Severity and owning module",
+        "Dependency and affected route",
+        "Action path",
+        "Resolution state",
+        "Return to cockpit"
+      ],
+      "acceptance": "Critical blockers have clear ownership and next action."
+    },
+    {
+      "id": "SHELL-11",
+      "name": "SHELL-11 Activity timeline",
+      "route": "/home/activity",
+      "state": "timeline",
+      "purpose": "Show recent project events without replacing Evidence Hub.",
+      "regions": [
+        "Timeline",
+        "Event type, actor, timestamp",
+        "Related module",
+        "Linked artifact/evidence when available",
+        "No activity empty state"
+      ],
+      "acceptance": "Timeline entries link to owning routes where detail belongs."
+    },
+    {
+      "id": "SHELL-12",
+      "name": "SHELL-12 Jobs summary failed",
+      "route": "/home/jobs",
+      "state": "failed-job",
+      "purpose": "Summarize job health and route failed jobs to Admin Console / Jobs.",
+      "regions": [
+        "Job status strip",
+        "Failed job row",
+        "Retry eligibility",
+        "Owner route",
+        "View job detail action",
+        "Return to cockpit"
+      ],
+      "acceptance": "The Cockpit identifies the failed job but does not duplicate Admin job detail."
+    },
+    {
+      "id": "SHELL-13",
+      "name": "SHELL-13 Artifacts and evidence permissions",
+      "route": "/home/artifacts and /home/evidence",
+      "state": "permission-limited",
+      "purpose": "Summarize artifacts/evidence and show permission-aware unavailable states.",
+      "regions": [
+        "Artifact/evidence summaries",
+        "Latest generated artifact",
+        "Unavailable-by-permission state",
+        "Evidence Hub route link",
+        "Request access/contact owner action"
+      ],
+      "acceptance": "Permission limits are visible and do not look like missing data."
+    },
+    {
+      "id": "SHELL-14",
+      "name": "SHELL-14 Global action destination review",
+      "route": "/home/actions",
+      "state": "review",
+      "purpose": "Expose backend-owned global actions and their destinations before cleanup.",
+      "regions": [
+        "Global action list",
+        "Destination route",
+        "Prerequisite",
+        "Disabled reason",
+        "Destructive/critical flag",
+        "Owner module"
+      ],
+      "acceptance": "Every global action has destination, prerequisite, and enabled or disabled state."
+    }
+  ],
+  "moduleAcceptanceChecklist": [
+    "Login and logout/session-ended states are represented.",
+    "Authenticated navigation is absent after logout or invalid session.",
+    "Active context is visible in every authenticated frame.",
+    "Blocked and missing-context states explain prerequisites.",
+    "Module shortcuts are backend-owned and permission aware.",
+    "Global actions show destination routes.",
+    "Cockpit summaries do not duplicate module detail screens.",
+    "Empty, failed, blocked, and permission-unavailable states are visible.",
+    "Return paths are present on child routes."
+  ]
+}

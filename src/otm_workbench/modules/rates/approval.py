@@ -172,6 +172,10 @@ def approve_rate_batch(
     }
     evidence = Evidence(
         project_id=batch.project_id,
+        profile_id=batch.profile_id,
+        environment_id=batch.environment_id,
+        domain_name=batch.domain_name,
+        visibility="PROJECT",
         source_module="rates",
         evidence_type="rates_batch_approval",
         summary_json=json.dumps(evidence_summary, sort_keys=True),

@@ -24,6 +24,7 @@
     "qa:functional:assets:browser": "node scripts/functional-assets-browser.mjs",
     "qa:functional:catalog:browser": "node scripts/functional-catalog-browser.mjs",
     "qa:functional:coordinate-quality:browser": "node scripts/functional-coordinate-quality-browser.mjs",
+    "qa:functional:developer-tools:browser": "node scripts/functional-developer-tools-browser.mjs",
     "qa:functional:evidence:browser": "node scripts/functional-evidence-browser.mjs",
     "qa:functional:integration-mapping:browser": "node scripts/functional-integration-mapping-browser.mjs",
     "qa:functional:load-plan:browser": "node scripts/functional-load-plan-browser.mjs",
