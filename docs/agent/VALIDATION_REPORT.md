@@ -2759,3 +2759,52 @@ Notes:
   root while still allowing the SQL helper to use the OTM Data Dictionary.
 - In local Windows validation, the OTM Data Dictionary override used
   `OTM_OTM_DATA_DICTIONARY_ROOT` because settings use the `OTM_` env prefix.
+
+## 2026-05-28 Load Plan Route-Level Workflows
+
+Scope:
+
+- Promoted the previously implemented GitHub issue #209 patch to a clean
+  branch based on current `main`.
+- Adds route-aware Load Plan package operation destinations.
+- Adds direct route recovery coverage for
+  `/load-plan/packages/package_2/zip-review`.
+
+Commands:
+
+```powershell
+npm test -- src/app/AppFunctionalLoadPlan.test.tsx
+npm test -- src/app/App.test.tsx -t "Load Plan"
+python -m pytest tests/test_load_plan_package_intake.py -q
+python -m pytest tests/test_load_plan_cutover_checklist.py -q
+python -m pytest tests/test_load_plan_cutover_readiness.py -q
+python -m pytest tests/test_load_plan_csvutil_builder.py -q
+python -m pytest tests/test_load_plan_zip_analysis.py -q
+python -m pytest tests/test_load_plan_sequence_blockers.py -q
+python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q
+python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q
+npm run build
+```
+
+Results:
+
+```text
+AppFunctionalLoadPlan.test.tsx: 2 passed
+App.test.tsx - Load Plan: 1 passed, 29 skipped
+tests/test_load_plan_package_intake.py: 23 passed
+tests/test_load_plan_cutover_checklist.py + tests/test_load_plan_cutover_readiness.py: 22 passed
+tests/test_load_plan_csvutil_builder.py + tests/test_load_plan_zip_analysis.py: 28 passed
+tests/test_load_plan_sequence_blockers.py: 13 passed
+tests/test_load_plan_review_queue.py + tests/test_load_plan_review_decisions.py: 16 passed
+tests/test_load_plan_cutover_package_export.py + tests/test_load_plan_cutover_go_no_go.py + tests/test_load_plan_cutover_handoff.py + tests/test_load_plan_readiness_export.py: 25 passed
+frontend build: passed with existing Vite large chunk warning
+git diff --check: no errors
+```
+
+Notes:
+
+- Fresh browser screenshots are not accepted until browser QA passes the live
+  `/api/v1/platform/navigation` freshness gate.
+- Initial backend attempts without `OTM_OTM_DATA_DICTIONARY_ROOT` failed
+  because this clean worktree intentionally does not contain protected local
+  `OTM_RESOURCES/`; the reruns with the local Data Dictionary override passed.

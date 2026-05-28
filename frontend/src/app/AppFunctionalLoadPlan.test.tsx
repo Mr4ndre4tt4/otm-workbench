@@ -910,4 +910,119 @@ describe("Functional Load Plan journey", () => {
     await screen.findByRole("heading", { name: "Load Plan" });
     expect((await screen.findAllByText("rates_csv_zip")).length).toBeGreaterThan(0);
   }, 60000);
+
+  it("recovers package operation routes from direct URLs", async () => {
+    const fetchMock = vi.fn((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "load_plan", label: "Load Plan", path: "/load-plan", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/summary")) {
+        return Promise.resolve(
+          jsonResponse({
+            by_catalog_macro_object: {
+              LOCATION_MASTER: { catalog_load_plan_path: "/api/v1/catalog/macro-objects/LOCATION_MASTER/load-plan", package_count: 1 },
+              RATE_RECORD: { catalog_load_plan_path: "/api/v1/catalog/macro-objects/RATE_RECORD/load-plan", package_count: 1 }
+            },
+            by_source_module: { rates: 2 },
+            by_status: { REGISTERED: 2 },
+            next_actions: ["create_cutover_checklist"],
+            registered_packages: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages")) {
+        return Promise.resolve(jsonResponse({ items: [loadPlanPackage(), alternateLoadPlanPackage()], total: 2 }));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages/package_1")) {
+        return Promise.resolve(jsonResponse(loadPlanPackage()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/packages/package_2")) {
+        return Promise.resolve(jsonResponse(alternateLoadPlanPackage()));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/review-queue?package_id=package_2")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/load-plan/cutover-handoff/eligibility?package_id=package_2")) {
+        return Promise.resolve(
+          jsonResponse({
+            archive_evidence_id: null,
+            blockers: [{ code: "CUTOVER_READINESS_MISSING", message: "Generate cutover readiness first.", severity: "ERROR" }],
+            checklist_id: null,
+            checklist_readiness_evidence_id: null,
+            checklist_readiness_status: null,
+            eligible: false,
+            next_actions: ["CUTOVER_READINESS_MISSING"],
+            package_id: "package_2",
+            readiness_export_evidence_id: null,
+            readiness_export_id: null,
+            readiness_id: null,
+            readiness_status: null,
+            status: "INELIGIBLE"
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/load-plan/packages/package_2/zip-review");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Load Plan" });
+    expect(await screen.findByLabelText("Selected load plan package")).toHaveTextContent("LOCATION_MASTER");
+    expect(screen.getByLabelText("ZIP analysis and review queue")).toBeInTheDocument();
+
+    const destinations = screen.getByLabelText("Load Plan route destinations");
+    expect(destinations).toHaveTextContent("Back to Load Plan");
+    expect(destinations).toHaveTextContent("Package library");
+    expect(destinations).toHaveTextContent("Open selected package");
+    expect(destinations).toHaveTextContent("Checklist");
+    expect(destinations).toHaveTextContent("Readiness");
+    expect(destinations).toHaveTextContent("CSVUTIL");
+    expect(destinations).toHaveTextContent("ZIP review");
+    expect(destinations).toHaveTextContent("Sequence");
+    expect(destinations).toHaveTextContent("Exports");
+    expect(destinations).toHaveTextContent("Go/No-Go");
+    expect(destinations).toHaveTextContent("Handoff");
+
+    await userEvent.click(within(destinations).getByRole("link", { name: "Handoff" }));
+    expect(await screen.findByLabelText("Cutover handoff eligibility")).toHaveTextContent("CUTOVER_READINESS_MISSING");
+  });
 });

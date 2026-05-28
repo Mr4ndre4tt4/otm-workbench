@@ -2197,3 +2197,68 @@ Recommended next step:
 
 Continue with the next planned module delivery slice after refreshing the main
 workspace from `origin/main` and preserving any unrelated local changes.
+
+## 2026-05-28 Load Plan Route-Level Workflows
+
+Status:
+Promoted to a clean branch from the previously implemented #209 patch;
+validated for PR promotion.
+
+Scope:
+Promotes the Load Plan route-level package workflow implementation to current
+`main` without importing the broader historical branch where it was first
+created. The change makes the current Load Plan frontend route-aware for
+package operation destinations.
+
+Files intentionally changed:
+
+- `frontend/src/modules/load-plan/LoadPlanView.tsx`
+- `frontend/src/app/AppFunctionalLoadPlan.test.tsx`
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_ROUTE_LEVEL_WORKFLOWS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalLoadPlan.test.tsx` passed with 2 tests.
+- `npm test -- src/app/App.test.tsx -t "Load Plan"` passed with 1 test and 29
+  skipped tests.
+- `python -m pytest tests/test_load_plan_package_intake.py -q` passed with 23
+  tests.
+- `python -m pytest tests/test_load_plan_cutover_checklist.py tests/test_load_plan_cutover_readiness.py -q`
+  passed with 22 tests.
+- `python -m pytest tests/test_load_plan_csvutil_builder.py tests/test_load_plan_zip_analysis.py -q`
+  passed with 28 tests.
+- `python -m pytest tests/test_load_plan_sequence_blockers.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q`
+  passed with 16 tests.
+- `python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q`
+  passed with 25 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+- `git diff --check` passed.
+
+Validation not run:
+
+- Fresh browser screenshots. Browser QA must first pass the runtime navigation
+  freshness gate.
+- The first backend attempts without `OTM_OTM_DATA_DICTIONARY_ROOT` failed
+  because the clean worktree intentionally does not contain protected local
+  `OTM_RESOURCES/`.
+
+Evidence:
+
+- Direct URL recovery is covered by `AppFunctionalLoadPlan.test.tsx` for
+  `/load-plan/packages/package_2/zip-review`, route destination links, and
+  handoff route recovery.
+
+Open risks:
+
+- This slice makes the To-Be URLs addressable and recoverable, but it does not
+  fully redesign the visual layout into separate page components.
+- Go/no-go and handoff currently share the guarded handoff panel.
+
+Recommended next step:
+
+Open a PR linked to #207 and keep #207 open until Load Plan browser QA passes
+the runtime freshness gate or visual evidence is explicitly deferred.
