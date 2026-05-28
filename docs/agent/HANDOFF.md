@@ -2913,7 +2913,8 @@ Assets backlog.
 ## 2026-05-28 Context Isolation Validation Matrix
 
 Status:
-Implemented, validated, and ready to close #214.
+Complete. Implemented, validated, merged through PR #182, and issue #214 is
+closed.
 
 Scope:
 Opened the context-isolation foundation lane and documented the current
@@ -2945,8 +2946,9 @@ Evidence:
 
 Open risks:
 
-- Cockpit, Rates, Master Data, and Order Release still need module-specific
-  context-isolation evidence before completion.
+- Cockpit, Rates, Master Data, and Order Release module-specific
+  context-isolation evidence was later completed and recorded in subsequent
+  handoff capsules.
 - Integration Mapping remains reserved for its separate workstream.
 
 Next-chat intake notes:
@@ -2958,14 +2960,13 @@ Next-chat intake notes:
 
 Recommended next step:
 
-Close #214 after push, then select the next concrete lane. Current roadmap
-order points to Cockpit context selector evidence or Rates completion, unless
-the user reprioritizes.
+Continue from `origin/main` with the next roadmap lane; do not reopen #214.
 
 ## 2026-05-28 Cockpit Context Selector Evidence
 
 Status:
-Implemented, validated, and ready to close #215.
+Complete. Implemented, validated, merged through PR #182, and issue #215 is
+closed.
 
 Scope:
 Captured Cockpit context selector and route recovery evidence with a fresh
@@ -3016,8 +3017,7 @@ Next-chat intake notes:
 
 Recommended next step:
 
-Close #215 after push. The next natural lane is Rates completion/revalidation
-unless the user wants another Cockpit visual acceptance pass first.
+Continue from `origin/main` with the next roadmap lane; do not reopen #215.
 
 ## 2026-05-28 PR 182 Merge Conflict Recovery
 
@@ -3032,7 +3032,8 @@ GitHub tracking:
 - Issue #220 closed after merge recovery.
 - PR #182: merged into `main` on 2026-05-28.
 - PR #182 merge commit: `0594b5d67d3d8cc3b97dff489c2675214ffc49df`.
-- Issue #225: follow-up handoff state sync.
+- Issue #225: follow-up handoff state sync, closed through PR #226.
+- PR #226: merged with commit `07456c35f17b10ba70899e877386daab3eedc36d`.
 
 Files intentionally changed:
 
@@ -3080,8 +3081,7 @@ Next-chat intake notes:
 
 Recommended next step:
 
-Close issue #225 after this handoff sync is committed and merged, then continue
-with the next roadmap lane from `origin/main`.
+Continue with the next roadmap lane from `origin/main`; do not reopen #225.
 
 ## 2026-05-28 OTM_RESOURCES Versioning Policy
 
@@ -3093,7 +3093,8 @@ GitHub tracking:
 
 - Issue #221: OTM_RESOURCES versioning and sensitivity policy.
 - PR #222: merged.
-- Issue #223: follow-up handoff state sync.
+- Issue #223: follow-up handoff state sync, closed through PR #224.
+- PR #224: merged with commit `28e0d2d8fb97d91c0a9884248b67c58dfdc72e3c`.
 
 Files intentionally changed:
 
@@ -3152,5 +3153,4 @@ Next-chat intake notes:
 
 Recommended next step:
 
-Close issue #223 after this handoff sync is committed and merged, then continue
-with the next roadmap lane from `origin/main`.
+Continue with the next roadmap lane from `origin/main`; do not reopen #223.
