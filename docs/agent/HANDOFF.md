@@ -2262,3 +2262,56 @@ Recommended next step:
 
 Open a PR linked to #207 and keep #207 open until Load Plan browser QA passes
 the runtime freshness gate or visual evidence is explicitly deferred.
+
+## 2026-05-28 Load Plan Browser Closeout
+
+Status:
+Promoted to a clean branch from the previously implemented closeout patch;
+validated for PR promotion.
+
+Scope:
+Promotes the Load Plan browser closeout patch to current `main` without
+importing the broader historical branch. The patch adds the idempotent
+`load_plan_packages.domain_name` migration and stabilizes the Load Plan browser
+QA script so it seeds packages inside the active scoped context and selects the
+exact Load Plan navigation link.
+
+Files intentionally changed:
+
+- `frontend/scripts/functional-load-plan-browser.mjs`
+- `migrations/versions/c5b9d3a1e6f2_load_plan_package_domain_scope.py`
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_BROWSER_CLOSEOUT_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+- `python -m alembic heads` returned a single head: `c5b9d3a1e6f2`.
+- `OTM_DATABASE_URL=sqlite:///./var/qa-load-plan-browser-closeout-promote.db python -m alembic upgrade head`
+  passed on a fresh QA database.
+- `node --check scripts/functional-load-plan-browser.mjs` passed.
+- `git diff --check` passed.
+
+Evidence:
+
+- Historical browser evidence from the source closeout: `var/qa/load-plan-route-closeout.png`.
+- Historical issue comment: `https://github.com/Mr4ndre4tt4/otm-workbench/issues/207#issuecomment-4561087590`
+
+Validation not run:
+
+- Fresh browser screenshots have not yet been rerun in this clean promotion
+  branch.
+
+Open risks:
+
+- Historical screenshot evidence came from the shared local workspace and
+  included a floating Assistant control from parallel work. The sidebar/module
+  evidence remains useful because excluded top-level modules were absent.
+- Deeper visual decomposition into separate Load Plan page components remains
+  future enhancement, not current closeout scope.
+
+Recommended next step:
+
+Validate the clean promotion branch, open a PR linked to #207, and keep #207
+closed unless validation exposes a regression that requires reopening.

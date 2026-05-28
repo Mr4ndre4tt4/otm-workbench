@@ -2808,3 +2808,72 @@ Notes:
 - Initial backend attempts without `OTM_OTM_DATA_DICTIONARY_ROOT` failed
   because this clean worktree intentionally does not contain protected local
   `OTM_RESOURCES/`; the reruns with the local Data Dictionary override passed.
+
+## 2026-05-28 Load Plan Browser Closeout
+
+Scope:
+
+- Promotes the previously implemented Load Plan browser closeout patch to a
+  clean branch based on current `main`.
+- Stabilizes the Load Plan browser QA seed path so Rates batches are created
+  inside the active project/environment/profile context.
+- Adds an idempotent Alembic migration for the
+  `load_plan_packages.domain_name` column required by the current model.
+
+Fresh runtime:
+
+```text
+Historical source closeout:
+- Backend:  http://127.0.0.1:8052
+- Frontend: http://127.0.0.1:5222
+- Database: var/qa-load-plan-route-closeout.db
+- User:     demo@example.test
+```
+
+Live navigation IDs checked before browser QA:
+
+```text
+master_data, home, rates, load_plan, assets, order_release_generator,
+integration_mapping, settings
+```
+
+Commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py -q
+python -m alembic upgrade head
+node --check scripts/functional-load-plan-browser.mjs
+npm run qa:functional:load-plan:browser # historical source closeout
+```
+
+Results:
+
+```text
+tests/test_modules_navigation.py: 10 passed
+alembic heads: single head c5b9d3a1e6f2
+alembic upgrade head: passed against fresh var/qa-load-plan-browser-closeout-promote.db
+node --check scripts/functional-load-plan-browser.mjs: passed
+git diff --check: no errors
+Historical source closeout qa:functional:load-plan:browser: passed
+```
+
+Evidence:
+
+```text
+var/qa/load-plan-route-closeout.png
+```
+
+Notes:
+
+- The first browser QA run failed because the script created a Rates batch
+  outside the active scoped context; the script now sends project, environment,
+  and profile IDs.
+- The second browser QA run exposed the missing
+  `load_plan_packages.domain_name` migration; the migration is idempotent.
+- The third browser QA run exposed an ambiguous `/load-plan` selector after
+  Cockpit accelerator links were added; the script now selects the exact Load
+  Plan navigation link.
+- The promoted migration was rebased to revise `c4a8e2f7b9d1` so Alembic keeps
+  a single head after the Assistant migrations.
+- Fresh browser QA was not rerun from this clean promotion branch; rely on the
+  historical closeout evidence only for the already closed #207 lane.
