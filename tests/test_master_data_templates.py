@@ -1861,6 +1861,154 @@ def test_master_data_batches_follow_active_context_scope(client, admin_header):
     assert hidden_project_csv_files.status_code == 404
 
 
+def test_master_data_batches_same_name_are_isolated_by_domain_and_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    shared_file_name = "shared_items_upload.xlsx"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    visible = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    hidden_domain = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM1",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+
+    listed = client.get("/api/v1/modules/master-data/batches", headers=admin_header)
+    summary = client.get("/api/v1/modules/master-data/batches/summary", headers=admin_header)
+    visible_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{visible['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_domain_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_environment_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_environment['batch_id']}",
+        headers=admin_header,
+    )
+    hidden_domain_output = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_domain['batch_id']}/output-records",
+        headers=admin_header,
+    )
+    hidden_environment_csv = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_environment['batch_id']}/csv-files",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert [(item["batch_id"], item["file_name"]) for item in listed.json()["items"]] == [
+        (visible["batch_id"], shared_file_name)
+    ]
+    assert summary.status_code == 200
+    assert summary.json()["total_batches"] == 1
+    assert visible_detail.status_code == 200
+    assert visible_detail.json()["batch_id"] == visible["batch_id"]
+    assert visible_detail.json()["file_name"] == shared_file_name
+    assert hidden_domain_detail.status_code == 404
+    assert hidden_environment_detail.status_code == 404
+    assert hidden_domain_output.status_code == 404
+    assert hidden_environment_csv.status_code == 404
+
+
+def test_master_data_dba_same_name_all_domains_still_follow_active_environment(client, admin_header):
+    project_id, uat_id, dev_id = create_project_with_environments(client, admin_header)
+    shared_file_name = "shared_dba_items_upload.xlsx"
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+    )
+    otm1 = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM2",
+    )
+    otm2 = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=dev_id,
+        domain_name="OTM3",
+    )
+    hidden_environment = client.post(
+        "/api/v1/modules/master-data/templates/ITEMS_PACKAGING_STANDARD/workbook-editor/batches",
+        headers=admin_header,
+        json=workbook_editor_batch_payload(shared_file_name),
+    ).json()
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=uat_id,
+        domain_name="OTM1",
+        can_view_all_domains=True,
+    )
+
+    listed = client.get("/api/v1/modules/master-data/batches", headers=admin_header)
+    hidden_detail = client.get(
+        f"/api/v1/modules/master-data/batches/{hidden_environment['batch_id']}",
+        headers=admin_header,
+    )
+
+    assert listed.status_code == 200
+    assert {item["batch_id"] for item in listed.json()["items"]} == {
+        otm1["batch_id"],
+        otm2["batch_id"],
+    }
+    assert all(item["file_name"] == shared_file_name for item in listed.json()["items"])
+    assert hidden_detail.status_code == 404
+
+
 def test_master_data_batches_require_active_context_for_non_admin_access_and_create(
     client,
     admin_header,

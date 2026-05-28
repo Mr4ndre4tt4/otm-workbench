@@ -55,6 +55,60 @@ Recommended next step:
 Push the scoped #216 commit, wait for GitHub checks, close the issue, then pick
 the next small context-isolation follow-up from the validation matrix.
 
+## 2026-05-28 Master Data Same-Name Context Isolation
+
+Status:
+Implemented and validated for GitHub issue #217.
+
+Scope:
+Added focused backend regression coverage proving same-name Master Data
+workbook batches do not leak across active project, domain, or environment
+scope, while DBA/all-domain visibility remains constrained to the active
+environment.
+
+Files intentionally changed:
+
+- `tests/test_master_data_templates.py`
+- `docs/agent/TASK_CONTRACT_MASTER_DATA_SAME_NAME_CONTEXT_ISOLATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q`:
+  4 passed, 56 deselected.
+- `python -m pytest tests/test_master_data_templates.py -k "context_scope or dba_context or same_name or require_active_context" -q`:
+  5 passed, 55 deselected.
+
+Validation not run:
+
+- Browser QA was not run because this slice only adds backend
+  context-isolation regression coverage and does not change visible UI
+  behavior.
+
+Evidence:
+
+- GitHub issue #217 tracks the delivery slice.
+- New tests assert visible and hidden batch IDs plus direct detail/output/csv
+  route access for same-name workbook batches.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this Master Data slice unless
+  the latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #217 commit, wait for GitHub checks, close the issue, then
+pick the next small context-isolation follow-up from the validation matrix.
+
 ## 2026-05-28 Assets Acceptance Pass
 
 Status:

@@ -3262,3 +3262,35 @@ Notes:
   isolation coverage and does not change visible UI behavior.
 - Assertions check batch IDs and direct route access instead of relying on
   display names, because same-name data is the regression risk.
+
+## 2026-05-28 Master Data Same-Name Context Isolation
+
+Scope:
+
+- Added GitHub issue #217 for a focused Master Data context-isolation
+  regression.
+- Added backend tests proving same-name workbook batches stay isolated by
+  active project, domain, and environment.
+- Covered DBA/all-domain behavior so it can see multiple domains only inside
+  the active environment.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_master_data_templates.py -k "context_scope or dba_context or same_name or require_active_context" -q
+```
+
+Results:
+
+```text
+focused Master Data same-name/context tests: 4 passed, 56 deselected
+Master Data context slice: 5 passed, 55 deselected
+```
+
+Notes:
+
+- No browser screenshot was captured because this slice is backend API
+  isolation coverage and does not change visible UI behavior.
+- Assertions check batch IDs and direct route access instead of relying on
+  workbook file names, because same-name files are the regression risk.
