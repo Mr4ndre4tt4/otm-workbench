@@ -76,7 +76,8 @@ source. This document turns the route inventory into reviewable cleanup slices.
 
 3. Component dependency map:
    Identify excluded components that are still imported by active modules before
-   any removal proposal.
+   any removal proposal. Completed by
+   `docs/agent/EXCLUDED_COMPONENT_DEPENDENCY_MAP.md`.
 
 4. Docs archive candidate list:
    List superseded GUI docs and generated wireframe reports for later user

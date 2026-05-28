@@ -3,6 +3,49 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Excluded Component Dependency Map
+
+Status:
+Implemented and validated for GitHub issue #239.
+
+Scope:
+Created a dependency map for hidden/internal frontend components before any
+future source removal proposal. The map calls out that Settings currently
+reuses `AdminConsoleView`, Master Data owns Coordinate Quality under
+`/master-data/quality`, and Catalog/Evidence/Developer Tools remain retained
+behind backend-owned navigation guards.
+
+Files intentionally changed:
+
+- `docs/agent/EXCLUDED_COMPONENT_DEPENDENCY_MAP.md`
+- `docs/agent/TASK_CONTRACT_EXCLUDED_COMPONENT_DEPENDENCY_MAP_2026_05_28.md`
+- `docs/agent/FRONTEND_CLEANUP_CANDIDATE_CLASSIFICATION.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `npm test -- src/app/routes/WorkbenchRoute.test.tsx`
+  1 file passed, 6 tests passed.
+- `python -m pytest tests/test_modules_navigation.py -q`
+  9 passed.
+- `git diff --check`
+  passed, with expected Windows CRLF warnings.
+
+Validation not planned:
+
+- Browser screenshots are not planned because the slice documents dependency
+  status and does not change UI behavior.
+
+Open risks:
+
+- The map is point-in-time; any later deletion proposal must rerun import and
+  route searches before editing source.
+
+Recommended next step:
+
+Commit, push, open the PR for #239, wait for checks, then merge if green.
+
 ## 2026-05-28 Browser QA Script Classification
 
 Status:

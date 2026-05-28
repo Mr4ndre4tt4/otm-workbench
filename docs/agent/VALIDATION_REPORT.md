@@ -3,6 +3,39 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Excluded Component Dependency Map Validation
+
+Validation intent:
+
+- document hidden/internal component dependencies before any deletion proposal;
+- preserve active dependencies such as Settings and Master Data Quality Tools;
+- prove route guard and backend navigation coverage remain green.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/routes/WorkbenchRoute.test.tsx
+python -m pytest tests/test_modules_navigation.py -q
+git diff --check
+```
+
+Results:
+
+```text
+WorkbenchRoute guard tests: 1 file passed, 6 tests passed.
+Backend navigation tests: 9 passed.
+Whitespace check: passed, with expected Windows CRLF warnings.
+```
+
+Validation not planned:
+
+- browser QA screenshots;
+- full frontend or backend suites.
+
+Reason:
+This slice is a cleanup governance inventory and does not change runtime
+behavior.
+
 ## 2026-05-28 Browser QA Script Classification Validation
 
 Validation intent:
