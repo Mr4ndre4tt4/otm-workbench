@@ -1683,6 +1683,8 @@ describe("Functional Assets Library journey", () => {
     await userEvent.selectOptions(screen.getByLabelText("Asset macro object operator"), "begins_with");
     await userEvent.type(screen.getByLabelText("Asset OTM table filter"), "RATE_GEO_COST");
     await userEvent.selectOptions(screen.getByLabelText("Asset OTM table operator"), "one_of");
+    await userEvent.selectOptions(screen.getByLabelText("Asset linked target type filter"), "MODULE");
+    await userEvent.selectOptions(screen.getByLabelText("Asset linked target type operator"), "one_of");
     await userEvent.selectOptions(screen.getByLabelText("Asset page size"), "25");
     await userEvent.click(screen.getByRole("button", { name: "Apply search" }));
     expect(
@@ -1706,6 +1708,8 @@ describe("Functional Assets Library journey", () => {
           url.includes("macro_object_code_operator=begins_with") &&
           url.includes("otm_table_name=RATE_GEO_COST") &&
           url.includes("otm_table_name_operator=one_of") &&
+          url.includes("linked_target_type=MODULE") &&
+          url.includes("linked_target_type_operator=one_of") &&
           url.includes("page_size=25")
       )
     ).toBe(true);
@@ -1726,6 +1730,8 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Asset macro object operator")).toHaveValue("contains");
     expect(screen.getByLabelText("Asset OTM table filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset OTM table operator")).toHaveValue("contains");
+    expect(screen.getByLabelText("Asset linked target type filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset linked target type operator")).toHaveValue("one_of");
     expect(screen.getByLabelText("Asset page size")).toHaveValue("50");
     await waitFor(() => {
       expect(listUrls.at(-1)?.endsWith("/api/v1/modules/assets/assets")).toBe(true);

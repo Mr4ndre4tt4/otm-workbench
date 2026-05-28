@@ -57,6 +57,7 @@ const emptyAssetFilters: AssetFilters = {
   asset_type: "",
   category: "",
   description: "",
+  linked_target_type: "",
   macro_object_code: "",
   module_id: "",
   name: "",
@@ -70,6 +71,7 @@ const defaultAssetSearchDraft: AssetFilters = {
   ...emptyAssetFilters,
   asset_id_operator: "contains",
   description_operator: "contains",
+  linked_target_type_operator: "one_of",
   macro_object_code_operator: "contains",
   module_id_operator: "contains",
   name_operator: "contains",
@@ -217,6 +219,7 @@ function cleanAssetSearchFilters(draft: AssetFilters, page = "1") {
   copyTextFilter("module_id", "module_id_operator");
   copyTextFilter("macro_object_code", "macro_object_code_operator");
   copyTextFilter("otm_table_name", "otm_table_name_operator");
+  copyTextFilter("linked_target_type", "linked_target_type_operator");
   const pageSize = draft.page_size?.trim();
   if (pageSize && pageSize !== "50") {
     filters.page = page;
@@ -2364,6 +2367,36 @@ export function AssetsLibraryView({ token }: { token: string }) {
                       {item.label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Asset linked target type filter
+                <select
+                  aria-label="Asset linked target type filter"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, linked_target_type: event.target.value }))
+                  }
+                  value={draftAssetFilters.linked_target_type ?? ""}
+                >
+                  <option value="">Any linked target</option>
+                  {assetLinkTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset linked target type operator
+                <select
+                  aria-label="Asset linked target type operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, linked_target_type_operator: event.target.value }))
+                  }
+                  value={draftAssetFilters.linked_target_type_operator ?? "one_of"}
+                >
+                  <option value="one_of">One of</option>
+                  <option value="not_one_of">Not one of</option>
                 </select>
               </label>
               <label>

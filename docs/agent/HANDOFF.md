@@ -3,6 +3,66 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Linked Target Search UI
+
+Status:
+Implemented and validated.
+
+Scope:
+The `/assets/library` frontend now exposes the backend-owned linked target type
+filter that was added to the Assets list API.
+
+What changed:
+
+- added `Asset linked target type filter` sourced from asset link
+  classifications;
+- added `Asset linked target type operator` with `one_of` and `not_one_of`;
+- applying search sends `linked_target_type` and
+  `linked_target_type_operator`;
+- reset search clears linked target type and restores `one_of`;
+- browser QA now exercises the linked target type filter;
+- Storybook was treated as optional support and not used for this small
+  in-context form extension.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_LINKED_TARGET_SEARCH_UI.md`
+- `docs/superpowers/plans/2026-05-28-assets-linked-target-search-ui.md`
+- `frontend/src/platform/types/assets.ts`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `frontend/scripts/functional-assets-browser.mjs`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"`:
+  1 passed, 12 skipped after expected red failure was fixed.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx`: 13 passed.
+- `npm run build`: passed with existing Vite large chunk warning.
+- `npm run qa:functional:assets:browser`: passed.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8024`;
+- frontend: `http://127.0.0.1:5203`;
+- database: `var/qa-assets-linked-target-ui.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- backend/frontend QA runtimes were stopped after validation.
+
+Open risks:
+
+- target OTM version search remains deferred.
+- `OTM_RESOURCES/`, `outputs/`, Integration Mapping, and assistant-planning
+  changes remain outside this slice.
+- Integration Mapping remains reserved for its dedicated chat/workstream unless
+  explicitly requested.
+
+Recommended next step:
+Commit and push this UI slice, then evaluate whether target OTM version needs a
+real model/API contract or should remain deferred.
 ## 2026-05-28 Assets Linked Target Search API
 
 Status:

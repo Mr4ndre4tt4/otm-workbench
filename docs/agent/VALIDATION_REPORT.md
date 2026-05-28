@@ -3,6 +3,65 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Linked Target Search UI Validation
+
+Validation intent:
+
+- expose the backend-owned `linked target type` filter on `/assets/library`;
+- keep Storybook optional and unused for this small in-context form extension;
+- verify browser QA on a fresh backend/frontend runtime.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+```
+
+Results:
+
+```text
+Focused long Assets journey: 1 passed, 12 skipped after the expected red
+failure was fixed.
+Assets functional suite: 13 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8024
+Frontend: http://127.0.0.1:5203
+Database: var/qa-assets-linked-target-ui.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Existing Assets screenshots refreshed by the browser journey, including
+var/qa/assets-library-search.png.
+```
+
+Validated:
+
+- `Asset linked target type filter` is rendered from asset link
+  classifications;
+- `Asset linked target type operator` supports `one_of` and `not_one_of`;
+- applying search sends `linked_target_type` and
+  `linked_target_type_operator`;
+- reset search clears linked target type and restores `one_of`;
+- live navigation evidence stayed inside the current UI phase.
+
+Deferred:
+
+- target OTM version search remains a future slice.
+
 ## 2026-05-28 Assets Linked Target Search API Validation
 
 Validation intent:

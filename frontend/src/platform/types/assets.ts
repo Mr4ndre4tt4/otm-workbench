@@ -107,6 +107,8 @@ export type AssetFilters = {
   macro_object_code_operator?: string;
   otm_table_name?: string;
   otm_table_name_operator?: string;
+  linked_target_type?: string;
+  linked_target_type_operator?: string;
   has_current_version?: string;
   page?: string;
   page_size?: string;
