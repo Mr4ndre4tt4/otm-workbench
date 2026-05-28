@@ -2699,3 +2699,63 @@ Notes:
 - The older consolidated Cockpit spec still contains command-center/dashboard
   language and should be cleaned up later so future agents do not revive
   project-management panels.
+
+## 2026-05-28 Workbench Assistant Foundation
+
+Scope:
+
+- Added the Workbench Assistant foundation as a shell overlay and backend API
+  package.
+- Added assistant migrations, focused tests, frontend shell coverage, browser
+  QA automation, and planning/spec documentation.
+- Merged through PR #210 with merge commit
+  `a7f52d32330a170f97a3e422ecac0e84cbb68f94`.
+
+Commands:
+
+```powershell
+python -m alembic upgrade head
+python -m pytest tests/test_assistant_source_index.py tests/test_modules_navigation.py -q
+npm test -- src/app/AppFunctionalShell.test.tsx -t "Workbench Assistant"
+npm run build
+node --check scripts/functional-assistant-browser.mjs
+npm run qa:functional:assistant:browser
+gh pr checks 210 --watch --interval 10
+```
+
+Results:
+
+```text
+alembic upgrade head: passed against fresh Assistant QA DB
+assistant + navigation backend tests: 54 passed
+AppFunctionalShell Workbench Assistant test: passed
+frontend build: passed with existing Vite large chunk warning
+assistant browser QA script syntax: passed
+assistant browser QA: passed
+PR #210 CI: Backend tests passed, Frontend tests and build passed, CodeRabbit status passed
+```
+
+Browser QA freshness evidence:
+
+```text
+baseUrl: http://127.0.0.1:5205
+apiBaseUrl: http://127.0.0.1:8045
+navigationIds:
+- master_data
+- home
+- rates
+- load_plan
+- assets
+- order_release_generator
+- integration_mapping
+- settings
+screenshot: var/qa/workbench-assistant-shell.png
+```
+
+Notes:
+
+- The Assistant is intentionally outside the main navigation.
+- The assistant source index blocks local `OTM_RESOURCES` as an indexed source
+  root while still allowing the SQL helper to use the OTM Data Dictionary.
+- In local Windows validation, the OTM Data Dictionary override used
+  `OTM_OTM_DATA_DICTIONARY_ROOT` because settings use the `OTM_` env prefix.

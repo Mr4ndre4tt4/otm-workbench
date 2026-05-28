@@ -2120,3 +2120,80 @@ Open risks:
 Recommended next step:
 
 Close #186 after push, then continue with #187 Rates Studio revalidation.
+
+## 2026-05-28 Workbench Assistant Foundation Merge
+
+Status:
+Merged into `main` through PR #210.
+
+Scope:
+Added the Workbench Assistant foundation as an authenticated shell overlay, not
+as a top-level navigation module. The slice includes backend assistant APIs,
+assistant persistence migrations, source indexing/search, SQL helper drafting
+and explain endpoints, saved query and join pattern curation, Oracle document
+lookup request/cache scaffolding, frontend assistant UI, browser QA coverage,
+and assistant planning/spec documentation.
+
+Files intentionally changed:
+
+- `src/otm_workbench/assistant/*`
+- `src/otm_workbench/main.py`
+- `migrations/env.py`
+- `migrations/versions/c3f7a2b9d4e6_workbench_assistant_foundation.py`
+- `migrations/versions/c4a8e2f7b9d1_artifact_scope_columns.py`
+- `frontend/src/app/shell/WorkbenchAssistant.tsx`
+- `frontend/src/app/shell/WorkbenchShell.tsx`
+- `frontend/src/app/shell/shell.css`
+- `frontend/src/platform/hooks/assistant.ts`
+- `frontend/src/platform/types/assistant.ts`
+- `frontend/scripts/functional-assistant-browser.mjs`
+- `tests/test_assistant_source_index.py`
+- `tests/test_modules_navigation.py`
+- `docs/agent/assistant-planning/*`
+- `docs/superpowers/plans/2026-05-28-workbench-assistant-*.md`
+- `docs/superpowers/specs/2026-05-28-workbench-assistant-design.md`
+
+Validation run:
+
+- `python -m alembic upgrade head` passed against a fresh Assistant QA DB.
+- `python -m pytest tests/test_assistant_source_index.py tests/test_modules_navigation.py -q` passed with 54 tests.
+- `npm test -- src/app/AppFunctionalShell.test.tsx -t "Workbench Assistant"` passed.
+- `npm run build` passed with the existing Vite large chunk warning.
+- `node --check scripts/functional-assistant-browser.mjs` passed.
+- `npm run qa:functional:assistant:browser` passed after verifying live
+  `/api/v1/platform/navigation` returned the current UI phase navigation IDs.
+- GitHub CI for PR #210 passed: Backend tests, Frontend tests and build, and
+  CodeRabbit status.
+
+Validation not run:
+
+- No additional full-repository backend/frontend sweep was run after PR #210
+  merged; the PR checks and focused local/browser validation above are the
+  acceptance evidence for this slice.
+
+Evidence:
+
+- PR #210: `https://github.com/Mr4ndre4tt4/otm-workbench/pull/210`
+- Merge commit: `a7f52d32330a170f97a3e422ecac0e84cbb68f94`
+- Browser QA screenshot: `var/qa/workbench-assistant-shell.png`
+
+Open risks:
+
+- The assistant provides safe foundation scaffolding, but live Oracle document
+  retrieval is still request/cache scaffolding rather than a production
+  connector.
+- The clean PR intentionally excluded local `OTM_RESOURCES`, `outputs`, and
+  unrelated module changes. The original workspace may still contain
+  user-owned or parallel dirty files and should be inspected before future work.
+
+Next chat intake notes:
+
+- Start from `main` at or after merge commit `a7f52d32`.
+- The Assistant should remain an overlay/helper, not a main navigation module.
+- Use `OTM_OTM_DATA_DICTIONARY_ROOT` when tests need the local OTM Data
+  Dictionary path because the settings env prefix is `OTM_`.
+
+Recommended next step:
+
+Continue with the next planned module delivery slice after refreshing the main
+workspace from `origin/main` and preserving any unrelated local changes.
