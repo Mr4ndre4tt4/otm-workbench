@@ -115,6 +115,39 @@ def test_create_draft_asset_records_metadata_audit_and_event(client, admin_heade
     assert "cliente" not in combined.lower()
 
 
+def test_create_asset_inherits_active_context_when_scope_is_omitted(client, admin_header):
+    project_id, environment_id = create_project_environment(client, admin_header, name_suffix=" Create Scope")
+    set_active_context(
+        client,
+        admin_header,
+        project_id=project_id,
+        environment_id=environment_id,
+        domain_name="OTM1",
+    )
+
+    response = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            project_id=None,
+            profile_id=None,
+            environment_id=None,
+            domain_name=None,
+            access_policy_id=None,
+        ),
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    asset = response.json()
+    detail = client.get(f"/api/v1/modules/assets/assets/{asset['id']}", headers=admin_header)
+
+    assert asset["project_id"] == project_id
+    assert asset["environment_id"] == environment_id
+    assert asset["domain_name"] == "OTM1"
+    assert detail.status_code == 200
+    assert detail.json()["id"] == asset["id"]
+
+
 def test_create_draft_asset_rejects_unknown_classification(client, admin_header):
     response = client.post(
         "/api/v1/modules/assets/assets",

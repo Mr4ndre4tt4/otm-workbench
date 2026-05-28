@@ -6,7 +6,7 @@
 ## 2026-05-27 Assets Detail Route Slice
 
 Status:
-Implemented and source-validated.
+Implemented and fully validated.
 
 Scope:
 Assets Library now has the first direct route-level object inspection screen at
@@ -19,8 +19,12 @@ What changed:
   paths;
 - Assets hub rows now expose `Open detail`;
 - `/assets/library` continues to host the existing functional workflow bridge;
+- Assets creation now inherits missing project/profile/environment/domain scope
+  from the active context so newly created assets remain visible to their own
+  detail, update, version, link, download, and archive routes;
 - the browser QA script now checks live navigation for excluded stale modules
-  before proceeding and includes the new detail route screenshot step.
+  before proceeding, seeds synthetic artifact/evidence targets when needed, and
+  includes the new detail route screenshot step.
 
 Validation:
 
@@ -28,22 +32,28 @@ Validation:
   -> 1 passed;
 - `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 3 passed;
 - `npm run build` -> passed with the existing Vite large chunk warning;
-- `python -m pytest tests/test_assets_library_assets.py::test_create_draft_asset_records_metadata_audit_and_event -q`
-  -> 1 passed;
+- `python -m pytest tests/test_assets_library_assets.py -q` -> 18 passed;
 - `git diff --check` -> no errors, LF/CRLF warnings only.
 
-Browser QA note:
-`npm run qa:functional:assets:browser` was attempted but the currently running
-local backend on `http://127.0.0.1:8000` returned HTTP 500 while seeding an
-asset before the new route was opened. Treat this as a stale/local runtime
-issue until a fresh backend/database pair is started; the browser script is
-ready to capture `var/qa/assets-detail-route.png` after that.
+Browser QA:
+
+- command: `npm run qa:functional:assets:browser`;
+- backend: `http://127.0.0.1:8014`;
+- frontend: `http://127.0.0.1:5190`;
+- database: `var/qa-assets-detail-route-2.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshot: `var/qa/assets-detail-route.png`.
+
+Root cause note:
+The first browser QA attempt failed on the stale default backend/database at
+`http://127.0.0.1:8000`; that database lacked current Assets scope columns. A
+fresh runtime then exposed and confirmed the create-scope inheritance bug fixed
+in this slice.
 
 Recommended next step:
-Resolve the local browser-QA backend seed issue or start a fresh isolated
-FastAPI/Vite pair, capture the Assets detail screenshot, then continue Assets
-route extraction with edit metadata, versions, links, classifications, and
-archive review screens.
+Continue Assets route extraction with edit metadata, versions, links,
+classifications, and archive review screens.
 
 ## 2026-05-27 CodeRabbit Governance Update
 

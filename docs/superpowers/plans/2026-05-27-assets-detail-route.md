@@ -22,6 +22,9 @@ Add the first route-level Assets Library object screen for `/assets/:assetId`.
 - The route shows backend-owned metadata, version history, linked workbench
   objects, lifecycle status, and return paths.
 - `/assets/library` still preserves the existing functional workflow bridge.
+- Asset creation now inherits missing project/profile/environment/domain scope
+  from the active context, so newly created assets do not disappear from detail
+  and update routes under scoped visibility.
 
 ## Validation Commands
 

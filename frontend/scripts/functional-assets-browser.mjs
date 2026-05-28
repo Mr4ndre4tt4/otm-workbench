@@ -123,6 +123,16 @@ async function run() {
     }
   });
   const context = await seedSyntheticContext(token);
+  await apiRequest("/api/v1/platform/active-context", {
+    method: "POST",
+    token,
+    body: {
+      project_id: context.project.id,
+      profile_id: context.profile.id,
+      environment_id: context.environment.id,
+      domain_name: "OTM1"
+    }
+  });
   const referenceAsset = await apiRequest("/api/v1/modules/assets/assets", {
     method: "POST",
     token,
@@ -140,8 +150,57 @@ async function run() {
       tags: ["REFERENCE", "SYNTHETIC"]
     }
   });
-  const evidenceIndex = await apiRequest("/api/v1/evidence-hub/evidence", { token });
-  const evidenceTarget = evidenceIndex.items?.find((item) => item.artifact);
+  let evidenceIndex = await apiRequest("/api/v1/evidence-hub/evidence", { token });
+  let evidenceTarget = evidenceIndex.items?.find((item) => item.artifact);
+  if (!evidenceTarget?.artifact) {
+    const artifactPath = url.fileURLToPath(new URL("../../var/artifacts/browser-qa/assets-link-target.md", import.meta.url));
+    await fs.mkdir(path.dirname(artifactPath), { recursive: true });
+    await fs.writeFile(artifactPath, "# synthetic assets browser QA target\n", "utf-8");
+    const artifact = await apiRequest("/api/v1/platform/artifacts", {
+      method: "POST",
+      token,
+      body: {
+        source_module: "integration_mapping",
+        artifact_type: "integration_markdown_spec",
+        file_path: artifactPath,
+        file_name: "assets-link-target.md",
+        content_type: "text/markdown",
+        sensitivity_level: "client_safe",
+        project_id: context.project.id,
+        profile_id: context.profile.id,
+        environment_id: context.environment.id,
+        domain_name: "OTM1",
+        visibility: "PROJECT"
+      }
+    });
+    const manifest = await apiRequest("/api/v1/platform/manifests", {
+      method: "POST",
+      token,
+      body: {
+        source_module: "integration_mapping",
+        manifest_json: "{\"status\":\"synthetic-browser-qa\"}",
+        status: "CREATED",
+        project_id: context.project.id,
+        profile_id: context.profile.id,
+        environment_id: context.environment.id,
+        domain_name: "OTM1",
+        visibility: "PROJECT"
+      }
+    });
+    await apiRequest("/api/v1/platform/evidence", {
+      method: "POST",
+      token,
+      body: {
+        source_module: "integration_mapping",
+        evidence_type: "integration_mapping_spec",
+        summary_json: "{\"status\":\"synthetic-browser-qa\"}",
+        artifact_id: artifact.id,
+        manifest_id: manifest.id
+      }
+    });
+    evidenceIndex = await apiRequest(`/api/v1/evidence-hub/evidence?artifact_id=${artifact.id}`, { token });
+    evidenceTarget = evidenceIndex.items?.find((item) => item.artifact);
+  }
   if (!evidenceTarget?.artifact) {
     throw new Error("Assets browser functional QA requires at least one client-safe evidence item with an artifact.");
   }

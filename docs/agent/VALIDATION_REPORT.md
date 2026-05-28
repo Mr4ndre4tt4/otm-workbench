@@ -37,7 +37,7 @@ Browser QA:
 npm run qa:functional:assets:browser
 ```
 
-Result:
+Initial result:
 
 ```text
 Blocked before reaching the new detail route. The existing local backend on
@@ -47,13 +47,45 @@ asset create smoke passed in pytest, so this is recorded as a local runtime
 freshness/database issue rather than a failed asset-detail implementation.
 ```
 
-Additional browser-script hardening:
+Root cause and fix:
+
+```text
+The default local database `var/otm_workbench.db` was stale and lacked the
+current Assets scope columns, which caused the original 500. A fresh QA runtime
+then exposed a real scoped-create bug: the frontend creates assets without
+explicit project/environment/domain fields, and the backend did not inherit the
+active context, so the created row became hidden from its own detail/update
+routes. Assets create now merges missing scope fields from the active context.
+```
+
+Additional validation:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -q
+npm run qa:functional:assets:browser
+```
+
+Final result:
+
+```text
+Assets backend suite: 18 passed.
+Browser QA passed against:
+- Backend: http://127.0.0.1:8014
+- Frontend: http://127.0.0.1:5190
+- Database: var/qa-assets-detail-route-2.db
+- Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+- Screenshot: var/qa/assets-detail-route.png
+```
+
+Browser-script hardening:
 
 - added a live `/api/v1/platform/navigation` stale-module check before browser
   QA proceeds;
+- added synthetic evidence/artifact seeding so Assets link QA no longer
+  depends on residual evidence in a reused database;
 - extended the script to visit `/assets/:assetId` and capture
-  `var/qa/assets-detail-route.png` once the local backend seed issue is
-  resolved.
+  `var/qa/assets-detail-route.png`.
 
 ## 2026-05-27 CodeRabbit Governance Update
 

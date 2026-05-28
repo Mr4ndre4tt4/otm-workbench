@@ -103,6 +103,28 @@ def scoped_asset_query(db: Session, user: User):
     return apply_operational_scope(query, Asset, operational_scope_from_context(active_context))
 
 
+def active_context_scope_payload(db: Session, user: User) -> dict[str, object] | None:
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        return None
+    return {
+        "project_id": active_context.project_id,
+        "profile_id": active_context.profile_id,
+        "environment_id": active_context.environment_id,
+        "domain_name": active_context.domain_name,
+    }
+
+
+def merge_asset_create_scope(db: Session, user: User, payload: dict[str, object]) -> dict[str, object]:
+    scope = active_context_scope_payload(db, user)
+    if scope is None:
+        return payload
+    return {
+        **payload,
+        **{key: payload.get(key) or value for key, value in scope.items()},
+    }
+
+
 def get_scoped_asset_or_404(db: Session, user: User, asset_id: str) -> Asset:
     asset = scoped_asset_query(db, user).filter(Asset.id == asset_id).first()
     if asset is None:
@@ -207,7 +229,7 @@ def create_asset(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    request_payload = payload.model_dump()
+    request_payload = merge_asset_create_scope(db, user, payload.model_dump())
     validate_asset_otm_references(db, request_payload)
     try:
         asset = create_draft_asset(db, payload=request_payload, user=user)
