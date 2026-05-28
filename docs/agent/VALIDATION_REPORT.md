@@ -3,6 +3,39 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Version Train Setup Validation
+
+Validation intent:
+
+- create a GitHub-visible Assets version train before the next implementation
+  slice;
+- use existing GitHub milestones and small child issues;
+- avoid touching product code or Integration Mapping.
+
+Validation performed:
+
+```powershell
+C:\Program Files\GitHub CLI\gh.exe issue list --repo Mr4ndre4tt4/otm-workbench --state open --limit 60 --json number,title,labels,milestone,updatedAt,url
+C:\Program Files\GitHub CLI\gh.exe api repos/Mr4ndre4tt4/otm-workbench/milestones --paginate
+C:\Program Files\GitHub CLI\gh.exe issue create/edit/comment ...
+```
+
+Results:
+
+```text
+Issue #195 created for v0.3-assets-stabilization under milestone Assets.
+Issues #196 and #197 created as child delivery slices.
+Issue #194 and PR #182 updated with the operational follow-up.
+```
+
+Validation not run:
+
+- backend tests;
+- frontend tests;
+- browser QA.
+
+Reason:
+This is GitHub delivery-tracking work only.
 ## 2026-05-28 GitHub Versioning And Issue Cadence Validation
 
 Validation intent:

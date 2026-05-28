@@ -3,6 +3,44 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Version Train Setup
+
+Status:
+GitHub version train created.
+
+Scope:
+Created the next small-commit delivery lane for Assets stabilization so future
+work starts from GitHub issues instead of accumulating silently in the local
+workspace.
+
+GitHub changes:
+
+- assigned governance issue #194 to milestone `Governance Reset`;
+- created version issue #195: `[Version]: v0.3-assets-stabilization`;
+- assigned #195 to milestone `Assets`;
+- created child issue #196: `[Slice]: Assets target OTM version search contract`;
+- created child issue #197: `[Slice]: Assets acceptance pass and backlog closeout`;
+- updated #195 with child links;
+- commented #194 and PR #182 with the operational follow-up.
+
+Validation run:
+
+- `C:\Program Files\GitHub CLI\gh.exe issue list --repo Mr4ndre4tt4/otm-workbench --state open --limit 60 --json number,title,labels,milestone,updatedAt,url`;
+- `C:\Program Files\GitHub CLI\gh.exe api repos/Mr4ndre4tt4/otm-workbench/milestones --paginate`;
+- GitHub issue create/edit/comment commands for #194-#197.
+
+Validation not run:
+
+- backend tests;
+- frontend tests;
+- browser QA.
+
+Reason:
+This slice only changed GitHub delivery tracking and handoff documentation.
+
+Recommended next step:
+Start #196 if we want one more Assets implementation slice, or start #197 if we
+want to close Assets with an acceptance/backlog pass before moving modules.
 ## 2026-05-28 GitHub Versioning And Issue Cadence
 
 Status:
