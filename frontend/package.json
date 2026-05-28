@@ -11,6 +11,7 @@
     "qa:functional": "vitest run src/app/AppFunctionalShell.test.tsx src/app/AppFunctionalRates.test.tsx src/app/AppFunctionalCatalog.test.tsx src/app/AppFunctionalAdmin.test.tsx src/app/AppFunctionalIntegrationMapping.test.tsx src/app/AppFunctionalLoadPlan.test.tsx src/app/AppFunctionalMasterData.test.tsx src/app/AppFunctionalCoordinateQuality.test.tsx src/app/AppFunctionalEvidenceHub.test.tsx src/app/AppFunctionalOrderReleaseGenerator.test.tsx src/app/AppFunctionalAssets.test.tsx",
     "qa:functional:admin": "vitest run src/app/AppFunctionalAdmin.test.tsx",
     "qa:functional:assets": "vitest run src/app/AppFunctionalAssets.test.tsx",
+    "qa:functional:assistant:browser": "node scripts/functional-assistant-browser.mjs",
     "qa:functional:catalog": "vitest run src/app/AppFunctionalCatalog.test.tsx",
     "qa:functional:coordinate-quality": "vitest run src/app/AppFunctionalCoordinateQuality.test.tsx",
     "qa:functional:evidence": "vitest run src/app/AppFunctionalEvidenceHub.test.tsx",

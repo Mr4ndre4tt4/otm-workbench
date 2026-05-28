@@ -1,4 +1,5 @@
 export * from "./hooks/assets";
+export * from "./hooks/assistant";
 export * from "./hooks/catalog";
 export * from "./hooks/evidence";
 export * from "./hooks/integrationMapping";

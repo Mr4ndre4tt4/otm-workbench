@@ -255,4 +255,229 @@ describe("Functional shell journey", () => {
     expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-density", "compact");
     expect(view.container.querySelector(".app-shell")).toHaveAttribute("data-sidebar", "collapsed");
   });
+
+  it("opens the Workbench Assistant shell without adding navigation", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "rates", label: "Rates Studio", path: "/rates", status: "ACTIVE" }
+            ],
+            total: 2,
+            page: 1,
+            page_size: 50
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            theme_mode: "light",
+            follow_system_theme: false,
+            density: "comfortable",
+            sidebar_mode: "expanded"
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse(cockpitSummary(true)));
+      }
+      if (url.endsWith("/api/v1/assistant/health")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(jsonResponse({ status: "ok", module: "assistant", capabilities: ["source_index"] }));
+      }
+      if (url.endsWith("/api/v1/assistant/search?query=shipment+template&limit=5")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                source_id: "source_1",
+                source_title: "Shipment template guide",
+                source_type: "WORKBENCH_DOC",
+                source_uri: "workbench-doc://shipment-template.md",
+                module_id: "order_release_generator",
+                domain_name: "PUBLIC",
+                visibility: "PUBLIC",
+                chunk_id: "chunk_1",
+                snippet: "Shipment template source for synthetic assistant tests.",
+                rank: 1
+              }
+            ],
+            total: 1,
+            page: 1,
+            page_size: 1
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/assistant/oracle-docs/live-lookup")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        expect(body).toEqual({
+          query: "client ACME REST API post shipment endpoint",
+          private_terms: ["ACME"]
+        });
+        return Promise.resolve(
+          jsonResponse({
+            answer_type: "lookup_request",
+            summary: "Oracle documentation lookup is prepared and requires an explicit web action.",
+            confidence: "high",
+            source_mode: "official_search_link",
+            cost_level: "web",
+            network_performed: false,
+            sanitized_query: "client REST API post shipment endpoint",
+            actions: [
+              {
+                label: "Search official Oracle docs",
+                url: "https://docs.oracle.com/search/?q=client+REST+API+post+shipment+endpoint",
+                source_domain: "docs.oracle.com"
+              }
+            ],
+            warnings: ["No external request was performed."]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/assistant/sql/draft")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        expect(body).toEqual({
+          table_name: "RATE_GEO_COST",
+          columns: ["RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST_SEQ"],
+          filter_column: "RATE_GEO_COST_GROUP_GID",
+          purpose: "Find rate cost by group"
+        });
+        return Promise.resolve(
+          jsonResponse({
+            answer_type: "sql_draft",
+            summary: "Draft SELECT for RATE_GEO_COST.",
+            confidence: "high",
+            source_mode: "generated_draft",
+            cost_level: "local",
+            block: {
+              type: "sql_draft",
+              purpose: "Find rate cost by group",
+              sql: "select rgc.RATE_GEO_COST_GROUP_GID, rgc.RATE_GEO_COST_SEQ from RATE_GEO_COST rgc where rgc.RATE_GEO_COST_GROUP_GID = :rate_geo_cost_group_gid",
+              parameters: [
+                {
+                  name: "rate_geo_cost_group_gid",
+                  description: "Filter for RATE_GEO_COST.RATE_GEO_COST_GROUP_GID"
+                }
+              ],
+              tables: ["RATE_GEO_COST"],
+              columns: ["RATE_GEO_COST.RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST.RATE_GEO_COST_SEQ"],
+              assumptions: [],
+              warnings: []
+            },
+            sources: ["Data Dictionary: RATE_GEO_COST"]
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/assistant/sql/explain")) {
+        expect(init?.headers).toMatchObject({ Authorization: "Bearer session_token" });
+        const body = JSON.parse(String(init?.body));
+        expect(body).toEqual({
+          sql_text: "select rgc.RATE_GEO_COST_GROUP_GID, rgc.UNKNOWN_COL from RATE_GEO_COST rgc"
+        });
+        return Promise.resolve(
+          jsonResponse({
+            answer_type: "sql_draft",
+            summary: "Reviewed SELECT for RATE_GEO_COST.",
+            confidence: "medium",
+            source_mode: "generated_draft",
+            cost_level: "local",
+            block: {
+              type: "sql_draft",
+              purpose: "Explain pasted SELECT.",
+              sql: "select rgc.RATE_GEO_COST_GROUP_GID, rgc.UNKNOWN_COL from RATE_GEO_COST rgc",
+              parameters: [],
+              tables: ["RATE_GEO_COST"],
+              columns: ["RATE_GEO_COST.RATE_GEO_COST_GROUP_GID", "RATE_GEO_COST.UNKNOWN_COL"],
+              assumptions: [],
+              warnings: ["RATE_GEO_COST.UNKNOWN_COL was not found."]
+            },
+            sources: ["Data Dictionary: RATE_GEO_COST"]
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp();
+    await userEvent.type(screen.getByLabelText("Email"), "synthetic.user@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Project Cockpit" })).toBeInTheDocument();
+    const moduleNav = screen.getByRole("navigation", { name: "Workbench modules" });
+    expect(within(moduleNav).queryByRole("link", { name: /Assistant/ })).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Open Workbench Assistant" }));
+    expect(await screen.findByRole("heading", { name: "Workbench Assistant" })).toBeInTheDocument();
+    expect(await screen.findByText("Assistant backend connected")).toBeInTheDocument();
+    const assistantPanel = screen.getByLabelText("Workbench Assistant panel");
+    expect(within(assistantPanel).getByText("Current screen")).toBeInTheDocument();
+    expect(within(assistantPanel).getByText("Project Cockpit")).toBeInTheDocument();
+    expect(within(assistantPanel).getByRole("button", { name: "Help for this screen" })).toBeInTheDocument();
+    expect(within(assistantPanel).getByRole("button", { name: "Find template" })).toBeInTheDocument();
+    expect(within(assistantPanel).getByRole("button", { name: "Search Oracle docs" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Find template" }));
+    expect(screen.getByLabelText("Search Workbench sources")).toHaveValue("Project Cockpit template");
+
+    await userEvent.click(screen.getByRole("button", { name: "Search Oracle docs" }));
+    expect(screen.getByLabelText("Oracle docs question")).toHaveValue(
+      "Oracle Transportation Management Project Cockpit documentation"
+    );
+
+    await userEvent.clear(screen.getByLabelText("Search Workbench sources"));
+    await userEvent.type(screen.getByLabelText("Search Workbench sources"), "shipment template");
+    await userEvent.click(screen.getByRole("button", { name: "Search sources" }));
+    expect(await screen.findByText("Shipment template guide")).toBeInTheDocument();
+    expect(screen.getByText("workbench-doc://shipment-template.md")).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Oracle docs question"));
+    await userEvent.type(screen.getByLabelText("Oracle docs question"), "client ACME REST API post shipment endpoint");
+    await userEvent.type(screen.getByLabelText("Private terms"), "ACME");
+    await userEvent.click(screen.getByRole("button", { name: "Prepare Oracle lookup" }));
+    expect(await screen.findByText("client REST API post shipment endpoint")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Search official Oracle docs" })).toHaveAttribute(
+      "href",
+      "https://docs.oracle.com/search/?q=client+REST+API+post+shipment+endpoint"
+    );
+
+    await userEvent.type(screen.getByLabelText("SQL table"), "RATE_GEO_COST");
+    await userEvent.type(screen.getByLabelText("SQL columns"), "RATE_GEO_COST_GROUP_GID, RATE_GEO_COST_SEQ");
+    await userEvent.type(screen.getByLabelText("SQL filter column"), "RATE_GEO_COST_GROUP_GID");
+    await userEvent.type(screen.getByLabelText("SQL purpose"), "Find rate cost by group");
+    await userEvent.click(screen.getByRole("button", { name: "Draft SQL" }));
+    expect(await screen.findByText("SQL draft preview")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "select rgc.RATE_GEO_COST_GROUP_GID, rgc.RATE_GEO_COST_SEQ from RATE_GEO_COST rgc where rgc.RATE_GEO_COST_GROUP_GID = :rate_geo_cost_group_gid"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Review before use; Assistant drafts are not executed.")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByLabelText("SQL to review"),
+      "select rgc.RATE_GEO_COST_GROUP_GID, rgc.UNKNOWN_COL from RATE_GEO_COST rgc"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Review SQL" }));
+    expect(await screen.findByText("SQL review preview")).toBeInTheDocument();
+    expect(screen.getByText("RATE_GEO_COST.UNKNOWN_COL was not found.")).toBeInTheDocument();
+    expect(screen.getByText("Review before use; Assistant SQL review is not execution.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Close Workbench Assistant" }));
+    expect(screen.queryByRole("heading", { name: "Workbench Assistant" })).not.toBeInTheDocument();
+  });
 });

@@ -1,4 +1,5 @@
 export * from "./types/assets";
+export * from "./types/assistant";
 export * from "./types/catalog";
 export * from "./types/cockpit";
 export * from "./types/evidence";
