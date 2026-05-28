@@ -3023,14 +3023,16 @@ unless the user wants another Cockpit visual acceptance pass first.
 
 Status:
 Complete. Conflicts resolved in an isolated worktree, backend plus frontend
-validation passed, PR #182 was pushed and marked ready for review.
+validation passed, PR #182 was pushed, marked ready for review, and merged
+into `main`.
 
 GitHub tracking:
 
 - Issue #220: PR #182 merge-conflict recovery.
 - Issue #220 closed after merge recovery.
-- PR #182: governance recovery branch reconciliation with `origin/main`,
-  mergeable and ready for review.
+- PR #182: merged into `main` on 2026-05-28.
+- PR #182 merge commit: `0594b5d67d3d8cc3b97dff489c2675214ffc49df`.
+- Issue #225: follow-up handoff state sync.
 
 Files intentionally changed:
 
@@ -3055,6 +3057,8 @@ Validation run:
 - `npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalShell.test.tsx`
   passed with 2 files and 15 tests.
 - `npm run build` passed with the existing Vite large chunk warning.
+- GitHub PR #182 Backend CI, Frontend CI/build, and CodeRabbit passed before
+  merge.
 
 Validation not run:
 
@@ -3065,24 +3069,19 @@ Validation not run:
 
 Open risks:
 
-- `OTM_RESOURCES` is still local/untracked. Isolated worktrees need the
-  Data Dictionary path explicitly configured until the repository adopts a
-  formal resource-versioning policy.
-- CodeRabbit may briefly return to pending after PR metadata changes; GitHub
-  Actions were green after the merge-recovery push.
+- `OTM_RESOURCES` remains local/untracked by policy. Isolated worktrees still
+  need the Data Dictionary path explicitly configured.
 
 Next-chat intake notes:
 
-- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-pr182-sync` only
-  for this PR merge recovery until it is committed and pushed.
 - Do not stage the primary workspace's broad dirty state.
 - Integration Mapping changes present in this merge came from `origin/main`;
   do not extend that module in this chat beyond merge preservation.
 
 Recommended next step:
 
-Wait for any asynchronous CodeRabbit status refresh to settle, then review or
-merge PR #182 according to the user's preferred release cadence.
+Close issue #225 after this handoff sync is committed and merged, then continue
+with the next roadmap lane from `origin/main`.
 
 ## 2026-05-28 OTM_RESOURCES Versioning Policy
 
