@@ -168,6 +168,54 @@ Push the scoped #218 commit, wait for GitHub checks, close the issue, then
 continue with Cockpit browser route recovery/visual evidence if the user asks
 for the next context-isolation item.
 
+## 2026-05-28 Context Isolation Matrix Sync
+
+Status:
+Implemented and validated for GitHub issue #219.
+
+Scope:
+Synchronized the context isolation matrix so completed Cockpit, Rates, Master
+Data, and Order Release validation slices are recorded as completed evidence
+instead of future gaps.
+
+Files intentionally changed:
+
+- `docs/agent/CONTEXT_ISOLATION_VALIDATION_MATRIX.md`
+- `docs/agent/TASK_CONTRACT_CONTEXT_ISOLATION_MATRIX_SYNC_2026_05_28.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `python -m pytest tests/test_operational_context.py -q`: 26 passed.
+- `python -m pytest tests/test_modules_navigation.py -q`: 10 passed.
+
+Validation not run:
+
+- Browser QA was not run because this slice only synchronizes governance
+  documentation and does not change visible UI behavior.
+
+Evidence:
+
+- GitHub issue #219 tracks the documentation sync.
+
+Open risks:
+
+- The local workspace remains dirty with unrelated parallel work; future
+  commits must keep staging scoped.
+
+Next-chat intake notes:
+
+- Integration Mapping remains reserved for its dedicated chat.
+- Treat unrelated dirty frontend, Assistant, Assets, Load Plan, and
+  `OTM_RESOURCES/` changes as out of scope for this governance sync unless the
+  latest user instruction says otherwise.
+
+Recommended next step:
+
+Push the scoped #219 commit, wait for GitHub checks, close the issue, then
+continue with the next roadmap item from the refreshed matrix.
+
 ## 2026-05-28 Assets Acceptance Pass
 
 Status:

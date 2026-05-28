@@ -3330,3 +3330,33 @@ Notes:
   identity. The final regression uses same template names with distinct codes.
 - No browser screenshot was captured because this slice is backend API
   isolation coverage and does not change visible UI behavior.
+
+## 2026-05-28 Context Isolation Matrix Sync
+
+Scope:
+
+- Added GitHub issue #219 for a governance sync after completed context
+  isolation regression slices.
+- Updated the context isolation matrix to record #215, #216, #217, and #218 as
+  completed evidence.
+- Removed completed same-name validation lanes from the future follow-up list.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_operational_context.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+tests/test_operational_context.py: 26 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- No product source changed.
+- No browser screenshot was captured because this slice only synchronizes
+  governance documentation.

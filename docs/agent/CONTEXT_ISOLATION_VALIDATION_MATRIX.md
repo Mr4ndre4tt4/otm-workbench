@@ -1,4 +1,4 @@
-# Context Isolation Validation Matrix
+﻿# Context Isolation Validation Matrix
 
 **Status:** active foundation baseline
 **Date:** 2026-05-28
@@ -27,7 +27,7 @@ see across scopes; normal users operate only inside allowed scopes.
 | Project/profile/environment selectors | Non-admin setup selectors are limited to granted projects. | Covered |
 | Grant and policy authoring | Settings access model, grant creation, and policy creation are authority checked. | Covered |
 | Public View semantics | Public domain is listed separately from private domain access. | Covered at platform contract level |
-| DBA visibility | Admin/DBA style users retain broad setup visibility. | Covered by admin paths; module-level checks vary |
+| DBA visibility | Admin/DBA style users retain broad setup visibility. | Covered by admin paths and focused module-level regression slices for Rates, Master Data, and Order Release. |
 | Runtime navigation freshness | `tests/test_modules_navigation.py` guards current UI phase navigation. | Covered |
 
 ## Module Matrix
@@ -35,12 +35,12 @@ see across scopes; normal users operate only inside allowed scopes.
 | Module | Primary scoped records | Existing isolation evidence | Gap / next validation |
 |---|---|---|---|
 | Settings | projects, profiles, environments, users, roles, grants, access policies | `tests/test_operational_context.py` covers setup visibility, active context, grants, policies, and recovery. | Keep as source of truth for context foundation. |
-| Cockpit | active context, project info, accelerator availability | Platform active-context and navigation tests cover backend prerequisites. | Needs browser route recovery and context selector evidence before Cockpit completion. |
-| Rates Studio | rate batches, tables, rows, issues, generated artifacts | Rates routes resolve create scope from active context and module tests include scoped batch behavior. | Revalidate in the next Rates lane with same-name batches across domains/environments. |
+| Cockpit | active context, project info, accelerator availability | Platform active-context, navigation tests, and #215 browser evidence cover the current context-selector route recovery gate. | Next Cockpit visual evidence should be captured only when visual acceptance changes or another Cockpit UI slice starts. |
+| Rates Studio | rate batches, tables, rows, issues, generated artifacts | Rates routes resolve create scope from active context; #216 adds same-name batch isolation across domains/environments plus DBA active-environment coverage. | Context-isolation gap closed for current backend batch scope. Future Rates work should add Public View behavior only when the module introduces public/shared objects. |
 | Load Plan / Cutover | packages, checklists, readiness, review items, handoff/export records | Load Plan package and checklist tests include scoped package behavior and hidden-context rejection. | Preserve as dependency; add any missing Public View copy/use cases later. |
 | Assets Library | assets, versions, links, classifications | Assets tests now cover active-context inheritance, BATCH/CHECKLIST scoped links, archive/detail contracts, and target version taxonomy. | Add browser evidence only when visual acceptance is in scope. |
-| Master Data / Data Factory | batches, templates, validation artifacts, coordinate quality records | Existing module tests cover functional behavior; context-isolation coverage must be revalidated before the Master Data lane resumes. | Create a focused issue before Master Data continuation. |
-| Order Release Generator | templates, batches, rows, XML artifacts | Existing revalidation exists; scope inheritance is implemented in backend helpers. | Revalidate direct route recovery and cross-domain template visibility before completion. |
+| Master Data / Data Factory | batches, templates, validation artifacts, coordinate quality records | Existing module tests cover functional behavior; #217 adds same-name workbook batch isolation across project/domain/environment plus DBA active-environment coverage. | Context-isolation gap closed for current backend batch scope. Coordinate Quality needs a separate scoped validation only when that route family resumes. |
+| Order Release Generator | templates, batches, rows, XML artifacts | Existing revalidation exists; scope inheritance is implemented in backend helpers; #218 adds same-name template and batch isolation plus DBA active-environment coverage. | Context-isolation gap closed for current backend template and batch scope. Template `code` remains a global version-family identity. |
 | Integration Mapping Studio | systems, mappings, preview/spec/artifacts | Reserved for separate chat/workstream. | Do not modify here unless a minimal cross-module context fix is required. |
 
 ## Validation Commands
@@ -59,15 +59,25 @@ before claiming completion.
 
 Open small issues only when the next lane starts:
 
-- Cockpit: context selector browser route recovery and Public/private visual
-  evidence.
-- Rates: same-name batch isolation across domain/environment before Rates
-  completion.
-- Master Data: focused context-isolation revalidation before continuation.
-- Order Release: scoped template/batch route recovery before completion.
+- Cockpit: capture fresh Public/private visual evidence only when a Cockpit UI
+  slice changes behavior or visual acceptance.
+- Load Plan: add Public View copy/use-case validation when package sharing or
+  public handoff behavior enters scope.
+- Master Data Coordinate Quality: add focused scoped validation when Quality
+  Tools route work resumes.
+- Assets: add browser evidence only when visual acceptance is in scope.
 
 Do not create broad placeholder issues for every module at once; attach them to
 the active version lane when implementation starts.
+
+## Completed Follow-Up Evidence
+
+| Issue | Module | Evidence |
+|---|---|---|
+| #215 | Cockpit | Browser context-selector route recovery evidence with live navigation freshness gate. |
+| #216 | Rates Studio | Same-name rate batch isolation across domain/environment and DBA active-environment tests. |
+| #217 | Master Data / Data Factory | Same-name workbook batch isolation across project/domain/environment and DBA active-environment tests. |
+| #218 | Order Release Generator | Same-name template and batch isolation plus DBA active-environment tests. |
 
 ## Acceptance Gate
 
