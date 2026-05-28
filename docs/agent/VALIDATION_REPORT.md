@@ -3453,3 +3453,41 @@ Notes:
 - The first validation run failed because low-level rates tests still used a
   hardcoded relative Data Dictionary path. The final implementation aligns
   those tests with the configured application setting.
+
+## 2026-05-28 Frontend Route Inventory Guard
+
+Scope:
+
+- Added GitHub issue #229 for the frontend cleanup/current-phase navigation
+  pruning guard.
+- Documented active, excluded/internal, developer-only, and special frontend
+  route surfaces in `docs/agent/FRONTEND_ROUTE_INVENTORY.md`.
+- Added a frontend route guard test proving direct access to excluded top-level
+  routes falls back to `Module unavailable` unless the backend navigation
+  contract returns those modules.
+- Did not delete route source files or change visible navigation.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py -q
+npm test -- src/app/routes/WorkbenchRoute.test.tsx src/app/shell/SidebarNav.test.tsx
+git diff --check
+```
+
+Results:
+
+```text
+tests/test_modules_navigation.py: 9 passed
+frontend WorkbenchRoute + SidebarNav: 2 files passed, 8 tests passed
+git diff --check: passed
+```
+
+Notes:
+
+- Integration Mapping remains active in the current UI phase but reserved for a
+  separate workstream; no Integration Mapping implementation files changed.
+- `npm install` was required in the isolated worktree before Vitest could run;
+  it reported 0 vulnerabilities.
+- Browser screenshots were not captured because this slice documents and tests
+  route exposure without changing visible UI behavior.
