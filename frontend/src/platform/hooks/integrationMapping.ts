@@ -5,6 +5,9 @@ import type {
   IntegrationDefinition,
   IntegrationDefinitionCreatePayload,
   IntegrationArtifactsResponse,
+  IntegrationEnrichedFieldsResponse,
+  IntegrationEnrichmentReadiness,
+  IntegrationEnrichmentStepsResponse,
   IntegrationEndpoint,
   IntegrationEndpointCreatePayload,
   IntegrationEndpointsResponse,
@@ -284,6 +287,42 @@ export function useIntegrationResponseHandlers(token: string | null, definitionI
     queryFn: () =>
       apiGet<IntegrationResponseHandlersResponse>(
         `/api/v1/modules/integration-mapping/definitions/${definitionId}/response-handlers`,
+        { token }
+      ),
+    enabled: Boolean(token && definitionId)
+  });
+}
+
+export function useIntegrationEnrichmentSteps(token: string | null, definitionId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enrichment-steps"],
+    queryFn: () =>
+      apiGet<IntegrationEnrichmentStepsResponse>(
+        `/api/v1/modules/integration-mapping/definitions/${definitionId}/enrichment-steps`,
+        { token }
+      ),
+    enabled: Boolean(token && definitionId)
+  });
+}
+
+export function useIntegrationEnrichedFields(token: string | null, definitionId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enriched-fields"],
+    queryFn: () =>
+      apiGet<IntegrationEnrichedFieldsResponse>(
+        `/api/v1/modules/integration-mapping/definitions/${definitionId}/enriched-fields`,
+        { token }
+      ),
+    enabled: Boolean(token && definitionId)
+  });
+}
+
+export function useIntegrationEnrichmentReadiness(token: string | null, definitionId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enrichment-readiness"],
+    queryFn: () =>
+      apiGet<IntegrationEnrichmentReadiness>(
+        `/api/v1/modules/integration-mapping/definitions/${definitionId}/enrichment-readiness`,
         { token }
       ),
     enabled: Boolean(token && definitionId)

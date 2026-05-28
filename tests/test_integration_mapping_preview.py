@@ -5,6 +5,7 @@ from otm_workbench.models import Artifact, IntegrationMapping, Job
 from tests.test_integration_mapping_definitions import create_project_with_environments, set_active_context
 from tests.test_integration_mapping_loops import loop_payload
 from tests.test_integration_mapping_lookups import lookup_payload
+from tests.test_integration_mapping_enrichment import create_intermediate_document, enrichment_payload
 from tests.test_integration_mapping_joins import join_payload
 from tests.test_integration_mapping_mappings import (
     create_definition,
@@ -42,6 +43,8 @@ def test_preview_integration_definition_creates_job_and_artifact(client, admin_h
         "loops": 1,
         "joins": 1,
         "lookups": 1,
+        "enrichment_steps": 0,
+        "enriched_fields": 0,
     }
 
     job = db_session.get(Job, payload["job_id"])
@@ -65,6 +68,65 @@ def test_preview_integration_definition_creates_job_and_artifact(client, admin_h
     assert artifact_payload["definition_id"] == definition["id"]
     assert artifact_payload["preview"]["external_calls_executed"] is False
     assert "SYNTHETIC" not in json.dumps(artifact_payload)
+
+
+def test_preview_integration_definition_includes_enrichment_provenance_without_external_calls(
+    client,
+    admin_header,
+    db_session,
+):
+    definition, source, _target = create_source_and_target_documents(client, admin_header)
+    intermediate = create_intermediate_document(client, admin_header, definition["id"])
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/enrichment-steps",
+        json=enrichment_payload(source, intermediate),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/preview",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["preview"]["external_calls_executed"] is False
+    assert payload["preview"]["entity_counts"]["enrichment_steps"] == 1
+    assert payload["preview"]["entity_counts"]["enriched_fields"] == 1
+    assert payload["preview"]["enrichment_provenance"] == [
+        {
+            "step_id": created.json()["id"],
+            "name": "Synthetic carrier enrichment",
+            "step_type": "SINGLE",
+            "endpoint_id": None,
+            "key_template": "{shipment_gid}",
+            "key_source_fields": ["/Transmission/Shipment/ShipmentGid"],
+            "response_schema_document_id": intermediate["id"],
+            "response_field_mappings": [
+                {
+                    "response_path": "$.location.locationName",
+                    "output_field": "carrier_name_enriched",
+                    "data_type": "String",
+                    "cardinality": "SCALAR",
+                }
+            ],
+            "published_fields": [
+                {
+                    "field_id": payload["preview"]["enrichment_provenance"][0]["published_fields"][0]["field_id"],
+                    "name": "carrier_name_enriched",
+                    "response_path": "$.location.locationName",
+                    "data_type": "String",
+                    "cardinality": "SCALAR",
+                }
+            ],
+            "external_call_executed": False,
+            "value_policy": "metadata_only_no_external_call",
+        }
+    ]
+    artifact = db_session.get(Artifact, payload["artifact_id"])
+    artifact_payload = json.loads(Path(artifact.file_path).read_text(encoding="utf-8"))
+    assert artifact_payload["preview"]["enrichment_provenance"][0]["step_id"] == created.json()["id"]
 
 
 def test_preview_integration_definition_materializes_direct_json_with_provenance(

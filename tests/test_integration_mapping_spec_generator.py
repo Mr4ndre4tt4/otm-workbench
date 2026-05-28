@@ -2,6 +2,7 @@ from pathlib import Path
 
 from otm_workbench.models import Artifact, IntegrationMapping, Job
 from tests.test_integration_mapping_definitions import create_project_with_environments, set_active_context
+from tests.test_integration_mapping_enrichment import create_intermediate_document, enrichment_payload
 from tests.test_integration_mapping_mappings import create_source_and_target_documents, mapping_payload
 from tests.test_integration_mapping_response_handlers import (
     create_documents_with_response_status,
@@ -38,6 +39,7 @@ def test_generate_integration_spec_creates_markdown_artifact_and_job(client, adm
         "Mappings",
         "Loops",
         "Joins",
+        "Enrichment Pipeline",
         "Lookups",
         "Response Handling",
         "Synthetic Test Cases",
@@ -62,6 +64,7 @@ def test_generate_integration_spec_creates_markdown_artifact_and_job(client, adm
     assert "## Identification" in markdown
     assert "## Schema Documents" in markdown
     assert "## Mappings" in markdown
+    assert "## Enrichment Pipeline" in markdown
     assert "## Synthetic Test Cases" in markdown
     assert "/Transmission/Shipment/ShipmentGid" in markdown
     assert "external calls are not executed" in markdown
@@ -176,6 +179,33 @@ def test_generate_integration_spec_includes_response_handlers(client, admin_head
     artifact = db_session.get(Artifact, response.json()["artifact_id"])
     markdown = Path(artifact.file_path).read_text(encoding="utf-8")
     assert "`1` `SUCCESS`: `$.status` `EQUALS` `ACCEPTED`." in markdown
+
+
+def test_generate_integration_spec_includes_enrichment_pipeline_provenance(client, admin_header, db_session):
+    definition, source, _target = create_source_and_target_documents(client, admin_header)
+    intermediate = create_intermediate_document(client, admin_header, definition["id"])
+    created = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/enrichment-steps",
+        json=enrichment_payload(source, intermediate),
+        headers=admin_header,
+    )
+    assert created.status_code == 200
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/generate-spec",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "Enrichment Pipeline" in payload["spec"]["sections"]
+    artifact = db_session.get(Artifact, payload["artifact_id"])
+    markdown = Path(artifact.file_path).read_text(encoding="utf-8")
+    assert "## Enrichment Pipeline" in markdown
+    assert "`30` `SINGLE`: `Synthetic carrier enrichment`" in markdown
+    assert "`/Transmission/Shipment/ShipmentGid`" in markdown
+    assert "`carrier_name_enriched` <- `$.location.locationName`" in markdown
+    assert "External enrichment calls are not executed" in markdown
 
 
 def test_generate_integration_spec_rejects_missing_definition(client, admin_header):
