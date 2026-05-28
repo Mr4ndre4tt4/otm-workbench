@@ -2001,3 +2001,37 @@ Recommended next step:
 
 Continue the approved module sequence only after running the new-chat intake
 gate and confirming the latest user instruction.
+
+## 2026-05-28 Context Segregation Foundation GitHub Closure
+
+Status:
+GitHub tracking closure complete.
+
+Scope:
+Revalidated the already documented context segregation foundation and closed
+GitHub issue #184. No application code changed in this closure slice.
+
+Validation run:
+
+- `python -m pytest tests/test_operational_scope.py -q` passed with 6 tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+- `python -m pytest tests/test_operational_context.py -vv -s` passed with 26
+  tests.
+- `python -m pytest tests/test_operational_metadata.py -q` passed with 23
+  tests.
+
+Validation note:
+
+- The first broad combined pytest command timed out on Windows without useful
+  output. The same representative scope packages passed when split.
+
+GitHub:
+
+- Closed #184: `[Slice]: implement context segregation foundation`.
+- Added issue comment with the validation evidence and closure rationale.
+
+Recommended next step:
+
+Continue with #185 Settings policy/access setup or #186 Cockpit context and
+accelerator launch, keeping Integration Mapping reserved for its separate
+workstream unless explicitly requested.

@@ -2591,3 +2591,35 @@ Acceptance result:
 - Remaining items are backlog: backend search operators/pagination, row
   mutation/detail depth, Data Dictionary metadata summary in table detail, and
   expanded out-of-order browser QA.
+
+## 2026-05-28 Context Segregation Foundation Closure
+
+Scope:
+
+- Revalidated the context segregation foundation before closing GitHub issue
+  #184.
+- No source implementation changed in this closure slice.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_operational_scope.py -q
+python -m pytest tests/test_modules_navigation.py -q
+python -m pytest tests/test_operational_context.py -vv -s
+python -m pytest tests/test_operational_metadata.py -q
+```
+
+Results:
+
+```text
+tests/test_operational_scope.py: 6 passed
+tests/test_modules_navigation.py: 10 passed
+tests/test_operational_context.py: 26 passed
+tests/test_operational_metadata.py: 23 passed
+```
+
+Notes:
+
+- A first broad combined pytest command timed out on Windows without returning
+  useful evidence. The same representative validation set passed when split.
+- GitHub issue #184 was closed after the evidence comment was posted.
