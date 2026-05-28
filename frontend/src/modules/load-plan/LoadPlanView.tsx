@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import {
   buildCsvutilFromCutoverChecklist,
@@ -77,6 +78,33 @@ type LoadPlanWorkflowStage = (typeof loadPlanWorkflowStages)[number]["id"];
 
 const defaultEvidenceId = "SYN_EVIDENCE_001";
 
+type LoadPlanRouteContext = {
+  packageId: string | null;
+  stage: LoadPlanWorkflowStage;
+};
+
+function loadPlanRouteContext(pathname: string): LoadPlanRouteContext {
+  const segments = pathname.split("/").filter(Boolean);
+  const packageIndex = segments.indexOf("packages");
+  if (packageIndex < 0) return { packageId: null, stage: "packages" };
+
+  const packageId = segments[packageIndex + 1] ?? null;
+  const operation = segments[packageIndex + 2] ?? null;
+  const stage =
+    operation === "checklist" ||
+    operation === "readiness" ||
+    operation === "csvutil" ||
+    operation === "zip-review" ||
+    operation === "sequence" ||
+    operation === "exports"
+      ? operation
+      : operation === "go-no-go" || operation === "handoff"
+        ? "handoff"
+        : "packages";
+
+  return { packageId, stage };
+}
+
 function loadPlanNextAction({
   checklist,
   csvutilBuild,
@@ -120,10 +148,12 @@ function loadPlanNextAction({
 
 export function LoadPlanView({ token }: { token: string }) {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const currentRoute = loadPlanRouteContext(location.pathname);
   const summary = useLoadPlanSummary(token);
   const packages = useLoadPlanPackages(token);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const [activeStage, setActiveStage] = useState<LoadPlanWorkflowStage>("packages");
+  const [activeStage, setActiveStage] = useState<LoadPlanWorkflowStage>(currentRoute.stage);
   const [checklist, setChecklist] = useState<CutoverChecklist | null>(null);
   const [readiness, setReadiness] = useState<CutoverChecklistReadiness | null>(null);
   const [csvutilBuild, setCsvutilBuild] = useState<CsvutilBuild | null>(null);
@@ -142,7 +172,7 @@ export function LoadPlanView({ token }: { token: string }) {
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
   const [evidenceId, setEvidenceId] = useState(defaultEvidenceId);
   const packageItems = packages.data?.items ?? [];
-  const effectivePackageId = selectedPackageId ?? packageItems[0]?.id ?? null;
+  const effectivePackageId = currentRoute.packageId ?? selectedPackageId ?? packageItems[0]?.id ?? null;
   const packageDetail = useLoadPlanPackageDetail(token, effectivePackageId);
   const handoffEligibility = useCutoverHandoffEligibility(token, effectivePackageId);
   const reviewQueue = useLoadPlanReviewQueue(token, effectivePackageId);
@@ -174,6 +204,81 @@ export function LoadPlanView({ token }: { token: string }) {
     zipAnalysis
   });
   const activeLoadPlanStageTitle = loadPlanWorkflowStages.find((stage) => stage.id === activeStage)?.title ?? "Workflow";
+  const selectedPackageRoute = effectivePackageId ? `/load-plan/packages/${effectivePackageId}` : "/load-plan/packages";
+  const routeDestinations = [
+    { href: "/load-plan", id: "load-plan-hub", meta: ["Module hub"], status: "ACTIVE", title: "Back to Load Plan" },
+    { href: "/load-plan/packages", id: "package-library", meta: ["Package library"], status: "ACTIVE", title: "Package library" },
+    {
+      href: selectedPackageRoute,
+      id: "selected-package",
+      meta: [effectivePackageId ?? "Select a package"],
+      status: effectivePackageId ? "ACTIVE" : "PENDING",
+      title: "Open selected package"
+    },
+    {
+      href: `${selectedPackageRoute}/checklist`,
+      id: "checklist-route",
+      meta: ["Checklist review"],
+      status: checklist?.status ?? "PENDING",
+      title: "Checklist"
+    },
+    {
+      href: `${selectedPackageRoute}/readiness`,
+      id: "readiness-route",
+      meta: ["Checklist readiness"],
+      status: readiness?.status ?? "PENDING",
+      title: "Readiness"
+    },
+    {
+      href: `${selectedPackageRoute}/csvutil`,
+      id: "csvutil-route",
+      meta: ["CSVUTIL artifacts"],
+      status: csvutilBuild?.status ?? "PENDING",
+      title: "CSVUTIL"
+    },
+    {
+      href: `${selectedPackageRoute}/zip-review`,
+      id: "zip-review-route",
+      meta: ["ZIP analysis and review queue"],
+      status: zipAnalysis?.status ?? "PENDING",
+      title: "ZIP review"
+    },
+    {
+      href: `${selectedPackageRoute}/sequence`,
+      id: "sequence-route",
+      meta: ["Load order"],
+      status: sequenceSnapshot?.status ?? "PENDING",
+      title: "Sequence"
+    },
+    {
+      href: `${selectedPackageRoute}/exports`,
+      id: "exports-route",
+      meta: ["Readiness and package exports"],
+      status: readinessExport?.status ?? cutoverPackageExport?.status ?? "PENDING",
+      title: "Exports"
+    },
+    {
+      href: `${selectedPackageRoute}/go-no-go`,
+      id: "go-no-go-route",
+      meta: ["Governed decision"],
+      status: goNoGoDecision?.decision ?? "PENDING",
+      title: "Go/No-Go"
+    },
+    {
+      href: `${selectedPackageRoute}/handoff`,
+      id: "handoff-route",
+      meta: ["Eligibility and commit"],
+      status: handoffCommit?.status ?? handoffEligibility.data?.status ?? "PENDING",
+      title: "Handoff"
+    }
+  ];
+
+  useEffect(() => {
+    setActiveStage(currentRoute.stage);
+    if (currentRoute.packageId) {
+      setSelectedPackageId(currentRoute.packageId);
+    }
+  }, [currentRoute.packageId, currentRoute.stage, location.pathname]);
 
   const clearRouteSessionState = () => {
     setChecklist(null);
@@ -595,6 +700,21 @@ export function LoadPlanView({ token }: { token: string }) {
           objectValue={visibleSelectedPackage?.package_type ?? effectivePackageId}
           stageLabel={activeLoadPlanStageTitle}
           title="Next action"
+        />
+
+        <DetailList
+          ariaLabel="Load Plan route destinations"
+          items={routeDestinations.map((destination) => ({
+            action: (
+              <Link className="button button-secondary" to={destination.href}>
+                {destination.title}
+              </Link>
+            ),
+            id: destination.id,
+            meta: destination.meta,
+            status: destination.status,
+            title: destination.title
+          }))}
         />
 
         {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
