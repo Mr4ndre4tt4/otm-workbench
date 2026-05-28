@@ -3,6 +3,46 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Internal GUI Route Guard
+
+Status:
+Implemented and validated for GitHub issue #235.
+
+Scope:
+Guarded `/__gui/component-gallery` behind the backend-owned navigation contract
+when rendered through the app shell, while preserving the standalone component
+gallery implementation and component-level test.
+
+Files intentionally changed:
+
+- `frontend/src/app/routes/WorkbenchRoute.tsx`
+- `frontend/src/app/routes/WorkbenchRoute.test.tsx`
+- `frontend/src/app/AppComponentGalleryRoute.test.tsx`
+- `docs/agent/TASK_CONTRACT_INTERNAL_GUI_ROUTE_GUARD_2026_05_28.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `docs/agent/HANDOFF.md`
+
+Validation run:
+
+- `npm test -- src/app/routes/WorkbenchRoute.test.tsx src/app/AppComponentGalleryRoute.test.tsx`
+  2 files passed, 7 tests passed.
+- `git diff --check`
+  passed, with expected Windows CRLF warnings.
+
+Validation not planned:
+
+- Browser QA was not planned because this slice only tightens a route guard and
+  focused tests; no user-facing module workflow changed.
+
+Open risks:
+
+- Future use of the component gallery through the app shell should add an
+  explicit backend navigation/capability contract first.
+
+Recommended next step:
+
+Commit, push, open the PR for #235, wait for checks, then merge if green.
+
 ## 2026-05-28 Rates Same-Name Context Isolation
 
 Status:

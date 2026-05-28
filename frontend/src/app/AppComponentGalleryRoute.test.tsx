@@ -37,7 +37,7 @@ describe("App internal component gallery route", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps the gallery authenticated but outside backend navigation", async () => {
+  it("keeps the internal gallery unavailable through the app shell unless backend navigation exposes it", async () => {
     const fetchMock = vi.fn(async (input: string | URL, init) => {
       const url = String(input);
       if (url.endsWith("/api/v1/platform/session/login")) {
@@ -73,11 +73,11 @@ describe("App internal component gallery route", () => {
     await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("heading", { name: "Component Gallery" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Module unavailable" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Project Cockpit/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Rates Studio/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Component Gallery/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Internal synthetic component gallery for shared GUI patterns/)).toBeInTheDocument();
+    expect(screen.queryByText(/Internal synthetic component gallery for shared GUI patterns/)).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith("/api/v1/platform/project-cockpit/summary", expect.anything());
   });
 });

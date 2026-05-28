@@ -3,6 +3,38 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Internal GUI Route Guard Validation
+
+Validation intent:
+
+- close the frontend cleanup gap for `/__gui/component-gallery`;
+- keep internal GUI utilities unavailable through the app shell unless backend
+  navigation explicitly exposes them;
+- avoid destructive cleanup or browser evidence for this test-focused guard.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/routes/WorkbenchRoute.test.tsx src/app/AppComponentGalleryRoute.test.tsx
+git diff --check
+```
+
+Results:
+
+```text
+Focused frontend route guard tests: 2 files passed, 7 tests passed.
+Whitespace check: passed, with expected Windows CRLF warnings.
+```
+
+Validation not planned:
+
+- browser QA screenshots;
+- full backend suite.
+
+Reason:
+This slice is a focused frontend route-guard regression and does not alter
+backend behavior or visible module workflows.
+
 ## 2026-05-28 Assets Acceptance Pass Validation
 
 Validation intent:

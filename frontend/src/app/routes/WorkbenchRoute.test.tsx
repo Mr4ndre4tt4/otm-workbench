@@ -62,7 +62,7 @@ function renderRoute(path: string) {
 }
 
 describe("WorkbenchRoute", () => {
-  it.each(["/catalog", "/evidence", "/admin", "/dev-tools", "/dev-tools/data-dictionary"])(
+  it.each(["/catalog", "/evidence", "/admin", "/dev-tools", "/dev-tools/data-dictionary", "/__gui/component-gallery"])(
     "keeps excluded route %s unavailable unless backend navigation returns it",
     (path) => {
       renderRoute(path);
