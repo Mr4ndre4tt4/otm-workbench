@@ -2527,3 +2527,63 @@ Recommended next step:
 
 Close #207 after push. The next roadmap lane can move to Assets backlog,
 Settings/Cockpit context-isolation work, or another user-prioritized module.
+
+## 2026-05-28 Assets Detail And Archive Impact Contracts
+
+Status:
+Implemented, validated, and ready to close #198.
+
+Scope:
+Added route-optimized Assets contracts so detail/archive screens use
+backend-owned facts instead of frontend-only inference.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/assets.py`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `frontend/src/platform/types/assets.ts`
+- `frontend/src/platform/hooks/assets.ts`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `docs/agent/TASK_CONTRACT_ASSETS_ROUTE_OPTIMIZED_DETAIL_ARCHIVE_IMPACT.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "route_optimized_detail or archive_impact or archive_asset_preserves" -q`
+  passed with 3 tests.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "archives an asset on a direct route"`
+  passed with 1 test.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 26
+  tests.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` passed with 13 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Browser screenshot evidence. This slice changed API contracts and focused
+  archive route consumption, not visual acceptance.
+
+Evidence:
+
+- Backend route detail no longer exposes version `storage_path`.
+- Archive route invalidates detail/archive-impact/version/link queries after
+  archive.
+
+Open risks:
+
+- The full Assets visual route decomposition remains future work.
+- #199 and #200 remain open for backend-owned batch/checklist targets and OTM
+  version taxonomy validation.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Use GitHub issue #199 or #200 as the next Assets step if continuing this lane.
+
+Recommended next step:
+
+Push the #198 commit, close #198, then continue with #199 unless the user
+prioritizes Settings/Cockpit context-isolation first.

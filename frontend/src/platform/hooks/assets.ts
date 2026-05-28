@@ -9,9 +9,11 @@ import type {
   AssetCreateRequest,
   AssetFilters,
   AssetItem,
+  AssetArchiveImpact,
   AssetLink,
   AssetLinkCreateRequest,
   AssetLinksResponse,
+  AssetRouteDetail,
   AssetUpdateRequest,
   AssetsResponse,
   AssetVersion,
@@ -50,6 +52,22 @@ export function useAssetDetail(token: string | null, assetId: string | null) {
   return useQuery({
     queryKey: ["modules", "assets", "assets", assetId],
     queryFn: () => apiGet<AssetItem>(`/api/v1/modules/assets/assets/${assetId}`, { token }),
+    enabled: Boolean(token && assetId)
+  });
+}
+
+export function useAssetRouteDetail(token: string | null, assetId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets", assetId, "detail"],
+    queryFn: () => apiGet<AssetRouteDetail>(`/api/v1/modules/assets/assets/${assetId}/detail`, { token }),
+    enabled: Boolean(token && assetId)
+  });
+}
+
+export function useAssetArchiveImpact(token: string | null, assetId: string | null) {
+  return useQuery({
+    queryKey: ["modules", "assets", "assets", assetId, "archive-impact"],
+    queryFn: () => apiGet<AssetArchiveImpact>(`/api/v1/modules/assets/assets/${assetId}/archive-impact`, { token }),
     enabled: Boolean(token && assetId)
   });
 }

@@ -3043,3 +3043,38 @@ Notes:
 - The third browser QA run exposed an ambiguous `/load-plan` selector after
   Cockpit accelerator links were added; the script now selects the exact Load
   Plan navigation link.
+
+## 2026-05-28 Assets Detail And Archive Impact Contracts
+
+Scope:
+
+- Added backend-owned route detail and archive impact contracts for Assets #198.
+- Updated the archive route to consume backend eligibility and impact facts.
+- Kept existing asset list/detail/version/link/archive endpoints compatible.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "route_optimized_detail or archive_impact or archive_asset_preserves" -q
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "archives an asset on a direct route"
+python -m pytest tests/test_assets_library_assets.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+```
+
+Results:
+
+```text
+focused assets backend: 3 passed, 23 deselected
+focused assets frontend: 1 passed, 12 skipped
+tests/test_assets_library_assets.py: 26 passed
+AppFunctionalAssets.test.tsx: 13 passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- The first focused backend run failed because the route detail contract reused
+  the full version serializer and exposed `storage_path`. The contract now uses
+  a public version serializer without local storage paths.
+- No browser screenshot was captured for this API/UI contract slice.

@@ -16,9 +16,11 @@ from otm_workbench.modules.assets.assets import (
     archive_asset,
     create_asset_link,
     create_draft_asset,
+    build_asset_archive_impact,
     record_asset_download,
     serialize_asset,
     serialize_asset_link,
+    serialize_asset_route_detail,
     serialize_asset_version,
     update_asset_metadata,
     upload_asset_version,
@@ -465,6 +467,26 @@ def get_asset(
 ):
     asset = get_scoped_asset_or_404(db, user, asset_id)
     return serialize_asset(asset)
+
+
+@router.get("/assets/{asset_id}/detail")
+def get_asset_route_detail(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = get_scoped_asset_or_404(db, user, asset_id)
+    return serialize_asset_route_detail(db, asset)
+
+
+@router.get("/assets/{asset_id}/archive-impact")
+def get_asset_archive_impact(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    asset = get_scoped_asset_or_404(db, user, asset_id)
+    return build_asset_archive_impact(db, asset)
 
 
 @router.patch("/assets/{asset_id}")

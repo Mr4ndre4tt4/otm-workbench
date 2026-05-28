@@ -860,6 +860,89 @@ def test_archive_asset_preserves_record_and_records_audit_event(client, admin_he
     assert json.loads(event.payload_json)["status"] == "ARCHIVED"
 
 
+def test_route_optimized_asset_detail_includes_versions_links_actions_and_archive_impact(
+    client,
+    admin_header,
+):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    client.post(
+        f"/api/v1/modules/assets/assets/{created['id']}/versions",
+        files={"file": ("synthetic_mapping_spec.md", b"# synthetic asset\n", "text/markdown")},
+        headers=admin_header,
+    )
+    client.post(
+        f"/api/v1/modules/assets/assets/{created['id']}/links",
+        json={"link_type": "MODULE", "target_id": "assets", "target_label": "Assets Library"},
+        headers=admin_header,
+    )
+
+    response = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/detail",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["asset"]["id"] == created["id"]
+    assert payload["current_version"]["file_name"] == "synthetic_mapping_spec.md"
+    assert payload["versions"][0]["file_name"] == "synthetic_mapping_spec.md"
+    assert payload["links"][0]["target_label"] == "Assets Library"
+    assert {action["key"] for action in payload["available_actions"]} >= {
+        "asset.update",
+        "asset.upload_version",
+        "asset.create_link",
+        "asset.download_current",
+        "asset.archive",
+    }
+    impact = payload["archive_impact"]
+    assert impact["eligible"] is True
+    assert impact["disabled_reason"] is None
+    assert impact["impacted_versions"] == 1
+    assert impact["current_version_id"] == payload["current_version"]["id"]
+    assert impact["impacted_links"] == 1
+    assert impact["linked_target_types"] == ["MODULE"]
+    assert impact["will_disable_actions"] == [
+        "asset.update",
+        "asset.upload_version",
+        "asset.create_link",
+        "asset.archive",
+    ]
+    assert "storage_path" not in str(payload)
+
+
+def test_archive_impact_reports_disabled_facts_for_archived_asset(client, admin_header):
+    created = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(),
+        headers=admin_header,
+    ).json()
+    active_impact = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/archive-impact",
+        headers=admin_header,
+    )
+    client.post(f"/api/v1/modules/assets/assets/{created['id']}/archive", headers=admin_header)
+    archived_impact = client.get(
+        f"/api/v1/modules/assets/assets/{created['id']}/archive-impact",
+        headers=admin_header,
+    )
+
+    assert active_impact.status_code == 200
+    assert active_impact.json()["eligible"] is True
+    assert active_impact.json()["archive_action"]["disabled"] is False
+
+    assert archived_impact.status_code == 200
+    payload = archived_impact.json()
+    assert payload["eligible"] is False
+    assert payload["disabled_reason"] == "ASSET_ARCHIVED"
+    assert payload["blocked_reasons"] == ["ASSET_ARCHIVED"]
+    assert payload["archive_action"]["disabled"] is True
+    assert payload["archive_action"]["disabled_reason"] == "ASSET_ARCHIVED"
+
+
 def test_update_archived_asset_metadata_is_rejected(client, admin_header):
     created = client.post(
         "/api/v1/modules/assets/assets",

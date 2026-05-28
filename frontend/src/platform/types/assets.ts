@@ -51,6 +51,29 @@ export type AssetLink = {
   updated_at: string | null;
 };
 
+export type AssetArchiveImpact = {
+  asset_id: string;
+  status: string;
+  eligible: boolean;
+  disabled_reason: string | null;
+  blocked_reasons: string[];
+  impacted_versions: number;
+  current_version_id: string | null;
+  impacted_links: number;
+  linked_target_types: string[];
+  will_disable_actions: string[];
+  archive_action?: AvailableAction | null;
+};
+
+export type AssetRouteDetail = {
+  asset: AssetItem;
+  current_version: AssetVersion | null;
+  versions: AssetVersion[];
+  links: AssetLink[];
+  available_actions: AvailableAction[];
+  archive_impact: AssetArchiveImpact;
+};
+
 export type AssetCreateRequest = {
   name: string;
   description: string;

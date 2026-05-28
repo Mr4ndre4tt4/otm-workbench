@@ -183,6 +183,34 @@ function linkFixture() {
   };
 }
 
+function archiveImpactFixture(status = "ACTIVE") {
+  return {
+    archive_action: {
+      disabled: status === "ARCHIVED",
+      disabled_reason: status === "ARCHIVED" ? "ASSET_ARCHIVED" : null,
+      href: "/api/v1/modules/assets/assets/asset_qa_1/archive",
+      icon_key: "archive",
+      key: "asset.archive",
+      label: "Archive asset",
+      method: "POST",
+      permission: "assets.asset.archive",
+      requires_confirmation: true,
+      result_hint: "refresh_object",
+      variant: "danger"
+    },
+    asset_id: "asset_qa_1",
+    blocked_reasons: status === "ARCHIVED" ? ["ASSET_ARCHIVED"] : [],
+    current_version_id: "asset_version_1",
+    disabled_reason: status === "ARCHIVED" ? "ASSET_ARCHIVED" : null,
+    eligible: status !== "ARCHIVED",
+    impacted_links: 1,
+    impacted_versions: 1,
+    linked_target_types: ["MODULE"],
+    status,
+    will_disable_actions: ["asset.update", "asset.upload_version", "asset.create_link", "asset.archive"]
+  };
+}
+
 function classificationGroups(customClassifications: unknown[] = []) {
   const groups = {
     items: [
@@ -1324,6 +1352,9 @@ describe("Functional Assets Library journey", () => {
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
         return Promise.resolve(jsonResponse({ items: [linkFixture()], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/archive-impact")) {
+        return Promise.resolve(jsonResponse(archiveImpactFixture(archivedAsset.status)));
       }
       if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/archive")) {
         archiveRequests.push({ method: init?.method });
