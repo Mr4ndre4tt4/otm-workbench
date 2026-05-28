@@ -3360,3 +3360,52 @@ Notes:
 - No product source changed.
 - No browser screenshot was captured because this slice only synchronizes
   governance documentation.
+
+## 2026-05-28 PR 182 Merge Conflict Recovery
+
+Scope:
+
+- Added GitHub issue #220 for the PR #182 merge-conflict recovery slice.
+- Merged current `origin/main` into
+  `codex/master-data-catalog-redesign-evidence` in an isolated worktree.
+- Resolved governance, migration, backend, frontend, and test conflicts without
+  staging the primary dirty workspace.
+- Preserved the validated context-isolation work on the PR branch while
+  accepting already-promoted mainline Load Plan, Integration Mapping, and
+  Workbench Assistant changes from `origin/main`.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py -q
+python -m pytest tests/test_project_cockpit_summary.py tests/test_rates_batches.py -q
+python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q
+$env:OTM_OTM_DATA_DICTIONARY_ROOT='C:\Users\Enzo Trabalho\Documents\New project 3\OTM_RESOURCES\DATA_DICT26B\data_dictionary\json\data_dict'; python -m pytest tests/test_assets_library_assets.py -q
+npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalShell.test.tsx
+npm run build
+```
+
+Results:
+
+```text
+navigation + operational context: 35 passed
+Cockpit summary + Rates batches: 17 passed
+Master Data focused context slice: 4 passed, 56 deselected
+Order Release focused context slice: 8 passed, 19 deselected
+Assets library assets: 29 passed
+frontend Assets + shell functional tests: 2 files passed, 15 tests passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- The first full Assets run failed because the isolated worktree does not
+  contain the untracked local `OTM_RESOURCES` directory. Rerunning with the
+  explicit local Data Dictionary path passed.
+- The first broad multi-module pytest command timed out before producing useful
+  output; the suite was split into focused commands listed above.
+- `npm install` was required in the isolated worktree before Vitest could run;
+  it reported 0 vulnerabilities.
+- Browser screenshots were not captured because this slice only resolves PR
+  merge drift and does not change intended UI behavior.

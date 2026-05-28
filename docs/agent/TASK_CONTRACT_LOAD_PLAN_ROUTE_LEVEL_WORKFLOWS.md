@@ -1,8 +1,8 @@
 # Task Contract - Load Plan Route-Level Workflows
 
 **Date:** 2026-05-28
-**GitHub issue:** #209
-**Status:** in progress
+**GitHub issue:** #207 / follow-up to closed #209
+**Status:** implemented and validated for clean PR promotion
 
 ## Objective
 

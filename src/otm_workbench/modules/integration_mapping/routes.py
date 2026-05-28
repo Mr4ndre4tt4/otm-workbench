@@ -14,8 +14,11 @@ from otm_workbench.models import (
     ActiveContext,
     Artifact,
     AuditLog,
+    IntegrationEnrichedField,
     IntegrationDefinition,
     IntegrationEndpoint,
+    IntegrationEnrichmentStep,
+    IntegrationEnrichmentSubStep,
     IntegrationJoinBinding,
     IntegrationJoinRule,
     IntegrationLoopDefinition,
@@ -53,6 +56,18 @@ from otm_workbench.modules.integration_mapping.mappings import (
 from otm_workbench.modules.integration_mapping.loops import (
     create_integration_loop_definition,
     serialize_integration_loop_definition,
+)
+from otm_workbench.modules.integration_mapping.enrichment import (
+    build_enrichment_readiness,
+    create_integration_enrichment_step,
+    create_integration_enrichment_substep,
+    reorder_integration_enrichment_steps,
+    retire_integration_enrichment_step,
+    serialize_integration_enriched_field,
+    serialize_integration_enrichment_step,
+    serialize_integration_enrichment_substep,
+    update_integration_enrichment_step,
+    validate_enrichment_step,
 )
 from otm_workbench.modules.integration_mapping.joins import (
     create_integration_join_rule,
@@ -273,6 +288,42 @@ class IntegrationLoopDefinitionCreateRequest(BaseModel):
     name: str
     description: str = ""
     sequence_index: int = 0
+
+
+class IntegrationEnrichmentStepCreateRequest(BaseModel):
+    source_schema_document_id: str
+    response_schema_document_id: str
+    endpoint_id: str | None = None
+    name: str
+    description: str = ""
+    step_type: str = "SINGLE"
+    key_template: str = ""
+    key_source_fields: list[str]
+    response_field_mappings: list[dict[str, object]]
+    loop_source_path: str = ""
+    loop_filter_expression: str = ""
+    on_empty_response: str = "FAIL"
+    on_error: str = "FAIL"
+    sequence_index: int = 0
+
+
+class IntegrationEnrichmentSubStepCreateRequest(BaseModel):
+    endpoint_id: str | None = None
+    name: str
+    request_path_template: str = ""
+    request_key_bindings: dict[str, str] = Field(default_factory=dict)
+    response_schema_document_id: str
+    response_field_mappings: list[dict[str, object]]
+    sequence_index: int = 0
+
+
+class IntegrationEnrichmentStepReorderItem(BaseModel):
+    id: str
+    sequence_index: int
+
+
+class IntegrationEnrichmentStepReorderRequest(BaseModel):
+    items: list[IntegrationEnrichmentStepReorderItem]
 
 
 class IntegrationJoinRuleCreateRequest(BaseModel):
@@ -989,6 +1040,250 @@ def get_loop_definition(
         raise api_error(404, "INTEGRATION_LOOP_NOT_FOUND", "Integration loop definition not found.")
     get_scoped_definition_or_404(db, user, loop.definition_id)
     return serialize_integration_loop_definition(loop)
+
+
+@router.post("/definitions/{definition_id}/enrichment-steps")
+def create_enrichment_step(
+    definition_id: str,
+    payload: IntegrationEnrichmentStepCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = get_scoped_definition_or_404(db, user, definition_id)
+    try:
+        step = create_integration_enrichment_step(db, definition=definition, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if "schema_document_invalid" in str(exc):
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_SCHEMA_DOCUMENT_INVALID",
+                "Enrichment source and response schema documents must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) in {"step_type_invalid", "on_empty_response_invalid", "on_error_invalid"}:
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_POLICY_INVALID",
+                "Enrichment step type and policies must use the controlled Integration Mapping catalog values.",
+            ) from exc
+        if str(exc) in {"key_source_fields_invalid", "response_field_mappings_invalid"}:
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_MAPPING_INVALID",
+                "Enrichment key_source_fields and response_field_mappings must be non-empty structured values.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_ENRICHMENT_PATH_INVALID",
+            "Enrichment key source paths and response paths must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_enrichment_step(step)
+
+
+@router.post("/definitions/{definition_id}/enrichment-steps/reorder")
+def reorder_enrichment_steps(
+    definition_id: str,
+    payload: IntegrationEnrichmentStepReorderRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = get_scoped_definition_or_404(db, user, definition_id)
+    try:
+        steps = reorder_integration_enrichment_steps(
+            db,
+            definition_id=definition.id,
+            items=[item.model_dump() for item in payload.items],
+        )
+    except ValueError as exc:
+        raise api_error(
+            400,
+            "INTEGRATION_ENRICHMENT_REORDER_INVALID",
+            "Enrichment reorder items must reference active steps in the Integration Definition.",
+        ) from exc
+    items = [serialize_integration_enrichment_step(step) for step in steps]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/definitions/{definition_id}/enrichment-steps")
+def list_enrichment_steps(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = get_scoped_definition_or_404(db, user, definition_id)
+    steps = (
+        db.query(IntegrationEnrichmentStep)
+        .filter(
+            IntegrationEnrichmentStep.definition_id == definition.id,
+            IntegrationEnrichmentStep.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichmentStep.sequence_index, IntegrationEnrichmentStep.created_at)
+        .all()
+    )
+    items = [serialize_integration_enrichment_step(step) for step in steps]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/definitions/{definition_id}/enriched-fields")
+def list_enriched_fields(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = get_scoped_definition_or_404(db, user, definition_id)
+    fields = (
+        db.query(IntegrationEnrichedField)
+        .filter(
+            IntegrationEnrichedField.definition_id == definition.id,
+            IntegrationEnrichedField.status == "ACTIVE",
+        )
+        .order_by(IntegrationEnrichedField.created_at, IntegrationEnrichedField.name)
+        .all()
+    )
+    items = [serialize_integration_enriched_field(field) for field in fields]
+    return PageResponse(items=items, total=len(items))
+
+
+@router.get("/definitions/{definition_id}/enrichment-readiness")
+def get_enrichment_readiness(
+    definition_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    definition = get_scoped_definition_or_404(db, user, definition_id)
+    return build_enrichment_readiness(db, definition.id)
+
+
+@router.get("/enrichment-steps/{step_id}")
+def get_enrichment_step(
+    step_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    return serialize_integration_enrichment_step(step)
+
+
+@router.patch("/enrichment-steps/{step_id}")
+def update_enrichment_step(
+    step_id: str,
+    payload: IntegrationEnrichmentStepCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    try:
+        updated = update_integration_enrichment_step(db, step=step, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if "schema_document_invalid" in str(exc):
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_SCHEMA_DOCUMENT_INVALID",
+                "Enrichment source and response schema documents must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) in {"step_type_invalid", "on_empty_response_invalid", "on_error_invalid"}:
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_POLICY_INVALID",
+                "Enrichment step type and policies must use the controlled Integration Mapping catalog values.",
+            ) from exc
+        if str(exc) in {"key_source_fields_invalid", "response_field_mappings_invalid"}:
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_MAPPING_INVALID",
+                "Enrichment key_source_fields and response_field_mappings must be non-empty structured values.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_ENRICHMENT_PATH_INVALID",
+            "Enrichment key source paths and response paths must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_enrichment_step(updated)
+
+
+@router.delete("/enrichment-steps/{step_id}")
+def retire_enrichment_step(
+    step_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    return retire_integration_enrichment_step(db, step=step)
+
+
+@router.post("/enrichment-steps/{step_id}/validate")
+def validate_enrichment_step_route(
+    step_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    return validate_enrichment_step(db, step)
+
+
+@router.post("/enrichment-steps/{step_id}/substeps")
+def create_enrichment_substep(
+    step_id: str,
+    payload: IntegrationEnrichmentSubStepCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    try:
+        substep = create_integration_enrichment_substep(db, step=step, payload=payload.model_dump(), user=user)
+    except ValueError as exc:
+        if str(exc) == "response_schema_document_invalid":
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_SCHEMA_DOCUMENT_INVALID",
+                "Enrichment substep response schema document must belong to the Integration Definition.",
+            ) from exc
+        if str(exc) in {"request_key_bindings_invalid", "response_field_mappings_invalid"}:
+            raise api_error(
+                400,
+                "INTEGRATION_ENRICHMENT_MAPPING_INVALID",
+                "Enrichment substep request bindings and response mappings must be structured values.",
+            ) from exc
+        raise api_error(
+            400,
+            "INTEGRATION_ENRICHMENT_PATH_INVALID",
+            "Enrichment substep request binding paths and response paths must exist in their schema documents.",
+        ) from exc
+    return serialize_integration_enrichment_substep(substep)
+
+
+@router.get("/enrichment-steps/{step_id}/substeps")
+def list_enrichment_substeps(
+    step_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    step = db.get(IntegrationEnrichmentStep, step_id)
+    if step is None:
+        raise api_error(404, "INTEGRATION_ENRICHMENT_STEP_NOT_FOUND", "Integration enrichment step not found.")
+    get_scoped_definition_or_404(db, user, step.definition_id)
+    substeps = (
+        db.query(IntegrationEnrichmentSubStep)
+        .filter(IntegrationEnrichmentSubStep.enrichment_step_id == step.id)
+        .order_by(IntegrationEnrichmentSubStep.sequence_index, IntegrationEnrichmentSubStep.created_at)
+        .all()
+    )
+    items = [serialize_integration_enrichment_substep(substep) for substep in substeps]
+    return PageResponse(items=items, total=len(items))
 
 
 @router.post("/definitions/{definition_id}/joins")

@@ -1,7 +1,7 @@
 """load plan package domain scope
 
 Revision ID: c5b9d3a1e6f2
-Revises: c1f4a8e7d9b2
+Revises: c4a8e2f7b9d1
 Create Date: 2026-05-28 00:00:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = "c5b9d3a1e6f2"
-down_revision: str | None = "c1f4a8e7d9b2"
+down_revision: str | None = "c4a8e2f7b9d1"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

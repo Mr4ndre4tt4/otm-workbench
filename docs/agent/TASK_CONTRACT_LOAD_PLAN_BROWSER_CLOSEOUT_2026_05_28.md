@@ -2,11 +2,11 @@
 
 **Date:** 2026-05-28
 **GitHub issue:** #207
-**Status:** complete
+**Status:** promoted for clean PR validation
 
 ## Objective
 
-Close the Load Plan stabilization lane with fresh browser QA evidence after
+Promote the Load Plan browser QA closeout patch to current `main` after
 route-level package recovery was implemented.
 
 ## Original User Request
@@ -16,12 +16,12 @@ Continue with the next roadmap step.
 ## Interpreted Scope
 
 - Run the runtime navigation freshness gate before browser evidence.
-- Run Load Plan browser QA against a fresh local backend/frontend pair.
+- Preserve the previously validated Load Plan browser QA script fixes.
 - Fix QA-only blockers that prevent evidence from running against current API
   contracts.
 - Fix any migration gap exposed by the fresh runtime when it is required by the
   current model.
-- Record evidence and close the GitHub version lane.
+- Record promotion evidence without importing the broader historical branch.
 
 ## Out Of Scope
 
@@ -47,22 +47,20 @@ Continue with the next roadmap step.
 - `tests/test_modules_navigation.py` passes before browser evidence.
 - Live `/api/v1/platform/navigation` on the QA backend matches the current UI
   phase module set and excludes retired top-level modules.
-- `npm run qa:functional:load-plan:browser` passes on the fresh runtime.
-- Evidence path and runtime URLs are recorded.
-- #207 is updated and closed.
+- The browser QA script passes syntax checks in this branch.
+- Historical evidence path and runtime URLs remain recorded on #207.
 
 ## Validation Plan
 
 - `python -m pytest tests/test_modules_navigation.py -q`
-- `python -m alembic upgrade c5b9d3a1e6f2`
-- `npm run qa:functional:load-plan:browser`
-- Capture `var/qa/load-plan-route-closeout.png`
+- `python -m alembic upgrade head`
+- `node --check frontend/scripts/functional-load-plan-browser.mjs`
 
 ## Risks
 
 - Browser evidence can be polluted by stale local servers.
-- Local dirty workspace contains parallel Assistant changes; do not stage them.
-- Screenshot evidence should be used for Load Plan/sidebar verification only.
+- The historical screenshot should be used for Load Plan/sidebar verification
+  only unless fresh browser QA is rerun from this clean branch.
 
 ## Challenge Notes
 
@@ -73,5 +71,5 @@ current model.
 
 ## Decision
 
-Fix the evidence blockers in the smallest possible scope, accept Load Plan
-route recovery with browser QA passed, and close #207.
+Promote the evidence blockers in the smallest possible scope. Keep #207 closed
+unless clean-branch validation exposes a regression.

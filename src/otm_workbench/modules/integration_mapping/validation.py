@@ -13,6 +13,7 @@ from otm_workbench.models import (
     SchemaRoot,
 )
 from otm_workbench.modules.integration_mapping.joins import ALLOWED_JOIN_OPERATORS
+from otm_workbench.modules.integration_mapping.enrichment import build_enrichment_readiness
 from otm_workbench.modules.integration_mapping.lookups import ALLOWED_LOOKUP_TYPES
 from otm_workbench.modules.integration_mapping.mappings import parse_transform_config, schema_path_exists
 from otm_workbench.modules.integration_mapping.response_handlers import (
@@ -513,6 +514,25 @@ def validate_lookup_output_scopes(
     return issues
 
 
+def enrichment_readiness_issues(enrichment_readiness: dict[str, object]) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    for step in enrichment_readiness.get("steps", []):
+        if not isinstance(step, dict):
+            continue
+        step_id = str(step.get("enrichment_step_id") or "")
+        for blocker in step.get("blockers", []):
+            issues.append(
+                issue(
+                    code="INTEGRATION_VALIDATION_ENRICHMENT_NOT_READY",
+                    entity_type="enrichment_step",
+                    entity_id=step_id,
+                    field="published_fields",
+                    message=str(blocker),
+                )
+            )
+    return issues
+
+
 def validate_integration_definition(db: Session, definition: IntegrationDefinition) -> dict[str, object]:
     issues: list[ValidationIssue] = []
     mappings = db.query(IntegrationMapping).filter(IntegrationMapping.definition_id == definition.id).all()
@@ -547,12 +567,15 @@ def validate_integration_definition(db: Session, definition: IntegrationDefiniti
     issues.extend(validate_lookup_output_scopes(lookups=lookups, loops=loops))
     for handler in response_handlers:
         issues.extend(validate_response_handler(db, handler))
+    enrichment_readiness = build_enrichment_readiness(db, definition.id)
+    issues.extend(enrichment_readiness_issues(enrichment_readiness))
     return {
         "definition_id": definition.id,
         "is_valid": not issues,
         "issue_count": len(issues),
         "issues": [serialize_issue(validation_issue) for validation_issue in issues],
         "readiness": validation_readiness(issues),
+        "enrichment_readiness": enrichment_readiness,
         "scenario_pack": scenario_pack_summary(
             definition=definition,
             mappings=mappings,

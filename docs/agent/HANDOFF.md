@@ -3018,3 +3018,66 @@ Recommended next step:
 
 Close #215 after push. The next natural lane is Rates completion/revalidation
 unless the user wants another Cockpit visual acceptance pass first.
+
+## 2026-05-28 PR 182 Merge Conflict Recovery
+
+Status:
+In progress; conflicts resolved locally in isolated worktree and backend plus
+frontend validation passed. Commit and push are still pending.
+
+GitHub tracking:
+
+- Issue #220: PR #182 merge-conflict recovery.
+- PR #182: governance recovery branch reconciliation with `origin/main`.
+
+Files intentionally changed:
+
+- Merge resolution across docs, backend, frontend, migrations, and tests from
+  `origin/main` into `codex/master-data-catalog-redesign-evidence`.
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_modules_navigation.py tests/test_operational_context.py -q`
+  passed with 35 tests.
+- `python -m pytest tests/test_project_cockpit_summary.py tests/test_rates_batches.py -q`
+  passed with 17 tests.
+- `python -m pytest tests/test_master_data_templates.py -k "same_name or active_context_scope or dba_context" -q`
+  passed with 4 selected tests.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py -k "same_name or active_context_scope or dba_context" -q`
+  passed with 8 selected tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 29
+  tests when `OTM_OTM_DATA_DICTIONARY_ROOT` pointed at the local
+  `OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict` directory.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx src/app/AppFunctionalShell.test.tsx`
+  passed with 2 files and 15 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Browser screenshots; this slice is merge recovery and does not intentionally
+  change visible UI behavior.
+- Full all-module pytest sweep; an initial broad command timed out, then the
+  touched surfaces were split into focused passing suites.
+
+Open risks:
+
+- `OTM_RESOURCES` is still local/untracked. Isolated worktrees need the
+  Data Dictionary path explicitly configured until the repository adopts a
+  formal resource-versioning policy.
+- PR #182 mergeability must be rechecked after push because GitHub recalculates
+  it asynchronously.
+
+Next-chat intake notes:
+
+- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-pr182-sync` only
+  for this PR merge recovery until it is committed and pushed.
+- Do not stage the primary workspace's broad dirty state.
+- Integration Mapping changes present in this merge came from `origin/main`;
+  do not extend that module in this chat beyond merge preservation.
+
+Recommended next step:
+
+Commit the merge with `Closes #220`, push PR #182, then verify GitHub reports
+the PR as mergeable.

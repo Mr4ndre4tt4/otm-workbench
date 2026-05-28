@@ -24,6 +24,9 @@ import {
   useIntegrationArtifacts,
   useIntegrationDefinitionDetail,
   useIntegrationDefinitions,
+  useIntegrationEnrichedFields,
+  useIntegrationEnrichmentReadiness,
+  useIntegrationEnrichmentSteps,
   useIntegrationJoinBindings,
   useIntegrationJoins,
   useIntegrationLookups,
@@ -80,7 +83,8 @@ const integrationWorkflowStages = [
   { id: "definition", title: "Definition", status: "2" },
   { id: "payloads", title: "Payloads & schemas", status: "3" },
   { id: "rules", title: "Mapping rules", status: "4" },
-  { id: "definitions", title: "Definitions list", status: "5" }
+  { id: "enrichment", title: "Enrichment pipeline", status: "5" },
+  { id: "definitions", title: "Definitions list", status: "6" }
 ] as const;
 
 type IntegrationWorkflowStage = (typeof integrationWorkflowStages)[number]["id"];
@@ -618,9 +622,13 @@ export function IntegrationMappingView({ token }: { token: string }) {
   const joinBindings = useIntegrationJoinBindings(token, effectiveDefinitionId);
   const lookups = useIntegrationLookups(token, effectiveDefinitionId);
   const responseHandlers = useIntegrationResponseHandlers(token, effectiveDefinitionId);
+  const enrichmentSteps = useIntegrationEnrichmentSteps(token, effectiveDefinitionId);
+  const enrichedFields = useIntegrationEnrichedFields(token, effectiveDefinitionId);
+  const enrichmentReadiness = useIntegrationEnrichmentReadiness(token, effectiveDefinitionId);
   const artifacts = useIntegrationArtifacts(token, effectiveDefinitionId);
   const selectedDefinition =
     definitionDetail.data ?? definitionItems.find((item) => item.id === effectiveDefinitionId) ?? null;
+  const endpointCodeById = new Map((endpoints.data?.items ?? []).map((endpoint) => [endpoint.id, endpoint.code]));
   const selectedIntegrationNextAction = integrationNextAction({
     artifactTypes: (artifacts.data?.items ?? []).map((artifact) => artifact.artifact_type),
     definitionId: effectiveDefinitionId,
@@ -680,6 +688,9 @@ export function IntegrationMappingView({ token }: { token: string }) {
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "join-bindings"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "lookups"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "response-handlers"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enrichment-steps"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enriched-fields"] }),
+      queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "enrichment-readiness"] }),
       queryClient.invalidateQueries({ queryKey: ["modules", "integration-mapping", "definitions", definitionId, "artifacts"] })
     ]);
   };
@@ -1352,6 +1363,12 @@ export function IntegrationMappingView({ token }: { token: string }) {
             label: "Mappings",
             status: booleanStatus(mappings.data?.total ?? 0),
             value: mappings.data?.total ?? 0
+          },
+          {
+            key: "enriched_fields",
+            label: "Enriched fields",
+            status: booleanStatus(enrichedFields.data?.total ?? 0),
+            value: enrichedFields.data?.total ?? 0
           }
         ]}
       />
@@ -1534,6 +1551,30 @@ export function IntegrationMappingView({ token }: { token: string }) {
                 title: handler.name
               }))}
             />
+            <DetailList
+              ariaLabel="Selected definition enrichment steps"
+              emptyText="No enrichment steps defined for this definition."
+              items={(enrichmentSteps.data?.items ?? []).map((step) => ({
+                id: step.id,
+                meta: [
+                  step.endpoint_id ? endpointCodeById.get(step.endpoint_id) ?? step.endpoint_id : "No endpoint",
+                  step.key_template,
+                  `${step.response_field_mappings.length} response field(s)`
+                ],
+                status: step.status,
+                title: step.name
+              }))}
+            />
+            <DetailList
+              ariaLabel="Selected definition enriched fields"
+              emptyText="No enriched fields published for this definition."
+              items={(enrichedFields.data?.items ?? []).map((field) => ({
+                id: field.id,
+                meta: [field.response_path, field.data_type, field.cardinality],
+                status: field.status,
+                title: field.name
+              }))}
+            />
             <section aria-label="Integration mapping generated artifacts" className="integration-generated-artifacts">
               <h3>Generated artifacts</h3>
               {artifacts.isLoading && effectiveDefinitionId ? <p className="empty-text">Loading generated artifacts...</p> : null}
@@ -1587,7 +1628,8 @@ export function IntegrationMappingView({ token }: { token: string }) {
               : "No selected definition",
             `${payloadArtifacts.data?.total ?? 0} payload(s)`,
             `${schemaDocuments.data?.total ?? 0} schema(s)`,
-            `${mappings.data?.total ?? 0} mapping(s)`
+            `${mappings.data?.total ?? 0} mapping(s)`,
+            `${enrichedFields.data?.total ?? 0} enriched field(s)`
           ]}
           objectLabel="Definition"
           objectValue={selectedDefinition?.code ?? effectiveDefinitionId}
@@ -2533,6 +2575,88 @@ export function IntegrationMappingView({ token }: { token: string }) {
               Create response handler
             </Button>
           </form>
+        </OperationalPanel>
+        ) : null}
+
+        {activeStage === "enrichment" ? (
+        <OperationalPanel
+          ariaLabel="Integration enrichment pipeline"
+          emptyText="Configure endpoint-backed enrichment before generated preview/spec execution."
+          hasItems={Boolean(effectiveDefinitionId)}
+          status={enrichmentReadiness.data?.ready ? "READY" : "PENDING"}
+          title="Enrichment pipeline"
+        >
+          <MetricGrid
+            ariaLabel="Integration enrichment metrics"
+            items={[
+              {
+                key: "enrichment_steps",
+                label: "Steps",
+                status: booleanStatus(enrichmentSteps.data?.total ?? 0),
+                value: enrichmentSteps.data?.total ?? 0
+              },
+              {
+                key: "enriched_fields",
+                label: "Enriched fields",
+                status: booleanStatus(enrichedFields.data?.total ?? 0),
+                value: enrichedFields.data?.total ?? 0
+              },
+              {
+                key: "enrichment_readiness",
+                label: "Readiness",
+                status: enrichmentReadiness.data?.ready ? "READY" : "BLOCKED",
+                value: enrichmentReadiness.data?.ready ? "READY" : "BLOCKED"
+              }
+            ]}
+          />
+          <DetailList
+            ariaLabel="Integration enrichment readiness"
+            emptyText="No enrichment readiness returned for the selected definition."
+            items={
+              enrichmentReadiness.data
+                ? [
+                    {
+                      id: "readiness",
+                      meta: enrichmentReadiness.data.blockers.length
+                        ? enrichmentReadiness.data.blockers
+                        : ["No enrichment blockers reported"],
+                      status: enrichmentReadiness.data.ready ? "READY" : "BLOCKED",
+                      title: "Pipeline readiness"
+                    },
+                    ...enrichmentReadiness.data.steps.map((step) => ({
+                      id: step.enrichment_step_id,
+                      meta: step.blockers.length ? step.blockers : [`${step.enriched_field_count} enriched field(s)`],
+                      status: step.ready ? "READY" : "BLOCKED",
+                      title: `Step ${step.enrichment_step_id}`
+                    }))
+                  ]
+                : []
+            }
+          />
+          <DetailList
+            ariaLabel="Integration enrichment steps"
+            emptyText="No enrichment steps defined for this definition."
+            items={(enrichmentSteps.data?.items ?? []).map((step) => ({
+              id: step.id,
+              meta: [
+                step.endpoint_id ? endpointCodeById.get(step.endpoint_id) ?? step.endpoint_id : "No endpoint",
+                step.key_template,
+                step.on_error
+              ],
+              status: step.status,
+              title: step.name
+            }))}
+          />
+          <DetailList
+            ariaLabel="Integration enriched fields"
+            emptyText="No enriched fields published for this definition."
+            items={(enrichedFields.data?.items ?? []).map((field) => ({
+              id: field.id,
+              meta: [field.response_path, field.data_type, field.cardinality],
+              status: field.status,
+              title: field.name
+            }))}
+          />
         </OperationalPanel>
         ) : null}
 

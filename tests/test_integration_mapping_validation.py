@@ -1,10 +1,12 @@
 from otm_workbench.models import (
     IntegrationDefinition,
+    IntegrationEnrichmentStep,
     IntegrationJoinRule,
     IntegrationLookupDefinition,
     IntegrationLoopDefinition,
     IntegrationMapping,
 )
+from tests.test_integration_mapping_enrichment import create_intermediate_document
 from tests.test_integration_mapping_joins import join_payload
 from tests.test_integration_mapping_lookups import lookup_payload
 from tests.test_integration_mapping_loops import loop_payload
@@ -157,6 +159,46 @@ def test_validate_integration_definition_reports_structural_issues(client, admin
     assert ("loop", "target_collection_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
     assert ("join", "right_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
     assert ("lookup", "output_path", "INTEGRATION_VALIDATION_PATH_MISSING") in issues
+
+
+def test_validate_integration_definition_reports_enrichment_readiness_blockers(client, admin_header, db_session):
+    definition, source, _target = create_source_and_target_documents(client, admin_header)
+    intermediate = create_intermediate_document(client, admin_header, definition["id"])
+    db_session.add(
+        IntegrationEnrichmentStep(
+            definition_id=definition["id"],
+            source_schema_document_id=source["id"],
+            response_schema_document_id=intermediate["id"],
+            name="Synthetic enrichment without fields",
+            description="Invalid metadata-only enrichment.",
+            step_type="SINGLE",
+            key_template="{shipment_gid}",
+            key_source_fields_json='["/Transmission/Shipment/ShipmentGid"]',
+            response_field_mappings_json="[]",
+            on_empty_response="FAIL",
+            on_error="FAIL",
+            sequence_index=1,
+            status="ACTIVE",
+            created_by="qa@example.test",
+        )
+    )
+    db_session.commit()
+
+    response = client.post(
+        f"/api/v1/modules/integration-mapping/definitions/{definition['id']}/validate",
+        headers=admin_header,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    assert payload["enrichment_readiness"]["ready"] is False
+    assert payload["enrichment_readiness"]["step_count"] == 1
+    assert (
+        "enrichment_step",
+        "published_fields",
+        "INTEGRATION_VALIDATION_ENRICHMENT_NOT_READY",
+    ) in {(issue["entity_type"], issue["field"], issue["code"]) for issue in payload["issues"]}
 
 
 def test_validate_integration_definition_reports_semantic_mapping_issues(client, admin_header, db_session):
