@@ -1587,15 +1587,32 @@ describe("Functional Assets Library journey", () => {
     expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("4Link");
     expect(screen.getByLabelText("Assets Library workflow")).toHaveTextContent("5Lifecycle");
 
+    await userEvent.type(screen.getByLabelText("Asset name search"), "Rate Table");
+    await userEvent.selectOptions(screen.getByLabelText("Asset name operator"), "contains");
+    await userEvent.type(screen.getByLabelText("Asset description search"), "support asset");
+    await userEvent.selectOptions(screen.getByLabelText("Asset description operator"), "contains");
     await userEvent.selectOptions(screen.getByLabelText("Asset type filter"), "SPEC");
     await userEvent.selectOptions(screen.getByLabelText("Asset category filter"), "INTEGRATION");
     await userEvent.selectOptions(screen.getByLabelText("Asset status filter"), "DRAFT");
     await userEvent.type(screen.getByLabelText("Asset tag filter"), "MVP0");
     await userEvent.selectOptions(screen.getByLabelText("Asset scope filter"), "MODULE");
     await userEvent.type(screen.getByLabelText("Asset module filter"), "rates");
+    await userEvent.selectOptions(screen.getByLabelText("Asset module operator"), "one_of");
     await userEvent.type(screen.getByLabelText("Asset macro object filter"), "RATE_GEO");
+    await userEvent.selectOptions(screen.getByLabelText("Asset macro object operator"), "begins_with");
     await userEvent.type(screen.getByLabelText("Asset OTM table filter"), "RATE_GEO_COST");
-    await userEvent.click(screen.getByRole("button", { name: "Apply asset filters" }));
+    await userEvent.selectOptions(screen.getByLabelText("Asset OTM table operator"), "one_of");
+    await userEvent.selectOptions(screen.getByLabelText("Asset page size"), "25");
+    await userEvent.click(screen.getByRole("button", { name: "Apply search" }));
+    expect(
+      listUrls.some(
+        (url) =>
+          url.includes("name=Rate+Table") &&
+          url.includes("name_operator=contains") &&
+          url.includes("description=support+asset") &&
+          url.includes("description_operator=contains")
+      )
+    ).toBe(true);
     expect(listUrls.some((url) => url.includes("asset_type=SPEC") && url.includes("category=INTEGRATION"))).toBe(true);
     expect(listUrls.some((url) => url.includes("status=DRAFT") && url.includes("tag=MVP0"))).toBe(true);
     expect(
@@ -1603,19 +1620,32 @@ describe("Functional Assets Library journey", () => {
         (url) =>
           url.includes("scope_type=MODULE") &&
           url.includes("module_id=rates") &&
+          url.includes("module_id_operator=one_of") &&
           url.includes("macro_object_code=RATE_GEO") &&
-          url.includes("otm_table_name=RATE_GEO_COST")
+          url.includes("macro_object_code_operator=begins_with") &&
+          url.includes("otm_table_name=RATE_GEO_COST") &&
+          url.includes("otm_table_name_operator=one_of") &&
+          url.includes("page_size=25")
       )
     ).toBe(true);
-    await userEvent.click(screen.getByRole("button", { name: "Reset asset filters" }));
+    expect(screen.getByText("Showing 0 of 0 assets")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reset search" }));
+    expect(screen.getByLabelText("Asset name search")).toHaveValue("");
+    expect(screen.getByLabelText("Asset name operator")).toHaveValue("contains");
+    expect(screen.getByLabelText("Asset description search")).toHaveValue("");
+    expect(screen.getByLabelText("Asset description operator")).toHaveValue("contains");
     expect(screen.getByLabelText("Asset type filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset category filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset status filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset tag filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset scope filter")).toHaveValue("");
     expect(screen.getByLabelText("Asset module filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset module operator")).toHaveValue("contains");
     expect(screen.getByLabelText("Asset macro object filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset macro object operator")).toHaveValue("contains");
     expect(screen.getByLabelText("Asset OTM table filter")).toHaveValue("");
+    expect(screen.getByLabelText("Asset OTM table operator")).toHaveValue("contains");
+    expect(screen.getByLabelText("Asset page size")).toHaveValue("50");
     await waitFor(() => {
       expect(listUrls.at(-1)?.endsWith("/api/v1/modules/assets/assets")).toBe(true);
     });

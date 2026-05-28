@@ -3,6 +3,67 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Library Search UI Validation
+
+Validation intent:
+
+- connect `/assets/library` to the backend-owned search/operator/pagination
+  contract;
+- prove the UI sends text operator params and page-size params;
+- capture browser QA evidence on a fresh backend/frontend runtime.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+```
+
+Results:
+
+```text
+Focused Assets journey test: 1 passed, 11 skipped after the expected red
+failure was fixed.
+Assets functional suite: 12 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8022
+Frontend: http://127.0.0.1:5201
+Database: var/qa-assets-search-ui.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Search screenshot: var/qa/assets-library-search.png
+```
+
+Validated:
+
+- `Apply search` sends backend-owned query params for `name`,
+  `name_operator`, `description`, `description_operator`, module/macro/table
+  operators, and `page_size`;
+- `Reset search` clears text/filter values and restores default `contains`
+  operators plus page size 50;
+- pagination metadata is visible as `Showing ... of ... assets`;
+- route-level create, edit, version, link, download, archive, and return flows
+  still pass in the Assets browser journey;
+- live navigation evidence stayed inside the current UI phase.
+
+Deferred:
+
+- linked target type and target OTM version search remain future slices.
+
 ## 2026-05-27 Assets Library Search API Validation
 
 Validation intent:

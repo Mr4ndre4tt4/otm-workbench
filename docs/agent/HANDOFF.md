@@ -3,6 +3,73 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 Assets Library Search UI
+
+Status:
+Implemented and validated.
+
+Scope:
+The `/assets/library` frontend now consumes the backend-owned
+search/operator/pagination contract for Assets Library.
+
+What changed:
+
+- added `Asset name search` and `Asset description search`;
+- added operator controls for name, description, module id, macro object, and
+  OTM table;
+- kept existing type, category, status, tag, scope, module, macro object, and
+  OTM table filters;
+- renamed the library actions to `Apply search` and `Reset search`;
+- added `Asset page size`, visible result count, and previous/next page
+  controls;
+- updated the Assets functional test to assert query params for text operators
+  and page size;
+- updated browser QA to exercise the new search controls and capture
+  `var/qa/assets-library-search.png`.
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_ASSETS_LIBRARY_SEARCH_UI.md`
+- `docs/superpowers/plans/2026-05-28-assets-library-search-ui.md`
+- `frontend/src/platform/types/assets.ts`
+- `frontend/src/platform/hooks/assets.ts`
+- `frontend/src/modules/assets/AssetsLibraryView.tsx`
+- `frontend/src/app/AppFunctionalAssets.test.tsx`
+- `frontend/scripts/functional-assets-browser.mjs`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "creates an asset, uploads a version"`:
+  1 passed, 11 skipped after the expected red failure was fixed.
+- `npm test -- src/app/AppFunctionalAssets.test.tsx`: 12 passed.
+- `npm run build`: passed with the existing Vite large chunk warning.
+- `npm run qa:functional:assets:browser`: passed.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8022`;
+- frontend: `http://127.0.0.1:5201`;
+- database: `var/qa-assets-search-ui.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- new screenshot: `var/qa/assets-library-search.png`;
+- backend/frontend QA runtimes were stopped after validation.
+
+Open risks:
+
+- linked target type and target OTM version search are still deferred.
+- `OTM_RESOURCES/`, `outputs/`, and unrelated assistant-planning files remain
+  untracked and outside this slice.
+- Integration Mapping remains reserved for its dedicated chat/workstream unless
+  explicitly requested.
+
+Recommended next step:
+Commit and push this UI slice, then continue with another non-Integration
+Mapping Assets acceptance item or move to the next roadmap module the user
+requests.
+
 ## 2026-05-27 Integration Mapping Guard And Assets Search API
 
 Status:

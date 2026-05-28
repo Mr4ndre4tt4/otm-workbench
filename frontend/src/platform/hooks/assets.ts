@@ -21,7 +21,7 @@ import type {
 function assetFilterQuery(filters: AssetFilters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    const normalized = value?.trim();
+    const normalized = String(value ?? "").trim();
     if (normalized) {
       params.set(key, normalized);
     }

@@ -53,15 +53,36 @@ const assetWorkflowStages = [
 type AssetWorkflowStage = (typeof assetWorkflowStages)[number]["id"];
 
 const emptyAssetFilters: AssetFilters = {
+  asset_id: "",
   asset_type: "",
   category: "",
+  description: "",
   macro_object_code: "",
   module_id: "",
+  name: "",
   otm_table_name: "",
   scope_type: "",
   status: "",
   tag: ""
 };
+
+const defaultAssetSearchDraft: AssetFilters = {
+  ...emptyAssetFilters,
+  asset_id_operator: "contains",
+  description_operator: "contains",
+  macro_object_code_operator: "contains",
+  module_id_operator: "contains",
+  name_operator: "contains",
+  otm_table_name_operator: "contains",
+  page_size: "50"
+};
+
+const textSearchOperators = [
+  { label: "Contains", value: "contains" },
+  { label: "Begins with", value: "begins_with" },
+  { label: "One of", value: "one_of" },
+  { label: "Not one of", value: "not_one_of" }
+] as const;
 
 const defaultAssetDraft = {
   asset_type: "SPEC",
@@ -167,6 +188,43 @@ function formatAssetsError(error: unknown) {
   return error instanceof Error ? error.message : "Assets Library action failed.";
 }
 
+function cleanAssetSearchFilters(draft: AssetFilters, page = "1") {
+  const filters: AssetFilters = {};
+  const copyTrimmed = (key: keyof AssetFilters) => {
+    const value = draft[key]?.trim();
+    if (value) {
+      filters[key] = value;
+    }
+  };
+  const copyTextFilter = (valueKey: keyof AssetFilters, operatorKey: keyof AssetFilters) => {
+    const value = draft[valueKey]?.trim();
+    if (!value) return;
+    filters[valueKey] = value;
+    const operator = draft[operatorKey]?.trim();
+    if (operator) {
+      filters[operatorKey] = operator;
+    }
+  };
+
+  copyTextFilter("asset_id", "asset_id_operator");
+  copyTextFilter("name", "name_operator");
+  copyTextFilter("description", "description_operator");
+  copyTrimmed("asset_type");
+  copyTrimmed("category");
+  copyTrimmed("status");
+  copyTrimmed("scope_type");
+  copyTrimmed("tag");
+  copyTextFilter("module_id", "module_id_operator");
+  copyTextFilter("macro_object_code", "macro_object_code_operator");
+  copyTextFilter("otm_table_name", "otm_table_name_operator");
+  const pageSize = draft.page_size?.trim();
+  if (pageSize && pageSize !== "50") {
+    filters.page = page;
+    filters.page_size = pageSize;
+  }
+  return filters;
+}
+
 type GuidedLinkTarget = {
   description: string;
   label: string;
@@ -209,7 +267,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
     directAssetEditId ??
     directAssetId;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
-  const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
+  const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(defaultAssetSearchDraft);
   const assets = useAssets(token, assetFilters);
   const classifications = useAssetClassifications(token);
   const navigation = useNavigation(token);
@@ -233,6 +291,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const assetItems = assets.data?.items ?? [];
+  const assetTotal = assets.data?.total ?? assetItems.length;
+  const assetPage = (assets.data?.page ?? Number(assetFilters.page ?? "1")) || 1;
+  const assetPageSize = (assets.data?.page_size ?? Number(assetFilters.page_size ?? "50")) || 50;
+  const canGoPreviousAssetPage = assetPage > 1;
+  const canGoNextAssetPage = assetPage * assetPageSize < assetTotal;
   const assetSelectionDisabled =
     directAssetNew || location.pathname === "/assets/classifications" || directClassificationsNew || Boolean(directClassificationEditId);
   const effectiveAssetId = assetSelectionDisabled
@@ -375,8 +438,24 @@ export function AssetsLibraryView({ token }: { token: string }) {
   };
 
   const resetAssetFilters = () => {
-    setDraftAssetFilters(emptyAssetFilters);
+    setDraftAssetFilters(defaultAssetSearchDraft);
     setAssetFilters(emptyAssetFilters);
+    setSelectedAssetId(null);
+    clearAssetWorkspaceState();
+  };
+
+  const applyAssetSearch = () => {
+    setAssetFilters(cleanAssetSearchFilters(draftAssetFilters));
+    setSelectedAssetId(null);
+    clearAssetWorkspaceState();
+  };
+
+  const moveAssetSearchPage = (nextPage: number) => {
+    setAssetFilters((current) => ({
+      ...current,
+      page: String(Math.max(nextPage, 1)),
+      page_size: draftAssetFilters.page_size?.trim() || current.page_size || "50"
+    }));
     setSelectedAssetId(null);
     clearAssetWorkspaceState();
   };
@@ -2071,6 +2150,52 @@ export function AssetsLibraryView({ token }: { token: string }) {
           >
             <div className="master-data-action-bar">
               <label>
+                Asset name search
+                <input
+                  aria-label="Asset name search"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, name: event.target.value }))}
+                  value={draftAssetFilters.name ?? ""}
+                />
+              </label>
+              <label>
+                Asset name operator
+                <select
+                  aria-label="Asset name operator"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, name_operator: event.target.value }))}
+                  value={draftAssetFilters.name_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset description search
+                <input
+                  aria-label="Asset description search"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, description: event.target.value }))}
+                  value={draftAssetFilters.description ?? ""}
+                />
+              </label>
+              <label>
+                Asset description operator
+                <select
+                  aria-label="Asset description operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, description_operator: event.target.value }))
+                  }
+                  value={draftAssetFilters.description_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Asset type filter
                 <select
                   aria-label="Asset type filter"
@@ -2147,6 +2272,22 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 />
               </label>
               <label>
+                Asset module operator
+                <select
+                  aria-label="Asset module operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, module_id_operator: event.target.value }))
+                  }
+                  value={draftAssetFilters.module_id_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Asset macro object filter
                 <input
                   aria-label="Asset macro object filter"
@@ -2157,6 +2298,22 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 />
               </label>
               <label>
+                Asset macro object operator
+                <select
+                  aria-label="Asset macro object operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, macro_object_code_operator: event.target.value }))
+                  }
+                  value={draftAssetFilters.macro_object_code_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Asset OTM table filter
                 <input
                   aria-label="Asset OTM table filter"
@@ -2164,19 +2321,61 @@ export function AssetsLibraryView({ token }: { token: string }) {
                   value={draftAssetFilters.otm_table_name ?? ""}
                 />
               </label>
+              <label>
+                Asset OTM table operator
+                <select
+                  aria-label="Asset OTM table operator"
+                  onChange={(event) =>
+                    setDraftAssetFilters((current) => ({ ...current, otm_table_name_operator: event.target.value }))
+                  }
+                  value={draftAssetFilters.otm_table_name_operator ?? "contains"}
+                >
+                  {textSearchOperators.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset page size
+                <select
+                  aria-label="Asset page size"
+                  onChange={(event) => setDraftAssetFilters((current) => ({ ...current, page_size: event.target.value }))}
+                  value={draftAssetFilters.page_size ?? "50"}
+                >
+                  <option value="12">12</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </label>
               <Button
                 disabled={isMutating}
-                onClick={() => {
-                  setAssetFilters(draftAssetFilters);
-                  setSelectedAssetId(null);
-                  clearAssetWorkspaceState();
-                }}
+                onClick={applyAssetSearch}
                 variant="secondary"
               >
-                Apply asset filters
+                Apply search
               </Button>
               <Button disabled={isMutating} onClick={resetAssetFilters} variant="secondary">
-                Reset asset filters
+                Reset search
+              </Button>
+            </div>
+            <div className="master-data-action-bar" aria-label="Asset search pagination">
+              <span>{`Showing ${assetItems.length} of ${assetTotal} assets`}</span>
+              <Button
+                disabled={isMutating || !canGoPreviousAssetPage}
+                onClick={() => moveAssetSearchPage(assetPage - 1)}
+                variant="secondary"
+              >
+                Previous assets page
+              </Button>
+              <span>{`Page ${assetPage}`}</span>
+              <Button
+                disabled={isMutating || !canGoNextAssetPage}
+                onClick={() => moveAssetSearchPage(assetPage + 1)}
+                variant="secondary"
+              >
+                Next assets page
               </Button>
             </div>
             <ModuleObjectList
