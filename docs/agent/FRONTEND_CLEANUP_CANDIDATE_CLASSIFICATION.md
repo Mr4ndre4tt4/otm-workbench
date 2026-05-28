@@ -71,7 +71,8 @@ source. This document turns the route inventory into reviewable cleanup slices.
 
 2. Browser script classification:
    Mark scripts as active, deferred, stale, or internal so future QA does not
-   capture evidence for excluded top-level routes.
+   capture evidence for excluded top-level routes. Completed by
+   `docs/agent/BROWSER_QA_SCRIPT_CLASSIFICATION.md`.
 
 3. Component dependency map:
    Identify excluded components that are still imported by active modules before

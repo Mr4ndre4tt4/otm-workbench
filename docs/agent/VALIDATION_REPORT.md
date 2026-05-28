@@ -3,6 +3,37 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 Browser QA Script Classification Validation
+
+Validation intent:
+
+- classify browser QA scripts before future screenshot capture;
+- identify scripts that are active, reserved, internal, deferred, or stale;
+- avoid deleting scripts or changing browser journeys in this governance slice.
+
+Validation performed:
+
+```powershell
+Get-ChildItem frontend/scripts -Filter *.mjs | ForEach-Object { node --check $_.FullName }
+git diff --check
+```
+
+Results:
+
+```text
+All frontend browser QA .mjs scripts parsed successfully.
+Whitespace check: passed, with expected Windows CRLF warnings.
+```
+
+Validation not planned:
+
+- browser QA screenshots;
+- backend tests.
+
+Reason:
+This slice only documents QA evidence validity and parses existing script
+files; it does not change runtime behavior.
+
 ## 2026-05-28 Internal GUI Route Guard Validation
 
 Validation intent:
