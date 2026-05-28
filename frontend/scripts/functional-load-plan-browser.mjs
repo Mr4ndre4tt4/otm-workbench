@@ -98,7 +98,7 @@ async function seedSyntheticContext(token) {
   return { project, profile, environment };
 }
 
-async function seedLoadPlanPackage(token, suffix) {
+async function seedLoadPlanPackage(token, suffix, context) {
   const xid = `LP_QA_${suffix}`;
   const batch = await apiRequest("/api/v1/modules/rates/batches", {
     method: "POST",
@@ -106,7 +106,10 @@ async function seedLoadPlanPackage(token, suffix) {
     body: {
       scenario_code: "ACCESSORIAL_ONLY",
       name: `Synthetic Load Plan browser batch ${suffix}`,
-      domain_name: "OTM1"
+      domain_name: "OTM1",
+      project_id: context.project.id,
+      environment_id: context.environment.id,
+      profile_id: context.profile.id
     }
   });
   await apiRequest(`/api/v1/modules/rates/batches/${batch.id}/tables`, {
@@ -200,8 +203,8 @@ async function run() {
   });
   const context = await seedSyntheticContext(token);
   const suffix = syntheticSuffix();
-  const seeded = await seedLoadPlanPackage(token, suffix);
-  const alternateSeeded = await seedLoadPlanPackage(token, `${suffix}_ALT`);
+  const seeded = await seedLoadPlanPackage(token, suffix, context);
+  const alternateSeeded = await seedLoadPlanPackage(token, `${suffix}_ALT`, context);
 
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage({ acceptDownloads: true, viewport: { width: 1360, height: 980 } });
@@ -225,7 +228,7 @@ async function run() {
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
-    await page.locator('a[href="/load-plan"]').click();
+    await page.getByRole("link", { name: "Load Plan", exact: true }).click();
     await page.getByRole("heading", { name: "Load Plan" }).waitFor();
     await page.getByLabel("Load Plan workflow").waitFor();
     await page.getByLabel("Load plan packages").getByText("rates_csv_zip").first().waitFor();
@@ -334,7 +337,7 @@ async function run() {
 
     await page.locator('a[href="/home"]').click();
     await page.getByRole("heading", { name: "Project Cockpit" }).waitFor();
-    await page.locator('a[href="/load-plan"]').click();
+    await page.getByRole("link", { name: "Load Plan", exact: true }).click();
     await page.getByRole("heading", { name: "Load Plan" }).waitFor();
     await page.getByLabel("Load plan packages").getByText("rates_csv_zip").first().waitFor();
 

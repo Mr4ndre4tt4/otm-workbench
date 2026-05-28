@@ -2476,3 +2476,54 @@ Recommended next step:
 Close #209 after push if the PR accepts automated coverage plus deferred
 browser visual evidence. Keep #207 open until Load Plan browser QA or explicit
 Load Plan acceptance closeout.
+
+## 2026-05-28 Load Plan Browser Closeout
+
+Status:
+Implemented, validated, and ready to close #207.
+
+Scope:
+Completed the Load Plan stabilization lane closeout with fresh runtime browser
+QA.
+
+Files intentionally changed:
+
+- `frontend/scripts/functional-load-plan-browser.mjs`
+- `migrations/versions/c5b9d3a1e6f2_load_plan_package_domain_scope.py`
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_BROWSER_CLOSEOUT_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+- Live `/api/v1/platform/navigation` on `http://127.0.0.1:8052` returned:
+  `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`.
+- `python -m alembic upgrade c5b9d3a1e6f2` passed on
+  `var/qa-load-plan-route-closeout.db`.
+- `npm run qa:functional:load-plan:browser` passed against backend
+  `http://127.0.0.1:8052` and frontend `http://127.0.0.1:5222`.
+
+Evidence:
+
+- `var/qa/load-plan-route-closeout.png`
+
+Validation not run:
+
+- Full repository backend/frontend suites were not rerun in this closeout; #208
+  and #209 already recorded focused automated coverage and GitHub Actions
+  passed after the route recovery commit.
+
+Open risks:
+
+- The screenshot was captured from the shared dirty local workspace and includes
+  a floating Assistant control from parallel work. The sidebar/module evidence
+  remains valid because excluded top-level modules are absent.
+- Deeper visual decomposition into separate Load Plan page components remains
+  future enhancement, not current closeout scope.
+
+Recommended next step:
+
+Close #207 after push. The next roadmap lane can move to Assets backlog,
+Settings/Cockpit context-isolation work, or another user-prioritized module.

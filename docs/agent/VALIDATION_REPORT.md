@@ -2984,3 +2984,62 @@ Notes:
   smaller blocks passed.
 - Fresh browser screenshots were not captured. Browser visual acceptance still
   requires the runtime navigation freshness gate.
+
+## 2026-05-28 Load Plan Browser Closeout
+
+Scope:
+
+- Closed the Load Plan stabilization lane (#207) after fresh runtime browser QA.
+- Fixed the Load Plan browser QA seed path to create Rates batches inside the
+  active project/environment/profile context.
+- Added an Alembic migration for the `load_plan_packages.domain_name` column
+  required by the current model.
+
+Fresh runtime:
+
+```text
+Backend:  http://127.0.0.1:8052
+Frontend: http://127.0.0.1:5222
+Database: var/qa-load-plan-route-closeout.db
+User:     demo@example.test
+```
+
+Live navigation IDs checked before browser QA:
+
+```text
+master_data, home, rates, load_plan, assets, order_release_generator,
+integration_mapping, settings
+```
+
+Commands:
+
+```powershell
+python -m pytest tests/test_modules_navigation.py -q
+python -m alembic upgrade c5b9d3a1e6f2
+npm run qa:functional:load-plan:browser
+```
+
+Results:
+
+```text
+tests/test_modules_navigation.py: 10 passed
+alembic upgrade c5b9d3a1e6f2: passed
+qa:functional:load-plan:browser: passed
+```
+
+Evidence:
+
+```text
+var/qa/load-plan-route-closeout.png
+```
+
+Notes:
+
+- The first browser QA run failed because the script created a Rates batch
+  outside the active scoped context; the script now sends project, environment,
+  and profile IDs.
+- The second browser QA run exposed the missing
+  `load_plan_packages.domain_name` migration; the migration is idempotent.
+- The third browser QA run exposed an ambiguous `/load-plan` selector after
+  Cockpit accelerator links were added; the script now selects the exact Load
+  Plan navigation link.
