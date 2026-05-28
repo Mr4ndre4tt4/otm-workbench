@@ -8,6 +8,7 @@ import type { NavigationItem, UserPreferences } from "../../platform/types";
 import { Button, FeedbackMessage, IconButton } from "../../ui/components";
 import { PreferenceControls } from "./PreferenceControls";
 import { SidebarNav } from "./SidebarNav";
+import { WorkbenchAssistant } from "./WorkbenchAssistant";
 
 type WorkbenchShellProps = PropsWithChildren<{
   currentPath: string;
@@ -89,6 +90,9 @@ export function WorkbenchShell({
         </div>
         {children}
       </main>
+      {isAuthenticated && token ? (
+        <WorkbenchAssistant currentPath={currentPath} navigationItems={navigationItems} token={token} />
+      ) : null}
     </div>
   );
 }

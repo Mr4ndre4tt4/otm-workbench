@@ -127,3 +127,244 @@
   color: var(--muted);
   line-height: 1.5;
 }
+
+.assistant-overlay {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+.assistant-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--surface);
+  cursor: pointer;
+  padding: 6px 14px 6px 8px;
+  font-weight: 800;
+  box-shadow: 0 18px 38px rgb(15 23 42 / 18%);
+}
+
+.assistant-launcher-icon {
+  position: relative;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.assistant-launcher-icon svg:first-child {
+  width: 18px;
+  height: 18px;
+}
+
+.assistant-launcher-icon svg:last-child {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 13px;
+  height: 13px;
+}
+
+.assistant-panel {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 104px));
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 22px 54px rgb(15 23 42 / 22%);
+  padding: 16px;
+}
+
+.assistant-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.assistant-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 10px 0;
+}
+
+.assistant-context-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.assistant-context-strip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.assistant-context-strip strong {
+  font-size: 14px;
+}
+
+.assistant-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.assistant-quick-actions button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.assistant-quick-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.assistant-tool {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.assistant-tool label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assistant-tool input,
+.assistant-tool textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 9px 10px;
+}
+
+.assistant-tool .button {
+  gap: 8px;
+  justify-self: start;
+}
+
+.assistant-result-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.assistant-result,
+.assistant-oracle-preview {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  padding: 10px;
+}
+
+.assistant-result span,
+.assistant-oracle-preview span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.assistant-result p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.assistant-oracle-preview {
+  margin-top: 12px;
+}
+
+.assistant-oracle-preview a {
+  color: var(--accent);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.assistant-sql-preview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.assistant-sql-preview span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.assistant-sql-preview pre {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistant-sql-preview p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .assistant-overlay {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .assistant-launcher > span:last-child {
+    display: none;
+  }
+}
