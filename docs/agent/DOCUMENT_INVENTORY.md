@@ -65,6 +65,7 @@ No file is archived by this inventory alone.
 | `docs/otm-workbench/README.md` | active | Deep documentation entry point. |
 | `docs/otm-workbench/engineering/HARNESS_ENGINEERING_PLAN.md` | active | Harness operating model. |
 | `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md` | active | Active GitHub Issues/PRs/Actions delivery governance. |
+| `docs/otm-workbench/governance/GITHUB_VERSIONING_AND_ISSUE_CADENCE.md` | active | Lightweight GitHub version-train, issue cadence, and commit granularity workflow. |
 | `docs/otm-workbench/governance/CODERABBIT_REVIEW_GOVERNANCE.md` | active | Assistive CodeRabbit review policy. |
 | `docs/otm-workbench/governance/LINEAR_DELIVERY_GOVERNANCE_OTM62.md` | supporting | Historical Linear governance. Linear is paused unless explicitly reactivated. |
 | `docs/otm-workbench/gui/GUI_MODULE_ROADMAP_INDEX.md` | active | GUI module index. |

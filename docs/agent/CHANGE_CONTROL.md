@@ -40,6 +40,17 @@ Owner:
 Status:
 ```
 
+## GitHub Versioning Checkpoint
+
+When a direction change affects delivery cadence, module order, or what counts
+as a reviewable slice, record the change in GitHub as well as in repo docs:
+
+- create or update a governance issue;
+- link affected delivery issues or PR comments;
+- decide whether the change belongs to an active version/milestone;
+- keep commits focused enough that a future agent can map each commit to a task
+  contract, issue, or validation checkpoint.
+
 ## Documentation Sync Checklist
 
 Before a change is done, check:

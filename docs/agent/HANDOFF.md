@@ -3,6 +3,69 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28 GitHub Versioning And Issue Cadence
+
+Status:
+Governance rule documented; GitHub tracking issue created.
+
+Scope:
+Adopt lightweight GitHub version trains, smaller issue-linked commits, and more
+frequent issue updates so large local workspace batches do not become hidden
+project state.
+
+What changed:
+
+- created GitHub issue #194 for the governance slice;
+- documented version-tracking via milestone when available or version issue as
+  fallback;
+- added issue cadence rules for task contracts, implementation starts,
+  validation results, and deferred follow-ups;
+- added commit granularity guidance for backend, frontend, governance,
+  validation, and artifact slices;
+- updated the delivery pipeline, change control, roadmap, risk register,
+  decision log, document inventory, AGENTS, and GitHub governance docs.
+
+Files intentionally changed:
+
+- `AGENTS.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/CHANGE_CONTROL.md`
+- `docs/agent/ROADMAP.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/DOCUMENT_INVENTORY.md`
+- `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`
+- `docs/otm-workbench/governance/GITHUB_VERSIONING_AND_ISSUE_CADENCE.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- GitHub issue #194 created through the GitHub connector;
+- documentation diff review;
+- `git diff --cached --check` before commit.
+
+Validation not run:
+
+- backend tests;
+- frontend tests;
+- browser QA.
+
+Reason:
+This slice is documentation and governance only. It does not change runtime
+behavior.
+
+Open risks:
+
+- GitHub CLI is not currently available in this shell, so milestone management
+  may require connector support, browser/manual GitHub work, or reinstalling
+  `gh` before milestone automation.
+- Parallel local Assistant and Integration Mapping work remains outside this
+  governance commit.
+
+Recommended next step:
+Use issue #194 as the tracking point until the first version train is named,
+then create or update issues at the start of each meaningful slice.
 ## 2026-05-28 Assets Linked Target Search UI
 
 Status:

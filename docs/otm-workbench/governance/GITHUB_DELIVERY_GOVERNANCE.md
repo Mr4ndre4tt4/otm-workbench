@@ -58,6 +58,59 @@ Use milestones for phase-level grouping, not detailed planning:
 - Integration
 - Order Release
 
+When GitHub milestones are not available from the current tool context, create
+one version-tracking issue and link child delivery issues from it. The version
+issue should state:
+
+- delivery intent;
+- included modules or governance controls;
+- linked issues and PRs;
+- validation gates;
+- deferred work.
+
+Recommended version naming:
+
+```text
+v0.3-assets-stabilization
+v0.4-master-data-foundation
+v0.5-order-release-hardening
+```
+
+Avoid broad names such as `next`, `misc`, or `cleanup` unless the issue body
+defines a tight boundary.
+
+## Issue Cadence
+
+Create or update issues more frequently than commits are pushed:
+
+- one issue per coherent delivery slice;
+- one parent/version issue per related group of slices;
+- update the issue when the task contract is accepted, implementation starts,
+  validation passes, or a deferral is discovered;
+- split an issue when the implementation naturally becomes two independent
+  reviewable commits.
+
+Do not let more than one meaningful local slice accumulate without either:
+
+- an open GitHub issue;
+- a PR comment naming the pending slice; or
+- a handoff capsule explaining why GitHub was deferred.
+
+## Commit Granularity
+
+Prefer small commits tied to a single task contract or validation checkpoint.
+Good commit units are:
+
+- one backend contract plus focused tests;
+- one frontend route/control plus functional and browser QA updates;
+- one governance/process update;
+- one documentation-only correction.
+
+Avoid commits that mix unrelated module behavior, governance, generated
+artifacts, and local workspace cleanup. When the workspace contains parallel
+work, stage by file and verify `git diff --cached --name-status` before every
+commit.
+
 ## Pull Request Rules
 
 Every PR should answer:

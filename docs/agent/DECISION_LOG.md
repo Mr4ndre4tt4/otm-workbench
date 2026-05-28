@@ -3,6 +3,60 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-28: Use GitHub Version Trains And Smaller Issue-Linked Commits
+
+Status:
+accepted governance refinement
+
+Change type:
+
+```text
+delivery pipeline change
+validation strategy change
+documentation change
+```
+
+Decision:
+The project will use lightweight GitHub version trains and smaller
+issue-linked commits. Each meaningful delivery slice should create or update a
+GitHub Issue before implementation when practical. Related slices should be
+grouped by a GitHub milestone when available, or by a version-tracking issue
+when milestone management is not available from the active tool context.
+
+Reason:
+The workspace now contains multiple parallel workstreams. Smaller commits and
+more frequent GitHub issue updates reduce local-state risk, make PR review
+easier, and give future chats a better recovery path than conversational memory
+or uncommitted files.
+
+Rules:
+
+- prefer one issue per coherent delivery slice;
+- prefer one commit per task contract, backend/API slice, frontend slice, or
+  governance checkpoint;
+- update PR comments with validation evidence after each pushed slice;
+- keep version names outcome-based, for example
+  `v0.3-assets-stabilization`;
+- do not treat GitHub issues as the durable source of truth for decisions;
+  durable decisions remain in repo docs.
+
+GitHub tracking:
+
+- issue #194: `Govern GitHub versioning cadence and smaller delivery issues`.
+
+Impacted files:
+
+- `AGENTS.md`
+- `docs/agent/DELIVERY_PIPELINE.md`
+- `docs/agent/CHANGE_CONTROL.md`
+- `docs/agent/ROADMAP.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/DOCUMENT_INVENTORY.md`
+- `docs/otm-workbench/governance/GITHUB_DELIVERY_GOVERNANCE.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
 ## 2026-05-27: Reserve Integration Mapping For Dedicated Parallel Chat
 
 Status:

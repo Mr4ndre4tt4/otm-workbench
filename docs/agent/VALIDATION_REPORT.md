@@ -3,6 +3,38 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-28 GitHub Versioning And Issue Cadence Validation
+
+Validation intent:
+
+- document a lightweight GitHub versioning and issue cadence workflow;
+- create the first GitHub governance issue for the cadence change;
+- avoid mixing unrelated local Assistant or Integration Mapping work into this
+  governance commit.
+
+Validation performed:
+
+```powershell
+GitHub connector: create issue #194
+Documentation diff review
+git diff --cached --check
+```
+
+Results:
+
+```text
+GitHub issue #194 created: Govern GitHub versioning cadence and smaller delivery issues.
+Documentation-only governance change; no runtime behavior changed.
+```
+
+Validation not run:
+
+- backend tests;
+- frontend tests;
+- browser QA.
+
+Reason:
+This slice only changes delivery governance and documentation.
 ## 2026-05-28 Assets Linked Target Search UI Validation
 
 Validation intent:

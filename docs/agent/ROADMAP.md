@@ -217,6 +217,7 @@ Goal: make the process durable.
 
 Candidate improvements:
 
+- GitHub version trains with smaller issue-linked commits;
 - automated docs inventory checks;
 - route inventory checks;
 - screenshot/evidence manifest per module;

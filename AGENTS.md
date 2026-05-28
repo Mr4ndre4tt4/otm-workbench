@@ -51,6 +51,10 @@ this repository.
   before values.
 - Update docs, GitHub Issues/PRs, tests, and QA evidence together when a
   delivery slice changes product behavior.
+- Prefer small GitHub-versioned delivery slices. Open or update a GitHub Issue
+  before meaningful implementation when practical, keep commits reviewable, and
+  group related issues under a version/milestone or version issue instead of
+  letting large local workspace batches accumulate silently.
 - Use CodeRabbit as an assistive PR reviewer for broad, risky, or
   security/governance-sensitive changes. Do not treat it as a required merge
   gate until the user explicitly promotes it.

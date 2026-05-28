@@ -16,6 +16,7 @@ intake
   -> To-Be alignment plan
   -> cleanup and context-isolation plan
   -> implementation plan
+  -> GitHub issue/version checkpoint
   -> development slice
   -> tests and browser QA
   -> docs, evidence, GitHub issue/PR/Actions checkpoint
@@ -239,13 +240,30 @@ GitHub delivery gate:
 
 GitHub is the active delivery visibility layer. For each reviewable slice:
 
-1. create or update a GitHub Issue using the delivery or governance template;
-2. link the issue from the branch, PR body, or PR comments;
-3. let GitHub Actions run backend tests, frontend tests, and frontend build;
-4. for broad, risky, security-sensitive, CI, or governance changes, request or
+1. create or update a GitHub Issue using the delivery or governance template
+   before implementation when practical;
+2. assign the issue to the active version/milestone or link it from the active
+   version issue;
+3. keep commits small enough to review against one task contract or validation
+   checkpoint;
+4. link the issue from the branch, PR body, or PR comments;
+5. let GitHub Actions run backend tests, frontend tests, and frontend build;
+6. for broad, risky, security-sensitive, CI, or governance changes, request or
    run CodeRabbit review and triage only actionable findings;
-5. record validation commands, evidence, and review status in the PR;
-6. keep Linear paused/historical unless the user explicitly reactivates it.
+7. record validation commands, evidence, and review status in the PR;
+8. keep Linear paused/historical unless the user explicitly reactivates it.
+
+Versioning cadence:
+
+- Use lightweight version trains for groups of related work. Prefer GitHub
+  milestones when available; otherwise use a version-tracking issue.
+- Name versions by delivery intent, for example `v0.3-assets-stabilization`,
+  not by vague calendar buckets.
+- Do not wait for a large local batch before creating GitHub visibility. If a
+  slice has a task contract, it normally deserves an issue or an update to an
+  existing issue.
+- A version can be closed only when linked issues, PR validation, docs, and
+  handoff agree on what shipped and what remains deferred.
 
 ## Stage 7: Completion Review
 
