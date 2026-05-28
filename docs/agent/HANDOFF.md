@@ -3,6 +3,64 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Acceptance Create Route Cleanup
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has a dedicated `/assets/new` route-level create screen, and
+asset creation no longer contains classification authoring.
+
+What changed:
+
+- `/assets/new` renders `Create asset` with `Back to Library`, `Cancel`, and
+  `Manage classifications`;
+- `/assets/new` uses the existing backend asset create contract;
+- the create route disables selected-asset hydration so it starts from the
+  default synthetic draft instead of copying the first/selected asset;
+- the legacy create workflow no longer renders `Asset classification
+  authoring`;
+- the long Assets functional journey and browser QA now create classifications
+  only through `/assets/classifications/*`;
+- browser QA captures `var/qa/assets-create-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "dedicated route without
+  classification authoring"` -> 1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 12 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `node scripts/functional-assets-browser.mjs` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8020`;
+- frontend: `http://127.0.0.1:5198`;
+- database: `var/qa-assets-create-route.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots include `var/qa/assets-create-route.png`,
+  `var/qa/assets-classifications-route.png`,
+  `var/qa/assets-classification-create-route.png`,
+  `var/qa/assets-classification-edit-route.png`,
+  `var/qa/assets-archive-route.png`, `var/qa/assets-links-route.png`,
+  `var/qa/assets-version-upload-route.png`, `var/qa/assets-versions-route.png`,
+  `var/qa/assets-edit-metadata-route.png`, `var/qa/assets-detail-route.png`.
+
+Next-chat intake notes:
+
+- `OTM_RESOURCES/` and `outputs/` remain untracked and unrelated.
+- Browser QA runtime `8020/5198` was stopped after validation.
+- The remaining Assets acceptance gaps are backend/API-sized work, not this
+  small create-route cleanup.
+
+Recommended next step:
+Plan the `/assets/library` backend-owned search/operator/pagination slice, or
+do a small detail-route actions cleanup if we want to keep the next change
+frontend-only.
+
 ## 2026-05-27 Assets Classifications Routes Slice
 
 Status:

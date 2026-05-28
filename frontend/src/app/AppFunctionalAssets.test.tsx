@@ -436,7 +436,7 @@ describe("Functional Assets Library journey", () => {
         return Promise.resolve(jsonResponse({ items: [], total: 0 }));
       }
       if (url.endsWith("/api/v1/modules/assets/assets")) {
-        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+        return Promise.resolve(jsonResponse({ items: [referenceAssetFixture()], total: 1 }));
       }
       if (url.endsWith("/api/v1/modules/assets/classifications")) {
         return Promise.resolve(jsonResponse(classificationGroups()));
@@ -646,6 +646,107 @@ describe("Functional Assets Library journey", () => {
         is_active: true,
         name: "Playbook Updated",
         sort_order: 90
+      }
+    ]);
+  });
+
+  it("creates an asset on a dedicated route without classification authoring", async () => {
+    const assetRequests: unknown[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        assetRequests.push(body);
+        return Promise.resolve(
+          jsonResponse({
+            ...assetFixture("DRAFT", null),
+            ...body,
+            created_at: "2026-05-22T00:00:00",
+            created_by: "admin@example.test",
+            id: "asset_created_route",
+            tags: body.tags
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/new");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Create asset" });
+    expect(screen.getByRole("link", { name: "Back to Library" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Asset classification authoring")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Asset name")).toHaveValue("Synthetic Mapping Spec");
+
+    await userEvent.clear(screen.getByLabelText("Asset name"));
+    await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Route Asset");
+    await userEvent.clear(screen.getByLabelText("Asset description"));
+    await userEvent.type(screen.getByLabelText("Asset description"), "Created from the dedicated route.");
+    await userEvent.click(screen.getByRole("button", { name: "Create asset" }));
+
+    expect(await screen.findByText("Asset Synthetic Route Asset created.")).toBeInTheDocument();
+    expect(assetRequests).toEqual([
+      {
+        asset_type: "SPEC",
+        category: "INTEGRATION",
+        description: "Created from the dedicated route.",
+        macro_object_code: "ORDER_RELEASE",
+        module_id: "integration_mapping",
+        name: "Synthetic Route Asset",
+        otm_table_name: "ORDER_RELEASE",
+        scope_type: "MODULE",
+        sensitivity: "INTERNAL",
+        tags: ["SYNTHETIC", "MVP0"],
+        visibility: "PROJECT"
       }
     ]);
   });
@@ -1493,15 +1594,7 @@ describe("Functional Assets Library journey", () => {
     });
 
     await userEvent.click(screen.getByRole("button", { name: /2Create/ }));
-    await userEvent.selectOptions(screen.getByLabelText("Asset classification type"), "asset_category");
-    await userEvent.clear(screen.getByLabelText("Asset classification code"));
-    await userEvent.type(screen.getByLabelText("Asset classification code"), "PLAYBOOK");
-    await userEvent.clear(screen.getByLabelText("Asset classification name"));
-    await userEvent.type(screen.getByLabelText("Asset classification name"), "Playbook");
-    await userEvent.click(screen.getByRole("button", { name: "Create classification" }));
-    await screen.findByText("Classification PLAYBOOK created.");
-    await screen.findByRole("option", { name: "Playbook" });
-    await userEvent.selectOptions(screen.getByLabelText("Asset category"), "PLAYBOOK");
+    expect(screen.queryByLabelText("Asset classification authoring")).not.toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Asset name"));
     await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Rate Table Notes");
     await userEvent.clear(screen.getByLabelText("Asset description"));
@@ -1656,7 +1749,7 @@ describe("Functional Assets Library journey", () => {
     expect(createRequests).toEqual([
       {
         asset_type: "SPEC",
-        category: "PLAYBOOK",
+        category: "INTEGRATION",
         description: "Client-safe rate table support asset.",
         macro_object_code: "RATE_RECORD",
         module_id: "rates",
@@ -1669,15 +1762,7 @@ describe("Functional Assets Library journey", () => {
       }
     ]);
     expect(uploadRequests).toEqual([{ method: "POST" }]);
-    expect(classificationRequests).toEqual([
-      {
-        classification_type: "asset_category",
-        code: "PLAYBOOK",
-        description: "Client-safe reusable implementation playbook.",
-        name: "Playbook",
-        sort_order: 90
-      }
-    ]);
+    expect(classificationRequests).toEqual([]);
     expect(invalidLinkRequests).toEqual([
       { link_type: "OTM_TABLE", target_id: "NOT_A_REAL_OTM_TABLE", target_label: "Invalid OTM table" }
     ]);
@@ -1687,7 +1772,7 @@ describe("Functional Assets Library journey", () => {
     expect(updateRequests).toEqual([
       {
         asset_type: "SPEC",
-        category: "PLAYBOOK",
+        category: "INTEGRATION",
         description: "Updated client-safe rate table support asset.",
         macro_object_code: "RATE_RECORD",
         module_id: "rates",

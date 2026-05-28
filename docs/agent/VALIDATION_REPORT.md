@@ -3,6 +3,77 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Acceptance Create Route Cleanup
+
+Validation intent:
+
+- close the first Assets acceptance gap after classifications route extraction;
+- make `/assets/new` a route-level create screen;
+- remove classification authoring from asset creation so classification changes
+  stay under `/assets/classifications/*`.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "dedicated route without classification authoring"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+node scripts/functional-assets-browser.mjs
+git diff --check
+```
+
+Results:
+
+```text
+Focused create-route acceptance test: 1 passed.
+Assets functional suite: 12 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+git diff --check: no errors, LF/CRLF warnings only.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8020
+Frontend: http://127.0.0.1:5198
+Database: var/qa-assets-create-route.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Asset create screenshot: var/qa/assets-create-route.png
+Classification screenshots:
+  var/qa/assets-classifications-route.png
+  var/qa/assets-classification-create-route.png
+  var/qa/assets-classification-edit-route.png
+```
+
+Validated:
+
+- `/assets/new` renders a route-level create task without the temporary Assets
+  Library workflow rail;
+- the create route starts from the default synthetic asset draft, not the
+  selected or first asset in the library;
+- asset creation no longer renders `Asset classification authoring`;
+- classification creation remains available through the dedicated
+  classifications routes;
+- the existing asset lifecycle journey remains green after route-level create,
+  workflow edit, direct edit, version upload/history, links, archive, switch,
+  and return checks;
+- live browser navigation evidence stayed inside the current UI phase and did
+  not show excluded top-level modules.
+
+Deferred:
+
+- Backend-owned search operators/pagination for `/assets/library`.
+- Optional create-and-upload flow.
+- `/assets/:assetId/download` guarded review route if later required.
+
 ## 2026-05-27 Assets Classifications Routes Slice
 
 Validation intent:

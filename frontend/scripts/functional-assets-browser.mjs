@@ -299,7 +299,11 @@ async function run() {
     await assertControlValue(page.getByLabel("Asset macro object filter"), "", "Asset macro object filter after reset");
     await assertControlValue(page.getByLabel("Asset OTM table filter"), "", "Asset OTM table filter after reset");
 
-    await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
+    await page.goto(`${baseUrl}/assets/new`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Create asset" }).waitFor();
+    const assetCreateScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-create-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(assetCreateScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: assetCreateScreenshotPath });
     await page.getByLabel("Asset name").fill("Synthetic Rate Table Notes");
     await page.getByLabel("Asset description").fill("Client-safe rate table support asset.");
     await page.getByLabel("Asset type").selectOption("SPEC");
@@ -313,6 +317,10 @@ async function run() {
     await page.getByLabel("Asset tags").fill("SYNTHETIC,RATE");
     await page.getByRole("button", { name: "Create asset" }).click();
     await page.getByText("Asset Synthetic Rate Table Notes created.").waitFor();
+    await page.goto(`${baseUrl}/assets/library`, { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Assets Library workflow").waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes/ }).first().click();
     await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes").waitFor();
 
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Create" }).click();
@@ -555,7 +563,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-classifications-list-create-edit-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-direct-archive-switch-guards-return",
+          journey: "assets-classifications-list-create-edit-filtered-metadata-direct-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-direct-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -566,6 +574,7 @@ async function run() {
           classifications_route_screenshot: "var/qa/assets-classifications-route.png",
           classification_create_route_screenshot: "var/qa/assets-classification-create-route.png",
           classification_edit_route_screenshot: "var/qa/assets-classification-edit-route.png",
+          asset_create_route_screenshot: "var/qa/assets-create-route.png",
           detail_route_screenshot: "var/qa/assets-detail-route.png",
           edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
           versions_route_screenshot: "var/qa/assets-versions-route.png",

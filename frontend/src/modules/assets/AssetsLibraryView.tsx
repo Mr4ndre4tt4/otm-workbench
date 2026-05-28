@@ -187,6 +187,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const directAssetVersionsMatch = /^\/assets\/([^/]+)\/versions$/.exec(location.pathname);
   const directAssetLinksMatch = /^\/assets\/([^/]+)\/links$/.exec(location.pathname);
   const directAssetArchiveMatch = /^\/assets\/([^/]+)\/archive$/.exec(location.pathname);
+  const directAssetNew = location.pathname === "/assets/new";
   const directClassificationsNew = location.pathname === "/assets/classifications/new";
   const directClassificationsEditMatch = /^\/assets\/classifications\/([^/]+)\/edit$/.exec(location.pathname);
   const directClassificationEditId = directClassificationsEditMatch?.[1] ?? null;
@@ -232,7 +233,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const assetItems = assets.data?.items ?? [];
-  const effectiveAssetId = selectedAssetId ?? directAssetRouteId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
+  const assetSelectionDisabled =
+    directAssetNew || location.pathname === "/assets/classifications" || directClassificationsNew || Boolean(directClassificationEditId);
+  const effectiveAssetId = assetSelectionDisabled
+    ? null
+    : selectedAssetId ?? directAssetRouteId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
   const assetDetail = useAssetDetail(token, effectiveAssetId);
   const assetVersions = useAssetVersions(token, effectiveAssetId);
   const assetLinks = useAssetLinks(token, effectiveAssetId);
@@ -560,6 +565,192 @@ export function AssetsLibraryView({ token }: { token: string }) {
 
   if (assets.isError || !assets.data) {
     return <StatePanel tone="error">Assets Library is unavailable.</StatePanel>;
+  }
+
+  if (directAssetNew) {
+    return (
+      <>
+        <PageHeader
+          description="Create a governed reusable asset from backend-owned metadata classifications."
+          label="Assets"
+          title="Create asset"
+        />
+
+        <div className="master-data-action-bar">
+          <Link className="button button-secondary" to="/assets/library">
+            Back to Library
+          </Link>
+          <Link className="button button-secondary" to="/assets/library">
+            Cancel
+          </Link>
+          <Link className="button button-secondary" to="/assets/classifications">
+            Manage classifications
+          </Link>
+        </div>
+
+        {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+        {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Asset create workspace"
+          side={
+            <SelectedObjectPanel
+              ariaLabel="Asset create guidance"
+              emptyText="No create guidance is available."
+              fields={[
+                { label: "Type source", value: "Classification contract" },
+                { label: "Category source", value: "Classification contract" },
+                { label: "Validation", value: "Backend owned" },
+                { label: "Next step", value: "Upload version" }
+              ]}
+              status="READY"
+              subtitle="Route-level task"
+              title="Asset metadata"
+            >
+              <p className="empty-text">
+                Classification authoring is managed separately so asset creation stays focused on reusable file metadata.
+              </p>
+            </SelectedObjectPanel>
+          }
+          status="READY"
+          title="Asset metadata"
+        >
+          <OperationalPanel
+            ariaLabel="Asset create form"
+            emptyText="Asset creation is unavailable."
+            hasItems
+            status="READY"
+            title="Asset metadata"
+          >
+            <div className="module-form-grid">
+              <label>
+                Asset name
+                <input
+                  aria-label="Asset name"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
+                  value={assetDraft.name}
+                />
+              </label>
+              <label>
+                Asset description
+                <input
+                  aria-label="Asset description"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, description: event.target.value }))}
+                  value={assetDraft.description}
+                />
+              </label>
+              <label>
+                Asset type
+                <select
+                  aria-label="Asset type"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, asset_type: event.target.value }))}
+                  value={assetDraft.asset_type}
+                >
+                  {assetTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset category
+                <select
+                  aria-label="Asset category"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, category: event.target.value }))}
+                  value={assetDraft.category}
+                >
+                  {assetCategoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset visibility
+                <select
+                  aria-label="Asset visibility"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, visibility: event.target.value }))}
+                  value={assetDraft.visibility}
+                >
+                  {assetVisibilityOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset scope
+                <select
+                  aria-label="Asset scope"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, scope_type: event.target.value }))}
+                  value={assetDraft.scope_type}
+                >
+                  {assetScopeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset sensitivity
+                <select
+                  aria-label="Asset sensitivity"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, sensitivity: event.target.value }))}
+                  value={assetDraft.sensitivity}
+                >
+                  {assetSensitivityOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Asset module id
+                <input
+                  aria-label="Asset module id"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, module_id: event.target.value }))}
+                  value={assetDraft.module_id}
+                />
+              </label>
+              <label>
+                Asset macro object
+                <input
+                  aria-label="Asset macro object"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, macro_object_code: event.target.value }))}
+                  value={assetDraft.macro_object_code}
+                />
+              </label>
+              <label>
+                Asset OTM table
+                <input
+                  aria-label="Asset OTM table"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, otm_table_name: event.target.value }))}
+                  value={assetDraft.otm_table_name}
+                />
+              </label>
+              <label>
+                Asset tags
+                <input
+                  aria-label="Asset tags"
+                  onChange={(event) => setAssetDraft((current) => ({ ...current, tags: event.target.value }))}
+                  value={assetDraft.tags}
+                />
+              </label>
+            </div>
+            <div className="master-data-action-bar">
+              <Button disabled={isMutating || !assetDraft.name.trim()} onClick={handleCreateAsset} variant="primary">
+                Create asset
+              </Button>
+            </div>
+          </OperationalPanel>
+        </ModuleWorkspaceLayout>
+      </>
+    );
   }
 
   if (location.pathname === "/assets/classifications") {
@@ -2002,73 +2193,6 @@ export function AssetsLibraryView({ token }: { token: string }) {
             title="Create asset"
           >
             <div className="master-data-action-bar">
-              <div className="assets-classification-authoring" aria-label="Asset classification authoring">
-                <h3>Classification authoring</h3>
-                <label>
-                  Classification type
-                  <select
-                    aria-label="Asset classification type"
-                    onChange={(event) =>
-                      setClassificationDraft((current) => ({ ...current, classification_type: event.target.value }))
-                    }
-                    value={classificationDraft.classification_type}
-                  >
-                    {classificationTypeOptions.map((item) => (
-                      <option key={item.code} value={item.code}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Classification code
-                  <input
-                    aria-label="Asset classification code"
-                    onChange={(event) =>
-                      setClassificationDraft((current) => ({ ...current, code: event.target.value.toUpperCase() }))
-                    }
-                    value={classificationDraft.code}
-                  />
-                </label>
-                <label>
-                  Classification name
-                  <input
-                    aria-label="Asset classification name"
-                    onChange={(event) => setClassificationDraft((current) => ({ ...current, name: event.target.value }))}
-                    value={classificationDraft.name}
-                  />
-                </label>
-                <label>
-                  Classification description
-                  <input
-                    aria-label="Asset classification description"
-                    onChange={(event) =>
-                      setClassificationDraft((current) => ({ ...current, description: event.target.value }))
-                    }
-                    value={classificationDraft.description}
-                  />
-                </label>
-                <label>
-                  Classification sort order
-                  <input
-                    aria-label="Asset classification sort order"
-                    onChange={(event) =>
-                      setClassificationDraft((current) => ({ ...current, sort_order: event.target.value }))
-                    }
-                    type="number"
-                    value={classificationDraft.sort_order}
-                  />
-                </label>
-                <Button
-                  disabled={
-                    isMutating || !classificationDraft.code.trim() || !classificationDraft.name.trim()
-                  }
-                  onClick={handleCreateClassification}
-                  variant="secondary"
-                >
-                  Create classification
-                </Button>
-              </div>
               <label>
                 Asset name
                 <input
