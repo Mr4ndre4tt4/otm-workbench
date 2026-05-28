@@ -2937,3 +2937,50 @@ Notes:
   acceptance claim.
 - The current technical foundation is healthy, but route-level package
   operation recovery remains unimplemented and is tracked by #209.
+
+## 2026-05-28 Load Plan Route-Level Workflows
+
+Scope:
+
+- Implemented GitHub issue #209 for route-aware Load Plan package operation
+  destinations.
+- Added direct route recovery coverage for `/load-plan/packages/package_2/zip-review`.
+
+Commands:
+
+```powershell
+npm test -- src/app/AppFunctionalLoadPlan.test.tsx
+npm test -- src/app/App.test.tsx -t "Load Plan"
+python -m pytest tests/test_load_plan_package_intake.py -q
+python -m pytest tests/test_load_plan_cutover_checklist.py -q
+python -m pytest tests/test_load_plan_cutover_readiness.py -q
+python -m pytest tests/test_load_plan_csvutil_builder.py -q
+python -m pytest tests/test_load_plan_zip_analysis.py -q
+python -m pytest tests/test_load_plan_sequence_blockers.py -q
+python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q
+python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q
+npm run build
+```
+
+Results:
+
+```text
+AppFunctionalLoadPlan.test.tsx: 2 passed
+App.test.tsx - Load Plan: 1 passed, 29 skipped
+tests/test_load_plan_package_intake.py: 23 passed
+tests/test_load_plan_cutover_checklist.py: 13 passed
+tests/test_load_plan_cutover_readiness.py: 9 passed
+tests/test_load_plan_csvutil_builder.py: 16 passed
+tests/test_load_plan_zip_analysis.py: 12 passed
+tests/test_load_plan_sequence_blockers.py: 13 passed
+tests/test_load_plan_review_queue.py + tests/test_load_plan_review_decisions.py: 16 passed
+tests/test_load_plan_cutover_package_export.py + tests/test_load_plan_cutover_go_no_go.py + tests/test_load_plan_cutover_handoff.py + tests/test_load_plan_readiness_export.py: 25 passed
+frontend build: passed with existing Vite large chunk warning
+```
+
+Notes:
+
+- Initial broad backend parallel runs timed out at the shell limit; reruns in
+  smaller blocks passed.
+- Fresh browser screenshots were not captured. Browser visual acceptance still
+  requires the runtime navigation freshness gate.

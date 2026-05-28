@@ -2413,3 +2413,66 @@ Recommended next step:
 
 Close #208 after push. Continue #207 through #209:
 `[Slice]: Load Plan route-level package workflows`.
+
+## 2026-05-28 Load Plan Route-Level Workflows
+
+Status:
+Implemented and validated, with browser QA deferred.
+
+Scope:
+Implemented #209 by making the current Load Plan frontend route-aware for
+package operation destinations.
+
+Files intentionally changed:
+
+- `frontend/src/modules/load-plan/LoadPlanView.tsx`
+- `frontend/src/app/AppFunctionalLoadPlan.test.tsx`
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_ROUTE_LEVEL_WORKFLOWS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalLoadPlan.test.tsx` passed with 2 tests.
+- `npm test -- src/app/App.test.tsx -t "Load Plan"` passed with 1 test and 29
+  skipped tests.
+- `python -m pytest tests/test_load_plan_package_intake.py -q` passed with 23
+  tests.
+- `python -m pytest tests/test_load_plan_cutover_checklist.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_cutover_readiness.py -q` passed with
+  9 tests.
+- `python -m pytest tests/test_load_plan_csvutil_builder.py -q` passed with 16
+  tests.
+- `python -m pytest tests/test_load_plan_zip_analysis.py -q` passed with 12
+  tests.
+- `python -m pytest tests/test_load_plan_sequence_blockers.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q`
+  passed with 16 tests.
+- `python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q`
+  passed with 25 tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Fresh browser screenshots. Browser QA must first pass the runtime navigation
+  freshness gate.
+
+Evidence:
+
+- Direct URL recovery is covered by `AppFunctionalLoadPlan.test.tsx` for
+  `/load-plan/packages/package_2/zip-review`, route destination links, and
+  handoff route recovery.
+
+Open risks:
+
+- This slice makes the To-Be URLs addressable and recoverable, but it does not
+  fully redesign the visual layout into separate page components.
+- Go/no-go and handoff currently share the guarded handoff panel.
+
+Recommended next step:
+
+Close #209 after push if the PR accepts automated coverage plus deferred
+browser visual evidence. Keep #207 open until Load Plan browser QA or explicit
+Load Plan acceptance closeout.
