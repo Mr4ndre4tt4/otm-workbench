@@ -3154,3 +3154,56 @@ Next-chat intake notes:
 Recommended next step:
 
 Continue with the next roadmap lane from `origin/main`; do not reopen #223.
+
+## 2026-05-28 Frontend Route Inventory Guard
+
+Status:
+Implemented locally for issue #229. Validation passed. Commit, push, and PR are
+pending.
+
+GitHub tracking:
+
+- Issue #229: frontend route inventory guard.
+
+Files intentionally changed:
+
+- `frontend/src/app/routes/WorkbenchRoute.test.tsx`
+- `docs/agent/FRONTEND_ROUTE_INVENTORY.md`
+- `docs/agent/TASK_CONTRACT_FRONTEND_ROUTE_INVENTORY_GUARD.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 9 tests.
+- `npm test -- src/app/routes/WorkbenchRoute.test.tsx src/app/shell/SidebarNav.test.tsx`
+  passed with 2 files and 8 tests.
+- `git diff --check` passed.
+
+Validation not run:
+
+- Browser screenshots; this slice does not intentionally change visible UI
+  behavior.
+
+Evidence:
+
+- Backend navigation already guards the current UI phase module set in
+  `tests/test_modules_navigation.py`.
+- New frontend test verifies excluded direct routes do not render unless the
+  backend navigation contract exposes them.
+
+Open risks:
+
+- Excluded route source files still exist and are classified rather than
+  removed. Removal needs a separate cleanup slice.
+- Integration Mapping remains reserved for its dedicated workstream.
+
+Next-chat intake notes:
+
+- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-route-inventory`
+  for issue #229 until this slice is merged.
+- Do not delete route components in this guard slice.
+
+Recommended next step:
+
+Commit, push, and open PR for #229.
