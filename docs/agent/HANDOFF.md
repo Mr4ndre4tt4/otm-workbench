@@ -2354,3 +2354,62 @@ Recommended next step:
 Close #206 after push if the PR accepts automated coverage plus the recorded
 browser-script limitation. Keep #204 open until a browser QA rerun or explicit
 Order Release acceptance closeout.
+
+## 2026-05-28 Load Plan Revalidation
+
+Status:
+Revalidation complete; implementation follow-up required.
+
+Scope:
+Opened the Load Plan stabilization lane (#207), revalidated Load Plan / Cutover
+against the active package/checklist lifecycle (#208), and created the required
+implementation follow-up (#209).
+
+Files intentionally changed:
+
+- `docs/agent/TASK_CONTRACT_LOAD_PLAN_REVALIDATION_2026_05_28.md`
+- `docs/agent/module-revalidation/LOAD_PLAN_FINAL_REVALIDATION_2026_05_28.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_load_plan_package_intake.py -q` passed with 23
+  tests.
+- `python -m pytest tests/test_load_plan_cutover_checklist.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_cutover_readiness.py -q` passed with
+  9 tests.
+- `python -m pytest tests/test_load_plan_csvutil_builder.py -q` passed with 16
+  tests.
+- `python -m pytest tests/test_load_plan_zip_analysis.py -q` passed with 12
+  tests.
+- `python -m pytest tests/test_load_plan_sequence_blockers.py -q` passed with
+  13 tests.
+- `python -m pytest tests/test_load_plan_review_queue.py tests/test_load_plan_review_decisions.py -q`
+  passed with 16 tests.
+- `python -m pytest tests/test_load_plan_cutover_package_export.py tests/test_load_plan_cutover_go_no_go.py tests/test_load_plan_cutover_handoff.py tests/test_load_plan_readiness_export.py -q`
+  passed with 25 tests.
+- `npm test -- src/app/AppFunctionalLoadPlan.test.tsx` passed with 1 test.
+- `npm test -- src/app/App.test.tsx -t "Load Plan"` passed with 1 test and 29
+  skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run:
+
+- Fresh browser screenshots. This revalidation does not claim visual
+  acceptance; #209 must use the runtime navigation freshness gate before any
+  browser evidence.
+
+Open risks:
+
+- Load Plan is technically healthy, but the frontend still uses a staged local
+  workspace rather than route-level package operation recovery.
+- Handoff must remain backend-owned and eligibility-gated.
+- Protected `OTM_RESOURCES/` and unrelated dirty worktree changes remain out
+  of scope.
+
+Recommended next step:
+
+Close #208 after push. Continue #207 through #209:
+`[Slice]: Load Plan route-level package workflows`.
