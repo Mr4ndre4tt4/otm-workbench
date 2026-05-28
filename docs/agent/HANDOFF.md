@@ -2302,3 +2302,55 @@ Recommended next step:
 
 Close #205 after push. Continue #204 through #206:
 `[Slice]: Order Release route-level template and batch workflows`.
+
+## 2026-05-28 Order Release Route-Level Workflows
+
+Status:
+Implemented and validated, with browser QA blocked before module entry.
+
+Scope:
+Implemented #206 by making the current Order Release Generator frontend
+route-aware for template and batch workflow destinations.
+
+Files intentionally changed:
+
+- `frontend/src/modules/order-release-generator/OrderReleaseGeneratorView.tsx`
+- `frontend/src/app/AppFunctionalOrderReleaseGenerator.test.tsx`
+- `docs/agent/TASK_CONTRACT_ORDER_RELEASE_ROUTE_LEVEL_WORKFLOWS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx` passed with
+  4 tests.
+- `python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q`
+  passed with 35 tests.
+- `npm test -- src/app/App.test.tsx -t "Order Release"` passed with 1 test and
+  29 skipped tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+
+Validation not run / blocked:
+
+- `npm run qa:functional:order-release:browser` was attempted and failed before
+  reaching the module, timing out while waiting for `Project Cockpit`. Treat
+  this as a local runtime/script entry issue, not module acceptance evidence.
+
+Evidence:
+
+- Direct URL recovery is covered by
+  `AppFunctionalOrderReleaseGenerator.test.tsx`, including
+  `/order-release-generator/batches/or_batch_1/preview`, route destination
+  links, artifacts route, and submit-readiness route.
+
+Open risks:
+
+- This slice makes the To-Be URLs addressable and recoverable, but it does not
+  fully redesign the visual layout into separate page components.
+- Browser QA should be rerun after a fresh backend/frontend runtime is started.
+
+Recommended next step:
+
+Close #206 after push if the PR accepts automated coverage plus the recorded
+browser-script limitation. Keep #204 open until a browser QA rerun or explicit
+Order Release acceptance closeout.

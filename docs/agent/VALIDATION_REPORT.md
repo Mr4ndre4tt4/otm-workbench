@@ -2853,3 +2853,40 @@ Notes:
 - jsdom printed the known navigation-to-another-document warning during the
   functional frontend run for download/navigation behavior that browser QA
   owns.
+
+## 2026-05-28 Order Release Route-Level Workflows
+
+Scope:
+
+- Implemented GitHub issue #206 for route-aware Order Release template and
+  batch workflow destinations.
+- Added direct route recovery coverage for preview, artifacts, and
+  submit-readiness.
+
+Commands:
+
+```powershell
+npm test -- src/app/AppFunctionalOrderReleaseGenerator.test.tsx
+python -m pytest tests/test_order_release_generator_foundation.py tests/test_order_release_generator_batches.py tests/test_order_release_generator_xml_preview.py tests/test_order_release_generator_xml_artifact.py tests/test_order_release_generator_submit_guard.py tests/test_order_release_generator_jobs.py -q
+npm test -- src/app/App.test.tsx -t "Order Release"
+npm run build
+npm run qa:functional:order-release:browser
+```
+
+Results:
+
+```text
+AppFunctionalOrderReleaseGenerator.test.tsx: 4 passed
+Order Release backend suite: 35 passed
+App.test.tsx - Order Release: 1 passed, 29 skipped
+frontend build: passed with existing Vite large chunk warning
+qa:functional:order-release:browser: failed before module entry waiting for Project Cockpit
+```
+
+Notes:
+
+- jsdom printed the known navigation-to-another-document warning during the
+  functional frontend run for download/navigation behavior that browser QA
+  owns.
+- The browser script failure happened before Order Release module navigation,
+  so no screenshot evidence was accepted for this slice.
