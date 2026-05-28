@@ -1472,6 +1472,39 @@
   margin: 0;
 }
 
+.module-form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.module-form-grid label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  min-width: 0;
+}
+
+.module-form-grid input,
+.module-form-grid select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.module-form-grid input:disabled,
+.module-form-grid select:disabled {
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
 .master-data-author-grid {
   display: grid;
   gap: 12px;

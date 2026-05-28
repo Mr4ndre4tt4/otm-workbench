@@ -3,6 +3,75 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Classifications Routes Slice
+
+Validation intent:
+
+- continue Assets route extraction after archive review;
+- add route-level classification list, create, and edit screens;
+- keep classification authoring separated from asset creation while preserving
+  the legacy create-stage bridge for compatibility.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset classification"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+node scripts/functional-assets-browser.mjs
+```
+
+Results:
+
+```text
+Focused asset classification route tests: 3 passed.
+Assets functional suite: 11 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8019
+Frontend: http://127.0.0.1:5197
+Database: var/qa-assets-classifications-routes.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Classification list screenshot:   var/qa/assets-classifications-route.png
+Classification create screenshot: var/qa/assets-classification-create-route.png
+Classification edit screenshot:   var/qa/assets-classification-edit-route.png
+```
+
+Validated:
+
+- `/assets/classifications` renders classification groups without the temporary
+  Assets Library workflow rail;
+- `/assets/classifications/new` creates a classification through the existing
+  backend contract;
+- `/assets/classifications/:classificationId/edit` patches editable fields
+  through the existing backend contract;
+- system-protected classifications are guarded from route-level editing;
+- the live browser navigation contract stayed inside the current UI phase:
+  no Catalog Core, Evidence Hub, Admin Console, Developer Tools, or Coordinate
+  Quality top-level module appeared in acceptance evidence;
+- the existing asset create, workflow edit, direct edit, direct versions, direct
+  links, archive, switch, and return journey remains green.
+
+Notes:
+
+- An initial browser QA attempt against frontend `5196` was invalid because
+  `VITE_API_BASE_URL` caused direct CORS preflight to backend `8019`. The valid
+  evidence is from frontend `5197` using `VITE_DEV_PROXY_TARGET`.
+- `var/qa-assets-classifications-routes.db` was cloned from the previous valid
+  archive QA database because local Alembic reads `alembic.ini` for its URL.
+
 ## 2026-05-27 Assets Archive Route Slice
 
 Validation intent:

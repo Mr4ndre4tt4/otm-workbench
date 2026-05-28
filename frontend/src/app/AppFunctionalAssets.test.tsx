@@ -395,6 +395,261 @@ describe("Functional Assets Library journey", () => {
     expect(await screen.findByLabelText("Assets Library workflow")).toHaveTextContent("1Library");
   });
 
+  it("renders asset classifications on a dedicated route without the asset workflow", async () => {
+    const fetchMock = vi.fn((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/classifications");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Asset classifications" });
+    expect(screen.getByRole("link", { name: "Back to Assets" })).toHaveAttribute("href", "/assets");
+    expect(screen.getByRole("link", { name: "Create classification" })).toHaveAttribute(
+      "href",
+      "/assets/classifications/new"
+    );
+    expect(screen.getByText("asset_category")).toBeInTheDocument();
+    expect(screen.getByText("Integration")).toBeInTheDocument();
+    expect(screen.getByText("asset_link_type")).toBeInTheDocument();
+    expect(screen.getByText("Module")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+  });
+
+  it("creates an asset classification on a dedicated route", async () => {
+    const classificationRequests: unknown[] = [];
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        classificationRequests.push(body);
+        return Promise.resolve(
+          jsonResponse({
+            ...body,
+            id: "asset_classification_playbook",
+            is_active: true,
+            system_protected: false
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/classifications/new");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Create asset classification" });
+    expect(screen.getByRole("link", { name: "Back to Classifications" })).toHaveAttribute(
+      "href",
+      "/assets/classifications"
+    );
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Asset classification type"), "asset_category");
+    await userEvent.clear(screen.getByLabelText("Asset classification code"));
+    await userEvent.type(screen.getByLabelText("Asset classification code"), "PLAYBOOK");
+    await userEvent.clear(screen.getByLabelText("Asset classification name"));
+    await userEvent.type(screen.getByLabelText("Asset classification name"), "Playbook");
+    await userEvent.click(screen.getByRole("button", { name: "Create classification" }));
+
+    expect(await screen.findByText("Classification PLAYBOOK created.")).toBeInTheDocument();
+    expect(classificationRequests).toEqual([
+      {
+        classification_type: "asset_category",
+        code: "PLAYBOOK",
+        description: "Client-safe reusable implementation playbook.",
+        name: "Playbook",
+        sort_order: 90
+      }
+    ]);
+  });
+
+  it("edits an asset classification on a dedicated route", async () => {
+    const classificationUpdates: unknown[] = [];
+    const customClassification = {
+      classification_type: "asset_category",
+      code: "PLAYBOOK",
+      description: "Client-safe reusable implementation playbook.",
+      id: "asset_classification_playbook",
+      is_active: true,
+      name: "Playbook",
+      sort_order: 90,
+      system_protected: false
+    };
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [assetFixture("DRAFT", null)], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications/asset_classification_playbook")) {
+        const body = JSON.parse(String(init?.body));
+        classificationUpdates.push(body);
+        return Promise.resolve(jsonResponse({ ...customClassification, ...body }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups([customClassification])));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/classifications/asset_classification_playbook/edit");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Edit Playbook" });
+    expect(screen.getByRole("link", { name: "Back to Classifications" })).toHaveAttribute(
+      "href",
+      "/assets/classifications"
+    );
+    await userEvent.clear(screen.getByLabelText("Asset classification name"));
+    await userEvent.type(screen.getByLabelText("Asset classification name"), "Playbook Updated");
+    await userEvent.clear(screen.getByLabelText("Asset classification description"));
+    await userEvent.type(screen.getByLabelText("Asset classification description"), "Updated route-level classification.");
+    await userEvent.click(screen.getByRole("button", { name: "Save classification" }));
+
+    expect(await screen.findByText("Classification PLAYBOOK saved.")).toBeInTheDocument();
+    expect(classificationUpdates).toEqual([
+      {
+        description: "Updated route-level classification.",
+        is_active: true,
+        name: "Playbook Updated",
+        sort_order: 90
+      }
+    ]);
+  });
+
   it("renders an asset detail route with metadata, versions, links, and return paths", async () => {
     const fetchMock = vi.fn((input) => {
       const url = String(input);

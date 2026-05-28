@@ -239,6 +239,47 @@ async function run() {
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
     await page.getByRole("link", { name: "Open library" }).click();
     await page.getByLabel("Assets Library workflow").waitFor();
+    const classificationCode = `PLAYBOOK_${Date.now()}`;
+    await page.goto(`${baseUrl}/assets/classifications`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Asset classifications" }).waitFor();
+    await page.getByText("asset_category").waitFor();
+    const classificationsScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-classifications-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(classificationsScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: classificationsScreenshotPath });
+    await page.getByRole("link", { name: "Create classification" }).click();
+    await page.getByRole("heading", { name: "Create asset classification" }).waitFor();
+    await page.getByLabel("Asset classification type").selectOption("asset_category");
+    await page.getByLabel("Asset classification code").fill(classificationCode);
+    await page.getByLabel("Asset classification name").fill("Playbook QA");
+    await page.getByLabel("Asset classification description").fill("Client-safe browser QA classification.");
+    await page.getByLabel("Asset classification sort order").fill("95");
+    await page.getByRole("button", { name: "Create classification" }).click();
+    await page.getByText(`Classification ${classificationCode} created.`).waitFor();
+    const classificationCreateScreenshotPath = url.fileURLToPath(
+      new URL("../../var/qa/assets-classification-create-route.png", import.meta.url)
+    );
+    await fs.mkdir(path.dirname(classificationCreateScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: classificationCreateScreenshotPath });
+    const classificationIndex = await apiRequest("/api/v1/modules/assets/classifications", { token });
+    const createdClassification = (classificationIndex.items ?? [])
+      .flatMap((group) => group.items ?? [])
+      .find((classification) => classification.code === classificationCode);
+    if (!createdClassification) {
+      throw new Error("Created classification was not available for direct edit-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/classifications/${createdClassification.id}/edit`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Edit Playbook QA" }).waitFor();
+    await page.getByLabel("Asset classification name").fill("Playbook QA Updated");
+    await page.getByLabel("Asset classification description").fill("Updated client-safe browser QA classification.");
+    await page.getByRole("button", { name: "Save classification" }).click();
+    await page.getByText(`Classification ${classificationCode} saved.`).waitFor();
+    const classificationEditScreenshotPath = url.fileURLToPath(
+      new URL("../../var/qa/assets-classification-edit-route.png", import.meta.url)
+    );
+    await fs.mkdir(path.dirname(classificationEditScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: classificationEditScreenshotPath });
+    await page.goto(`${baseUrl}/assets/library`, { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Assets Library workflow").waitFor();
     await page.getByLabel("Asset type filter").selectOption("SPEC");
     await page.getByLabel("Asset category filter").selectOption("INTEGRATION");
     await page.getByLabel("Asset status filter").selectOption("DRAFT");
@@ -514,7 +555,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-direct-archive-switch-guards-return",
+          journey: "assets-classifications-list-create-edit-filtered-metadata-create-workflow-edit-direct-edit-direct-version-upload-history-direct-link-upload-link-download-direct-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -522,6 +563,9 @@ async function run() {
           environment_id: context.environment.id,
           navigation_ids: navigationIds,
           reference_asset_id: referenceAsset.id,
+          classifications_route_screenshot: "var/qa/assets-classifications-route.png",
+          classification_create_route_screenshot: "var/qa/assets-classification-create-route.png",
+          classification_edit_route_screenshot: "var/qa/assets-classification-edit-route.png",
           detail_route_screenshot: "var/qa/assets-detail-route.png",
           edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
           versions_route_screenshot: "var/qa/assets-versions-route.png",

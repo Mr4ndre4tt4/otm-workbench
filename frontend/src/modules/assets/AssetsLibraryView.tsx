@@ -9,6 +9,7 @@ import {
   createAssetLink,
   downloadCurrentAssetVersion,
   updateAsset,
+  updateAssetClassification,
   uploadAssetVersion,
   useAssetClassifications,
   useAssetDetail,
@@ -186,6 +187,9 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const directAssetVersionsMatch = /^\/assets\/([^/]+)\/versions$/.exec(location.pathname);
   const directAssetLinksMatch = /^\/assets\/([^/]+)\/links$/.exec(location.pathname);
   const directAssetArchiveMatch = /^\/assets\/([^/]+)\/archive$/.exec(location.pathname);
+  const directClassificationsNew = location.pathname === "/assets/classifications/new";
+  const directClassificationsEditMatch = /^\/assets\/classifications\/([^/]+)\/edit$/.exec(location.pathname);
+  const directClassificationEditId = directClassificationsEditMatch?.[1] ?? null;
   const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
   const directAssetEditId = directAssetEditMatch?.[1] ?? null;
   const directAssetVersionsNewId = directAssetVersionsNewMatch?.[1] ?? null;
@@ -219,6 +223,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
   const [assetDraft, setAssetDraft] = useState(defaultAssetDraft);
   const [classificationDraft, setClassificationDraft] = useState(defaultClassificationDraft);
+  const [classificationEditDraft, setClassificationEditDraft] = useState(defaultClassificationDraft);
   const [linkType, setLinkType] = useState("MODULE");
   const [linkTargetId, setLinkTargetId] = useState("integration_mapping");
   const [linkTargetLabel, setLinkTargetLabel] = useState("Integration Mapping Studio");
@@ -241,6 +246,10 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const downloadDisabled = actionDisabled(selectedAsset, "asset.download_current", !selectedAsset?.current_version_id);
   const archiveDisabled = actionDisabled(selectedAsset, "asset.archive", isArchived);
   const classificationGroups = classifications.data?.items ?? [];
+  const flatClassifications = classificationGroups.flatMap((group) =>
+    group.items.map((item) => ({ ...item, classification_type: item.classification_type ?? group.classification_type }))
+  );
+  const selectedClassification = flatClassifications.find((item) => item.id === directClassificationEditId);
   const assetTypeOptions = classificationItems(
     classificationGroups.find((group) => group.classification_type === "asset_type")?.items,
     ["SPEC", "TEMPLATE", "SAMPLE_PAYLOAD"]
@@ -375,6 +384,25 @@ export function AssetsLibraryView({ token }: { token: string }) {
     }
   }, [selectedAsset]);
 
+  useEffect(() => {
+    if (selectedClassification) {
+      setClassificationEditDraft({
+        classification_type: selectedClassification.classification_type,
+        code: selectedClassification.code,
+        description: selectedClassification.description,
+        name: selectedClassification.name,
+        sort_order: String(selectedClassification.sort_order)
+      });
+    }
+  }, [
+    selectedClassification?.classification_type,
+    selectedClassification?.code,
+    selectedClassification?.description,
+    selectedClassification?.id,
+    selectedClassification?.name,
+    selectedClassification?.sort_order
+  ]);
+
   const refreshAssetState = async (assetId: string) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["modules", "assets", "assets"] }),
@@ -433,6 +461,23 @@ export function AssetsLibraryView({ token }: { token: string }) {
         return created;
       },
       (result) => `Classification ${result.code} created.`
+    );
+  };
+
+  const handleUpdateClassification = () => {
+    if (!directClassificationEditId || !selectedClassification || selectedClassification.system_protected) return;
+    void runAction(
+      async () => {
+        const updated = await updateAssetClassification(token, directClassificationEditId, {
+          name: classificationEditDraft.name.trim(),
+          description: classificationEditDraft.description.trim(),
+          sort_order: Number(classificationEditDraft.sort_order) || 0,
+          is_active: selectedClassification.is_active
+        });
+        await queryClient.invalidateQueries({ queryKey: ["modules", "assets", "classifications"] });
+        return updated;
+      },
+      (result) => `Classification ${result.code} saved.`
     );
   };
 
@@ -515,6 +560,315 @@ export function AssetsLibraryView({ token }: { token: string }) {
 
   if (assets.isError || !assets.data) {
     return <StatePanel tone="error">Assets Library is unavailable.</StatePanel>;
+  }
+
+  if (location.pathname === "/assets/classifications") {
+    return (
+      <>
+        <PageHeader
+          description="Backend-owned classification values for asset metadata and link targets."
+          label="Assets"
+          title="Asset classifications"
+        />
+
+        <div className="master-data-action-bar">
+          <Link className="button button-secondary" to="/assets">
+            Back to Assets
+          </Link>
+          <Link className="button button-primary" to="/assets/classifications/new">
+            Create classification
+          </Link>
+          <Link className="button button-secondary" to="/assets/library">
+            Open library
+          </Link>
+        </div>
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Asset classifications workspace"
+          side={
+            <SelectedObjectPanel
+              ariaLabel="Asset classifications summary"
+              emptyText="No classification groups are available."
+              fields={[
+                { label: "Groups", value: String(classificationGroups.length) },
+                { label: "Rows", value: String(flatClassifications.length) },
+                {
+                  label: "Editable",
+                  value: String(flatClassifications.filter((classification) => !classification.system_protected).length)
+                }
+              ]}
+              status={classificationGroups.length ? "READY" : "EMPTY"}
+              subtitle="Backend contract"
+              title="Classification registry"
+            />
+          }
+          status={classificationGroups.length ? "READY" : "EMPTY"}
+          title="Classification groups"
+        >
+          {classificationGroups.map((group) => (
+            <OperationalPanel
+              ariaLabel={`Asset classification group ${group.classification_type}`}
+              emptyText="No classifications are registered for this group."
+              hasItems={group.items.length > 0}
+              key={group.classification_type}
+              status={group.items.length ? "READY" : "EMPTY"}
+              title={group.classification_type}
+            >
+              <DetailList
+                ariaLabel={`Asset classification rows ${group.classification_type}`}
+                emptyText="No classifications are registered for this group."
+                items={group.items.map((classification) => ({
+                  id: classification.id,
+                  action: classification.system_protected ? (
+                    <span className="status-chip">SYSTEM</span>
+                  ) : (
+                    <Link className="button button-secondary" to={`/assets/classifications/${classification.id}/edit`}>
+                      Edit
+                    </Link>
+                  ),
+                  meta: [classification.code, classification.description],
+                  status: classification.is_active ? "ACTIVE" : "INACTIVE",
+                  title: classification.name
+                }))}
+              />
+            </OperationalPanel>
+          ))}
+        </ModuleWorkspaceLayout>
+      </>
+    );
+  }
+
+  if (directClassificationsNew) {
+    return (
+      <>
+        <PageHeader
+          description="Create reusable metadata values without mixing classification authoring into asset creation."
+          label="Asset classifications"
+          title="Create asset classification"
+        />
+
+        <div className="master-data-action-bar">
+          <Link className="button button-secondary" to="/assets/classifications">
+            Back to Classifications
+          </Link>
+          <Link className="button button-secondary" to="/assets/classifications">
+            Cancel
+          </Link>
+        </div>
+
+        {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+        {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+        <OperationalPanel
+          ariaLabel="Asset classification create form"
+          emptyText="Classification creation is unavailable."
+          hasItems
+          status="READY"
+          title="Classification metadata"
+        >
+          <div className="assets-classification-authoring" aria-label="Asset classification authoring">
+            <div className="module-form-grid">
+              <label>
+                Type
+                <select
+                  aria-label="Asset classification type"
+                  onChange={(event) =>
+                    setClassificationDraft((current) => ({ ...current, classification_type: event.target.value }))
+                  }
+                  value={classificationDraft.classification_type}
+                >
+                  {classificationTypeOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Code
+                <input
+                  aria-label="Asset classification code"
+                  onChange={(event) =>
+                    setClassificationDraft((current) => ({ ...current, code: event.target.value.toUpperCase() }))
+                  }
+                  value={classificationDraft.code}
+                />
+              </label>
+              <label>
+                Name
+                <input
+                  aria-label="Asset classification name"
+                  onChange={(event) => setClassificationDraft((current) => ({ ...current, name: event.target.value }))}
+                  value={classificationDraft.name}
+                />
+              </label>
+              <label>
+                Description
+                <input
+                  aria-label="Asset classification description"
+                  onChange={(event) =>
+                    setClassificationDraft((current) => ({ ...current, description: event.target.value }))
+                  }
+                  value={classificationDraft.description}
+                />
+              </label>
+              <label>
+                Sort order
+                <input
+                  aria-label="Asset classification sort order"
+                  onChange={(event) =>
+                    setClassificationDraft((current) => ({ ...current, sort_order: event.target.value }))
+                  }
+                  type="number"
+                  value={classificationDraft.sort_order}
+                />
+              </label>
+            </div>
+            <Button
+              disabled={isMutating || !classificationDraft.code.trim() || !classificationDraft.name.trim()}
+              onClick={handleCreateClassification}
+              variant="primary"
+            >
+              Create classification
+            </Button>
+          </div>
+        </OperationalPanel>
+      </>
+    );
+  }
+
+  if (directClassificationEditId) {
+    if (classifications.isLoading) {
+      return <StatePanel>Loading asset classification...</StatePanel>;
+    }
+
+    if (!selectedClassification) {
+      return (
+        <>
+          <PageHeader
+            description="The requested classification is not available in the current backend contract."
+            label="Asset classifications"
+            title="Classification unavailable"
+          />
+          <StatePanel tone="error">
+            Classification detail is unavailable. <Link to="/assets/classifications">Back to Classifications</Link>
+          </StatePanel>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <PageHeader
+          description="Update editable classification labels while keeping classification type and code backend-owned."
+          label="Asset classifications"
+          title={`Edit ${selectedClassification.name}`}
+        />
+
+        <div className="master-data-action-bar">
+          <Link className="button button-secondary" to="/assets/classifications">
+            Back to Classifications
+          </Link>
+          <Link className="button button-secondary" to="/assets/classifications">
+            Cancel
+          </Link>
+        </div>
+
+        {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+        {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Asset classification edit workspace"
+          side={
+            <SelectedObjectPanel
+              ariaLabel="Asset classification edit reference"
+              emptyText="No classification metadata is available."
+              fields={[
+                { label: "Type", value: selectedClassification.classification_type },
+                { label: "Code", value: selectedClassification.code },
+                { label: "System protected", value: selectedClassification.system_protected ? "Yes" : "No" },
+                { label: "Status", value: selectedClassification.is_active ? "Active" : "Inactive" }
+              ]}
+              status={selectedClassification.system_protected ? "BLOCKED" : "READY"}
+              subtitle={selectedClassification.classification_type}
+              title={selectedClassification.code}
+            />
+          }
+          status={selectedClassification.system_protected ? "BLOCKED" : "READY"}
+          title="Classification metadata"
+        >
+          <OperationalPanel
+            ariaLabel="Asset classification edit form"
+            emptyText="Classification editing is unavailable."
+            hasItems
+            status={selectedClassification.system_protected ? "BLOCKED" : "READY"}
+            title="Editable fields"
+          >
+            <div className="assets-classification-authoring" aria-label="Asset classification authoring">
+              <div className="module-form-grid">
+                <label>
+                  Type
+                  <input
+                    aria-label="Asset classification type"
+                    disabled
+                    value={classificationEditDraft.classification_type}
+                  />
+                </label>
+                <label>
+                  Code
+                  <input aria-label="Asset classification code" disabled value={classificationEditDraft.code} />
+                </label>
+                <label>
+                  Name
+                  <input
+                    aria-label="Asset classification name"
+                    disabled={selectedClassification.system_protected}
+                    onChange={(event) =>
+                      setClassificationEditDraft((current) => ({ ...current, name: event.target.value }))
+                    }
+                    value={classificationEditDraft.name}
+                  />
+                </label>
+                <label>
+                  Description
+                  <input
+                    aria-label="Asset classification description"
+                    disabled={selectedClassification.system_protected}
+                    onChange={(event) =>
+                      setClassificationEditDraft((current) => ({ ...current, description: event.target.value }))
+                    }
+                    value={classificationEditDraft.description}
+                  />
+                </label>
+                <label>
+                  Sort order
+                  <input
+                    aria-label="Asset classification sort order"
+                    disabled={selectedClassification.system_protected}
+                    onChange={(event) =>
+                      setClassificationEditDraft((current) => ({ ...current, sort_order: event.target.value }))
+                    }
+                    type="number"
+                    value={classificationEditDraft.sort_order}
+                  />
+                </label>
+              </div>
+              <Button
+                disabled={
+                  isMutating ||
+                  selectedClassification.system_protected ||
+                  !classificationEditDraft.name.trim()
+                }
+                onClick={handleUpdateClassification}
+                variant="primary"
+              >
+                Save classification
+              </Button>
+            </div>
+          </OperationalPanel>
+        </ModuleWorkspaceLayout>
+      </>
+    );
   }
 
   if (location.pathname === "/assets") {

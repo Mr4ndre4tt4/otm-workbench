@@ -3,6 +3,65 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Classifications Routes Slice
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has route-level classification list, create, and edit
+screens at `/assets/classifications`, `/assets/classifications/new`, and
+`/assets/classifications/:classificationId/edit`.
+
+What changed:
+
+- `/assets/classifications` renders backend-owned classification groups and
+  separates classification management from the asset workflow rail;
+- `/assets/classifications/new` creates a classification through the existing
+  backend `POST /api/v1/modules/assets/classifications` contract;
+- `/assets/classifications/:classificationId/edit` patches editable
+  classification fields through the existing backend PATCH contract;
+- system-protected rows render as guarded system rows instead of edit actions;
+- the shared `module-form-grid` CSS now gives route-level forms stable,
+  responsive field layout;
+- browser QA now captures classification list, create, and edit evidence before
+  running the existing Assets lifecycle journey.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset classification"`
+  -> 3 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 11 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `node scripts/functional-assets-browser.mjs` -> passed.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8019`;
+- frontend: `http://127.0.0.1:5197`;
+- database: `var/qa-assets-classifications-routes.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots: `var/qa/assets-classifications-route.png`,
+  `var/qa/assets-classification-create-route.png`,
+  `var/qa/assets-classification-edit-route.png`,
+  `var/qa/assets-archive-route.png`, `var/qa/assets-links-route.png`,
+  `var/qa/assets-version-upload-route.png`, `var/qa/assets-versions-route.png`,
+  `var/qa/assets-edit-metadata-route.png`, `var/qa/assets-detail-route.png`.
+
+Next-chat intake notes:
+
+- The valid browser QA frontend is `5197` with `VITE_DEV_PROXY_TARGET`; the
+  earlier `5196` attempt used `VITE_API_BASE_URL` and failed CORS preflight.
+- `OTM_RESOURCES/` remains intentionally untracked and must stay out of this
+  commit.
+- `outputs/` is also untracked and unrelated to this slice.
+
+Recommended next step:
+Run an Assets acceptance pass against the consolidated Assets spec, then decide
+whether to remove or keep the legacy classification authoring bridge inside the
+asset creation workflow.
+
 ## 2026-05-27 Assets Archive Route Slice
 
 Status:
