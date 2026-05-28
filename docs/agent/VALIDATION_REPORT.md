@@ -3,6 +3,63 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Edit Metadata Route Slice
+
+Validation intent:
+
+- continue Assets route extraction after the direct detail route;
+- add metadata-only editing at `/assets/:assetId/edit`;
+- keep version upload, link management, lifecycle/archive, and classifications
+  out of the metadata screen.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "edits asset metadata"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+npm run qa:functional:assets:browser
+git diff --check
+```
+
+Results:
+
+```text
+Focused asset edit route test: 1 passed.
+Assets functional suite: 4 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Browser QA: passed.
+git diff --check: no errors, LF/CRLF warnings only.
+```
+
+Browser QA environment:
+
+```text
+Backend:  http://127.0.0.1:8015
+Frontend: http://127.0.0.1:5191
+Database: var/qa-assets-edit-metadata-route.db
+User:     demo@example.test
+```
+
+Browser QA evidence:
+
+```text
+Navigation IDs: master_data, home, rates, load_plan, assets,
+  order_release_generator, integration_mapping, settings
+Detail screenshot: var/qa/assets-detail-route.png
+Edit screenshot:   var/qa/assets-edit-metadata-route.png
+```
+
+Validated:
+
+- `/assets/:assetId/edit` renders without the temporary Assets Library workflow
+  rail;
+- `Save metadata` patches the asset and keeps the user on the direct edit
+  screen with success feedback;
+- `Back to Asset` and `Back to Library` are visible;
+- the existing create, workflow edit, upload, link, download, archive, switch,
+  and return journey remains green.
+
 ## 2026-05-27 Assets Detail Route Slice
 
 Validation intent:

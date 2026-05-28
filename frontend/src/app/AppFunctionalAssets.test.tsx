@@ -469,6 +469,103 @@ describe("Functional Assets Library journey", () => {
     expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
   });
 
+  it("edits asset metadata on a direct route without showing the legacy workflow", async () => {
+    const updateRequests: unknown[] = [];
+    let updatedAsset = assetFixture("DRAFT", null);
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/platform/session/login")) {
+        return Promise.resolve(jsonResponse({ access_token: "session_token", token_type: "bearer" }));
+      }
+      if (url.endsWith("/api/v1/platform/navigation")) {
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              { id: "home", label: "Project Cockpit", path: "/home", status: "ACTIVE" },
+              { id: "assets", label: "Assets Library", path: "/assets", status: "ACTIVE" }
+            ],
+            page: 1,
+            page_size: 50,
+            total: 2
+          })
+        );
+      }
+      if (url.endsWith("/api/v1/platform/session/me")) {
+        return Promise.resolve(jsonResponse({ email: "admin@example.test", is_admin: true }));
+      }
+      if (url.endsWith("/api/v1/platform/user-preferences")) {
+        return Promise.resolve(jsonResponse(platformPreferences()));
+      }
+      if (url.endsWith("/api/v1/platform/project-cockpit/summary")) {
+        return Promise.resolve(jsonResponse(cockpitSummary()));
+      }
+      if (url.endsWith("/api/v1/platform/active-context")) {
+        return Promise.resolve(jsonResponse({ allowed_domains: ["OTM1"], can_view_all_domains: false, domain_name: "OTM1" }));
+      }
+      if (url.endsWith("/api/v1/platform/projects")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/profiles")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/platform/environments")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets")) {
+        return Promise.resolve(jsonResponse({ items: [updatedAsset], total: 1 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/classifications")) {
+        return Promise.resolve(jsonResponse(classificationGroups()));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1")) {
+        if (init?.method === "PATCH") {
+          const body = JSON.parse(String(init?.body));
+          updateRequests.push(body);
+          updatedAsset = { ...updatedAsset, ...body, tags: body.tags };
+          return Promise.resolve(jsonResponse(updatedAsset));
+        }
+        return Promise.resolve(jsonResponse(updatedAsset));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/versions")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      if (url.endsWith("/api/v1/modules/assets/assets/asset_qa_1/links")) {
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFunctionalApp("/assets/asset_qa_1/edit");
+    await userEvent.type(screen.getByLabelText("Email"), "admin@example.test");
+    await userEvent.type(screen.getByLabelText("Password"), "SyntheticPass123!");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await screen.findByRole("heading", { name: "Edit Synthetic Mapping Spec" });
+    expect(screen.getByRole("link", { name: "Back to Asset" })).toHaveAttribute("href", "/assets/asset_qa_1");
+    expect(screen.getByRole("link", { name: "Back to Library" })).toHaveAttribute("href", "/assets/library");
+    expect(screen.queryByLabelText("Assets Library workflow")).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Asset name"));
+    await userEvent.type(screen.getByLabelText("Asset name"), "Synthetic Mapping Spec Updated");
+    await userEvent.clear(screen.getByLabelText("Asset description"));
+    await userEvent.type(screen.getByLabelText("Asset description"), "Updated client-safe synthetic asset.");
+    await userEvent.click(screen.getByRole("button", { name: "Save metadata" }));
+
+    await screen.findByText("Asset Synthetic Mapping Spec Updated updated.");
+    expect(updateRequests).toEqual([
+      expect.objectContaining({
+        name: "Synthetic Mapping Spec Updated",
+        description: "Updated client-safe synthetic asset.",
+        asset_type: "SPEC",
+        category: "INTEGRATION",
+        visibility: "PROJECT",
+        scope_type: "MODULE",
+        sensitivity: "INTERNAL"
+      })
+    ]);
+  });
+
   it("creates an asset, uploads a version, links it, downloads it, archives it, and returns with backend state", async () => {
     const createRequests: unknown[] = [];
     const classificationRequests: unknown[] = [];

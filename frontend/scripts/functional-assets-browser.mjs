@@ -282,6 +282,27 @@ async function run() {
     await page.getByText("Asset Synthetic Rate Table Notes Updated updated.").waitFor();
     await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Updated").waitFor();
 
+    let assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    let createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Updated");
+    if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct edit-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}/edit`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Edit Synthetic Rate Table Notes Updated" }).waitFor();
+    await page.getByLabel("Asset name").fill("Synthetic Rate Table Notes Direct Edited");
+    await page.getByLabel("Asset description").fill("Direct route metadata update for client-safe browser QA.");
+    await page.getByRole("button", { name: "Save metadata" }).click();
+    await page.getByText("Asset Synthetic Rate Table Notes Direct Edited updated.").waitFor();
+    await page.getByRole("link", { name: "Back to Asset" }).waitFor();
+    const editScreenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-edit-metadata-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(editScreenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: editScreenshotPath });
+    await page.getByRole("link", { name: "Back to Library" }).click();
+    await page.getByLabel("Assets Library workflow").waitFor();
+    await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().click();
+    await page.getByLabel("Selected asset", { exact: true }).getByText("Synthetic Rate Table Notes Direct Edited").waitFor();
+
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     await page.getByLabel("Asset version file").setInputFiles({
       name: "synthetic_mapping_spec.md",
@@ -361,15 +382,15 @@ async function run() {
     await page.getByText("Download started: synthetic_mapping_spec.md.").waitFor();
 
     await page.getByRole("button", { name: "Archive asset" }).click();
-    await page.getByText("Asset Synthetic Rate Table Notes Updated archived.").waitFor();
+    await page.getByText("Asset Synthetic Rate Table Notes Direct Edited archived.").waitFor();
     await page.getByLabel("Selected asset", { exact: true }).getByText("ARCHIVED").waitFor();
-    const assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
-    const createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Updated");
+    assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Direct Edited");
     if (!createdRouteAsset) {
       throw new Error("Created asset was not available for direct detail-route QA.");
     }
     await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Synthetic Rate Table Notes Updated" }).waitFor();
+    await page.getByRole("heading", { name: "Synthetic Rate Table Notes Direct Edited" }).waitFor();
     await page.getByLabel("Asset detail metadata").getByText("RATE_RECORD").waitFor();
     await page.getByLabel("Asset detail versions").getByText("synthetic_mapping_spec.md").waitFor();
     await page.getByLabel("Asset detail links").getByText("RATE_GEO_COST table").waitFor();
@@ -390,7 +411,7 @@ async function run() {
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
     await page.getByRole("button", { name: new RegExp(referenceAsset.name) }).click();
     await page.getByLabel("Selected asset", { exact: true }).getByText(referenceAsset.name).waitFor();
-    if ((await page.getByText("Asset Synthetic Rate Table Notes Updated archived.").count()) > 0) {
+    if ((await page.getByText("Asset Synthetic Rate Table Notes Direct Edited archived.").count()) > 0) {
       throw new Error("Archived asset feedback remains visible after selecting another asset.");
     }
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
@@ -408,7 +429,7 @@ async function run() {
     await page.getByRole("heading", { name: "Assets Library" }).waitFor();
     await page.getByRole("link", { name: "Open library" }).click();
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Library" }).click();
-    await page.getByRole("button", { name: /Synthetic Rate Table Notes Updated/ }).first().waitFor();
+    await page.getByRole("button", { name: /Synthetic Rate Table Notes Direct Edited/ }).first().waitFor();
 
     const unexpectedConsoleErrors = consoleErrors.filter(
       (message) => !message.includes("Failed to load resource: the server responded with a status of 400")
@@ -432,7 +453,7 @@ async function run() {
       JSON.stringify(
         {
           status: "passed",
-          journey: "assets-filtered-metadata-create-edit-upload-link-download-archive-switch-guards-return",
+          journey: "assets-filtered-metadata-create-workflow-edit-direct-edit-upload-link-download-archive-switch-guards-return",
           baseUrl,
           apiBaseUrl,
           project_id: context.project.id,
@@ -441,6 +462,7 @@ async function run() {
           navigation_ids: navigationIds,
           reference_asset_id: referenceAsset.id,
           detail_route_screenshot: "var/qa/assets-detail-route.png",
+          edit_route_screenshot: "var/qa/assets-edit-metadata-route.png",
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id

@@ -3,6 +3,51 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Edit Metadata Route Slice
+
+Status:
+Implemented and fully validated.
+
+Scope:
+Assets Library now has a dedicated route-level metadata edit screen at
+`/assets/:assetId/edit`.
+
+What changed:
+
+- `/assets/:assetId/edit` renders a metadata-only edit workspace with asset
+  name, description, type, category, visibility, scope, sensitivity, module,
+  macro object, OTM table, and tags;
+- the direct edit route uses the existing backend `PATCH` asset contract;
+- the asset detail route now exposes `Edit metadata`;
+- the direct edit route exposes `Back to Asset` and `Back to Library`;
+- the temporary `/assets/library` workflow remains intact while later slices
+  extract versions, links, classifications, and archive review;
+- browser QA now visits the direct edit route, saves metadata, verifies fresh
+  live navigation IDs, and captures `var/qa/assets-edit-metadata-route.png`.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "edits asset metadata"`
+  -> 1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 4 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `npm run qa:functional:assets:browser` -> passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA:
+
+- backend: `http://127.0.0.1:8015`;
+- frontend: `http://127.0.0.1:5191`;
+- database: `var/qa-assets-edit-metadata-route.db`;
+- live navigation IDs: `master_data`, `home`, `rates`, `load_plan`, `assets`,
+  `order_release_generator`, `integration_mapping`, `settings`;
+- screenshots: `var/qa/assets-edit-metadata-route.png`,
+  `var/qa/assets-detail-route.png`.
+
+Recommended next step:
+Continue Assets route extraction with dedicated version upload/history screens,
+then link management, classifications, and archive review.
+
 ## 2026-05-27 Assets Detail Route Slice
 
 Status:

@@ -181,11 +181,14 @@ function actionDisabled(asset: AssetItem | undefined, actionKey: string, fallbac
 export function AssetsLibraryView({ token }: { token: string }) {
   const location = useLocation();
   const queryClient = useQueryClient();
+  const directAssetEditMatch = /^\/assets\/([^/]+)\/edit$/.exec(location.pathname);
   const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
+  const directAssetEditId = directAssetEditMatch?.[1] ?? null;
   const directAssetId =
     directAssetDetailMatch && !["library", "new", "classifications"].includes(directAssetDetailMatch[1])
       ? directAssetDetailMatch[1]
       : null;
+  const directAssetRouteId = directAssetEditId ?? directAssetId;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
@@ -210,7 +213,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const assetItems = assets.data?.items ?? [];
-  const effectiveAssetId = selectedAssetId ?? directAssetId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
+  const effectiveAssetId = selectedAssetId ?? directAssetRouteId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
   const assetDetail = useAssetDetail(token, effectiveAssetId);
   const assetVersions = useAssetVersions(token, effectiveAssetId);
   const assetLinks = useAssetLinks(token, effectiveAssetId);
@@ -616,7 +619,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
     );
   }
 
-  if (directAssetId) {
+  if (directAssetRouteId) {
     if (assetDetail.isLoading && !selectedAsset) {
       return <StatePanel>Loading asset detail...</StatePanel>;
     }
@@ -632,6 +635,202 @@ export function AssetsLibraryView({ token }: { token: string }) {
           <StatePanel tone="error">
             Asset detail is unavailable. <Link to="/assets/library">Back to Library</Link>
           </StatePanel>
+        </>
+      );
+    }
+
+    if (directAssetEditId) {
+      return (
+        <>
+          <PageHeader
+            description="Edit governed asset metadata without mixing version upload, link management, or lifecycle actions."
+            label="Asset metadata"
+            title={`Edit ${selectedAsset.name}`}
+          />
+
+          <div className="master-data-action-bar">
+            <Link className="button button-secondary" to={`/assets/${selectedAsset.id}`}>
+              Back to Asset
+            </Link>
+            <Link className="button button-secondary" to="/assets/library">
+              Back to Library
+            </Link>
+          </div>
+
+          {operationMessage ? <FeedbackMessage tone="success">{operationMessage}</FeedbackMessage> : null}
+          {operationError ? <FeedbackMessage tone="error">{operationError}</FeedbackMessage> : null}
+
+          <ModuleWorkspaceLayout
+            ariaLabel="Asset metadata edit workspace"
+            side={
+              <SelectedObjectPanel
+                ariaLabel="Asset edit reference"
+                emptyText="No asset metadata is available."
+                fields={[
+                  { label: "Status", value: selectedAsset.status },
+                  { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" },
+                  { label: "Created by", value: selectedAsset.created_by ?? "Unknown" },
+                  { label: "Updated", value: selectedAsset.updated_at ?? "Not updated" }
+                ]}
+                status={updateDisabled ? "BLOCKED" : selectedAsset.status}
+                subtitle={selectedAsset.asset_type}
+                title={selectedAsset.name}
+              >
+                <p className="empty-text">
+                  Metadata changes are validated by backend classifications, Catalog Core, and the Data Dictionary.
+                </p>
+              </SelectedObjectPanel>
+            }
+            status={updateDisabled ? "BLOCKED" : "READY"}
+            title="Edit metadata"
+          >
+            <OperationalPanel
+              ariaLabel="Asset metadata edit form"
+              emptyText="Asset metadata is unavailable."
+              hasItems
+              status={updateDisabled ? "BLOCKED" : "READY"}
+              title="Metadata"
+            >
+              <div className="master-data-action-bar">
+                <label>
+                  Asset name
+                  <input
+                    aria-label="Asset name"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, name: event.target.value }))}
+                    value={assetDraft.name}
+                  />
+                </label>
+                <label>
+                  Asset description
+                  <input
+                    aria-label="Asset description"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, description: event.target.value }))}
+                    value={assetDraft.description}
+                  />
+                </label>
+                <label>
+                  Asset type
+                  <select
+                    aria-label="Asset type"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, asset_type: event.target.value }))}
+                    value={assetDraft.asset_type}
+                  >
+                    {assetTypeOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Asset category
+                  <select
+                    aria-label="Asset category"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, category: event.target.value }))}
+                    value={assetDraft.category}
+                  >
+                    {assetCategoryOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Asset visibility
+                  <select
+                    aria-label="Asset visibility"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, visibility: event.target.value }))}
+                    value={assetDraft.visibility}
+                  >
+                    {assetVisibilityOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Asset scope
+                  <select
+                    aria-label="Asset scope"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, scope_type: event.target.value }))}
+                    value={assetDraft.scope_type}
+                  >
+                    {assetScopeOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Asset sensitivity
+                  <select
+                    aria-label="Asset sensitivity"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, sensitivity: event.target.value }))}
+                    value={assetDraft.sensitivity}
+                  >
+                    {assetSensitivityOptions.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Asset module id
+                  <input
+                    aria-label="Asset module id"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, module_id: event.target.value }))}
+                    value={assetDraft.module_id}
+                  />
+                </label>
+                <label>
+                  Asset macro object
+                  <input
+                    aria-label="Asset macro object"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, macro_object_code: event.target.value }))}
+                    value={assetDraft.macro_object_code}
+                  />
+                </label>
+                <label>
+                  Asset OTM table
+                  <input
+                    aria-label="Asset OTM table"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, otm_table_name: event.target.value }))}
+                    value={assetDraft.otm_table_name}
+                  />
+                </label>
+                <label>
+                  Asset tags
+                  <input
+                    aria-label="Asset tags"
+                    disabled={updateDisabled}
+                    onChange={(event) => setAssetDraft((current) => ({ ...current, tags: event.target.value }))}
+                    value={assetDraft.tags}
+                  />
+                </label>
+                <Button
+                  disabled={isMutating || !effectiveAssetId || updateDisabled || !assetDraft.name.trim()}
+                  onClick={handleUpdateAsset}
+                  variant="primary"
+                >
+                  Save metadata
+                </Button>
+              </div>
+            </OperationalPanel>
+          </ModuleWorkspaceLayout>
         </>
       );
     }
