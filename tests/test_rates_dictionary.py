@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from otm_workbench.catalog.canonical import RATES_LOAD_SEQUENCE as CATALOG_RATES_LOAD_SEQUENCE
+from otm_workbench.config import get_settings
 from otm_workbench.modules.rates.dictionary import (
     RATES_LOAD_SEQUENCE,
     load_table_definition,
@@ -9,7 +10,7 @@ from otm_workbench.modules.rates.dictionary import (
 from otm_workbench.modules.rates.batches import table_sequence_index
 
 
-DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+DATA_DICT = Path(get_settings().otm_data_dictionary_root)
 
 
 def test_rates_sequence_uses_catalog_core_canonical_sequence():

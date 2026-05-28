@@ -3083,3 +3083,70 @@ Recommended next step:
 
 Wait for any asynchronous CodeRabbit status refresh to settle, then review or
 merge PR #182 according to the user's preferred release cadence.
+
+## 2026-05-28 OTM_RESOURCES Versioning Policy
+
+Status:
+Implemented locally for issue #221. Validation passed. Commit, push, and PR are
+still pending.
+
+GitHub tracking:
+
+- Issue #221: OTM_RESOURCES versioning and sensitivity policy.
+
+Files intentionally changed:
+
+- `.gitignore`
+- `.env.example`
+- `docs/agent/OTM_RESOURCES_VERSIONING_POLICY.md`
+- `docs/agent/TASK_CONTRACT_OTM_RESOURCES_VERSIONING_POLICY.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+- `tests/test_rates_dictionary.py`
+- `tests/test_rates_batch_csv_preview.py`
+- `tests/test_rates_batch_scenarios.py`
+- `tests/test_rates_csv_preview.py`
+
+Validation run:
+
+- `git check-ignore -v` confirmed `OTM_RESOURCES/` and `*.db.xml` paths are
+  ignored.
+- Initial `tests/test_rates_dictionary.py tests/test_modules_navigation.py`
+  run failed with 3 rates dictionary failures because tests still used a
+  hardcoded local Data Dictionary path.
+- Final `python -m pytest tests/test_rates_dictionary.py tests/test_rates_batch_csv_preview.py tests/test_rates_batch_scenarios.py tests/test_rates_csv_preview.py tests/test_modules_navigation.py -q`
+  passed with 37 tests when `OTM_OTM_DATA_DICTIONARY_ROOT` pointed at the local
+  Data Dictionary.
+- `git diff --check` passed.
+
+Validation not run:
+
+- Browser screenshots; this is repository governance and test configuration
+  policy, not a UI behavior change.
+
+Evidence:
+
+- GitHub repository visibility is public.
+- Local resource inventory found Data Dictionary reference files,
+  operator/operand spreadsheets, and `*.db.xml` exports.
+- Raw resource files were not copied into this branch.
+- Initial backend validation exposed low-level rates tests with hardcoded
+  Data Dictionary paths; those tests now use `get_settings()`.
+
+Open risks:
+
+- Data Dictionary and XLS resources may still be useful for CI or clean
+  worktrees, but public versioning requires license/provenance review.
+- Contributors need to configure `OTM_OTM_DATA_DICTIONARY_ROOT` locally until a
+  governed private artifact or sanitized fixture path exists.
+
+Next-chat intake notes:
+
+- Continue in `C:\Users\Enzo Trabalho\Documents\otm-workbench-resource-policy`
+  for issue #221.
+- Do not add raw `OTM_RESOURCES` content in this slice.
+
+Recommended next step:
+
+Commit, push, and open a small PR for issue #221.

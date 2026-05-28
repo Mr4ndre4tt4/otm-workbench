@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from otm_workbench.config import get_settings
 from otm_workbench.modules.rates.csv_preview import normalize_rows_for_otm_csv
 
 
-DATA_DICT = Path("OTM_RESOURCES/DATA_DICT26B/data_dictionary/json/data_dict")
+DATA_DICT = Path(get_settings().otm_data_dictionary_root)
 
 
 def test_rate_geo_seq_is_removed_from_csv_columns_and_rows():
