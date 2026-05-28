@@ -3210,3 +3210,43 @@ Recommended next step:
 
 Close issue #231 after this handoff sync is committed and merged, then continue
 with the next frontend cleanup lane from `origin/main`.
+
+## 2026-05-28 Frontend Cleanup Candidate Classification
+
+Status:
+Implemented and ready for PR on branch `codex/frontend-cleanup-classification`.
+
+GitHub tracking:
+
+- Issue #233: Governance: classify frontend cleanup candidates.
+
+Scope:
+Created the non-destructive cleanup classification layer that converts the
+current route inventory into reviewable keep/hide/absorb/alter/archive/remove
+or create decisions before source cleanup.
+
+Files intentionally changed:
+
+- `docs/agent/FRONTEND_CLEANUP_CANDIDATE_CLASSIFICATION.md`
+- `docs/agent/TASK_CONTRACT_FRONTEND_CLEANUP_CLASSIFICATION.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `git diff --check` passed.
+
+Validation not run:
+
+- Backend, frontend, and browser QA are not required unless this docs-only
+  classification changes behavior.
+
+Open risks:
+
+- Cleanup candidates are classification only. Future deletion, archive, or
+  route removal still needs a separate issue, explicit file list, tests, and
+  user approval where appropriate.
+
+Recommended next step:
+
+Run `git diff --check`, open a PR, and close #233 after merge.

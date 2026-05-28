@@ -3491,3 +3491,33 @@ Notes:
   it reported 0 vulnerabilities.
 - Browser screenshots were not captured because this slice documents and tests
   route exposure without changing visible UI behavior.
+
+## 2026-05-28 Frontend Cleanup Candidate Classification
+
+Scope:
+
+- Added GitHub issue #233 for a non-destructive frontend cleanup classification
+  slice.
+- Added `docs/agent/FRONTEND_CLEANUP_CANDIDATE_CLASSIFICATION.md` to classify
+  active, excluded/internal, special, test, and browser QA surfaces before any
+  cleanup implementation.
+- Added `docs/agent/TASK_CONTRACT_FRONTEND_CLEANUP_CLASSIFICATION.md`.
+
+Commands:
+
+```powershell
+git diff --check
+```
+
+Results:
+
+```text
+git diff --check: passed
+```
+
+Notes:
+
+- No backend, frontend, or browser QA is required unless this docs-only
+  classification changes product behavior.
+- The classification does not approve source deletion or doc archiving by
+  itself.
