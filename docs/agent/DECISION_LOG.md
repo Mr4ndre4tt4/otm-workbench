@@ -3,6 +3,37 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27: Reserve Integration Mapping For Dedicated Parallel Chat
+
+Status:
+accepted scope coordination rule
+
+Change type:
+
+```text
+feature boundary change
+delivery pipeline change
+chat continuity rule
+```
+
+Decision:
+Integration Mapping work is reserved for a separate dedicated chat/workstream
+unless the user explicitly asks for it, the current chat is already in
+Integration Mapping context, or another module requires a minimal cross-module
+adjustment.
+
+Reason:
+The user is opening another Solon-governed chat to handle Integration Mapping.
+Keeping this module out of unrelated continuation chats reduces accidental
+overlap, conflicting edits, and memory-loss drift between parallel workstreams.
+
+Impacted files:
+
+- `AGENTS.md`
+- `docs/agent/CHAT_CONTINUITY_WORKFLOW.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/HANDOFF.md`
+
 ## 2026-05-27: Add CodeRabbit As Assistive PR Review
 
 Status:

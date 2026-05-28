@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from otm_workbench.config import get_settings
@@ -33,6 +34,8 @@ from otm_workbench.platform.scoping import apply_operational_scope, operational_
 
 
 router = APIRouter(prefix="/api/v1/modules/assets", tags=["assets"])
+
+ASSET_SEARCH_OPERATORS = {"begins_with", "contains", "one_of", "not_one_of"}
 
 
 class AssetCreateRequest(BaseModel):
@@ -130,6 +133,56 @@ def get_scoped_asset_or_404(db: Session, user: User, asset_id: str) -> Asset:
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return asset
+
+
+def normalize_asset_search_operator(raw_operator: str | None, *, field_name: str) -> str | None:
+    if raw_operator is None or not raw_operator.strip():
+        return None
+    operator = raw_operator.strip().lower().replace("-", "_").replace(" ", "_")
+    if operator not in ASSET_SEARCH_OPERATORS:
+        raise api_error(
+            400,
+            "ASSET_SEARCH_INVALID_OPERATOR",
+            "Asset search operator is not supported.",
+            details={"field_name": field_name, "operator": raw_operator, "allowed_operators": sorted(ASSET_SEARCH_OPERATORS)},
+        )
+    return operator
+
+
+def split_asset_search_values(raw_value: str | None) -> list[str]:
+    if raw_value is None:
+        return []
+    return [value.strip() for value in raw_value.split(",") if value.strip()]
+
+
+def apply_asset_text_filter(
+    query,
+    column,
+    *,
+    field_name: str,
+    value: str | None,
+    operator: str | None,
+    uppercase_exact: bool = False,
+    default_operator: str = "exact",
+):
+    values = split_asset_search_values(value)
+    if not values:
+        return query
+    normalized_operator = normalize_asset_search_operator(operator, field_name=field_name) or default_operator
+    if normalized_operator == "exact":
+        target = values[0].upper() if uppercase_exact else values[0]
+        return query.filter(column == target)
+    if normalized_operator == "contains":
+        return query.filter(column.ilike(f"%{values[0]}%"))
+    if normalized_operator == "begins_with":
+        return query.filter(column.ilike(f"{values[0]}%"))
+
+    normalized_values = [value.upper() for value in values] if uppercase_exact else values
+    if normalized_operator == "one_of":
+        return query.filter(column.in_(normalized_values))
+    if normalized_operator == "not_one_of":
+        return query.filter(or_(column.is_(None), column.notin_(normalized_values)))
+    return query
 
 
 def validate_asset_otm_references(db: Session, payload: dict[str, object]) -> None:
@@ -244,37 +297,109 @@ def create_asset(
 
 @router.get("/assets")
 def list_assets(
+    asset_id: str | None = None,
+    asset_id_operator: str | None = None,
+    name: str | None = None,
+    name_operator: str | None = None,
+    description: str | None = None,
+    description_operator: str | None = None,
     asset_type: str | None = None,
     category: str | None = None,
     status: str | None = None,
+    visibility: str | None = None,
+    sensitivity: str | None = None,
     scope_type: str | None = None,
     tag: str | None = None,
     module_id: str | None = None,
+    module_id_operator: str | None = None,
     macro_object_code: str | None = None,
+    macro_object_code_operator: str | None = None,
     otm_table_name: str | None = None,
+    otm_table_name_operator: str | None = None,
+    has_current_version: bool | None = None,
+    page: int = 1,
+    page_size: int = 50,
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
+    safe_page = max(page, 1)
+    safe_page_size = max(1, min(page_size, 100))
     query = scoped_asset_query(db, user)
+    query = apply_asset_text_filter(
+        query,
+        Asset.id,
+        field_name="asset_id",
+        value=asset_id,
+        operator=asset_id_operator,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.name,
+        field_name="name",
+        value=name,
+        operator=name_operator,
+        default_operator="contains",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.description,
+        field_name="description",
+        value=description,
+        operator=description_operator,
+        default_operator="contains",
+    )
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type.strip().upper())
     if category:
         query = query.filter(Asset.category == category.strip().upper())
     if status:
         query = query.filter(Asset.status == status.strip().upper())
+    if visibility:
+        query = query.filter(Asset.visibility == visibility.strip().upper())
+    if sensitivity:
+        query = query.filter(Asset.sensitivity == sensitivity.strip().upper())
     if scope_type:
         query = query.filter(Asset.scope_type == scope_type.strip().upper())
     if tag:
         query = query.filter(Asset.tags_json.contains(f'"{tag.strip().upper()}"'))
-    if module_id:
-        query = query.filter(Asset.module_id == module_id.strip())
-    if macro_object_code:
-        query = query.filter(Asset.macro_object_code == macro_object_code.strip().upper())
-    if otm_table_name:
-        query = query.filter(Asset.otm_table_name == otm_table_name.strip().upper())
-    assets = query.order_by(Asset.created_at.desc()).all()
+    query = apply_asset_text_filter(
+        query,
+        Asset.module_id,
+        field_name="module_id",
+        value=module_id,
+        operator=module_id_operator,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.macro_object_code,
+        field_name="macro_object_code",
+        value=macro_object_code,
+        operator=macro_object_code_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    query = apply_asset_text_filter(
+        query,
+        Asset.otm_table_name,
+        field_name="otm_table_name",
+        value=otm_table_name,
+        operator=otm_table_name_operator,
+        uppercase_exact=True,
+        default_operator="exact",
+    )
+    if has_current_version is not None:
+        query = query.filter(Asset.current_version_id.isnot(None) if has_current_version else Asset.current_version_id.is_(None))
+    total = query.count()
+    assets = (
+        query.order_by(Asset.created_at.desc())
+        .offset((safe_page - 1) * safe_page_size)
+        .limit(safe_page_size)
+        .all()
+    )
     items = [serialize_asset(asset) for asset in assets]
-    return PageResponse(items=items, total=len(items))
+    return PageResponse(items=items, total=total, page=safe_page, page_size=safe_page_size)
 
 
 @router.get("/assets/{asset_id}")

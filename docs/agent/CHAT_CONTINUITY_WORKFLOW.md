@@ -67,6 +67,12 @@ agent must rebuild context from durable sources:
    `docs/agent/DELIVERY_PIPELINE.md`;
 10. state the recovered current state briefly before proceeding.
 
+Before touching a module, the new chat must also check the latest user
+instruction and handoff for reserved parallel workstreams. Integration Mapping
+is currently reserved for a separate dedicated chat unless the user explicitly
+asks for it, the chat context is already Integration Mapping, or the change is a
+minimal cross-module adjustment needed by another module.
+
 The new chat must not rely on conversational memory alone when memory conflicts
 with docs, tests, or code. The source of truth order is:
 

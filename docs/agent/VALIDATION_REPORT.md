@@ -3,6 +3,67 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Library Search API Validation
+
+Validation intent:
+
+- start the backend-owned search/operator/pagination contract for
+  `/api/v1/modules/assets/assets`;
+- preserve the existing exact filters while adding operator-based metadata
+  search;
+- align permissions tests with the active-context scoping rule.
+
+Validation performed:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "backend_search_operators or pagination_metadata or invalid_search_operator"
+python -m pytest tests/test_assets_library_assets.py
+python -m pytest tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py
+python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py
+```
+
+Results:
+
+```text
+Before implementation: 3 failed as expected because the endpoint ignored the new
+operator/pagination params.
+After implementation: 3 passed, 18 deselected.
+Assets backend suite: 21 passed.
+Assets permissions/foundation: 9 passed.
+Explicit Assets Library file list: 47 passed.
+```
+
+Non-result:
+
+```text
+python -m pytest tests/test_assets_library_*.py
+```
+
+PowerShell did not expand the glob, so pytest collected 0 tests and reported the
+path missing. The explicit file-list command above replaced it.
+
+Validated:
+
+- pagination returns bounded `items`, full filtered `total`, `page`, and
+  `page_size`;
+- search operators support case-insensitive `contains` and `begins_with`;
+- `one_of` and `not_one_of` support comma-separated values;
+- invalid operators return `ASSET_SEARCH_INVALID_OPERATOR`;
+- existing asset list filters and scope behavior remain covered;
+- non-admin users without active context cannot read operational assets.
+
+Deferred:
+
+- frontend search-builder UI for `/assets/library`;
+- browser QA, because this slice changed backend/API behavior only and has no
+  new visible UI state yet.
+
+Scope coordination:
+
+Integration Mapping is reserved for a separate dedicated chat/workstream unless
+the user explicitly asks for it, the current chat is already in Integration
+Mapping context, or a minimal cross-module adjustment is required.
+
 ## 2026-05-27 Assets Detail Actions Cleanup
 
 Validation intent:

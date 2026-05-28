@@ -38,6 +38,10 @@ this repository.
   operate only inside allowed scopes.
 - Keep operational workflows, authoring workflows, and quality utilities on
   separate route families unless a module spec explicitly says otherwise.
+- Treat Integration Mapping as reserved for a separate dedicated chat/workstream
+  unless the latest user instruction explicitly asks for Integration Mapping,
+  the current chat context is already Integration Mapping, or the change is a
+  minimal cross-module adjustment required to keep another module working.
 - Complex object details, edit, copy, delete/retire, and result inspection must
   use a route-level screen or a deliberate modal with a visible return path.
 - Always validate OTM table dependencies through the Data Dictionary and use

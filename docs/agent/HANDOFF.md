@@ -3,6 +3,90 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Integration Mapping Guard And Assets Search API
+
+Status:
+Implemented and backend validated.
+
+Scope:
+The user reserved Integration Mapping for a separate dedicated Solon-governed
+chat/workstream. This chat should avoid Integration Mapping changes unless the
+user explicitly asks, the chat is already in Integration Mapping context, or a
+minimal cross-module adjustment is required by another module.
+
+The Assets Library backend list endpoint now has a first backend-owned
+search/operator/pagination contract.
+
+What changed:
+
+- `GET /api/v1/modules/assets/assets` now supports `page` and `page_size`;
+- the response preserves full filtered `total` plus returned `page` and
+  `page_size`;
+- text/operator filters are available for asset id, name, description, module
+  id, macro object, and OTM table;
+- supported operators are `begins_with`, `contains`, `one_of`, and
+  `not_one_of`;
+- existing exact filters remain compatible for asset type, category, status,
+  visibility, sensitivity, scope, tag, module, macro object, and OTM table;
+- invalid operators return `ASSET_SEARCH_INVALID_OPERATOR`;
+- the stale permissions test was aligned with the current active-context rule:
+  non-admin users without active context cannot read operational assets.
+
+Files intentionally changed:
+
+- `AGENTS.md`
+- `docs/agent/CHAT_CONTINUITY_WORKFLOW.md`
+- `docs/agent/DECISION_LOG.md`
+- `docs/agent/RISK_REGISTER.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/TASK_CONTRACT_ASSETS_LIBRARY_SEARCH_API.md`
+- `docs/superpowers/plans/2026-05-27-assets-library-search-api.md`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `tests/test_assets_library_permissions.py`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "backend_search_operators or pagination_metadata or invalid_search_operator"`
+  failed before implementation as expected.
+- The same focused command passed after implementation: 3 passed, 18
+  deselected.
+- `python -m pytest tests/test_assets_library_assets.py` -> 21 passed.
+- `python -m pytest tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py`
+  -> 9 passed.
+- `python -m pytest tests/test_assets_library_assets.py tests/test_assets_library_permissions.py tests/test_assets_library_foundation.py tests/test_assets_library_links.py tests/test_assets_library_versions.py`
+  -> 47 passed.
+
+Validation not run:
+
+- `python -m pytest tests/test_assets_library_*.py` was attempted, but
+  PowerShell did not expand the glob and pytest collected 0 tests. The explicit
+  file-list command above replaced it.
+- Browser QA was not run because this slice is backend/API-only.
+
+Evidence:
+
+- No screenshot evidence captured for this backend/API slice.
+
+Open risks:
+
+- The frontend search-builder UI still needs to consume this backend contract.
+- `OTM_RESOURCES/` and `outputs/` remain untracked/protected and unrelated.
+- Integration Mapping should be treated as reserved parallel work.
+
+Next-chat intake notes:
+
+- Start by reading this handoff, then inspect `git status --short` and diffs
+  before editing.
+- Do not touch Integration Mapping unless the latest user request permits it.
+- If continuing Assets, the next useful slice is the `/assets/library`
+  frontend search-builder UI that consumes the new backend operators.
+
+Recommended next step:
+Commit and push this backend/API slice, then start the Assets frontend
+search-builder UI or switch to another non-Integration-Mapping roadmap item
+requested by the user.
+
 ## 2026-05-27 Assets Detail Actions Cleanup
 
 Status:

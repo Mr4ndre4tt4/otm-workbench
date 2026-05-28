@@ -487,6 +487,125 @@ def test_list_assets_filters_by_macro_object_and_otm_table(client, admin_header)
     assert payload["items"][0]["id"] == matching["id"]
 
 
+def test_list_assets_supports_backend_search_operators(client, admin_header):
+    alpha = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Alpha Rate Playbook",
+            description="Reusable rating payload sample.",
+            module_id="rates",
+            macro_object_code="RATE_RECORD",
+            otm_table_name="RATE_GEO_COST",
+        ),
+        headers=admin_header,
+    ).json()
+    beta = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Beta Integration Payload",
+            description="Reusable integration payload sample.",
+            module_id="integration_mapping",
+            macro_object_code="RATE_RECORD",
+            otm_table_name="RATE_GEO_COST",
+        ),
+        headers=admin_header,
+    ).json()
+    gamma = client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(
+            name="Synthetic Gamma Location Notes",
+            description="Location setup notes.",
+            module_id="master_data",
+            macro_object_code="REGION",
+            otm_table_name="REGION",
+        ),
+        headers=admin_header,
+    ).json()
+
+    contains = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"description": "integration payload", "description_operator": "contains"},
+        headers=admin_header,
+    )
+    begins_with = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"name": "synthetic gamma", "name_operator": "begins_with"},
+        headers=admin_header,
+    )
+    one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"module_id": "rates,master_data", "module_id_operator": "one_of"},
+        headers=admin_header,
+    )
+    not_one_of = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"otm_table_name": "REGION", "otm_table_name_operator": "not_one_of"},
+        headers=admin_header,
+    )
+
+    assert contains.status_code == 200
+    assert [item["id"] for item in contains.json()["items"]] == [beta["id"]]
+    assert begins_with.status_code == 200
+    assert [item["id"] for item in begins_with.json()["items"]] == [gamma["id"]]
+    assert one_of.status_code == 200
+    assert {item["id"] for item in one_of.json()["items"]} == {alpha["id"], gamma["id"]}
+    assert not_one_of.status_code == 200
+    assert {item["id"] for item in not_one_of.json()["items"]} == {alpha["id"], beta["id"]}
+
+
+def test_list_assets_returns_pagination_metadata(client, admin_header):
+    created_ids = []
+    for index in range(3):
+        created = client.post(
+            "/api/v1/modules/assets/assets",
+            json=draft_asset_payload(name=f"Synthetic Paginated Asset {index}"),
+            headers=admin_header,
+        ).json()
+        created_ids.append(created["id"])
+
+    first_page = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"page": 1, "page_size": 2},
+        headers=admin_header,
+    )
+    second_page = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"page": 2, "page_size": 2},
+        headers=admin_header,
+    )
+
+    assert first_page.status_code == 200
+    assert second_page.status_code == 200
+    assert first_page.json()["total"] == 3
+    assert first_page.json()["page"] == 1
+    assert first_page.json()["page_size"] == 2
+    assert len(first_page.json()["items"]) == 2
+    assert second_page.json()["total"] == 3
+    assert second_page.json()["page"] == 2
+    assert second_page.json()["page_size"] == 2
+    assert len(second_page.json()["items"]) == 1
+    assert {item["id"] for item in first_page.json()["items"] + second_page.json()["items"]} == set(created_ids)
+
+
+def test_list_assets_rejects_invalid_search_operator(client, admin_header):
+    client.post(
+        "/api/v1/modules/assets/assets",
+        json=draft_asset_payload(name="Synthetic Operator Guard Asset"),
+        headers=admin_header,
+    )
+
+    response = client.get(
+        "/api/v1/modules/assets/assets",
+        params={"name": "synthetic", "name_operator": "regex"},
+        headers=admin_header,
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "ASSET_SEARCH_INVALID_OPERATOR"
+    assert payload["details"]["field_name"] == "name"
+
+
 def test_update_asset_metadata_records_audit_and_event(client, admin_header, db_session):
     created = client.post(
         "/api/v1/modules/assets/assets",
