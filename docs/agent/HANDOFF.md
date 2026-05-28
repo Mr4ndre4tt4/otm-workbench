@@ -3,6 +3,48 @@
 **Status:** active
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Detail Route Slice
+
+Status:
+Implemented and source-validated.
+
+Scope:
+Assets Library now has the first direct route-level object inspection screen at
+`/assets/:assetId`.
+
+What changed:
+
+- `/assets/:assetId` renders asset metadata, version history, linked workbench
+  objects, lifecycle state, and visible `Back to Assets` / `Back to Library`
+  paths;
+- Assets hub rows now expose `Open detail`;
+- `/assets/library` continues to host the existing functional workflow bridge;
+- the browser QA script now checks live navigation for excluded stale modules
+  before proceeding and includes the new detail route screenshot step.
+
+Validation:
+
+- `npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset detail route"`
+  -> 1 passed;
+- `npm test -- src/app/AppFunctionalAssets.test.tsx` -> 3 passed;
+- `npm run build` -> passed with the existing Vite large chunk warning;
+- `python -m pytest tests/test_assets_library_assets.py::test_create_draft_asset_records_metadata_audit_and_event -q`
+  -> 1 passed;
+- `git diff --check` -> no errors, LF/CRLF warnings only.
+
+Browser QA note:
+`npm run qa:functional:assets:browser` was attempted but the currently running
+local backend on `http://127.0.0.1:8000` returned HTTP 500 while seeding an
+asset before the new route was opened. Treat this as a stale/local runtime
+issue until a fresh backend/database pair is started; the browser script is
+ready to capture `var/qa/assets-detail-route.png` after that.
+
+Recommended next step:
+Resolve the local browser-QA backend seed issue or start a fresh isolated
+FastAPI/Vite pair, capture the Assets detail screenshot, then continue Assets
+route extraction with edit metadata, versions, links, classifications, and
+archive review screens.
+
 ## 2026-05-27 CodeRabbit Governance Update
 
 Status:

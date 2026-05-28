@@ -96,12 +96,22 @@ async function assertControlValue(locator, expected, description) {
 async function run() {
   const playwright = await loadPlaywright();
   if (!playwright) return;
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const url = await import("node:url");
 
   const login = await apiRequest("/api/v1/platform/session/login", {
     method: "POST",
     body: { email, password }
   });
   const token = login.access_token;
+  const navigation = await apiRequest("/api/v1/platform/navigation", { token });
+  const navigationIds = (navigation.items ?? []).map((item) => item.id);
+  const excludedNavigationIds = ["catalog", "evidence", "admin", "dev_tools", "coordinate_quality"];
+  const staleNavigationIds = navigationIds.filter((id) => excludedNavigationIds.includes(id));
+  if (staleNavigationIds.length) {
+    throw new Error(`Stale navigation contract exposed excluded modules: ${staleNavigationIds.join(", ")}.`);
+  }
   await apiRequest("/api/v1/platform/user-preferences", {
     method: "PUT",
     token,
@@ -294,6 +304,22 @@ async function run() {
     await page.getByRole("button", { name: "Archive asset" }).click();
     await page.getByText("Asset Synthetic Rate Table Notes Updated archived.").waitFor();
     await page.getByLabel("Selected asset", { exact: true }).getByText("ARCHIVED").waitFor();
+    const assetIndex = await apiRequest("/api/v1/modules/assets/assets", { token });
+    const createdRouteAsset = assetIndex.items?.find((item) => item.name === "Synthetic Rate Table Notes Updated");
+    if (!createdRouteAsset) {
+      throw new Error("Created asset was not available for direct detail-route QA.");
+    }
+    await page.goto(`${baseUrl}/assets/${createdRouteAsset.id}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Synthetic Rate Table Notes Updated" }).waitFor();
+    await page.getByLabel("Asset detail metadata").getByText("RATE_RECORD").waitFor();
+    await page.getByLabel("Asset detail versions").getByText("synthetic_mapping_spec.md").waitFor();
+    await page.getByLabel("Asset detail links").getByText("RATE_GEO_COST table").waitFor();
+    await page.getByRole("link", { name: "Back to Library" }).waitFor();
+    const screenshotPath = url.fileURLToPath(new URL("../../var/qa/assets-detail-route.png", import.meta.url));
+    await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+    await page.screenshot({ fullPage: true, path: screenshotPath });
+    await page.getByRole("link", { name: "Back to Library" }).click();
+    await page.getByLabel("Assets Library workflow").waitFor();
     await page.locator(".load-plan-workflow-step").filter({ hasText: "Version" }).click();
     if (await page.getByRole("button", { name: "Upload version" }).isEnabled()) {
       throw new Error("Upload version remains enabled after asset archive.");
@@ -353,7 +379,9 @@ async function run() {
           project_id: context.project.id,
           profile_id: context.profile.id,
           environment_id: context.environment.id,
+          navigation_ids: navigationIds,
           reference_asset_id: referenceAsset.id,
+          detail_route_screenshot: "var/qa/assets-detail-route.png",
           downloaded_file: "synthetic_mapping_spec.md",
           linked_artifact_id: evidenceTarget.artifact.id,
           linked_evidence_id: evidenceTarget.id

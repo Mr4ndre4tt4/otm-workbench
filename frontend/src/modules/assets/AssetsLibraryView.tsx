@@ -181,6 +181,11 @@ function actionDisabled(asset: AssetItem | undefined, actionKey: string, fallbac
 export function AssetsLibraryView({ token }: { token: string }) {
   const location = useLocation();
   const queryClient = useQueryClient();
+  const directAssetDetailMatch = /^\/assets\/([^/]+)$/.exec(location.pathname);
+  const directAssetId =
+    directAssetDetailMatch && !["library", "new", "classifications"].includes(directAssetDetailMatch[1])
+      ? directAssetDetailMatch[1]
+      : null;
   const [assetFilters, setAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const [draftAssetFilters, setDraftAssetFilters] = useState<AssetFilters>(emptyAssetFilters);
   const assets = useAssets(token, assetFilters);
@@ -205,7 +210,7 @@ export function AssetsLibraryView({ token }: { token: string }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
   const assetItems = assets.data?.items ?? [];
-  const effectiveAssetId = selectedAssetId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
+  const effectiveAssetId = selectedAssetId ?? directAssetId ?? operationAsset?.id ?? assetItems[0]?.id ?? null;
   const assetDetail = useAssetDetail(token, effectiveAssetId);
   const assetVersions = useAssetVersions(token, effectiveAssetId);
   const assetLinks = useAssetLinks(token, effectiveAssetId);
@@ -564,6 +569,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 emptyText="No assets are available for the current context."
                 items={recentAssets.map((asset) => ({
                   id: asset.id,
+                  action: (
+                    <Link className="button button-secondary" to={`/assets/${asset.id}`}>
+                      Open detail
+                    </Link>
+                  ),
                   meta: [asset.asset_type, asset.category, asset.scope_type],
                   status: asset.status,
                   title: asset.name
@@ -585,6 +595,11 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 emptyText="No visible assets need version or lifecycle attention."
                 items={assetsNeedingAttention.map((asset) => ({
                   id: asset.id,
+                  action: (
+                    <Link className="button button-secondary" to={`/assets/${asset.id}`}>
+                      Open detail
+                    </Link>
+                  ),
                   meta: [
                     asset.asset_type,
                     asset.category,
@@ -595,6 +610,158 @@ export function AssetsLibraryView({ token }: { token: string }) {
                 }))}
               />
             ) : null}
+          </OperationalPanel>
+        </ModuleWorkspaceLayout>
+      </>
+    );
+  }
+
+  if (directAssetId) {
+    if (assetDetail.isLoading && !selectedAsset) {
+      return <StatePanel>Loading asset detail...</StatePanel>;
+    }
+
+    if (assetDetail.isError || !selectedAsset) {
+      return (
+        <>
+          <PageHeader
+            description="The requested asset is not available in the current project, environment, and domain scope."
+            label="Asset detail"
+            title="Asset unavailable"
+          />
+          <StatePanel tone="error">
+            Asset detail is unavailable. <Link to="/assets/library">Back to Library</Link>
+          </StatePanel>
+        </>
+      );
+    }
+
+    const detailFields = [
+      { label: "Type", value: selectedAsset.asset_type },
+      { label: "Category", value: selectedAsset.category },
+      { label: "Visibility", value: selectedAsset.visibility },
+      { label: "Scope", value: selectedAsset.scope_type },
+      { label: "Sensitivity", value: selectedAsset.sensitivity },
+      { label: "Module", value: selectedAsset.module_id ?? "None" },
+      { label: "Macro object", value: selectedAsset.macro_object_code ?? "None" },
+      { label: "OTM table", value: selectedAsset.otm_table_name ?? "None" },
+      { label: "Current version", value: selectedAsset.current_version_id ?? "Missing" }
+    ];
+
+    return (
+      <>
+        <PageHeader
+          description="Inspect governed reusable asset metadata, version history, links, and lifecycle state for the active scope."
+          label="Asset detail"
+          title={selectedAsset.name}
+        />
+
+        <div className="master-data-action-bar">
+          <Link className="button button-secondary" to="/assets">
+            Back to Assets
+          </Link>
+          <Link className="button button-secondary" to="/assets/library">
+            Back to Library
+          </Link>
+          <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/edit`}>
+            Edit metadata
+          </Link>
+          <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/versions`}>
+            Versions
+          </Link>
+          <Link className="button button-secondary" to={`/assets/${selectedAsset.id}/links`}>
+            Links
+          </Link>
+        </div>
+
+        <ModuleWorkspaceLayout
+          ariaLabel="Asset detail workspace"
+          side={
+            <SelectedObjectPanel
+              ariaLabel="Asset detail metadata"
+              emptyText="No asset metadata is available."
+              fields={detailFields}
+              status={selectedAsset.status}
+              subtitle={selectedAsset.asset_type}
+              title={selectedAsset.name}
+            >
+              <p className="empty-text">{selectedAsset.description}</p>
+              {selectedAsset.tags.length ? (
+                <p className="empty-text">Tags: {selectedAsset.tags.join(", ")}</p>
+              ) : null}
+            </SelectedObjectPanel>
+          }
+          status={selectedAsset.status}
+          title="Asset detail"
+        >
+          <OperationalPanel
+            ariaLabel="Asset detail versions"
+            emptyText="No versions uploaded for this asset."
+            hasItems={(assetVersions.data?.items ?? []).length > 0}
+            status={selectedAsset.current_version_id ? "ACTIVE" : "PENDING"}
+            title="Version history"
+          >
+            <DetailList
+              ariaLabel="Asset detail version rows"
+              emptyText="No versions uploaded for this asset."
+              items={(assetVersions.data?.items ?? []).map((version) => ({
+                id: version.id,
+                meta: [`v${version.version_number}`, version.content_type, `${version.size_bytes} bytes`],
+                status: version.status,
+                title: version.file_name
+              }))}
+            />
+          </OperationalPanel>
+
+          <OperationalPanel
+            ariaLabel="Asset detail links"
+            emptyText="No links created for this asset."
+            hasItems={(assetLinks.data?.items ?? []).length > 0}
+            status={(assetLinks.data?.items ?? []).length ? "ACTIVE" : "PENDING"}
+            title="Linked workbench objects"
+          >
+            <DetailList
+              ariaLabel="Asset detail link rows"
+              emptyText="No links created for this asset."
+              items={(assetLinks.data?.items ?? []).map((link) => ({
+                id: link.id,
+                meta: [link.link_type, link.target_id],
+                status: link.link_type,
+                title: link.target_label || link.target_id
+              }))}
+            />
+          </OperationalPanel>
+
+          <OperationalPanel
+            ariaLabel="Asset detail lifecycle"
+            emptyText="Lifecycle state is owned by the backend asset contract."
+            hasItems
+            status={selectedAsset.status}
+            title="Lifecycle"
+          >
+            <DetailList
+              ariaLabel="Asset lifecycle actions"
+              items={[
+                {
+                  id: "status",
+                  meta: [selectedAsset.visibility, selectedAsset.sensitivity],
+                  status: selectedAsset.status,
+                  title: "Current lifecycle state"
+                },
+                {
+                  id: "download",
+                  meta: [selectedAsset.current_version_id ? "Version available" : "No current version"],
+                  status: downloadDisabled ? "BLOCKED" : "READY",
+                  title: "Current-version download"
+                },
+                {
+                  id: "archive",
+                  meta: [archiveDisabled ? "Action blocked" : "Action available"],
+                  status: archiveDisabled ? "BLOCKED" : "READY",
+                  title: "Archive review"
+                }
+              ]}
+            />
           </OperationalPanel>
         </ModuleWorkspaceLayout>
       </>

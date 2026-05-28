@@ -3,6 +3,58 @@
 **Status:** completed for FigJam as-is solution diagnostics documentation sync
 **Date:** 2026-05-27
 
+## 2026-05-27 Assets Detail Route Slice
+
+Validation intent:
+
+- continue Assets route extraction after the hub/library split;
+- add direct asset inspection at `/assets/:assetId`;
+- preserve the existing `/assets/library` functional workflow.
+
+Validation performed:
+
+```powershell
+npm test -- src/app/AppFunctionalAssets.test.tsx -t "asset detail route"
+npm test -- src/app/AppFunctionalAssets.test.tsx
+npm run build
+python -m pytest tests/test_assets_library_assets.py::test_create_draft_asset_records_metadata_audit_and_event -q
+git diff --check
+```
+
+Results:
+
+```text
+Focused asset detail route test: 1 passed.
+Assets functional suite: 3 passed.
+Frontend build: passed with existing Vite large chunk warning.
+Backend asset create smoke: 1 passed.
+git diff --check: no errors; existing LF/CRLF warnings only.
+```
+
+Browser QA:
+
+```text
+npm run qa:functional:assets:browser
+```
+
+Result:
+
+```text
+Blocked before reaching the new detail route. The existing local backend on
+http://127.0.0.1:8000 returned HTTP 500 while the browser script seeded an
+asset through POST /api/v1/modules/assets/assets. The source-level backend
+asset create smoke passed in pytest, so this is recorded as a local runtime
+freshness/database issue rather than a failed asset-detail implementation.
+```
+
+Additional browser-script hardening:
+
+- added a live `/api/v1/platform/navigation` stale-module check before browser
+  QA proceeds;
+- extended the script to visit `/assets/:assetId` and capture
+  `var/qa/assets-detail-route.png` once the local backend seed issue is
+  resolved.
+
 ## 2026-05-27 CodeRabbit Governance Update
 
 Validation intent:
