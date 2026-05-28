@@ -2587,3 +2587,57 @@ Recommended next step:
 
 Push the #198 commit, close #198, then continue with #199 unless the user
 prioritizes Settings/Cockpit context-isolation first.
+
+## 2026-05-28 Assets Batch And Checklist Link Targets
+
+Status:
+Implemented, validated, and ready to close #199.
+
+Scope:
+Added backend-owned BATCH and CHECKLIST link target validation for Assets.
+
+Files intentionally changed:
+
+- `src/otm_workbench/modules/assets/classifications.py`
+- `src/otm_workbench/modules/assets/routes.py`
+- `tests/test_assets_library_assets.py`
+- `docs/agent/TASK_CONTRACT_ASSETS_BATCH_CHECKLIST_LINK_TARGETS.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `python -m pytest tests/test_assets_library_assets.py -k "batch_and_checklist_link_targets" -q`
+  passed with 2 tests.
+- `python -m pytest tests/test_assets_library_assets.py -q` passed with 28
+  tests.
+- `python -m pytest tests/test_modules_navigation.py -q` passed with 10 tests.
+
+Validation not run:
+
+- Frontend/browser visual QA. This slice only added backend target validation
+  and classification seeding.
+
+Evidence:
+
+- BATCH targets resolve only to scoped `LoadPlanPackage` rows.
+- CHECKLIST targets resolve only when their parent package is scoped to the
+  active user context.
+- Hidden package/checklist rejections do not echo private target IDs or labels.
+
+Open risks:
+
+- BATCH currently means the Load Plan package contract in this UI phase. Future
+  independent batch route families should introduce explicit backend target
+  rules instead of frontend inference.
+- #200 remains open for target OTM version taxonomy validation.
+
+Next-chat intake notes:
+
+- Treat Integration Mapping as reserved for its separate workstream.
+- Use #200 as the next Assets backlog item if continuing the Assets lane.
+
+Recommended next step:
+
+Push the #199 commit, close #199, then continue with #200 or switch to
+Settings/Cockpit context-isolation if prioritized.

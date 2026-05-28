@@ -3078,3 +3078,35 @@ Notes:
   the full version serializer and exposed `storage_path`. The contract now uses
   a public version serializer without local storage paths.
 - No browser screenshot was captured for this API/UI contract slice.
+
+## 2026-05-28 Assets Batch And Checklist Link Targets
+
+Scope:
+
+- Added backend-owned BATCH and CHECKLIST asset link classifications.
+- Validated BATCH links against scoped Load Plan packages.
+- Validated CHECKLIST links through their scoped parent Load Plan package.
+- Preserved client-safe artifact/evidence target checks.
+
+Commands:
+
+```powershell
+python -m pytest tests/test_assets_library_assets.py -k "batch_and_checklist_link_targets" -q
+python -m pytest tests/test_assets_library_assets.py -q
+python -m pytest tests/test_modules_navigation.py -q
+```
+
+Results:
+
+```text
+focused Assets BATCH/CHECKLIST tests: 2 passed, 26 deselected
+tests/test_assets_library_assets.py: 28 passed
+tests/test_modules_navigation.py: 10 passed
+```
+
+Notes:
+
+- Hidden/out-of-context package and checklist targets are rejected with generic
+  backend errors that do not echo private IDs or labels.
+- No frontend/browser screenshot was captured because this slice is backend
+  target validation and classification seeding.

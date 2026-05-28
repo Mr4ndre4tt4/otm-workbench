@@ -27,6 +27,8 @@ DEFAULT_CLASSIFICATIONS = [
     ("asset_link_type", "OTM_TABLE", "OTM Table", "Links an asset to an OTM table.", 30),
     ("asset_link_type", "ARTIFACT", "Artifact", "Links an asset to an artifact.", 40),
     ("asset_link_type", "EVIDENCE", "Evidence", "Links an asset to evidence.", 50),
+    ("asset_link_type", "BATCH", "Batch", "Links an asset to a backend-owned operational batch.", 60),
+    ("asset_link_type", "CHECKLIST", "Checklist", "Links an asset to a backend-owned cutover checklist.", 70),
 ]
 
 ALLOWED_CLASSIFICATION_TYPES = {item[0] for item in DEFAULT_CLASSIFICATIONS}

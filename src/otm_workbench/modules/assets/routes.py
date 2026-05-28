@@ -10,7 +10,18 @@ from otm_workbench.config import get_settings
 from otm_workbench.contracts import PageResponse
 from otm_workbench.dependencies import api_error, get_db, require_admin, require_user
 from otm_workbench.catalog.services import get_macro_object
-from otm_workbench.models import ActiveContext, Artifact, Asset, AssetClassification, AssetLink, AssetVersion, Evidence, User
+from otm_workbench.models import (
+    ActiveContext,
+    Artifact,
+    Asset,
+    AssetClassification,
+    AssetLink,
+    AssetVersion,
+    CutoverChecklist,
+    Evidence,
+    LoadPlanPackage,
+    User,
+)
 from otm_workbench.modules.assets.assets import (
     AssetValidationError,
     archive_asset,
@@ -137,6 +148,27 @@ def get_scoped_asset_or_404(db: Session, user: User, asset_id: str) -> Asset:
     if asset is None:
         raise api_error(404, "ASSET_NOT_FOUND", "Asset not found.")
     return asset
+
+
+def scoped_model_query(db: Session, user: User, model: type):
+    query = db.query(model)
+    active_context = db.query(ActiveContext).filter(ActiveContext.user_id == user.id).first()
+    if active_context is None:
+        if not user.is_admin:
+            return query.filter(model.id.is_(None))
+        return query
+    return apply_operational_scope(query, model, operational_scope_from_context(active_context))
+
+
+def scoped_load_plan_package_exists(db: Session, user: User, package_id: str) -> bool:
+    return scoped_model_query(db, user, LoadPlanPackage).filter(LoadPlanPackage.id == package_id).first() is not None
+
+
+def scoped_cutover_checklist_exists(db: Session, user: User, checklist_id: str) -> bool:
+    checklist = db.query(CutoverChecklist).filter(CutoverChecklist.id == checklist_id).first()
+    if checklist is None:
+        return False
+    return scoped_load_plan_package_exists(db, user, checklist.package_id)
 
 
 def normalize_asset_search_operator(raw_operator: str | None, *, field_name: str) -> str | None:
@@ -557,6 +589,18 @@ def create_asset_link_endpoint(
             400,
             "ASSET_LINK_INVALID_EVIDENCE",
             "Evidence Hub evidence not found or not client-safe.",
+        )
+    if link_type == "BATCH" and not scoped_load_plan_package_exists(db, user, target_id):
+        raise api_error(
+            400,
+            "ASSET_LINK_INVALID_BATCH",
+            "Operational batch target was not found in the active scope.",
+        )
+    if link_type == "CHECKLIST" and not scoped_cutover_checklist_exists(db, user, target_id):
+        raise api_error(
+            400,
+            "ASSET_LINK_INVALID_CHECKLIST",
+            "Cutover checklist target was not found in the active scope.",
         )
     try:
         link = create_asset_link(
