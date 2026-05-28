@@ -2035,3 +2035,41 @@ Recommended next step:
 Continue with #185 Settings policy/access setup or #186 Cockpit context and
 accelerator launch, keeping Integration Mapping reserved for its separate
 workstream unless explicitly requested.
+
+## 2026-05-28 Settings Functional QA Sync
+
+Status:
+Implemented and validated.
+
+Scope:
+Continued GitHub issue #185 by updating the stale functional Admin frontend QA
+test to validate the current Settings route and setup/access-policy surface
+instead of the older Admin Console / Jobs acceptance path.
+
+Files intentionally changed:
+
+- `frontend/src/app/AppFunctionalAdmin.test.tsx`
+- `docs/agent/TASK_CONTRACT_SETTINGS_FUNCTIONAL_QA_SYNC.md`
+- `docs/agent/HANDOFF.md`
+- `docs/agent/VALIDATION_REPORT.md`
+
+Validation run:
+
+- `npm run qa:functional:admin` passed with 1 test.
+- `npm test -- src/app/App.test.tsx -t "Settings"` passed with 2 tests.
+- `python -m pytest tests/test_operational_context.py -q` passed with 26
+  tests.
+- `npm run build` passed with the existing Vite large chunk warning.
+- `git diff --check -- frontend/src/app/AppFunctionalAdmin.test.tsx` passed.
+
+Validation not run:
+
+- Fresh browser QA. Existing Settings browser evidence remains the accepted
+  visual evidence for #185; the legacy browser script still expects old Admin
+  Console/Jobs language and should be updated before it is reused as fresh
+  evidence.
+
+Recommended next step:
+
+Close #185 after push, then continue with #186 Cockpit context and accelerator
+launch flow.

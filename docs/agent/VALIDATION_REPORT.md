@@ -2623,3 +2623,39 @@ Notes:
 - A first broad combined pytest command timed out on Windows without returning
   useful evidence. The same representative validation set passed when split.
 - GitHub issue #184 was closed after the evidence comment was posted.
+
+## 2026-05-28 Settings Functional QA Sync
+
+Scope:
+
+- Updated `frontend/src/app/AppFunctionalAdmin.test.tsx` so the functional QA
+  follows the current Settings surface instead of the older Admin Console /
+  Jobs route expectation.
+- No product source behavior changed.
+
+Commands:
+
+```powershell
+npm run qa:functional:admin
+npm test -- src/app/App.test.tsx -t "Settings"
+python -m pytest tests/test_operational_context.py -q
+npm run build
+git diff --check -- frontend/src/app/AppFunctionalAdmin.test.tsx
+```
+
+Results:
+
+```text
+qa:functional:admin: 1 passed
+App.test.tsx - Settings: 2 passed
+tests/test_operational_context.py: 26 passed
+frontend build: passed with existing Vite large chunk warning
+git diff --check: no errors
+```
+
+Notes:
+
+- `npm run qa:functional:admin` failed before the update because it still
+  expected `Admin Console` heading and Jobs/Audit acceptance behavior. The
+  corrected test now validates Settings scope authority, role/user/grant
+  authoring, access-policy binding, and return-to-Cockpit recovery link.
